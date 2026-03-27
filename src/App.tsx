@@ -1,0 +1,377 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import TopBar from './components/TopBar';
+import Sidebar from './components/Sidebar';
+import BackupReminderBar from './components/BackupReminderBar';
+import { parseTasksFromNotes } from './lib/taskParser';
+import { useSettings } from './hooks/useSettings';
+import { useNotes } from './hooks/useNotes';
+import { useLayout } from './hooks/useLayout';
+import { useFileSync } from './hooks/useFileSync';
+import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { useBackupReminder } from './hooks/useBackupReminder';
+import { exportJsonSnapshot } from './hooks/useDataTransfer';
+import ThemeInjector from './components/ThemeInjector';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const Editor = lazy(() => import('./components/Editor'));
+const RightPanel = lazy(() => import('./components/RightPanel'));
+const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
+
+export default function App() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // Multi-tab state: list of open note IDs in tab order
+  const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const [showStorageNotice, setShowStorageNotice] = useState(() =>
+    !localStorage.getItem('redaction-storage-notice-seen')
+  );
+  const { settings, updateSettings } = useSettings();
+
+  const {
+    notes,
+    folders,
+    workspaceName,
+    activeNoteId,
+    setActiveNoteId,
+    recentNoteIds,
+    handleUpdateNote: _handleUpdateNote,
+    handleRenameNote: _handleRenameNote,
+    handleCreateNote: _handleCreateNote,
+    handleImportNote,
+    handleNavigateToNote,
+    handleDeleteNote: _handleDeleteNote,
+    handleCreateFolder,
+    handleRenameFolder,
+    handleDeleteFolder,
+    handleOpenDailyNote,
+    handleToggleTask,
+    handleImportData,
+    isLoaded,
+  } = useNotes(settings);
+
+  const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
+  const {
+    fsHandle,
+    syncStatus,
+    fsLastSyncAt,
+    fsSyncError,
+    connect,
+    disconnect,
+    retry,
+    syncNoteOnUpdate,
+    syncNoteOnRename,
+    syncNoteOnDelete,
+  } = useFileSync({
+    isLoaded,
+    notes,
+    folders,
+    workspaceName,
+    activeNoteId,
+    ensureInitialNote,
+    onImportData: handleImportData,
+  });
+
+  const handleUpdateNote = (id: string, content: string) => {
+    _handleUpdateNote(id, content);
+    syncNoteOnUpdate(id, content);
+  };
+
+  const handleRenameNote = (id: string, newTitle: string) => {
+    _handleRenameNote(id, newTitle);
+    syncNoteOnRename(id, newTitle);
+  };
+
+  const handleCreateNote = (folderId: string, initialContent?: string) => {
+    _handleCreateNote(folderId, initialContent);
+    // New note will be saved by useNotes via storage.saveNote; FS sync on next update
+  };
+
+  const handleDeleteNote = (id: string) => {
+    syncNoteOnDelete(id);
+    _handleDeleteNote(id);
+  };
+
+  const {
+    isMobile,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    isRightPanelOpen,
+    setIsRightPanelOpen,
+    activeRightTab,
+    setActiveRightTab,
+    openGraphView,
+    sidebarWidth,
+    rightPanelWidth,
+    isDraggingSidebar,
+    isDraggingRightPanel,
+    setIsDraggingSidebar,
+    setIsDraggingRightPanel,
+    editorViewMode,
+    setEditorViewMode,
+  } = useLayout();
+
+  // Sync activeNoteId into openTabIds
+  useEffect(() => {
+    if (!activeNoteId) return;
+    setOpenTabIds(prev => prev.includes(activeNoteId) ? prev : [...prev, activeNoteId]);
+  }, [activeNoteId]);
+
+  const handleTabChange = useCallback((id: string) => {
+    setActiveNoteId(id);
+  }, [setActiveNoteId]);
+
+  const handleTabClose = useCallback((id: string) => {
+    setOpenTabIds(prev => {
+      const next = prev.filter(t => t !== id);
+      if (id === activeNoteId) {
+        const idx = prev.indexOf(id);
+        const fallback = next[Math.min(idx, next.length - 1)];
+        setActiveNoteId(fallback ?? '');
+      }
+      return next;
+    });
+  }, [activeNoteId, setActiveNoteId]);
+
+  const handleNewTab = useCallback(() => {
+    handleCreateNote(folders[0]?.id ?? 'diary');
+  }, [folders, handleCreateNote]);
+
+  const openTabs = useMemo(
+    () => openTabIds.map(id => notes.find(n => n.id === id)).filter(Boolean).map(n => ({ id: n!.id, title: n!.title })),
+    [openTabIds, notes]
+  );
+
+  const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
+  const activeNote = activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined;
+
+  const { showReminder, daysSinceExport, dismiss: dismissReminder } = useBackupReminder(notes.length);
+
+  const exportJsonQuick = useCallback(() => {
+    exportJsonSnapshot(notes, folders, workspaceName);
+  }, [notes, folders, workspaceName]);
+
+  useGlobalShortcuts({
+    searchQuery,
+    searchInputRef,
+    onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+    onFocusSearch: () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+    onClearSearch: () => setSearchQuery(''),
+  });
+
+  if (!isLoaded) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#EAE8E0] text-[#2D2D2D] font-redaction">
+        <div className="text-[#2D2D2D]/40 text-sm tracking-widest uppercase">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#B89B5E] selection:text-white">
+      <ThemeInjector settings={settings} />
+      {showReminder && (
+        <BackupReminderBar
+          daysSinceExport={daysSinceExport}
+          onExportJson={exportJsonQuick}
+          onDismiss={dismissReminder}
+        />
+      )}
+      <TopBar
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
+        isSidebarOpen={isSidebarOpen}
+        isRightPanelOpen={isRightPanelOpen}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onToggleGraphView={openGraphView}
+        isGraphViewOpen={isRightPanelOpen && activeRightTab === 'graph'}
+        showGraphView={settings.corePlugins.graphView}
+        showDailyNote={settings.corePlugins.dailyNotes}
+        searchInputRef={searchInputRef}
+        onOpenDailyNote={() => handleOpenDailyNote()}
+        workspaceName={workspaceName}
+      />
+      <div className="flex-1 flex overflow-hidden relative">
+        {isMobile && isSidebarOpen && (
+          <div
+            className="absolute inset-0 bg-black/20 z-30"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar — always rendered for slide animation */}
+        <div
+          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
+          style={{
+            width: isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0'),
+            maxWidth: isMobile ? '320px' : undefined,
+            transition: isDraggingSidebar ? 'none' : 'width 200ms ease-in-out',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ width: isMobile ? '80vw' : sidebarWidth, maxWidth: isMobile ? '320px' : undefined }} className="flex h-full shrink-0">
+            <div className="flex-1 overflow-hidden">
+              <Sidebar
+                notes={notes}
+                folders={folders}
+                searchQuery={searchQuery}
+                activeNoteId={activeNoteId}
+                recentNoteIds={recentNoteIds}
+                onSelectNote={(id) => {
+                  setActiveNoteId(id);
+                  if (isMobile) setIsSidebarOpen(false);
+                }}
+                onCreateNote={handleCreateNote}
+                onDeleteNote={handleDeleteNote}
+                onRenameNote={handleRenameNote}
+                onCreateFolder={handleCreateFolder}
+                onRenameFolder={handleRenameFolder}
+                onDeleteFolder={handleDeleteFolder}
+                onUpdateNoteContent={handleUpdateNote}
+                onOpenDailyNote={handleOpenDailyNote}
+                onImportNote={handleImportNote}
+                onSearchTag={(tag) => setSearchQuery(`#${tag}`)}
+                caseSensitive={settings.search.caseSensitive}
+                fuzzySearch={settings.search.fuzzySearch}
+                dateFormat={settings.dailyNotes.dateFormat}
+              />
+            </div>
+            {!isMobile && (
+              <div
+                className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-50"
+                onMouseDown={() => setIsDraggingSidebar(true)}
+              />
+            )}
+          </div>
+        </div>
+
+        <ErrorBoundary>
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading editor…</div>}>
+            <Editor
+              note={activeNote}
+              allNotes={notes}
+              onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
+              onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
+              onClose={() => handleTabClose(activeNoteId)}
+              onNavigateToNote={handleNavigateToNote}
+              viewMode={editorViewMode}
+              setViewMode={setEditorViewMode}
+              settings={settings}
+              tabs={openTabs}
+              onTabChange={handleTabChange}
+              onTabClose={handleTabClose}
+              onNewTab={handleNewTab}
+            />
+          </Suspense>
+        </ErrorBoundary>
+
+        {isMobile && isRightPanelOpen && (
+          <div
+            className="absolute inset-0 bg-black/20 z-30"
+            onClick={() => setIsRightPanelOpen(false)}
+          />
+        )}
+
+        {/* Right Panel — always rendered for slide animation */}
+        <div
+          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
+          style={{
+            width: isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0'),
+            maxWidth: isMobile ? '320px' : undefined,
+            transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ width: isMobile ? '80vw' : rightPanelWidth, maxWidth: isMobile ? '320px' : undefined }} className="flex h-full shrink-0">
+            {!isMobile && (
+              <div
+                className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-50"
+                onMouseDown={() => setIsDraggingRightPanel(true)}
+              />
+            )}
+            <div className="flex-1 overflow-hidden">
+              <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading panel…</div>}>
+                <RightPanel
+                  tasks={globalTasks}
+                  onToggleTask={handleToggleTask}
+                  onNavigateToNote={(title) => {
+                    handleNavigateToNote(title);
+                    if (isMobile) setIsRightPanelOpen(false);
+                  }}
+                  activeNote={activeNote}
+                  allNotes={notes}
+                  activeTab={activeRightTab}
+                  onTabChange={setActiveRightTab}
+                  notes={notes}
+                  settings={settings}
+                  activeNoteTitle={activeNote?.title}
+                />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      </div>
+      {fsSyncError && fsHandle && (
+        <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
+          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">File Sync Warning</div>
+          <div className="text-[11px] text-red-700 leading-relaxed mb-3">{fsSyncError}</div>
+          <button
+            onClick={retry}
+            className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
+      {showStorageNotice && (
+        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-lg">
+          <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Local Storage Only</div>
+          <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
+            Your notes are stored in this browser. Clearing browser data will delete them permanently. Export regularly to keep backups.
+          </div>
+          <button
+            onClick={() => {
+              setShowStorageNotice(false);
+              localStorage.setItem('redaction-storage-notice-seen', '1');
+            }}
+            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:border-[#2D2D2D]/60 transition-colors"
+          >
+            Got it
+          </button>
+        </div>
+      )}
+      {isSettingsOpen && (
+        <Suspense fallback={null}>
+          <SettingsModal
+            onClose={() => setIsSettingsOpen(false)}
+            settings={settings}
+            updateSettings={updateSettings}
+            editorViewMode={editorViewMode}
+            setEditorViewMode={setEditorViewMode}
+            notes={notes}
+            folders={folders}
+            workspaceName={workspaceName}
+            onImportData={handleImportData}
+            fsHandle={fsHandle}
+            onConnectFs={connect}
+            onDisconnectFs={disconnect}
+            fsLastSyncAt={fsLastSyncAt}
+            fsSyncError={fsSyncError}
+            syncStatus={syncStatus}
+            onRetryFsSync={retry}
+          />
+        </Suspense>
+      )}
+    </div>
+  );
+}

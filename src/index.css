@@ -1,0 +1,45 @@
+@import "@fontsource/redaction-50";
+@import "@fontsource/pixelify-sans";
+@import "@fontsource/work-sans";
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-redaction: "Redaction 50", serif;
+  --font-pixelify: "Pixelify Sans", sans-serif;
+  --font-work-sans: "Work Sans", sans-serif;
+}
+
+body {
+  font-family: "Redaction 50", serif;
+  background-color: #EAE8E0;
+  color: #2D2D2D;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-size: var(--app-font-size, 12px);
+  line-height: var(--app-line-height, 1.5);
+}
+
+/* Custom scrollbar for pixel theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(45, 45, 45, 0.2);
+}
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 45, 45, 0.4);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
