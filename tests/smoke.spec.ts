@@ -16,6 +16,11 @@ test('create and edit note content persists after reload', async ({ page }) => {
   await page.waitForTimeout(2000);
 
   await page.reload();
+  // Wait for search engine to initialize (500ms debounce) then trigger search
+  await page.waitForTimeout(800);
+  await page.getByPlaceholder('Search notes, tags...').fill(marker);
+  // Re-fill to ensure search fires after engine is ready
+  await page.getByPlaceholder('Search notes, tags...').clear();
   await page.getByPlaceholder('Search notes, tags...').fill(marker);
   await expect(page.locator(`text=${marker}`).first()).toBeVisible();
 });
