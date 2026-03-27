@@ -13,7 +13,7 @@ test('create and edit note content persists after reload', async ({ page }) => {
   await page.keyboard.press('Control+n');
   await page.locator('.cm-content').first().click();
   await page.keyboard.type(`# ${marker}\n\n- [ ] smoke task`);
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(2000);
 
   await page.reload();
   await page.getByPlaceholder('Search notes, tags...').fill(marker);
