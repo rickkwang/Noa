@@ -14,5 +14,17 @@ export default defineConfig(() => {
     server: {
       hmr: true,
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-markdown': ['react-markdown', 'remark-gfm', 'remark-math', 'rehype-highlight', 'rehype-katex', 'rehype-raw'],
+            'vendor-graph': ['react-force-graph-2d', 'd3-force'],
+            'vendor-misc': ['fuse.js', 'localforage', 'dompurify', 'jszip'],
+          },
+        },
+      },
+    },
   };
 });
