@@ -4,7 +4,9 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const isDesktopBuild = process.env.BUILD_TARGET === 'desktop';
   return {
+    base: isDesktopBuild ? './' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

@@ -1,7 +1,7 @@
 {
   "name": "noa",
   "private": true,
-  "version": "1.0.1-beta.1",
+  "version": "1.0.1-beta.2",
   "description": "A fully client-side Markdown note-taking app",
   "type": "module",
   "main": "electron/main.cjs",
@@ -15,9 +15,9 @@
     "lint": "tsc --noEmit",
     "test:smoke": "playwright test",
     "desktop:dev": "concurrently -k \"npm run dev -- --host 127.0.0.1 --port 3000\" \"wait-on tcp:127.0.0.1:3000 && electron .\"",
-    "desktop:build": "npm run build && electron-builder --dir --mac --arm64",
-    "desktop:pack:mac": "npm run build && electron-builder --mac dmg zip --arm64",
-    "desktop:publish:beta": "npm run build && electron-builder --mac dmg zip --arm64 --publish always"
+    "desktop:build": "BUILD_TARGET=desktop npm run build && electron-builder --dir --mac --arm64",
+    "desktop:pack:mac": "BUILD_TARGET=desktop npm run build && electron-builder --mac dmg zip --arm64",
+    "desktop:publish:beta": "BUILD_TARGET=desktop npm run build && electron-builder --mac dmg zip --arm64 --publish always"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
