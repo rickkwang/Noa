@@ -143,7 +143,7 @@ export default function SettingsModal({
                   </div>
                   <div>
                     <h3 className="font-bold text-xl tracking-widest uppercase">Noa</h3>
-                    <p className="text-sm text-[#2D2D2D]/70 mt-1">Version 1.0.1</p>
+                    <p className="text-sm text-[#2D2D2D]/70 mt-1">Version {import.meta.env.PACKAGE_VERSION}</p>
                   </div>
                   <p className="text-sm max-w-sm mt-4">
                     A retro-styled, local-first Markdown knowledge base. Built with React, Tailwind CSS, and a lot of redaction.

@@ -6,6 +6,9 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   const isDesktopBuild = process.env.BUILD_TARGET === 'desktop';
   return {
+    define: {
+      'import.meta.env.PACKAGE_VERSION': JSON.stringify(process.env.npm_package_version ?? 'dev'),
+    },
     base: isDesktopBuild ? './' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
