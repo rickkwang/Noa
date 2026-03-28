@@ -11,14 +11,7 @@ jobs:
     runs-on: macos-14
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      GH_OWNER: ${{ secrets.GH_OWNER }}
-      GH_REPO: ${{ secrets.GH_REPO }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      CSC_LINK: ${{ secrets.CSC_LINK }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      NOA_UPDATE_CHANNEL: beta
+      CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - uses: actions/checkout@v4
 
@@ -33,5 +26,31 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:smoke
 
-      - name: Build and publish mac arm64 beta
-        run: npm run desktop:publish:beta
+      - name: Build mac arm64
+        run: BUILD_TARGET=desktop npm run build && npx electron-builder --mac dmg zip --arm64
+
+      - name: Generate latest-mac.yml
+        run: |
+          SHA512=$(shasum -a 512 release/Noa-*.dmg | awk '{print $1}' | xxd -r -p | base64)
+          SIZE=$(stat -f%z release/Noa-*.dmg)
+          VERSION=$(node -p "require('./package.json').version")
+          DMG_NAME="Noa-${VERSION}-arm64.dmg"
+          cat > release/latest-mac.yml << EOF
+          version: ${VERSION}
+          files:
+            - url: ${DMG_NAME}
+              sha512: ${SHA512}
+              size: ${SIZE}
+          path: ${DMG_NAME}
+          sha512: ${SHA512}
+          releaseDate: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'
+          EOF
+
+      - name: Upload to GitHub Release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release upload "v${VERSION}" \
+            release/Noa-${VERSION}-arm64.dmg \
+            release/Noa-${VERSION}-arm64-mac.zip \
+            release/latest-mac.yml \
+            --clobber
