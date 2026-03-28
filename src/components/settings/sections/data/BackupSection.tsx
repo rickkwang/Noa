@@ -79,7 +79,7 @@ export default function BackupSection({
       <SettingItem label="Export as JSON" description="Complete backup including metadata and settings.">
         <button
           onClick={onExportJson}
-          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm"
+          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
         >
           <Download size={14} />
           <span>Export JSON</span>
@@ -90,7 +90,7 @@ export default function BackupSection({
         <button
           onClick={onExportZip}
           disabled={exportingZip}
-          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingZip ? <Loader2 size={14} className="animate-spin" /> : <FileArchive size={14} />}
           <span>{exportingZip ? 'Exporting…' : 'Export ZIP'}</span>
@@ -101,7 +101,7 @@ export default function BackupSection({
         <button
           onClick={onExportHtmlZip}
           disabled={exportingHtml}
-          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingHtml ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
           <span>{exportingHtml ? 'Exporting…' : 'Export HTML'}</span>

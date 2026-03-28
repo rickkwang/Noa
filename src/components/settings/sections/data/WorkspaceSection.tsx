@@ -45,14 +45,14 @@ export default function WorkspaceSection({
       <div className="flex space-x-4 mt-4">
         <button
           onClick={() => folderInputRef.current?.click()}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
         >
           <FolderOpen size={14} />
           <span>Open Folder</span>
         </button>
         <button
           onClick={onCreateWorkspace}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
         >
           <PlusSquare size={14} />
           <span>New Workspace</span>
@@ -80,7 +80,7 @@ export default function WorkspaceSection({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onDisconnectFolder}
-                  className="flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm"
+                  className="flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
                 >
                   <Unlink size={14} />
                   <span>Disconnect</span>
@@ -88,7 +88,7 @@ export default function WorkspaceSection({
                 {onRetryFsSync && (
                   <button
                     onClick={onRetryFsSync}
-                    className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm"
+                    className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -99,7 +99,7 @@ export default function WorkspaceSection({
               <button
                 onClick={onConnectFolder}
                 disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm disabled:opacity-60 disabled:pointer-events-none"
+                className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
               >
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>

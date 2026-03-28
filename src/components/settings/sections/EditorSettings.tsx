@@ -32,7 +32,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 className={`px-3 py-1.5 font-bold border-2 border-[#2D2D2D] text-sm capitalize transition-all ${
                   editorViewMode === mode
                     ? 'bg-[#B89B5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
-                    : 'bg-[#EAE8E0] text-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none'
+                    : 'bg-[#EAE8E0] text-[#2D2D2D]'
                 }`}
               >
                 {mode}

@@ -13,9 +13,10 @@ interface GraphViewProps {
   activeNoteTitle?: string;
   width: number;
   height: number;
+  hideIsolated?: boolean;
 }
 
-export default function GraphView({ notes, onNavigateToNote, settings, searchQuery = '', activeNoteTitle, width, height }: GraphViewProps) {
+export default function GraphView({ notes, onNavigateToNote, settings, searchQuery = '', activeNoteTitle, width, height, hideIsolated = false }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<any>(null);
 
@@ -78,9 +79,15 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
       n.degree = degreeMap.get(n.name) ?? 0;
     });
 
-    return { nodes, links };
+    const filteredNodes = hideIsolated ? nodes.filter(n => n.degree > 0) : nodes;
+    const nodeSet = new Set(filteredNodes.map(n => n.id));
+    const filteredLinks = hideIsolated
+      ? links.filter(l => nodeSet.has(l.source as string) && nodeSet.has(l.target as string))
+      : links;
+
+    return { nodes: filteredNodes, links: filteredLinks };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphKey]);
+  }, [graphKey, hideIsolated]);
 
   // 力参数：紧凑布局，物理稳定后自动 zoomToFit
   useEffect(() => {
@@ -107,7 +114,14 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
                      settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
                      settings.appearance.fontFamily;
 
+  const zoomControls = [
+    { label: '+', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
+    { label: '−', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
+    { label: '⊡', action: () => fgRef.current?.zoomToFit(300, 24) },
+  ];
+
   return (
+    <div className="relative w-full h-full">
     <ForceGraph2D
       ref={fgRef}
       width={width}
@@ -190,5 +204,17 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
         ctx.fill();
       }}
     />
+    <div className="absolute bottom-2 right-2 flex flex-col gap-0.5">
+      {zoomControls.map(({ label, action }) => (
+        <button
+          key={label}
+          onClick={action}
+          className="w-5 h-5 border border-[#2D2D2D]/40 bg-[#DCD9CE]/80 text-[10px] font-bold text-[#2D2D2D]/60 hover:bg-[#DCD9CE] hover:text-[#2D2D2D] active:opacity-70 font-redaction flex items-center justify-center"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+    </div>
   );
 }

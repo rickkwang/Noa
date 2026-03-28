@@ -28,11 +28,7 @@ export const storage = {
   },
 
   async deleteNote(id: string): Promise<void> {
-    try {
-      await notesStore.removeItem(`note:${id}`);
-    } catch (err) {
-      console.error('Error deleting note:', err);
-    }
+    await notesStore.removeItem(`note:${id}`);
   },
 
   async getNotes(): Promise<Note[] | null> {
@@ -58,10 +54,16 @@ export const storage = {
   // Migration: old 'all-notes' key → per-note keys
   async migrateToPerNoteStorage(): Promise<void> {
     try {
+      const done = await notesStore.getItem<boolean>('migration:per-note-done');
+      if (done) return;
       const legacy = await notesStore.getItem<Note[]>('all-notes');
-      if (!legacy) return;
+      if (!legacy) {
+        await notesStore.setItem('migration:per-note-done', true);
+        return;
+      }
       await Promise.all(legacy.map(n => notesStore.setItem(`note:${n.id}`, n)));
       await notesStore.removeItem('all-notes');
+      await notesStore.setItem('migration:per-note-done', true);
     } catch (err) {
       console.error('Error migrating to per-note storage:', err);
     }

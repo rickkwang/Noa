@@ -221,11 +221,19 @@ export default function Sidebar({
       file => file.name.endsWith('.md') || file.name.endsWith('.txt')
     );
 
+    let failCount = 0;
     for (const file of files) {
-      const text = await file.text();
-      const title = file.name.replace(/\.(md|txt)$/i, '');
-      const folderId = folders.length > 0 ? folders[0].id : 'diary';
-      onImportNote(title, text, folderId);
+      try {
+        const text = await file.text();
+        const title = file.name.replace(/\.(md|txt)$/i, '');
+        const folderId = folders.length > 0 ? folders[0].id : 'diary';
+        onImportNote(title, text, folderId);
+      } catch {
+        failCount++;
+      }
+    }
+    if (failCount > 0) {
+      console.warn(`[Noa] ${failCount} file(s) failed to import via drag-and-drop`);
     }
   };
 
