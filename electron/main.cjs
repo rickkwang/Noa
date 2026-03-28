@@ -1,10 +1,8 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 const isDev = !app.isPackaged;
-const RELEASES_LATEST_URL = 'https://github.com/rickkwang/Noa/releases/latest';
-
 let win;
 let updateState = { state: 'idle', message: '' };
 
@@ -30,17 +28,7 @@ function setupAutoUpdater() {
     emitUpdateStatus({
       state: 'available',
       version: info.version,
-      message: `New version available: v${info.version}. Downloading...`,
-    });
-    // Auto-start download
-    autoUpdater.downloadUpdate().catch(() => {
-      // Download failed — fall back to manual
-      emitUpdateStatus({
-        state: 'available',
-        version: info.version,
-        downloadUrl: RELEASES_LATEST_URL,
-        message: `New version available: v${info.version}`,
-      });
+      message: `New version available: v${info.version}. Click "Download Update".`,
     });
   });
 
@@ -51,6 +39,7 @@ function setupAutoUpdater() {
   autoUpdater.on('download-progress', (progress) => {
     emitUpdateStatus({
       state: 'downloading',
+      progress: Math.round(progress.percent),
       message: `Downloading... ${Math.round(progress.percent)}%`,
     });
   });
@@ -64,24 +53,16 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
-    const isSignatureIssue =
-      err.message?.includes('Could not get code signature') ||
+    const isFeedOrVersionIssue =
       err.message?.includes('ERR_UPDATER_INVALID_RELEASE_FEED') ||
       err.message?.includes('No published versions');
 
-    if (isSignatureIssue) {
-      // Signature/trust issue — offer manual download as fallback
-      emitUpdateStatus({
-        state: 'available',
-        downloadUrl: RELEASES_LATEST_URL,
-        message: 'Update available. Click to download manually.',
-      });
-    } else {
-      emitUpdateStatus({
-        state: 'error',
-        message: 'Could not check for updates. Please check your connection.',
-      });
-    }
+    emitUpdateStatus({
+      state: 'error',
+      message: isFeedOrVersionIssue
+        ? 'Update feed is not ready yet. Please retry in a moment.'
+        : 'Could not complete in-app update. Please retry.',
+    });
   });
 }
 
@@ -154,11 +135,23 @@ app.whenReady().then(() => {
     if (updateState.state === 'ready') {
       // Downloaded successfully — quit and install
       autoUpdater.quitAndInstall(false, true);
-    } else if (updateState.downloadUrl) {
-      // Fallback — open browser
-      void shell.openExternal(updateState.downloadUrl);
+    } else if (updateState.state === 'available') {
+      emitUpdateStatus({
+        state: 'downloading',
+        version: updateState.version,
+        message: `Downloading v${updateState.version ?? ''}...`,
+      });
+      autoUpdater.downloadUpdate().catch(() => {
+        emitUpdateStatus({
+          state: 'error',
+          message: 'Download failed. Please retry.',
+        });
+      });
     } else {
-      void shell.openExternal(RELEASES_LATEST_URL);
+      emitUpdateStatus({
+        state: 'error',
+        message: 'No update is ready to install.',
+      });
     }
     return true;
   });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCcw, ExternalLink, Download } from 'lucide-react';
+import { RefreshCcw, Download } from 'lucide-react';
 import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';
@@ -14,15 +14,14 @@ export default function AppUpdateSettings() {
 
   const installLabel =
     status.state === 'ready' ? 'Restart & Install' :
+    status.state === 'available' ? 'Download Update' :
     status.state === 'downloading' ? 'Downloading...' :
-    status.downloadUrl ? 'Open Download Page' :
-    'Open Download Page';
+    'Download Update';
 
-  const InstallIcon = status.state === 'ready' ? Download : ExternalLink;
+  const InstallIcon = Download;
 
   const installDisabled = !isDesktop || busy ||
-    (status.state !== 'available' && status.state !== 'ready') ||
-    (status.state === 'available' && !status.downloadUrl);
+    (status.state !== 'available' && status.state !== 'ready');
 
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">
@@ -41,7 +40,7 @@ export default function AppUpdateSettings() {
       <div className="py-4 border-b border-[#2D2D2D]/20 last:border-0 space-y-3">
         <div>
           <div className="font-bold text-sm text-[#2D2D2D]">Update Status</div>
-          <div className="text-xs text-[#2D2D2D]/70 mt-1 leading-relaxed">Check GitHub Releases for the latest version.</div>
+          <div className="text-xs text-[#2D2D2D]/70 mt-1 leading-relaxed">Updates are downloaded and installed inside the app.</div>
         </div>
         <div className={`text-sm break-words ${statusColor}`}>
           <span className="font-bold uppercase tracking-wider mr-2">{status.state}</span>
