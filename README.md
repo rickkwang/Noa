@@ -1,100 +1,79 @@
 # Noa
 
-> *Notes on Anything — 随手记录一切*
-
-A pixel-aesthetic, local-first personal knowledge base. Write notes, keep a diary, manage tasks, and map your ideas — all in your browser, all yours.
+*Notes on Anything*
 
 ---
 
-## What is Noa?
-
-Noa is a fully client-side Markdown note-taking app inspired by tools like Obsidian, wrapped in a retro pixel aesthetic. No accounts. No servers. No sync fees. Everything lives in your browser's IndexedDB.
-
-Important: data is stored in your current browser/device only. No automatic cloud sync or cross-device sync is provided.
-
-**Core principles:**
-
-- **Local-first** — your data never leaves your device
-- **Notes on Anything** — daily journal, knowledge base, task list, or all three at once
-- **Pixel & retro aesthetic** — opinionated design with Redaction 50 font, pixel grid, and a warm paper palette
-- **Markdown native** — edit, preview, or split view; full GFM support
+Noa 是一个本地优先的私人笔记空间。没有账号，没有服务器，没有订阅费。你的文字只存在于你的设备上。
 
 ---
 
-## Features
+## 理念
 
-| Feature | Description |
-|---------|-------------|
-| Markdown editor | CodeMirror 6, edit / preview / split view |
-| Wiki links | `[[Note Title]]` bidirectional linking |
-| Knowledge graph | Force-directed graph of note connections |
-| Daily notes | One-key journal entry (`⌘ K`) |
-| Tasks panel | Global checkbox tracker across all notes |
-| Backlinks | See every note that references the current one |
-| Tag explorer | Browse and filter notes by tags |
-| File System Sync | Sync to a local folder via File System Access API |
-| Import / Export | JSON backup, ZIP archive, HTML export |
-| Focus mode | Fade inactive paragraphs while writing |
+大多数笔记工具要么太重——你花更多时间整理系统而不是真正思考；要么太轻——用完即弃，留不下什么。
+
+Noa 想做第三种：**足够简单，随时能写；足够结构，值得长期用**。
+
+- **本地优先** — 数据存在浏览器 IndexedDB，不经过任何服务器
+- **Markdown 原生** — 写作不被格式打断，随时在编辑/预览/分栏间切换
+- **连接你的想法** — Wiki 链接、知识图谱、反向链接，让笔记之间形成网络而不是孤岛
+- **复古美学** — Redaction 字体、暖黄底色、像素质感，一个有个性的工具
 
 ---
 
-## Keyboard Shortcuts
+## 用法
 
-| Shortcut | Action |
-|----------|--------|
-| `⌘ N` | New note |
-| `⌘ F` | Search notes |
-| `⌘ K` | Open today's daily note |
-| `⌘ S` | Save (auto-saved) |
-| `Escape` | Close search / dismiss |
+### 开始写
+
+打开 Noa，左侧选择文件夹，点 `+` 新建笔记。标题直接在顶部输入，正文支持完整 Markdown 语法。
+
+`⌘ N` 随时新建，`⌘ F` 搜索，`⌘ S` 手动保存（也自动保存）。
+
+### 每日笔记
+
+`⌘ K` 打开今天的日记。每天一条，自动以日期命名，按模板初始化。你可以在设置里自定义日期格式和模板内容。
+
+### 任务
+
+在任意笔记里写 `- [ ] 待办事项`，右侧面板的 Tasks 标签会自动聚合所有笔记里的任务。勾选即完成，实时同步回笔记内容。
+
+### 链接与图谱
+
+在笔记里写 `[[另一篇笔记的标题]]` 即可创建链接。右侧 Backlinks 标签显示哪些笔记引用了当前这篇。Graph 标签展示全局知识图谱，节点大小反映连接数量。
+
+### 标签
+
+在正文里写 `#标签名`，侧边栏底部的标签浏览器会自动收录，点击筛选。
+
+### 文件夹同步
+
+设置 → Data → File Sync，连接本地文件夹，Noa 会将笔记以 `.md` 文件写入该目录，实现与其他工具（Obsidian、VS Code 等）的双向同步。
+
+### 备份
+
+设置 → Data → Export，导出完整 JSON 快照。定期备份，Noa 会在长时间未备份时提醒你。
 
 ---
 
-## Run Locally
+## 快捷键
 
-**Prerequisites:** Node.js
+| 快捷键 | 操作 |
+|--------|------|
+| `⌘ N` | 新建笔记 |
+| `⌘ F` | 搜索 |
+| `⌘ K` | 今日日记 |
+| `⌘ S` | 保存 |
+| `Escape` | 关闭搜索 |
+
+---
+
+## 本地运行
 
 ```bash
-npm install    # Install dependencies
-npm run dev    # Start dev server at http://localhost:3000
+npm install
+npm run dev    # http://localhost:3000
 ```
 
-## Desktop (Electron, macOS arm64)
+## 桌面版（macOS）
 
-```bash
-npm run desktop:dev        # Vite + Electron desktop dev
-npm run desktop:build      # Build unpacked desktop app
-npm run desktop:pack:mac   # Build .dmg/.zip for Apple Silicon
-```
-
-App updates are powered by `electron-updater` via GitHub Releases (`beta` channel by default).
-
-## Quality Gates
-
-```bash
-npm run lint           # Type check
-npm run build:budget   # Production build + bundle budget check
-npm run test:smoke     # Playwright smoke tests (requires browser install)
-```
-
-`beta` release is blocked unless all three gates above pass.
-
----
-
-## Tech Stack
-
-- **React 19** + **TypeScript**
-- **Vite** + **Tailwind CSS v4**
-- **CodeMirror 6** — editor engine
-- **localforage** — IndexedDB persistence
-- **react-force-graph-2d** + **d3-force** — knowledge graph
-- **Playwright** — smoke tests
-
----
-
-## Release Docs
-
-- [Release Policy](./docs/release-policy.md)
-- [Release Checklist](./docs/release-checklist.md)
-- [Operating Rhythm](./docs/operating-rhythm.md)
-- [Desktop Release](./docs/desktop-release.md)
+从 [Releases](https://github.com/rickkwang/Noa/releases) 下载最新 `.dmg`，安装后即用。应用启动后会自动检查更新。
