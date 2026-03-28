@@ -27,7 +27,7 @@ jobs:
       - run: npm run test:smoke
 
       - name: Build mac arm64
-        run: BUILD_TARGET=desktop npm run build && npx electron-builder --mac dmg zip --arm64
+        run: BUILD_TARGET=desktop npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
 
       - name: Generate latest-mac.yml
         run: |
