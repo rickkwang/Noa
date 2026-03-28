@@ -61,9 +61,8 @@ export default function WorkspaceSection({
 
       <input
         type="file"
-        // @ts-ignore webkitdirectory attribute for folder import
-        webkitdirectory="true"
-        directory="true"
+        webkitdirectory
+        directory
         multiple
         className="hidden"
         ref={folderInputRef}

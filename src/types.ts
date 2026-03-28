@@ -42,10 +42,12 @@ export interface GlobalTask {
   noteId: string;
   noteTitle: string;
   content: string;
+  taskId?: string;
   completed: boolean;
   dueDate?: string;
   priority: Priority;
   lineIndex: number;
+  occurrenceIndex: number;
   originalString: string;
 }
 

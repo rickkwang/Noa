@@ -12,7 +12,9 @@ npm run lint       # Type check (tsc --noEmit)
 npm run clean      # Remove dist/
 ```
 
-No test framework is configured.
+Test frameworks are configured:
+- Unit: `vitest` via `npm run test:unit`
+- Smoke/E2E: `playwright` via `npm run test:smoke`
 
 ## Architecture
 
@@ -51,6 +53,12 @@ No test framework is configured.
 - Design tokens: background `#EAE8E0`, accent `#B89B5E`, text `#2D2D2D`
 - Font: Redaction 50 (`font-redaction`) as default, Work Sans as secondary
 - Search highlights use inline `<mark>` with Tailwind arbitrary classes
+
+### Build / Chunking Guardrails
+
+- Vite uses function-based `manualChunks` with fine-grained vendor groups (`vendor-codemirror`, `markdown-core`, `markdown-plugins`, `markdown-render`, etc.).
+- Keep heavy dependencies mapped to explicit chunk rules when introducing new packages, rather than relying on implicit merge behavior.
+- `npm run build:budget` enforces a hard 500KB raw-size ceiling per JS chunk to prevent reintroducing Vite chunk-size warnings.
 
 ### Wiki Links
 

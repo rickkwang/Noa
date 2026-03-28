@@ -4,6 +4,7 @@ import { join } from 'node:path';
 const DIST_ASSETS = join(process.cwd(), 'dist', 'assets');
 const ENTRY_BUDGET_BYTES = 400 * 1024;
 const MAX_CHUNK_BYTES = 1300 * 1024;
+const CHUNK_WARNING_LIMIT_BYTES = 500 * 1024;
 
 function getJsAssets(dir) {
   return readdirSync(dir)
@@ -28,8 +29,9 @@ if (entryAssets.length === 0) {
 
 const oversizedEntry = entryAssets.filter((asset) => asset.size > ENTRY_BUDGET_BYTES);
 const oversizedChunks = jsAssets.filter((asset) => asset.size > MAX_CHUNK_BYTES);
+const warningSizedChunks = jsAssets.filter((asset) => asset.size > CHUNK_WARNING_LIMIT_BYTES);
 
-if (oversizedEntry.length > 0 || oversizedChunks.length > 0) {
+if (oversizedEntry.length > 0 || oversizedChunks.length > 0 || warningSizedChunks.length > 0) {
   console.error('Budget check failed.');
   if (oversizedEntry.length > 0) {
     console.error('Entry chunk exceeds 400KB raw size:');
@@ -40,6 +42,12 @@ if (oversizedEntry.length > 0 || oversizedChunks.length > 0) {
   if (oversizedChunks.length > 0) {
     console.error('Chunk exceeds 1300KB raw size:');
     oversizedChunks.forEach((asset) => {
+      console.error(` - ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
+    });
+  }
+  if (warningSizedChunks.length > 0) {
+    console.error('Chunk exceeds Vite warning threshold (500KB raw size):');
+    warningSizedChunks.forEach((asset) => {
       console.error(` - ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
     });
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTasksFromNotes } from '../../src/lib/taskParser';
+import { parseTasksFromNotes, toggleTaskInNoteContent } from '../../src/lib/taskParser';
 
 const note = (content: string) => ({
   id: 'n1',
@@ -111,5 +111,51 @@ describe('parseTasksFromNotes', () => {
   it('sets task id as noteId-lineIndex', () => {
     const tasks = parseTasksFromNotes([note('- [ ] task')]);
     expect(tasks[0].id).toBe('n1-0');
+  });
+
+  it('parses noa task id marker without leaking into content', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] ship it <!-- noa-task:task-123 -->')]);
+    expect(tasks[0].taskId).toBe('task-123');
+    expect(tasks[0].content).toBe('ship it');
+  });
+});
+
+describe('toggleTaskInNoteContent', () => {
+  it('toggles by task id after line order changes', () => {
+    const content = [
+      '- [ ] moved later <!-- noa-task:t1 -->',
+      '- [ ] untouched <!-- noa-task:t2 -->',
+    ].join('\n');
+
+    const [firstTask] = parseTasksFromNotes([note(content)]);
+    const reordered = [
+      '- [ ] untouched <!-- noa-task:t2 -->',
+      '- [ ] moved later <!-- noa-task:t1 -->',
+    ].join('\n');
+
+    const result = toggleTaskInNoteContent(reordered, firstTask);
+    expect(result.updated).toBe(true);
+    expect(result.updatedContent).toContain('- [x] moved later <!-- noa-task:t1 -->');
+    expect(result.updatedContent).toContain('- [ ] untouched <!-- noa-task:t2 -->');
+  });
+
+  it('falls back by content occurrence for legacy tasks and injects task id', () => {
+    const legacy = '- [ ] repeat\n- [ ] repeat';
+    const tasks = parseTasksFromNotes([note(legacy)]);
+    const secondTask = tasks.find((task) => task.occurrenceIndex === 1)!;
+    const result = toggleTaskInNoteContent(legacy, secondTask);
+    const lines = result.updatedContent.split('\n');
+
+    expect(result.updated).toBe(true);
+    expect(lines[0]).toBe('- [ ] repeat');
+    expect(lines[1]).toMatch(/^- \[x\] repeat <!-- noa-task:[A-Za-z0-9_-]+ -->$/);
+  });
+
+  it('does not update when target task cannot be matched', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] original')]);
+    const result = toggleTaskInNoteContent('- [ ] changed text', tasks[0]);
+
+    expect(result.updated).toBe(false);
+    expect(result.updatedContent).toBe('- [ ] changed text');
   });
 });

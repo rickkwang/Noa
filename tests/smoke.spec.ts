@@ -110,6 +110,29 @@ test('graph tab opens in right panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Backlinks' })).toBeVisible();
 });
 
+test('multi-tab content persists after closing and reopening tabs', async ({ page }) => {
+  const markerA = `tab-a-${Date.now()}`;
+  const markerB = `tab-b-${Date.now() + 1}`;
+  await page.goto('/');
+
+  // 创建笔记 A
+  await page.keyboard.press('Control+n');
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`# ${markerA}`);
+  await waitForMarkerPersisted(page, markerA);
+
+  // 新建标签页，创建笔记 B
+  await page.keyboard.press('Control+n');
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`# ${markerB}`);
+  await waitForMarkerPersisted(page, markerB);
+
+  // 页面重载后两条笔记内容仍在 IndexedDB 中
+  await page.reload();
+  await waitForMarkerPersisted(page, markerA);
+  await waitForMarkerPersisted(page, markerB);
+});
+
 test('filesystem sync control and status are visible in data settings', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();

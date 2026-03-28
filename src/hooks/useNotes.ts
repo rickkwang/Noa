@@ -14,6 +14,8 @@ interface LoadErrorState {
 }
 
 import { extractLinks, extractTags } from '../lib/noteUtils';
+import { toggleTaskInNoteContent } from '../lib/taskParser';
+import { useDailyNotes } from './useDailyNotes';
 
 export function useNotes(settings?: AppSettings) {
   const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
@@ -130,7 +132,8 @@ Your private, local-first writing space.
 |----------|--------|
 | \`⌘ N\` | New note |
 | \`⌘ F\` | Search notes |
-| \`⌘ K\` | Open today's daily note |
+| \`⌘ K\` | Open command palette |
+| \`⌘ ⇧ K\` | Open today's daily note |
 | \`⌘ S\` | Save (auto-saved) |
 
 ## Features
@@ -356,76 +359,20 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, []);
 
-  const DAILY_FOLDER_KEY = 'redaction-diary-daily-folder-id';
-
-  const handleOpenDailyNote = useCallback((targetDate?: string) => {
-    const dateFormat = settings?.dailyNotes?.dateFormat ?? 'YYYY-MM-DD';
-    const today = targetDate ?? formatDate(dateFormat);
-    const customTemplate = settings?.dailyNotes?.template?.trim();
-    const dailyTemplate = customTemplate
-      ? { id: 'custom', name: 'Custom', content: customTemplate }
-      : builtinTemplates.find(t => t.id === 'daily')!;
-
-    setFolders(prevFolders => {
-      const savedId = localStorage.getItem(DAILY_FOLDER_KEY);
-      const existingFolder = savedId
-        ? (prevFolders.find(f => f.id === savedId) ?? prevFolders.find(f => f.name === 'Daily Notes'))
-        : prevFolders.find(f => f.name === 'Daily Notes');
-      const isNew = !existingFolder;
-      const dailyFolder = existingFolder ?? { id: crypto.randomUUID(), name: 'Daily Notes' };
-      if (isNew) localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id);
-      const newFolders = existingFolder ? prevFolders : [...prevFolders, dailyFolder];
-
-      setNotes(prevNotes => {
-        const existingNote = prevNotes.find(n => n.title === today && n.folder === dailyFolder.id);
-        if (existingNote) {
-          setActiveNoteIdWithRecent(existingNote.id);
-          return prevNotes;
-        }
-        const newNote: Note = {
-          id: crypto.randomUUID(),
-          title: today,
-          content: applyTemplate(dailyTemplate, today, dateFormat),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          folder: dailyFolder.id,
-          tags: ['daily'],
-          links: []
-        };
-        storage.saveNote(newNote);
-        setActiveNoteIdWithRecent(newNote.id);
-        return [...prevNotes, newNote];
-      });
-
-      return newFolders;
-    });
-  }, [settings?.dailyNotes?.dateFormat, settings?.dailyNotes?.template, setActiveNoteIdWithRecent]);
+  const { handleOpenDailyNote } = useDailyNotes({
+    settings,
+    setFolders,
+    setNotes,
+    setActiveNoteIdWithRecent,
+  });
 
   const handleToggleTask = useCallback((task: GlobalTask) => {
     setNotes(prev => {
       const targetNote = prev.find(n => n.id === task.noteId);
       if (!targetNote) return prev;
-      const lines = targetNote.content.split('\n');
-      const line = lines[task.lineIndex];
-      // Prefer exact line index match; only fall back to text search if line text doesn't match
-      const isCorrectLine = line !== undefined &&
-        line.includes(task.content) &&
-        (task.completed ? /\[x\]/i.test(line) : /\[ \]/.test(line));
-      const exactMatchIndex = lines.findIndex(l => l === task.originalString);
-      const targetIndex = isCorrectLine
-        ? task.lineIndex
-        : exactMatchIndex !== -1
-          ? exactMatchIndex
-          : lines.findIndex(l =>
-              l.includes(task.content) &&
-              (task.completed ? /\[x\]/i.test(l) : /\[ \]/.test(l))
-            );
-      if (targetIndex === -1) return prev;
-      lines[targetIndex] = task.completed
-        ? lines[targetIndex].replace(/\[x\]/i, '[ ]')
-        : lines[targetIndex].replace('[ ]', '[x]');
-      const newContent = lines.join('\n');
-      const updated = prev.map(n => n.id === task.noteId ? { ...n, content: newContent, updatedAt: new Date().toISOString() } : n);
+      const { updatedContent, updated: didUpdate } = toggleTaskInNoteContent(targetNote.content, task);
+      if (!didUpdate) return prev;
+      const updated = prev.map(n => n.id === task.noteId ? { ...n, content: updatedContent, updatedAt: new Date().toISOString() } : n);
       const updatedNote = updated.find(n => n.id === task.noteId)!;
       debounceSave(updatedNote);
       return updated;

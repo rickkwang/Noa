@@ -15,6 +15,7 @@ import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useBackupReminder } from './hooks/useBackupReminder';
 import { exportJsonSnapshot } from './hooks/useDataTransfer';
+import { useCommandPalette } from './hooks/useCommandPalette';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
@@ -25,15 +26,13 @@ const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [commandQuery, setCommandQuery] = useState('');
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
-  const commandInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Multi-tab state: list of open note IDs in tab order
   const OPEN_TABS_KEY = 'redaction-diary-open-tabs';
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const restoredOpenTabsRef = useRef(false);
   const [showStorageNotice, setShowStorageNotice] = useState(() =>
     !localStorage.getItem('redaction-storage-notice-seen')
   );
@@ -143,16 +142,16 @@ export default function App() {
 
   // Restore openTabIds from localStorage after notes load
   useEffect(() => {
-    if (!isLoaded || notes.length === 0) return;
+    if (!isLoaded || notes.length === 0 || restoredOpenTabsRef.current) return;
     const saved = localStorage.getItem(OPEN_TABS_KEY);
+    restoredOpenTabsRef.current = true;
     if (!saved) return;
     try {
       const ids: string[] = JSON.parse(saved);
       const validIds = ids.filter(id => notes.some(n => n.id === id));
       if (validIds.length > 0) setOpenTabIds(validIds);
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]);
+  }, [isLoaded, notes]);
 
   // Persist openTabIds to localStorage
   useEffect(() => {
@@ -197,69 +196,18 @@ export default function App() {
     exportJsonSnapshot(notes, folders, workspaceName);
   }, [notes, folders, workspaceName]);
 
-  const closeCommandPalette = useCallback(() => {
-    setIsCommandPaletteOpen(false);
-    setCommandQuery('');
-  }, []);
-
-  const runCommand = useCallback((action: () => void) => {
-    action();
-    closeCommandPalette();
-  }, [closeCommandPalette]);
-
-  const commandItems = useMemo(() => {
-    const base = [
-      {
-        id: 'new-note',
-        label: 'New note',
-        action: () => handleCreateNote(folders[0]?.id ?? 'diary'),
-      },
-      {
-        id: 'open-daily-note',
-        label: "Open today's daily note",
-        action: () => handleOpenDailyNote(),
-      },
-      {
-        id: 'open-settings',
-        label: 'Open settings',
-        action: () => setIsSettingsOpen(true),
-      },
-      {
-        id: 'open-graph',
-        label: 'Open graph view',
-        action: () => openGraphView(),
-      },
-      {
-        id: 'focus-search',
-        label: 'Focus search',
-        action: () => {
-          searchInputRef.current?.focus();
-          searchInputRef.current?.select();
-        },
-      },
-    ];
-
-    const query = commandQuery.trim().toLowerCase();
-    const noteCommands = notes
-      .filter((note) => !query || note.title.toLowerCase().includes(query))
-      .slice(0, 8)
-      .map((note) => ({
-        id: `note-${note.id}`,
-        label: `Open note: ${note.title}`,
-        action: () => setActiveNoteId(note.id),
-      }));
-
-    return [...base, ...noteCommands].filter((item) => !query || item.label.toLowerCase().includes(query));
-  }, [commandQuery, folders, handleCreateNote, handleOpenDailyNote, notes, openGraphView, setActiveNoteId]);
-
-  useEffect(() => {
-    if (!isCommandPaletteOpen) return;
-    const t = setTimeout(() => {
-      commandInputRef.current?.focus();
-      commandInputRef.current?.select();
-    }, 0);
-    return () => clearTimeout(t);
-  }, [isCommandPaletteOpen]);
+  const commandPalette = useCommandPalette({
+    notes,
+    onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+    onOpenDailyNote: () => handleOpenDailyNote(),
+    onOpenSettings: () => setIsSettingsOpen(true),
+    onOpenGraphView: () => openGraphView(),
+    onFocusSearch: () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+    onOpenNoteById: (id) => setActiveNoteId(id),
+  });
 
   // BUG-B: flush pending saves before Electron quits — register once, use ref for latest notes
   const notesForQuitRef = useRef(notes);
@@ -270,7 +218,6 @@ export default function App() {
     return desktop.lifecycle.onBeforeQuit(() => {
       void flushAllPendingSaves(notesForQuitRef.current);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flushAllPendingSaves]);
 
   useGlobalShortcuts({
@@ -278,7 +225,7 @@ export default function App() {
     searchInputRef,
     onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
     onOpenDailyNote: () => handleOpenDailyNote(),
-    onOpenCommandPalette: () => setIsCommandPaletteOpen(true),
+    onOpenCommandPalette: () => commandPalette.setIsOpen(true),
     onFocusSearch: () => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
@@ -346,7 +293,7 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          <div style={{ width: isMobile ? '80vw' : sidebarWidth, maxWidth: isMobile ? '320px' : undefined }} className="flex h-full shrink-0">
+          <div style={{ width: isMobile ? '80vw' : sidebarWidth, maxWidth: isMobile ? '320px' : undefined, transition: isDraggingSidebar ? 'none' : 'width 200ms ease-in-out' }} className="flex h-full shrink-0">
             <div className="flex-1 overflow-hidden">
               <Sidebar
                 notes={notes}
@@ -419,7 +366,7 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          <div style={{ width: isMobile ? '80vw' : rightPanelWidth, maxWidth: isMobile ? '320px' : undefined }} className="flex h-full shrink-0">
+          <div style={{ width: isMobile ? '80vw' : rightPanelWidth, maxWidth: isMobile ? '320px' : undefined, transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out' }} className="flex h-full shrink-0">
             {!isMobile && (
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-50"
@@ -535,27 +482,27 @@ export default function App() {
           </div>
         </div>
       )}
-      {isCommandPaletteOpen && (
-        <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={closeCommandPalette}>
+      {commandPalette.isOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
           <div
             className="w-full max-w-xl border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[#2D2D2D] p-3 bg-[#DCD9CE]">
               <input
-                ref={commandInputRef}
+                ref={commandPalette.inputRef}
                 type="text"
-                value={commandQuery}
-                onChange={(e) => setCommandQuery(e.target.value)}
+                value={commandPalette.query}
+                onChange={(e) => commandPalette.setQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     e.preventDefault();
-                    closeCommandPalette();
+                    commandPalette.close();
                     return;
                   }
-                  if (e.key === 'Enter' && commandItems[0]) {
+                  if (e.key === 'Enter' && commandPalette.items[0]) {
                     e.preventDefault();
-                    runCommand(commandItems[0].action);
+                    commandPalette.run(commandPalette.items[0].action);
                   }
                 }}
                 placeholder="Type a command or note title..."
@@ -563,13 +510,13 @@ export default function App() {
               />
             </div>
             <div className="max-h-80 overflow-y-auto p-2 space-y-1">
-              {commandItems.length === 0 ? (
+              {commandPalette.items.length === 0 ? (
                 <div className="px-2 py-3 text-xs text-[#2D2D2D]/60">No matching commands.</div>
               ) : (
-                commandItems.map((item) => (
+                commandPalette.items.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => runCommand(item.action)}
+                    onClick={() => commandPalette.run(item.action)}
                     className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2D]/30 hover:bg-[#DCD9CE]/50 font-redaction"
                   >
                     {item.label}

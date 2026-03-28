@@ -7,12 +7,14 @@ const fsHandleStore = localforage.createInstance({
 });
 
 export function isFileSystemSupported(): boolean {
-  return 'showDirectoryPicker' in window;
+  return typeof window.showDirectoryPicker === 'function';
 }
 
 export async function requestDirectoryAccess(): Promise<FileSystemDirectoryHandle> {
-  // @ts-ignore - showDirectoryPicker not in all TS lib versions
-  return await window.showDirectoryPicker({ mode: 'readwrite' });
+  if (typeof window.showDirectoryPicker !== 'function') {
+    throw new Error('File System Access API is not supported in this environment.');
+  }
+  return window.showDirectoryPicker({ mode: 'readwrite' });
 }
 
 export async function persistHandle(handle: FileSystemDirectoryHandle): Promise<void> {
@@ -24,11 +26,13 @@ export async function getPersistedHandle(): Promise<FileSystemDirectoryHandle | 
     const handle = await fsHandleStore.getItem<FileSystemDirectoryHandle>('root-handle');
     if (!handle) return null;
     // Verify permission is still granted
-    // @ts-ignore
-    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    const perm = typeof handle.queryPermission === 'function'
+      ? await handle.queryPermission({ mode: 'readwrite' })
+      : 'granted';
     if (perm === 'granted') return handle;
-    // @ts-ignore
-    const req = await handle.requestPermission({ mode: 'readwrite' });
+    const req = typeof handle.requestPermission === 'function'
+      ? await handle.requestPermission({ mode: 'readwrite' })
+      : 'denied';
     return req === 'granted' ? handle : null;
   } catch {
     return null;
@@ -109,7 +113,6 @@ export async function writeNote(
   }
 
   const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-  // @ts-ignore
   const writable = await fileHandle.createWritable();
   await writable.write(buildFrontMatter(note) + note.content);
   await writable.close();
@@ -142,11 +145,14 @@ export async function scanDirectory(
   folders: Folder[]
 ): Promise<Note[]> {
   const notes: Note[] = [];
+  const isFileHandle = (handle: FileSystemHandle): handle is FileSystemFileHandle =>
+    handle.kind === 'file';
+  const isDirectoryHandle = (handle: FileSystemHandle): handle is FileSystemDirectoryHandle =>
+    handle.kind === 'directory';
 
   async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string) {
-    // @ts-ignore
     for await (const [name, handle] of dirHandle.entries()) {
-      if (handle.kind === 'file' && name.endsWith('.md')) {
+      if (isFileHandle(handle) && name.endsWith('.md')) {
         const file = await handle.getFile();
         const text = await file.text();
         const { meta, content } = parseFrontMatter(text);
@@ -160,7 +166,7 @@ export async function scanDirectory(
           createdAt: meta.createdAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
         });
-      } else if (handle.kind === 'directory') {
+      } else if (isDirectoryHandle(handle)) {
         const matchedFolder = folders.find(f => sanitizeFilename(f.name) === name);
         await readDir(handle, matchedFolder?.id);
       }

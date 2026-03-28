@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { useResizeDrag } from '../hooks/useResizeDrag';
 import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
@@ -155,6 +155,7 @@ export default function Sidebar({
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [isRecentOpen, setIsRecentOpen] = useState(true);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const searchEngineRef = useRef<SearchEngine | null>(null);
   const [templateMenuFolderId, setTemplateMenuFolderId] = useState<string | null>(null);
 
@@ -181,18 +182,18 @@ export default function Sidebar({
       } else {
         searchEngineRef.current.updateNotes(notes, caseSensitive, fuzzySearch);
       }
-      if (searchQuery) {
-        setSearchResults(searchEngineRef.current.search(searchQuery, caseSensitive));
+      if (deferredSearchQuery) {
+        setSearchResults(searchEngineRef.current.search(deferredSearchQuery, caseSensitive));
       }
-    }, 500);
+    }, 250);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [notes, caseSensitive, fuzzySearch]);
+  }, [notes, caseSensitive, deferredSearchQuery, fuzzySearch]);
 
-  // Execute search immediately when query changes
+  // Query/search execution uses deferred input to keep typing responsive.
   useEffect(() => {
     if (!searchEngineRef.current) return;
-    setSearchResults(searchEngineRef.current.search(searchQuery, caseSensitive));
-  }, [searchQuery, caseSensitive]);
+    setSearchResults(searchEngineRef.current.search(deferredSearchQuery, caseSensitive));
+  }, [deferredSearchQuery, caseSensitive]);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const { size: tagsHeight, setIsDragging } = useResizeDrag(

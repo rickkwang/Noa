@@ -1,4 +1,4 @@
-import Fuse from 'fuse.js';
+import Fuse, { type FuseResult } from 'fuse.js';
 import { Note } from '../types';
 
 export interface ParsedQuery {
@@ -46,11 +46,15 @@ export class SearchEngine {
   private notes: Note[];
   private caseSensitive: boolean;
   private fuzzySearch: boolean;
+  private notesVersion: number;
+  private cache: Map<string, SearchResult[]>;
 
   constructor(notes: Note[], caseSensitive: boolean = false, fuzzySearch: boolean = true) {
     this.notes = notes;
     this.caseSensitive = caseSensitive;
     this.fuzzySearch = fuzzySearch;
+    this.notesVersion = 1;
+    this.cache = new Map();
     this.fuse = new Fuse(notes, {
       keys: ['title', 'content'],
       includeMatches: true,
@@ -77,23 +81,30 @@ export class SearchEngine {
     } else {
       this.fuse.setCollection(notes);
     }
+    this.notesVersion += 1;
+    this.cache.clear();
   }
 
   public search(queryString: string, caseSensitive?: boolean): SearchResult[] {
     const isCaseSensitive = caseSensitive ?? this.caseSensitive;
     const normalize = (s: string) => isCaseSensitive ? s : s.toLowerCase();
+    const cacheKey = `${this.notesVersion}|${isCaseSensitive ? 1 : 0}|${this.fuzzySearch ? 1 : 0}|${queryString}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
 
     if (!queryString.trim()) {
-      return this.notes.map(note => ({
+      const allResults = this.notes.map(note => ({
         note,
         titleSnippet: note.title,
         contentSnippet: this.getSnippet(note.content, []),
       }));
+      this.cache.set(cacheKey, allResults);
+      return allResults;
     }
 
     const { tags, exactPhrases, keywords } = parseQuery(queryString, isCaseSensitive);
 
-    let results: { item: Note, matches?: readonly any[] }[] = [];
+    let results: FuseResult<Note>[] = [];
 
     if (keywords.length > 0) {
       if (this.fuzzySearch) {
@@ -108,10 +119,10 @@ export class SearchEngine {
               normalize(note.title).includes(kw) || normalize(note.content).includes(kw)
             )
           )
-          .map(note => ({ item: note }));
+          .map((note) => ({ item: note } as FuseResult<Note>));
       }
     } else {
-      results = this.notes.map(note => ({ item: note }));
+      results = this.notes.map((note) => ({ item: note } as FuseResult<Note>));
     }
 
     // Filter by tags first (strict match)
@@ -131,16 +142,18 @@ export class SearchEngine {
       );
     }
 
-    return results.map(result => {
-      const titleMatch = result.matches?.find(m => m.key === 'title');
-      const contentMatch = result.matches?.find(m => m.key === 'content');
+    const mappedResults = results.map(result => {
+      const titleMatch = result.matches?.find((match) => match.key === 'title');
+      const contentMatch = result.matches?.find((match) => match.key === 'content');
 
       return {
         note: result.item,
-        titleSnippet: titleMatch ? this.highlightFuseMatch(result.item.title, titleMatch.indices) : this.highlightExact(result.item.title, exactPhrases, isCaseSensitive),
-        contentSnippet: contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
+        titleSnippet: titleMatch ? this.highlightFuseMatch(result.item.title, titleMatch.indices as readonly [number, number][]) : this.highlightExact(result.item.title, exactPhrases, isCaseSensitive),
+        contentSnippet: contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
       };
     });
+    this.cache.set(cacheKey, mappedResults);
+    return mappedResults;
   }
 
   private escapeHtml(text: string): string {
