@@ -12,11 +12,9 @@ test('create notes and edited content persists after reload', async ({ page }) =
   const marker = `smoke-${Date.now()}`;
   await page.goto('/');
 
-  for (let i = 0; i < 8; i += 1) {
-    await page.keyboard.press('Control+n');
-  }
+  await page.keyboard.press('Control+n');
 
-  await page.locator('.cm-content').first().click();
+  await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}\n\n- [ ] task`);
   await page.waitForTimeout(2200);
   await page.reload();
