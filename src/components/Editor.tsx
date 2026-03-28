@@ -211,7 +211,7 @@ export default function Editor({
             {[
               { key: '⌘ N', desc: 'New note' },
               { key: '⌘ F', desc: 'Search notes' },
-              { key: '⌘ K', desc: 'Daily note' },
+              { key: '⌘ K', desc: 'Command palette' },
             ].map(({ key, desc }) => (
               <div key={key} className="flex items-center gap-3 text-sm text-[#2D2D2D]/60">
                 <span className="border border-[#2D2D2D]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#2D2D2D]/50 tracking-wider min-w-[48px] text-center">

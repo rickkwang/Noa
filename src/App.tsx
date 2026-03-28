@@ -17,6 +17,7 @@ import { useBackupReminder } from './hooks/useBackupReminder';
 import { exportJsonSnapshot } from './hooks/useDataTransfer';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -24,7 +25,10 @@ const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
+  const commandInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Multi-tab state: list of open note IDs in tab order
@@ -193,6 +197,70 @@ export default function App() {
     exportJsonSnapshot(notes, folders, workspaceName);
   }, [notes, folders, workspaceName]);
 
+  const closeCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(false);
+    setCommandQuery('');
+  }, []);
+
+  const runCommand = useCallback((action: () => void) => {
+    action();
+    closeCommandPalette();
+  }, [closeCommandPalette]);
+
+  const commandItems = useMemo(() => {
+    const base = [
+      {
+        id: 'new-note',
+        label: 'New note',
+        action: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+      },
+      {
+        id: 'open-daily-note',
+        label: "Open today's daily note",
+        action: () => handleOpenDailyNote(),
+      },
+      {
+        id: 'open-settings',
+        label: 'Open settings',
+        action: () => setIsSettingsOpen(true),
+      },
+      {
+        id: 'open-graph',
+        label: 'Open graph view',
+        action: () => openGraphView(),
+      },
+      {
+        id: 'focus-search',
+        label: 'Focus search',
+        action: () => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        },
+      },
+    ];
+
+    const query = commandQuery.trim().toLowerCase();
+    const noteCommands = notes
+      .filter((note) => !query || note.title.toLowerCase().includes(query))
+      .slice(0, 8)
+      .map((note) => ({
+        id: `note-${note.id}`,
+        label: `Open note: ${note.title}`,
+        action: () => setActiveNoteId(note.id),
+      }));
+
+    return [...base, ...noteCommands].filter((item) => !query || item.label.toLowerCase().includes(query));
+  }, [commandQuery, folders, handleCreateNote, handleOpenDailyNote, notes, openGraphView, setActiveNoteId]);
+
+  useEffect(() => {
+    if (!isCommandPaletteOpen) return;
+    const t = setTimeout(() => {
+      commandInputRef.current?.focus();
+      commandInputRef.current?.select();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [isCommandPaletteOpen]);
+
   // BUG-B: flush pending saves before Electron quits — register once, use ref for latest notes
   const notesForQuitRef = useRef(notes);
   useEffect(() => { notesForQuitRef.current = notes; }, [notes]);
@@ -209,6 +277,8 @@ export default function App() {
     searchQuery,
     searchInputRef,
     onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+    onOpenDailyNote: () => handleOpenDailyNote(),
+    onOpenCommandPalette: () => setIsCommandPaletteOpen(true),
     onFocusSearch: () => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
@@ -381,7 +451,7 @@ export default function App() {
       </div>
       {saveError && (
         <div className="fixed bottom-4 right-4 z-50 border border-amber-400 bg-amber-50 px-4 py-3 max-w-sm shadow-lg">
-          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Save Error</div>
+          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Warning · Save</div>
           <div className="text-[11px] text-amber-700 leading-relaxed mb-3">{saveError}</div>
           <button
             onClick={clearSaveError}
@@ -393,7 +463,7 @@ export default function App() {
       )}
       {fsSyncError && fsHandle && (
         <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
-          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">File Sync Warning</div>
+          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · File Sync</div>
           <div className="text-[11px] text-red-700 leading-relaxed mb-3">{fsSyncError}</div>
           <button
             onClick={retry}
@@ -407,7 +477,7 @@ export default function App() {
         <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-lg">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Local Storage Only</div>
           <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
-            Your notes are stored in this browser/device profile only. Browser and desktop app data are separate unless you export/import manually. No automatic cross-device sync.
+            {LOCAL_DATA_BOUNDARY_COPY}
           </div>
           <button
             onClick={() => {
@@ -425,6 +495,7 @@ export default function App() {
           <div className="w-full max-w-xl bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] p-4 font-redaction space-y-3">
             <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
             <p className="text-sm text-[#2D2D2D]/80">{loadError.message}</p>
+            <p className="text-xs text-[#2D2D2D]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
             <p className="text-xs text-[#2D2D2D]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -461,6 +532,51 @@ export default function App() {
                 e.currentTarget.value = '';
               }}
             />
+          </div>
+        </div>
+      )}
+      {isCommandPaletteOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={closeCommandPalette}>
+          <div
+            className="w-full max-w-xl border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-[#2D2D2D] p-3 bg-[#DCD9CE]">
+              <input
+                ref={commandInputRef}
+                type="text"
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeCommandPalette();
+                    return;
+                  }
+                  if (e.key === 'Enter' && commandItems[0]) {
+                    e.preventDefault();
+                    runCommand(commandItems[0].action);
+                  }
+                }}
+                placeholder="Type a command or note title..."
+                className="w-full bg-[#EAE8E0] border border-[#2D2D2D] px-3 py-2 text-sm font-redaction outline-none focus:border-[#B89B5E]"
+              />
+            </div>
+            <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+              {commandItems.length === 0 ? (
+                <div className="px-2 py-3 text-xs text-[#2D2D2D]/60">No matching commands.</div>
+              ) : (
+                commandItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => runCommand(item.action)}
+                    className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2D]/30 hover:bg-[#DCD9CE]/50 font-redaction"
+                  >
+                    {item.label}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

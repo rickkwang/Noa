@@ -9,6 +9,7 @@ import WorkspaceSection from './data/WorkspaceSection';
 import { ConfirmState } from './data/types';
 import { getLastExportAt } from '../../../lib/exportTimestamp';
 import { getBackupHealth } from '../../../lib/backupHealth';
+import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
 
 interface DataSettingsProps {
   settings: AppSettings;
@@ -97,7 +98,8 @@ export default function DataSettings({
   return (
     <div className="space-y-8">
       <div className="border border-[#2D2D2D]/20 bg-[#DCD9CE] px-3 py-2 text-xs text-[#2D2D2D]/70">
-        Data ownership: notes are stored in your current browser/device only. No automatic cloud or cross-device sync.
+        {LOCAL_DATA_BOUNDARY_COPY}
+        <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
       </div>
       {confirmState && (
         <div className="border-2 border-[#B89B5E] bg-[#B89B5E]/10 p-3 flex flex-col gap-2 font-redaction">
@@ -192,6 +194,9 @@ export default function DataSettings({
           }`}
         >
           <span>
+            <span className="mr-1.5 text-[10px] uppercase tracking-wider font-bold">
+              {message.type === 'success' ? 'Success' : 'Error'}
+            </span>
             {message.text}
             {message.code ? ` (${message.code})` : ''}
             {message.suggestedAction ? ` · Suggested action: ${message.suggestedAction}` : ''}

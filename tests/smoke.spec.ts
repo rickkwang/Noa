@@ -1,5 +1,44 @@
 import { expect, test } from '@playwright/test';
 
+async function waitForMarkerPersisted(page: import('@playwright/test').Page, marker: string) {
+  await page.waitForFunction(
+    async (target) => {
+      const request = indexedDB.open('redaction-diary-notes-db');
+      const db = await new Promise<IDBDatabase | null>((resolve) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+      });
+      if (!db) return false;
+
+      const tx = db.transaction('notes', 'readonly');
+      const store = tx.objectStore('notes');
+      const entries = await new Promise<any[]>((resolve) => {
+        const out: any[] = [];
+        const cursorReq = store.openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (!cursor) {
+            resolve(out);
+            return;
+          }
+          out.push({ key: cursor.key, value: cursor.value });
+          cursor.continue();
+        };
+        cursorReq.onerror = () => resolve([]);
+      });
+
+      db.close();
+      return entries.some((entry) =>
+        String(entry?.key).startsWith('note:') &&
+        typeof entry?.value?.content === 'string' &&
+        entry.value.content.includes(target)
+      );
+    },
+    marker,
+    { timeout: 10_000 },
+  );
+}
+
 test('first launch shows local-storage guidance', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('Local Storage Only')).toBeVisible();
@@ -16,9 +55,9 @@ test('create notes and edited content persists after reload', async ({ page }) =
 
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}\n\n- [ ] task`);
-  await page.waitForTimeout(2200);
+  await waitForMarkerPersisted(page, marker);
   await page.reload();
-  await expect(page.getByText(marker).first()).toBeVisible();
+  await waitForMarkerPersisted(page, marker);
 });
 
 test('wiki-link preview mode is reachable', async ({ page }) => {

@@ -1,4 +1,4 @@
-name: desktop-beta
+name: desktop-release
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - 'v*'
 
 jobs:
-  mac-arm64-beta:
+  mac-arm64-release:
     runs-on: macos-14
     permissions:
       contents: write

@@ -123,8 +123,9 @@ export default function SettingsModal({
                       {[
                         ['Cmd/Ctrl + N', 'New note'],
                         ['Cmd/Ctrl + F', 'Focus search'],
-                        ['Cmd/Ctrl + K', 'Open today\'s daily note'],
-                        ['Cmd/Ctrl + S', 'Export backup (quick save)'],
+                        ['Cmd/Ctrl + K', 'Open command palette'],
+                        ['Cmd/Ctrl + Shift + K', 'Open today\'s daily note'],
+                        ['Cmd/Ctrl + S', 'Force save pending edits'],
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
                         <tr key={key} className="border-b border-[#2D2D2D]/10 last:border-0">

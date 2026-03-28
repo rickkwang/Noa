@@ -6,6 +6,7 @@ import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
 import { fromStorageError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { sortNotesByRecent } from '../lib/noteSort';
 
 interface LoadErrorState {
   code: AppErrorCode;
@@ -15,6 +16,7 @@ interface LoadErrorState {
 import { extractLinks, extractTags } from '../lib/noteUtils';
 
 export function useNotes(settings?: AppSettings) {
+  const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -107,8 +109,13 @@ export function useNotes(settings?: AppSettings) {
               'Data integrity check failed while loading notes.',
             );
           }
-          setNotes(normalized);
-          setActiveNoteId(normalized[0].id);
+          const sorted = sortNotesByRecent(normalized);
+          setNotes(sorted);
+          const lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY);
+          const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
+            ? lastActiveId
+            : sorted[0].id;
+          setActiveNoteId(initialActiveId);
         } else {
           const welcomeNote: Note = {
           id: 'welcome',
@@ -251,12 +258,17 @@ Export regularly: use Settings → Data → Export Backup.`,
   const setActiveNoteIdWithRecent = useCallback((id: string) => {
     setActiveNoteId(id);
     if (!id) return;
+    try {
+      localStorage.setItem(LAST_ACTIVE_NOTE_KEY, id);
+    } catch {
+      // ignore storage write issues
+    }
     setRecentNoteIds(prev => {
       const next = addRecentNoteId(prev, id);
       saveRecentNoteIds(next);
       return next;
     });
-  }, []);
+  }, [LAST_ACTIVE_NOTE_KEY]);
 
   const handleCreateNote = useCallback((folderId: string, initialContent: string = '') => {
     const newNote: Note = {
