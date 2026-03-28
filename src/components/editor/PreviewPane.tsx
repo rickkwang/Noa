@@ -55,8 +55,9 @@ export function PreviewPane({
     [note.content]
   );
 
-  const backlinks: BacklinkItem[] = allNotes.filter(
-    (n) => n.links && n.links.includes(note.title) && n.id !== note.id
+  const backlinks: BacklinkItem[] = useMemo(
+    () => allNotes.filter((n) => n.links && n.links.includes(note.title) && n.id !== note.id),
+    [allNotes, note.title]
   );
 
   return (

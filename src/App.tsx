@@ -101,16 +101,19 @@ export default function App() {
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
   };
 
-  const handleDeleteNote = (id: string) => {
+  const closeTabById = useCallback((id: string) => {
     setOpenTabIds(prev => {
       const next = prev.filter(t => t !== id);
       if (id === activeNoteId) {
         const idx = prev.indexOf(id);
-        const fallback = next[Math.min(idx, next.length - 1)];
-        setActiveNoteId(fallback ?? '');
+        setActiveNoteId(next[Math.min(idx, next.length - 1)] ?? '');
       }
       return next;
     });
+  }, [activeNoteId, setActiveNoteId]);
+
+  const handleDeleteNote = (id: string) => {
+    closeTabById(id);
     syncNoteOnDelete(id);
     _handleDeleteNote(id);
   };
@@ -163,16 +166,8 @@ export default function App() {
   }, [setActiveNoteId]);
 
   const handleTabClose = useCallback((id: string) => {
-    setOpenTabIds(prev => {
-      const next = prev.filter(t => t !== id);
-      if (id === activeNoteId) {
-        const idx = prev.indexOf(id);
-        const fallback = next[Math.min(idx, next.length - 1)];
-        setActiveNoteId(fallback ?? '');
-      }
-      return next;
-    });
-  }, [activeNoteId, setActiveNoteId]);
+    closeTabById(id);
+  }, [closeTabById]);
 
   const handleNewTab = useCallback(() => {
     handleCreateNote(folders[0]?.id ?? 'diary');
@@ -219,12 +214,18 @@ export default function App() {
       searchInputRef.current?.select();
     },
     onClearSearch: () => setSearchQuery(''),
+    onForceSave: () => void flushAllPendingSaves(notesForQuitRef.current),
   });
 
   if (!isLoaded) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#EAE8E0] text-[#2D2D2D] font-redaction">
-        <div className="text-[#2D2D2D]/40 text-sm tracking-widest uppercase">Loading...</div>
+      <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] overflow-hidden">
+        <div className="h-10 border-b border-[#2D2D2D]/20 bg-[#DCD9CE] shrink-0" />
+        <div className="flex flex-1 overflow-hidden">
+          <div className="w-[280px] border-r border-[#2D2D2D]/20 shrink-0" />
+          <div className="flex-1" />
+          <div className="w-[320px] border-l border-[#2D2D2D]/20 shrink-0" />
+        </div>
       </div>
     );
   }
@@ -356,6 +357,7 @@ export default function App() {
               />
             )}
             <div className="flex-1 overflow-hidden">
+              <ErrorBoundary>
               <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading panel…</div>}>
                 <RightPanel
                   tasks={globalTasks}
@@ -365,7 +367,6 @@ export default function App() {
                     if (isMobile) setIsRightPanelOpen(false);
                   }}
                   activeNote={activeNote}
-                  allNotes={notes}
                   activeTab={activeRightTab}
                   onTabChange={setActiveRightTab}
                   notes={notes}
@@ -373,6 +374,7 @@ export default function App() {
                   activeNoteTitle={activeNote?.title}
                 />
               </Suspense>
+              </ErrorBoundary>
             </div>
           </div>
         </div>

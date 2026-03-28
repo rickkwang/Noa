@@ -134,11 +134,12 @@ Notes use `[[Note Title]]` syntax.
 
 ### Error Handling Contract
 
-- `storage.saveNote` / `saveFolders` / `saveWorkspaceName` / `saveNotes` throw on failure — callers must handle.
-- `debounceSave` in `useNotes` catches write errors and sets `saveError` state; `App.tsx` renders a dismissible amber banner.
-- Read operations (`getNotes`, `getFolders`, etc.) retain try-catch and return null — read failures must not crash the app.
-- `handleImportData` is `async`; its `onImportData` prop type is `Promise<void>` throughout the call chain.
-- Electron `before-quit`: `App.tsx` registers one IPC listener via `useRef` for latest notes; calls `flushAllPendingSaves` with 800ms timeout.
+- Write ops (`saveNote` etc.) throw — callers must `.catch()` and set `saveError`; `App.tsx` renders dismissible amber banner.
+- `handleCreateNote` / `handleImportNote` / `handleNavigateToNote`: optimistic UI + `saveNote().catch(setSaveError)`.
+- `handleDeleteFolder`: optimistic UI + `Promise.all(deleteNote[]).catch(setSaveError)`.
+- Read ops return null on failure — never crash the app.
+- `handleImportData` is `async`; `onImportData` prop is `Promise<void>` throughout.
+- Electron `before-quit`: flushes pending saves via `useRef` + 800ms timeout.
 
 ### Architecture Guardrails
 
@@ -161,3 +162,10 @@ See `docs/architecture-boundaries.md` for boundary details.
 
 - Build dmg: set `"publish": null` in `package.json` temporarily, run `BUILD_TARGET=desktop npx electron-builder --mac dmg zip --arm64`, then restore the publish config.
 - Upload: `gh release upload <tag> release/Noa-<version>-arm64.dmg release/Noa-<version>-arm64-mac.zip`
+
+### In-App Update
+
+- Checks `api.github.com/repos/rickkwang/Noa/releases` 10s after launch (prod only); compares `app.getVersion()` vs latest non-draft tag.
+- IPC: `app-updater:check` / `get-status` / `quit-and-install`. "Install" = `shell.openExternal(downloadUrl)`, not silent.
+- `useDesktopUpdater` subscribes to push events; UI in `AppUpdateSettings.tsx`.
+- **GitHub repo must be public** — private repo breaks unauthenticated API access.

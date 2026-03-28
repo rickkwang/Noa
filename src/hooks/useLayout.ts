@@ -13,11 +13,15 @@ export function useLayout() {
   });
   const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph'>(() => {
     const saved = localStorage.getItem('app-right-tab');
-    return (saved as 'tasks' | 'backlinks' | 'graph') || 'tasks';
+    return (['tasks', 'backlinks', 'graph'] as const).includes(saved as 'tasks' | 'backlinks' | 'graph')
+      ? (saved as 'tasks' | 'backlinks' | 'graph')
+      : 'tasks';
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
     const saved = localStorage.getItem('app-editor-view-mode');
-    return (saved as 'edit' | 'preview' | 'split') || 'split';
+    return (['edit', 'preview', 'split'] as const).includes(saved as 'edit' | 'preview' | 'split')
+      ? (saved as 'edit' | 'preview' | 'split')
+      : 'split';
   });
 
   const getSidebarValue = useCallback((e: MouseEvent) => {
@@ -60,20 +64,13 @@ export function useLayout() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('app-sidebar-open', isSidebarOpen.toString());
-  }, [isSidebarOpen]);
-
-  useEffect(() => {
-    localStorage.setItem('app-right-panel-open', isRightPanelOpen.toString());
-  }, [isRightPanelOpen]);
-
-  useEffect(() => {
-    localStorage.setItem('app-right-tab', activeRightTab);
-  }, [activeRightTab]);
-
-  useEffect(() => {
-    localStorage.setItem('app-editor-view-mode', editorViewMode);
-  }, [editorViewMode]);
+    try {
+      localStorage.setItem('app-sidebar-open', JSON.stringify(isSidebarOpen));
+      localStorage.setItem('app-right-panel-open', JSON.stringify(isRightPanelOpen));
+      localStorage.setItem('app-right-tab', activeRightTab);
+      localStorage.setItem('app-editor-view-mode', editorViewMode);
+    } catch { /* storage full, ignore */ }
+  }, [isSidebarOpen, isRightPanelOpen, activeRightTab, editorViewMode]);
 
   const openGraphView = useCallback(() => {
     setIsRightPanelOpen(true);

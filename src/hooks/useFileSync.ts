@@ -21,7 +21,7 @@ interface UseFileSyncOptions {
   workspaceName: string;
   activeNoteId: string;
   ensureInitialNote: () => void;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
 }
 
 interface UseFileSyncResult {
@@ -81,15 +81,19 @@ export function useFileSync({
   }, []);
 
   const retry = useCallback(() => {
-    if (!fsHandle) return;
+    if (!fsHandle || syncStatus === 'syncing') return;
     setSyncStatus('syncing');
     void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
       .then(recordSuccess)
       .catch(recordFailure);
-  }, [fsHandle, recordFailure, recordSuccess]);
+  }, [fsHandle, syncStatus, recordFailure, recordSuccess]);
 
   useEffect(() => {
-    if (!isLoaded || bootstrapped.current) return;
+    if (!isLoaded) {
+      bootstrapped.current = false;
+      return;
+    }
+    if (bootstrapped.current) return;
     bootstrapped.current = true;
 
     if (!activeNoteId) {

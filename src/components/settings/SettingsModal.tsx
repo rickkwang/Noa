@@ -16,7 +16,7 @@ interface SettingsModalProps {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   onConnectFs: () => Promise<void>;
   onDisconnectFs: () => Promise<void>;
@@ -142,7 +142,7 @@ export default function SettingsModal({
                   </div>
                   <div>
                     <h3 className="font-bold text-xl tracking-widest uppercase">Noa</h3>
-                    <p className="text-sm text-[#2D2D2D]/70 mt-1">Version 1.0.0</p>
+                    <p className="text-sm text-[#2D2D2D]/70 mt-1">Version 1.0.1</p>
                   </div>
                   <p className="text-sm max-w-sm mt-4">
                     A retro-styled, local-first Markdown knowledge base. Built with React, Tailwind CSS, and a lot of redaction.

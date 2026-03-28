@@ -42,6 +42,14 @@ export function useNotes(settings?: AppSettings) {
     saveTimers.current.set(note.id, t);
   }, []);
 
+  // Cleanup all pending save timers on unmount
+  useEffect(() => {
+    return () => {
+      saveTimers.current.forEach(t => clearTimeout(t));
+      saveTimers.current.clear();
+    };
+  }, []);
+
   const flushAllPendingSaves = useCallback(async (currentNotes: Note[]) => {
     const pending = Array.from(saveTimers.current.keys());
     for (const id of pending) {
@@ -74,10 +82,14 @@ export function useNotes(settings?: AppSettings) {
         await storage.migrateFromLocalStorage();
         await storage.migrateToPerNoteStorage();
 
-        const savedWorkspace = await storage.getWorkspaceName();
+        const [savedWorkspace, savedFolders, savedNotes] = await Promise.all([
+          storage.getWorkspaceName(),
+          storage.getFolders(),
+          storage.getNotes(),
+        ]);
+
         if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
-        const savedFolders = await storage.getFolders();
         if (savedFolders && savedFolders.length > 0) {
           setFolders(savedFolders);
         } else {
@@ -87,7 +99,6 @@ export function useNotes(settings?: AppSettings) {
           ]);
         }
 
-        const savedNotes = await storage.getNotes();
         if (savedNotes && savedNotes.length > 0) {
           const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes);
           if (!report.ok) {
@@ -259,7 +270,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       links: []
     };
     setNotes(prev => [...prev, newNote]);
-    storage.saveNote(newNote);
+    storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
     setActiveNoteIdWithRecent(newNote.id);
   }, [setActiveNoteIdWithRecent]);
 
@@ -275,7 +286,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       links: extractLinks(content)
     };
     setNotes(prev => [...prev, newNote]);
-    storage.saveNote(newNote);
+    storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
     setActiveNoteIdWithRecent(newNote.id);
   }, [setActiveNoteIdWithRecent]);
 
@@ -296,15 +307,21 @@ Export regularly: use Settings → Data → Export Backup.`,
         tags: [],
         links: []
       };
-      storage.saveNote(newNote);
+      storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
       setActiveNoteIdWithRecent(newNote.id);
       return [...prev, newNote];
     });
   }, [setActiveNoteIdWithRecent, folders]);
 
-  const handleDeleteNote = useCallback((id: string) => {
-    storage.deleteNote(id);
+  const handleDeleteNote = useCallback(async (id: string) => {
+    try {
+      await storage.deleteNote(id);
+    } catch {
+      setSaveError('Failed to delete note.');
+      return;
+    }
     setNotes(prev => prev.filter(n => n.id !== id));
+    setRecentNoteIds(prev => prev.filter(rid => rid !== id));
   }, []);
 
   const handleCreateFolder = useCallback(() => {
@@ -320,7 +337,9 @@ Export regularly: use Settings → Data → Export Backup.`,
     setFolders(prev => prev.filter(f => f.id !== id));
     setNotes(prev => {
       const toDelete = prev.filter(n => n.folder === id);
-      toDelete.forEach(n => storage.deleteNote(n.id));
+      Promise.all(toDelete.map(n => storage.deleteNote(n.id))).catch(() => {
+        setSaveError('Failed to delete some notes in folder.');
+      });
       return prev.filter(n => n.folder !== id);
     });
   }, []);
@@ -401,13 +420,15 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave]);
 
-  const handleImportData = useCallback(async (importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string) => {
+  const handleImportData = useCallback(async (importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
     const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
     setNotes(normalizedNotes);
     if (importedFolders) setFolders(importedFolders);
     if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
     await storage.saveNotes(normalizedNotes);
-    await storage.pruneOrphanedNotes(normalizedNotes.map(n => n.id));
+    if (shouldPrune) {
+      await storage.pruneOrphanedNotes(normalizedNotes.map(n => n.id));
+    }
     if (importedFolders) await storage.saveFolders(importedFolders);
     if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
   }, []);

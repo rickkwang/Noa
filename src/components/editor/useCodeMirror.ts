@@ -89,6 +89,12 @@ export function useCodeMirror({
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
 
+  // Keep callback refs stable so the CodeMirror instance never captures stale closures
+  const onUpdateRef = useRef(onUpdate);
+  const onMentionTriggerRef = useRef(onMentionTrigger);
+  useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
+  useEffect(() => { onMentionTriggerRef.current = onMentionTrigger; }, [onMentionTrigger]);
+
   // Build CodeMirror instance — recreate only when note id or dark mode changes
   useEffect(() => {
     if (!containerRef.current) return;
@@ -96,7 +102,7 @@ export function useCodeMirror({
     const updateListener = EditorView.updateListener.of((update: ViewUpdate) => {
       if (update.docChanged) {
         const content = update.state.doc.toString();
-        onUpdate(content);
+        onUpdateRef.current(content);
 
         const cursor = update.state.selection.main.head;
         const textBefore = content.slice(0, cursor);
@@ -107,12 +113,12 @@ export function useCodeMirror({
           let x = 32, y = 32;
           if (coords && pane) {
             const rect = pane.getBoundingClientRect();
-            x = Math.min(coords.left - rect.left, rect.width - 270);
-            y = coords.bottom - rect.top + 4;
+            x = Math.max(0, Math.min(coords.left - rect.left, rect.width - 270));
+            y = Math.min(coords.bottom - rect.top + 4, rect.height - 200);
           }
-          onMentionTrigger({ query: match[1].toLowerCase(), index: match.index!, x, y });
+          onMentionTriggerRef.current({ query: match[1].toLowerCase(), index: match.index!, x, y });
         } else {
-          onMentionTrigger(null);
+          onMentionTriggerRef.current(null);
         }
       }
       savedCursorRef.current = update.state.selection.main.head;

@@ -16,7 +16,7 @@ interface DataSettingsProps {
   workspaceName: string;
   notes: Note[];
   folders: Folder[];
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   fsLastSyncAt?: string | null;
   fsSyncError?: string | null;
@@ -26,12 +26,6 @@ interface DataSettingsProps {
   onRetryFsSync?: () => void;
 }
 
-function toSyncStatusLabel(status: SyncStatus): string {
-  if (status === 'ready') return 'ready';
-  if (status === 'syncing') return 'syncing';
-  if (status === 'error') return 'error';
-  return 'idle';
-}
 
 export default function DataSettings({
   settings,
@@ -82,16 +76,16 @@ export default function DataSettings({
 
   const handleImportJsonInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.currentTarget.value = '';
     if (!file) return;
     transfer.importJsonFile(file);
-    if (jsonInputRef.current) jsonInputRef.current.value = '';
   };
 
   const handleImportFolderInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    e.currentTarget.value = '';
     if (!files || files.length === 0) return;
     transfer.importFolderFiles(files);
-    if (folderInputRef.current) folderInputRef.current.value = '';
   };
 
   React.useEffect(() => {
@@ -218,7 +212,7 @@ export default function DataSettings({
         onCreateWorkspace={transfer.createNewWorkspace}
         isFileSystemSupported={isFileSystemSupported()}
         fsHandle={fsHandle}
-        syncStatusLabel={toSyncStatusLabel(syncStatus)}
+        syncStatusLabel={syncStatus}
         fsLastSyncAt={fsLastSyncAt}
         fsSyncError={fsSyncError}
         connectingFs={transfer.connectingFs}

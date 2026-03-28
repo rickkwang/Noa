@@ -15,8 +15,8 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         <SettingItem label="Base Theme" description="Choose between light, dark, or sync with system.">
           <select 
             value={settings.appearance.theme}
-            onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as any } }))}
-            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] outline-none"
+            onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
+            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none"
           >
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -46,7 +46,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
                   updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: 'Arial' } })); // Default custom
                 }
               }}
-              className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] outline-none"
+              className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none"
             >
               <option value="font-redaction">Redaction 50 (Default)</option>
               <option value="font-pixelify">Pixelify Sans</option>

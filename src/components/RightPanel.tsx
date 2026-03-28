@@ -9,7 +9,6 @@ interface RightPanelProps {
   onToggleTask: (task: GlobalTask) => void;
   onNavigateToNote: (title: string) => void;
   activeNote?: Note;
-  allNotes?: Note[];
   activeTab: 'tasks' | 'backlinks' | 'graph';
   onTabChange: (tab: 'tasks' | 'backlinks' | 'graph') => void;
   notes: Note[];
@@ -18,11 +17,31 @@ interface RightPanelProps {
 }
 
 export default function RightPanel({
-  tasks, onToggleTask, onNavigateToNote, activeNote, allNotes = [],
+  tasks, onToggleTask, onNavigateToNote, activeNote,
   activeTab, onTabChange, notes, settings, activeNoteTitle,
 }: RightPanelProps) {
-  const activeTasks = tasks.filter(t => !t.completed);
-  const completedTasks = tasks.filter(t => t.completed);
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [dueDateFilter, setDueDateFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
+  const [hideIsolated, setHideIsolated] = useState(false);
+
+  const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter(t => t.completed), [tasks]);
+
+  const filteredActiveTasks = useMemo(() => activeTasks.filter(task => {
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+    if (dueDateFilter !== 'all') {
+      if (!task.dueDate) return false;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
+      if (dueDateFilter === 'today' && due.getTime() !== today.getTime()) return false;
+      if (dueDateFilter === 'week') {
+        const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+        if (due < today || due > weekEnd) return false;
+      }
+      if (dueDateFilter === 'overdue' && due >= today) return false;
+    }
+    return true;
+  }), [activeTasks, priorityFilter, dueDateFilter]);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
   const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -54,8 +73,8 @@ export default function RightPanel({
 
   const backlinks = useMemo(() => {
     if (!activeNote) return [];
-    return allNotes.filter(n => n.id !== activeNote.id && n.links.includes(activeNote.title));
-  }, [activeNote, allNotes]);
+    return notes.filter(n => n.id !== activeNote.id && n.links.includes(activeNote.title));
+  }, [activeNote, notes]);
 
   const getSnippet = (note: Note, targetTitle: string) => {
     const lines = note.content.split('\n');
@@ -122,6 +141,13 @@ export default function RightPanel({
                   className="bg-transparent outline-none text-[10px] text-[#2D2D2D] placeholder-[#2D2D2D]/40 font-redaction w-16"
                 />
               </div>
+              <button
+                onClick={() => setHideIsolated(v => !v)}
+                title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
+                className={`border px-1.5 py-0.5 text-[9px] font-bold font-redaction active:opacity-70 transition-colors ${hideIsolated ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}
+              >
+                <Network size={9} />
+              </button>
             </div>
             {/* Graph canvas */}
             <div ref={graphContainerRef} className="flex-1 overflow-hidden">
@@ -133,6 +159,7 @@ export default function RightPanel({
                 activeNoteTitle={activeNoteTitle}
                 width={graphDimensions.width}
                 height={graphDimensions.height}
+                hideIsolated={hideIsolated}
               />
             </div>
           </div>
@@ -182,9 +209,34 @@ export default function RightPanel({
                 </div>
               )}
 
-              {activeTasks.length > 0 && (
+              {tasks.length > 0 && (
+                <div className="flex flex-col gap-1.5 pb-3 border-b border-[#2D2D2D]/20">
+                  <div className="flex gap-1">
+                    {(['all', 'high', 'medium', 'low'] as const).map(p => (
+                      <button key={p} onClick={() => setPriorityFilter(p)}
+                        className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${priorityFilter === p ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}>
+                        {p === 'all' ? 'All' : p}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    {(['all', 'today', 'week', 'overdue'] as const).map(d => (
+                      <button key={d} onClick={() => setDueDateFilter(d)}
+                        className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${dueDateFilter === d ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}>
+                        {d === 'all' ? 'All' : d === 'today' ? 'Today' : d === 'week' ? 'Week' : 'Late'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {filteredActiveTasks.length === 0 && activeTasks.length > 0 && (
+                <div className="text-center text-[#2D2D2D]/50 mt-6 text-sm">No tasks match the current filter.</div>
+              )}
+
+              {filteredActiveTasks.length > 0 && (
                 <div className="space-y-2">
-                  {activeTasks.map(task => (
+                  {filteredActiveTasks.map(task => (
                     <div key={task.id} className="group flex flex-col p-2 border-2 border-[#2D2D2D] bg-[#EAE8E0]">
                       <div className="flex items-start space-x-2">
                         <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 cursor-pointer">

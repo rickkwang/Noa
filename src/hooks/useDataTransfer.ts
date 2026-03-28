@@ -76,7 +76,7 @@ interface UseDataTransferOptions {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
   onConnectFolder: () => Promise<void>;
   onDisconnectFolder: () => Promise<void>;
   notify: (message: DataTransferMessage) => void;
@@ -273,6 +273,7 @@ export function useDataTransfer({
                 finalNotes,
                 parsed.folders || [],
                 parsed.workspaceName || 'Imported Workspace',
+                importStrategyRef.current === 'overwrite',
               );
               notify({
                 type: 'success',
@@ -296,7 +297,7 @@ export function useDataTransfer({
       };
       reader.readAsText(file);
     },
-    [notes, notify, onImportData, requestConfirm],
+    [notes, folders, notify, onImportData, requestConfirm],
   );
 
   const importFolderFiles = useCallback(
@@ -352,7 +353,7 @@ export function useDataTransfer({
           return;
         }
 
-        onImportData(validatedNotes, newFolders, newWorkspaceName);
+        onImportData(validatedNotes, newFolders, newWorkspaceName, true);
         notify({
           type: 'success',
           text: `Imported ${newNotes.length} notes from "${newWorkspaceName}".`,
@@ -366,7 +367,7 @@ export function useDataTransfer({
         },
       });
     },
-    [notify, onImportData, requestConfirm],
+    [notes, folders, notify, onImportData, requestConfirm],
   );
 
   const createNewWorkspace = useCallback(() => {
@@ -377,11 +378,11 @@ export function useDataTransfer({
       inputLabel: 'Workspace name:',
       onConfirm: (nameValue) => {
         const value = (nameValue || '').trim() || 'New Workspace';
-        onImportData([], [], value);
+        onImportData([], [], value, true);
         notify({ type: 'success', text: `Workspace switched to "${value}".` });
       },
     });
-  }, [notify, onImportData, requestConfirm]);
+  }, [notes, folders, notify, onImportData, requestConfirm]);
 
   const connectFolder = useCallback(async () => {
     setConnectingFs(true);

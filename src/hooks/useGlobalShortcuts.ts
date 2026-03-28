@@ -6,6 +6,7 @@ interface UseGlobalShortcutsOptions {
   onCreateNote: () => void;
   onFocusSearch: () => void;
   onClearSearch: () => void;
+  onForceSave?: () => void;
 }
 
 export function useGlobalShortcuts({
@@ -14,11 +15,13 @@ export function useGlobalShortcuts({
   onCreateNote,
   onFocusSearch,
   onClearSearch,
+  onForceSave,
 }: UseGlobalShortcutsOptions): void {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
+        onForceSave?.();
       }
 
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
@@ -43,5 +46,5 @@ export function useGlobalShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClearSearch, onCreateNote, onFocusSearch, searchInputRef, searchQuery]);
+  }, [onClearSearch, onCreateNote, onFocusSearch, onForceSave, searchInputRef, searchQuery]);
 }
