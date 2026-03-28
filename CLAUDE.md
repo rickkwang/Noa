@@ -18,7 +18,7 @@ npm run clean           # Remove dist/
 
 ## Architecture
 
-**Redaction Diary** is a fully client-side Markdown note-taking app (React 19 + Vite + Tailwind CSS v4). All data is stored in the browser — no backend.
+**Noa** is a fully client-side Markdown note-taking app (React 19 + Vite + Tailwind CSS v4). All data is stored in the browser — no backend.
 
 ### State & Data Flow
 
@@ -64,7 +64,13 @@ npm run clean           # Remove dist/
 
 ### Key Components
 
-- `Editor.tsx` — CodeMirror 6 editor + Markdown preview, supports edit/preview/split; TOC outline panel and mention insertion; multi-tab support (rounded tab bar, `+` new tab)
+- `Editor.tsx` — thin orchestrator; delegates to `src/components/editor/` sub-components:
+  - `useCodeMirror.ts` — CodeMirror 6 instance, dark/light themes, mention trigger, `insertFormatting` / `jumpToLine` / `insertMention`
+  - `EditorHeader.tsx` — tab bar, title input, view-mode switcher, export buttons
+  - `EditorToolbar.tsx` — bold/italic/list/code formatting shortcuts, TOC toggle
+  - `PreviewPane.tsx` — react-markdown preview with wiki-link rewriting
+  - `TocPanel.tsx` — heading outline with jump-to-line
+  - `MentionDropdown.tsx` — `[[` autocomplete dropdown
 - `Sidebar.tsx` — folder/note tree, search, recent notes, tag explorer; inline delete confirmation (no native dialogs)
 - `RightPanel.tsx` — tabs for Tasks / Backlinks / Graph; graph search uses deferred value to reduce render pressure
 - `GraphView.tsx` — force-directed knowledge graph with topology-only memoization key, degree-based node sizing, and auto `zoomToFit`
@@ -72,9 +78,10 @@ npm run clean           # Remove dist/
 
 ### Multi-Tab State
 
-- `openTabIds: string[]` lives in `App.tsx`; synced via `useEffect` whenever `activeNoteId` changes.
+- `openTabIds: string[]` lives in `App.tsx`; persisted to `localStorage` key `redaction-diary-open-tabs` and restored after `isLoaded`.
 - `openTabs` (id + title) is derived with `useMemo` and passed to `Editor` as `tabs` prop.
 - Tab actions: `handleTabChange` (switch), `handleTabClose` (close + auto-focus adjacent), `handleNewTab` (create note).
+- `handleDeleteNote` in `App.tsx` removes the tab and computes fallback before delegating to `_handleDeleteNote`; `useNotes.handleDeleteNote` does **not** set `activeNoteId` (App layer owns tab-aware fallback).
 - `Editor` accepts optional `tabs`, `onTabChange`, `onTabClose`, `onNewTab` props; falls back to single-tab legacy mode when `tabs` is empty/undefined.
 - Active tab uses `rounded-t-lg border border-b-0` + `marginBottom: '-1px'` to fuse with the bottom border line.
 - Tab bar header is `h-8` to align with Sidebar and RightPanel headers.
@@ -105,10 +112,12 @@ Notes use `[[Note Title]]` syntax.
   - `redaction-diary-folders-db`
   - `redaction-diary-workspace-db`
   - `redaction-diary-fs-db`
-- localStorage examples:
+- localStorage keys:
   - `app-sidebar-open`, `app-right-tab`, `app-editor-view-mode`
   - `redaction-storage-notice-seen`
   - `redaction-diary-recent-notes`
+  - `redaction-diary-open-tabs` — persisted tab IDs, restored on load
+  - `redaction-diary-daily-folder-id` — Daily Notes folder ID, survives folder rename
 
 ### Layout Defaults
 
@@ -123,6 +132,14 @@ Notes use `[[Note Title]]` syntax.
 - No `window.alert`, `window.confirm`, `window.prompt` — use inline UI patterns.
 - Mention autocomplete dropdown position: computed from `view.coordsAtPos(cursor)` relative to `editPaneRef`, prevents overflow on the right edge.
 
+### Error Handling Contract
+
+- `storage.saveNote` / `saveFolders` / `saveWorkspaceName` / `saveNotes` throw on failure — callers must handle.
+- `debounceSave` in `useNotes` catches write errors and sets `saveError` state; `App.tsx` renders a dismissible amber banner.
+- Read operations (`getNotes`, `getFolders`, etc.) retain try-catch and return null — read failures must not crash the app.
+- `handleImportData` is `async`; its `onImportData` prop type is `Promise<void>` throughout the call chain.
+- Electron `before-quit`: `App.tsx` registers one IPC listener via `useRef` for latest notes; calls `flushAllPendingSaves` with 800ms timeout.
+
 ### Architecture Guardrails
 
 - `App.tsx` must not import low-level FS modules directly.
@@ -131,10 +148,16 @@ Notes use `[[Note Title]]` syntax.
   - Hooks coordinate domain behavior
   - Service layer performs low-level FS operations
 - `useFileSync`: `notesRef`/`foldersRef`/`workspaceNameRef` keep latest values; `retry` and bootstrap effect use refs to avoid stale closures.
+- `src/lib/noteUtils.ts` owns `extractLinks` / `extractTags` — shared by `useNotes` and `useDataTransfer`. Do not duplicate inline.
 - CI checks:
   - `lint`
   - `check:structure`
   - `build:budget`
-  - `test:smoke`
+  - `test:unit`
 
 See `docs/architecture-boundaries.md` for boundary details.
+
+### Release
+
+- Build dmg: set `"publish": null` in `package.json` temporarily, run `BUILD_TARGET=desktop npx electron-builder --mac dmg zip --arm64`, then restore the publish config.
+- Upload: `gh release upload <tag> release/Noa-<version>-arm64.dmg release/Noa-<version>-arm64-mac.zip`
