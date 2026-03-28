@@ -10,6 +10,12 @@
   --font-work-sans: "Work Sans", sans-serif;
 }
 
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+}
+
 body {
   font-family: "Redaction 50", serif;
   background-color: #EAE8E0;
