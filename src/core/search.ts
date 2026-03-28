@@ -143,12 +143,17 @@ export class SearchEngine {
     });
   }
 
+  private escapeHtml(text: string): string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   private highlightExact(text: string, phrases: string[], caseSensitive: boolean = false): string {
-    if (phrases.length === 0) return text;
-    let highlighted = text;
+    if (phrases.length === 0) return this.escapeHtml(text);
+    let highlighted = this.escapeHtml(text);
     phrases.forEach(phrase => {
       const flags = caseSensitive ? 'g' : 'gi';
-      const regex = new RegExp(`(${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags);
+      const escapedPhrase = this.escapeHtml(phrase);
+      const regex = new RegExp(`(${escapedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags);
       highlighted = highlighted.replace(regex, '<mark class="bg-[#B89B5E]/30 text-[#B89B5E] font-bold rounded-sm px-0.5">$1</mark>');
     });
     return highlighted;
@@ -180,13 +185,13 @@ export class SearchEngine {
   private highlightFuseMatch(text: string, indices: readonly [number, number][]): string {
     let result = '';
     let lastIndex = 0;
-    
+
     indices.forEach(([start, end]) => {
-      result += text.slice(lastIndex, start);
-      result += `<mark class="bg-[#B89B5E]/30 text-[#B89B5E] font-bold rounded-sm px-0.5">${text.slice(start, end + 1)}</mark>`;
+      result += this.escapeHtml(text.slice(lastIndex, start));
+      result += `<mark class="bg-[#B89B5E]/30 text-[#B89B5E] font-bold rounded-sm px-0.5">${this.escapeHtml(text.slice(start, end + 1))}</mark>`;
       lastIndex = end + 1;
     });
-    result += text.slice(lastIndex);
+    result += this.escapeHtml(text.slice(lastIndex));
     return result;
   }
 

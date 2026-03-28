@@ -11,4 +11,5 @@ export interface UpdateStatus {
   message?: string;
   version?: string;
   progress?: number;
+  downloadUrl?: string;
 }

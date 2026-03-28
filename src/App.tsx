@@ -28,6 +28,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Multi-tab state: list of open note IDs in tab order
+  const OPEN_TABS_KEY = 'redaction-diary-open-tabs';
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const [showStorageNotice, setShowStorageNotice] = useState(() =>
     !localStorage.getItem('redaction-storage-notice-seen')
@@ -54,6 +55,9 @@ export default function App() {
     handleToggleTask,
     handleImportData,
     loadError,
+    saveError,
+    clearSaveError,
+    flushAllPendingSaves,
     retryInitialization,
     resetWorkspaceFromRecovery,
     importBackupFromRecovery,
@@ -98,6 +102,15 @@ export default function App() {
   };
 
   const handleDeleteNote = (id: string) => {
+    setOpenTabIds(prev => {
+      const next = prev.filter(t => t !== id);
+      if (id === activeNoteId) {
+        const idx = prev.indexOf(id);
+        const fallback = next[Math.min(idx, next.length - 1)];
+        setActiveNoteId(fallback ?? '');
+      }
+      return next;
+    });
     syncNoteOnDelete(id);
     _handleDeleteNote(id);
   };
@@ -120,6 +133,24 @@ export default function App() {
     editorViewMode,
     setEditorViewMode,
   } = useLayout();
+
+  // Restore openTabIds from localStorage after notes load
+  useEffect(() => {
+    if (!isLoaded || notes.length === 0) return;
+    const saved = localStorage.getItem(OPEN_TABS_KEY);
+    if (!saved) return;
+    try {
+      const ids: string[] = JSON.parse(saved);
+      const validIds = ids.filter(id => notes.some(n => n.id === id));
+      if (validIds.length > 0) setOpenTabIds(validIds);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
+
+  // Persist openTabIds to localStorage
+  useEffect(() => {
+    localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
+  }, [openTabIds]);
 
   // Sync activeNoteId into openTabIds
   useEffect(() => {
@@ -166,6 +197,18 @@ export default function App() {
   const exportJsonQuick = useCallback(() => {
     exportJsonSnapshot(notes, folders, workspaceName);
   }, [notes, folders, workspaceName]);
+
+  // BUG-B: flush pending saves before Electron quits
+  useEffect(() => {
+    const desktop = window.noaDesktop;
+    if (!desktop?.lifecycle?.onBeforeQuit) return;
+    const notesRef = { current: notes };
+    notesRef.current = notes;
+    const unsub = desktop.lifecycle.onBeforeQuit(() => {
+      void flushAllPendingSaves(notesRef.current);
+    });
+    return unsub;
+  }, [notes, flushAllPendingSaves]);
 
   useGlobalShortcuts({
     searchQuery,
@@ -334,6 +377,18 @@ export default function App() {
           </div>
         </div>
       </div>
+      {saveError && (
+        <div className="fixed bottom-4 right-4 z-50 border border-amber-400 bg-amber-50 px-4 py-3 max-w-sm shadow-lg">
+          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Save Error</div>
+          <div className="text-[11px] text-amber-700 leading-relaxed mb-3">{saveError}</div>
+          <button
+            onClick={clearSaveError}
+            className="text-[10px] uppercase tracking-wider font-bold border border-amber-500 px-2 py-0.5 text-amber-700 hover:bg-amber-100 transition-colors active:opacity-70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {fsSyncError && fsHandle && (
         <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
           <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">File Sync Warning</div>

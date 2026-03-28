@@ -11,6 +11,7 @@ npm run build           # Production build
 npm run lint            # Type check (tsc --noEmit)
 npm run build:budget    # Production build + JS bundle budget guard
 npm run check:structure # Architecture boundary guard (App-layer import checks)
+npm run test:unit       # Vitest unit tests (dataIntegrity, taskParser, search, dataTransfer)
 npm run test:smoke      # Playwright smoke tests
 npm run clean           # Remove dist/
 ```

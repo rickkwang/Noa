@@ -12,6 +12,9 @@ declare global {
         getStatus: () => Promise<UpdateStatus>;
         onStatusChange: (listener: (status: UpdateStatus) => void) => () => void;
       };
+      lifecycle: {
+        onBeforeQuit: (listener: () => void) => () => void;
+      };
     };
   }
 }

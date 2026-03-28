@@ -6,6 +6,7 @@ import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegr
 import { markExported } from '../lib/exportTimestamp';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { extractLinks, extractTags } from '../lib/noteUtils';
 
 export interface ConflictSummary {
   sameIdCount: number;
@@ -267,7 +268,7 @@ export function useDataTransfer({
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
               const importedCount = importStrategyRef.current === 'overwrite'
                 ? normalizedNotes.length
-                : finalNotes.length - notes.length;
+                : normalizedNotes.filter(n => !notes.some(e => e.id === n.id)).length;
               onImportData(
                 finalNotes,
                 parsed.folders || [],
@@ -333,8 +334,8 @@ export function useDataTransfer({
             createdAt: new Date().toISOString(),
             updatedAt: new Date(file.lastModified).toISOString(),
             folder: folderId,
-            tags: [],
-            links: [],
+            tags: extractTags(content),
+            links: extractLinks(content),
           });
         }
 
@@ -344,7 +345,14 @@ export function useDataTransfer({
           return;
         }
 
-        onImportData(newNotes, newFolders, newWorkspaceName);
+        const { notes: validatedNotes, report } = normalizeAndValidateNotes(newNotes);
+        if (!report.ok) {
+          const appError = fromImportError('import_integrity_failed', 'Folder import integrity check failed.');
+          notify({ type: 'error', text: report.issues.find(i => i.level === 'error')?.message ?? appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+          return;
+        }
+
+        onImportData(validatedNotes, newFolders, newWorkspaceName);
         notify({
           type: 'success',
           text: `Imported ${newNotes.length} notes from "${newWorkspaceName}".`,

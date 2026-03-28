@@ -3,11 +3,11 @@ import { Note, GlobalTask, Priority } from '../types';
 export const parseTasksFromNotes = (notes: Note[]): GlobalTask[] => {
   const tasks: GlobalTask[] = [];
   
-  // Matches Markdown task lists: "- [ ]", "* [x]", "+ [X]"
+  // Matches Markdown task lists: "- [ ]", "* [x]", "+ [X]", "1. [ ]"
   // Group 1: leading whitespace + list marker + space
   // Group 2: checkbox content (space, x, or X)
   // Group 3: rest of the line
-  const taskRegex = /^(\s*(?:-|\*|\+)\s+)\[( |x|X)\]\s+(.*)$/;
+  const taskRegex = /^(\s*(?:-|\*|\+|\d+\.)\s+)\[( |x|X)\]\s+(.*)$/;
   
   // Matches dates: 📅 2026-03-25 or [due: 2026-03-25] or due:2026-03-25
   const dueRegex = /(?:📅|\[due:)\s*(\d{4}-\d{2}-\d{2})(?:\]?)|due:(\d{4}-\d{2}-\d{2})/i;

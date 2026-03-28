@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Search, Settings, PanelLeft, PanelRight, Network, X, Calendar } from 'lucide-react';
 
 interface TopBarProps {
@@ -20,20 +20,19 @@ interface TopBarProps {
 
 export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, onToggleGraphView, isGraphViewOpen, showGraphView = true, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName }: TopBarProps) {
   return (
-    <div className="h-12 border-b border-[#2D2D2D] grid grid-cols-3 items-center px-4 shrink-0 bg-[#EAE8E0] font-redaction" style={{ WebkitAppRegion: 'drag' } as any}>
-      {/* Left Section: Window Controls & Title */}
-      <div className="flex items-center space-x-4 justify-start">
-        <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button 
+    <div className="h-12 border-b border-[#2D2D2D] grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ WebkitAppRegion: 'drag' } as any}>
+      {/* Left Section: Traffic lights space + icon + title */}
+      <div className="flex items-center justify-start pl-[90px] pr-4">
+        <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <button
             onClick={onToggleSidebar}
             className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? 'text-[#B89B5E]' : ''}`}
             title="Toggle Sidebar"
           >
             <PanelLeft size={16} />
           </button>
-          
-          <div className="flex flex-col px-2 py-0.5 ml-2">
-            <span className="font-bold leading-tight">Noa</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold leading-tight">Noa</span>
             {workspaceName && (
               <span className="text-[10px] text-[#2D2D2D]/40 leading-tight truncate max-w-[120px]">{workspaceName}</span>
             )}
@@ -65,7 +64,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
       </div>
 
       {/* Right Section: Actions */}
-      <div className="flex items-center justify-end space-x-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+      <div className="flex items-center justify-end space-x-2 pr-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
         {showDailyNote && (
           <button
             onClick={onOpenDailyNote}

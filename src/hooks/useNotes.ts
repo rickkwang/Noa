@@ -12,19 +12,12 @@ interface LoadErrorState {
   message: string;
 }
 
-const extractLinks = (content: string) => {
-  const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
-  return Array.from(new Set(matches.map(m => m[1])));
-};
-
-const extractTags = (content: string) => {
-  const matches = Array.from(content.matchAll(/(?<=^|\s)#([\w\u4e00-\u9fa5]+)/g));
-  return Array.from(new Set(matches.map(m => m[1])));
-};
+import { extractLinks, extractTags } from '../lib/noteUtils';
 
 export function useNotes(settings?: AppSettings) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [workspaceName, setWorkspaceName] = useState('Default Workspace');
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -38,11 +31,27 @@ export function useNotes(settings?: AppSettings) {
   const debounceSave = useCallback((note: Note) => {
     const existing = saveTimers.current.get(note.id);
     if (existing) clearTimeout(existing);
-    const t = setTimeout(() => {
-      storage.saveNote(note);
+    const t = setTimeout(async () => {
+      try {
+        await storage.saveNote(note);
+      } catch {
+        setSaveError('Failed to save note. Storage may be full.');
+      }
       saveTimers.current.delete(note.id);
     }, 500);
     saveTimers.current.set(note.id, t);
+  }, []);
+
+  const flushAllPendingSaves = useCallback(async (currentNotes: Note[]) => {
+    const pending = Array.from(saveTimers.current.keys());
+    for (const id of pending) {
+      clearTimeout(saveTimers.current.get(id));
+      saveTimers.current.delete(id);
+      const note = currentNotes.find(n => n.id === id);
+      if (note) {
+        try { await storage.saveNote(note); } catch { /* best effort on quit */ }
+      }
+    }
   }, []);
 
   const applyEmptyWorkspace = useCallback((name: string) => {
@@ -202,7 +211,10 @@ Export regularly: use Settings → Data → Export Backup.`,
       const oldTitle = oldNote.title;
       const updated = prev.map(n => {
         if (n.id === id) return { ...n, title: newTitle, updatedAt: new Date().toISOString() };
-        if (n.links && n.links.includes(oldTitle)) {
+        if (n.id !== id && (
+          (n.links && n.links.includes(oldTitle)) ||
+          n.content.includes(`[[${oldTitle}]]`)
+        )) {
           const updatedContent = n.content.replace(
             new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'),
             `[[${newTitle}]]`
@@ -217,7 +229,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         return n;
       });
       updated.forEach(n => {
-        if (n.id === id || (oldNote.links && n.links?.includes(newTitle))) {
+        if (n.id === id || (n.links?.includes(newTitle) && n.id !== id)) {
           debounceSave(n);
         }
       });
@@ -320,6 +332,8 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, []);
 
+  const DAILY_FOLDER_KEY = 'redaction-diary-daily-folder-id';
+
   const handleOpenDailyNote = useCallback((targetDate?: string) => {
     const dateFormat = settings?.dailyNotes?.dateFormat ?? 'YYYY-MM-DD';
     const today = targetDate ?? formatDate(dateFormat);
@@ -329,8 +343,13 @@ Export regularly: use Settings → Data → Export Backup.`,
       : builtinTemplates.find(t => t.id === 'daily')!;
 
     setFolders(prevFolders => {
-      const existingFolder = prevFolders.find(f => f.name === 'Daily Notes');
+      const savedId = localStorage.getItem(DAILY_FOLDER_KEY);
+      const existingFolder = savedId
+        ? (prevFolders.find(f => f.id === savedId) ?? prevFolders.find(f => f.name === 'Daily Notes'))
+        : prevFolders.find(f => f.name === 'Daily Notes');
+      const isNew = !existingFolder;
       const dailyFolder = existingFolder ?? { id: crypto.randomUUID(), name: 'Daily Notes' };
+      if (isNew) localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id);
       const newFolders = existingFolder ? prevFolders : [...prevFolders, dailyFolder];
 
       setNotes(prevNotes => {
@@ -368,9 +387,15 @@ Export regularly: use Settings → Data → Export Backup.`,
       const isCorrectLine = line !== undefined &&
         line.includes(task.content) &&
         (task.completed ? /\[x\]/i.test(line) : /\[ \]/.test(line));
+      const exactMatchIndex = lines.findIndex(l => l === task.originalString);
       const targetIndex = isCorrectLine
         ? task.lineIndex
-        : lines.findIndex(l => l.includes(task.content) && (task.completed ? /\[x\]/i.test(l) : /\[ \]/.test(l)));
+        : exactMatchIndex !== -1
+          ? exactMatchIndex
+          : lines.findIndex(l =>
+              l.includes(task.content) &&
+              (task.completed ? /\[x\]/i.test(l) : /\[ \]/.test(l))
+            );
       if (targetIndex === -1) return prev;
       lines[targetIndex] = task.completed
         ? lines[targetIndex].replace(/\[x\]/i, '[ ]')
@@ -434,6 +459,9 @@ Export regularly: use Settings → Data → Export Backup.`,
   return {
     isLoaded,
     loadError,
+    saveError,
+    clearSaveError: () => setSaveError(null),
+    flushAllPendingSaves,
     workspaceName,
     setWorkspaceName,
     folders,

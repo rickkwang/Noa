@@ -21,20 +21,16 @@ export default function AppUpdateSettings() {
         </div>
       </SettingItem>
 
-      <SettingItem label="Update Status" description="Live updater state from electron-updater.">
+      <SettingItem label="Update Status" description="Check GitHub Releases for the latest version.">
         <div className="space-y-2">
           <div className="text-sm text-[#2D2D2D]">
             <span className="font-bold uppercase tracking-wider mr-2">{status.state}</span>
-            <span className="text-[#2D2D2D]/70">{status.message || 'No status message.'}</span>
+            <span className="text-[#2D2D2D]/70">
+              {status.state === 'error'
+                ? 'Could not check for updates. Please check your connection.'
+                : (status.message || 'No status message.')}
+            </span>
           </div>
-          {status.progress != null && (
-            <div className="h-1.5 w-full bg-[#2D2D2D]/10 overflow-hidden">
-              <div
-                className="h-full bg-[#B89B5E] transition-all"
-                style={{ width: `${Math.max(0, Math.min(100, status.progress))}%` }}
-              />
-            </div>
-          )}
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -50,11 +46,11 @@ export default function AppUpdateSettings() {
               onClick={() => {
                 void installUpdate();
               }}
-              disabled={!isDesktop || busy || status.state !== 'downloaded'}
+              disabled={!isDesktop || busy || status.state !== 'available'}
               className="flex items-center justify-center gap-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] shadow-[2px_2px_0px_0px_rgba(45,45,45,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all text-sm disabled:opacity-60 disabled:pointer-events-none"
             >
               <Rocket size={14} />
-              <span>Restart to Install</span>
+              <span>Open Download Page</span>
             </button>
           </div>
         </div>

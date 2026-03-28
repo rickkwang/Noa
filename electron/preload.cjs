@@ -14,4 +14,11 @@ contextBridge.exposeInMainWorld('noaDesktop', {
       return () => ipcRenderer.removeListener('app-updater:status', handler);
     },
   },
+  lifecycle: {
+    onBeforeQuit: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on('app:before-quit', handler);
+      return () => ipcRenderer.removeListener('app:before-quit', handler);
+    },
+  },
 });

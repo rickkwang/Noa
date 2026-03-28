@@ -24,11 +24,7 @@ export const storage = {
   },
   // Per-note storage (new)
   async saveNote(note: Note): Promise<void> {
-    try {
-      await notesStore.setItem(`note:${note.id}`, note);
-    } catch (err) {
-      console.error('Error saving note:', err);
-    }
+    await notesStore.setItem(`note:${note.id}`, note);
   },
 
   async deleteNote(id: string): Promise<void> {
@@ -56,11 +52,7 @@ export const storage = {
 
   // Batch save for import
   async saveNotes(notes: Note[]): Promise<void> {
-    try {
-      await Promise.all(notes.map(n => notesStore.setItem(`note:${n.id}`, n)));
-    } catch (err) {
-      console.error('Error saving notes:', err);
-    }
+    await Promise.all(notes.map(n => notesStore.setItem(`note:${n.id}`, n)));
   },
 
   // Migration: old 'all-notes' key → per-note keys
@@ -86,11 +78,7 @@ export const storage = {
   },
 
   async saveFolders(folders: Folder[]): Promise<void> {
-    try {
-      await foldersStore.setItem('all-folders', folders);
-    } catch (err) {
-      console.error('Error saving folders:', err);
-    }
+    await foldersStore.setItem('all-folders', folders);
   },
 
   async getWorkspaceName(): Promise<string | null> {
@@ -104,11 +92,7 @@ export const storage = {
   },
 
   async saveWorkspaceName(name: string): Promise<void> {
-    try {
-      await workspaceStore.setItem('workspace-name', name);
-    } catch (err) {
-      console.error('Error saving workspace name:', err);
-    }
+    await workspaceStore.setItem('workspace-name', name);
   },
 
   async pruneOrphanedNotes(validIds: string[]): Promise<void> {
