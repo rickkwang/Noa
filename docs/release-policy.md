@@ -22,4 +22,5 @@ Noa uses three channels for controlled rollout:
 ## Rollback Strategy
 - Keep the previous `beta` and `stable` build artifacts with version tags.
 - If a P0 issue is reported, immediately roll back to the last known healthy artifact.
+- P0 rollback triggers: confirmed data loss, app boot failure, or import/export unavailable for normal use.
 - Post-rollback, record incident root cause and add a regression test.

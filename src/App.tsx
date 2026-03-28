@@ -24,6 +24,7 @@ const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const recoveryImportInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Multi-tab state: list of open note IDs in tab order
@@ -52,6 +53,10 @@ export default function App() {
     handleOpenDailyNote,
     handleToggleTask,
     handleImportData,
+    loadError,
+    retryInitialization,
+    resetWorkspaceFromRecovery,
+    importBackupFromRecovery,
     isLoaded,
   } = useNotes(settings);
 
@@ -150,7 +155,13 @@ export default function App() {
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined;
 
-  const { showReminder, daysSinceExport, dismiss: dismissReminder } = useBackupReminder(notes.length);
+  const {
+    showReminder,
+    daysSinceExport,
+    lastExportAt,
+    backupHealth,
+    dismiss: dismissReminder,
+  } = useBackupReminder(notes.length);
 
   const exportJsonQuick = useCallback(() => {
     exportJsonSnapshot(notes, folders, workspaceName);
@@ -181,6 +192,8 @@ export default function App() {
       {showReminder && (
         <BackupReminderBar
           daysSinceExport={daysSinceExport}
+          lastExportAt={lastExportAt}
+          backupHealth={backupHealth}
           onExportJson={exportJsonQuick}
           onDismiss={dismissReminder}
         />
@@ -337,7 +350,7 @@ export default function App() {
         <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-lg">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Local Storage Only</div>
           <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
-            Your notes are stored in this browser. Clearing browser data will delete them permanently. Export regularly to keep backups.
+            Your notes are stored in this browser/device profile only. Browser and desktop app data are separate unless you export/import manually. No automatic cross-device sync.
           </div>
           <button
             onClick={() => {
@@ -348,6 +361,50 @@ export default function App() {
           >
             Got it
           </button>
+        </div>
+      )}
+      {loadError && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-xl bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] p-4 font-redaction space-y-3">
+            <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
+            <p className="text-sm text-[#2D2D2D]/80">{loadError.message}</p>
+            <p className="text-xs text-[#2D2D2D]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={retryInitialization}
+                className="px-3 py-1 text-xs font-bold bg-[#EAE8E0] border-2 border-[#2D2D2D] hover:bg-[#DCD9CE]"
+              >
+                Retry Read
+              </button>
+              <button
+                onClick={() => recoveryImportInputRef.current?.click()}
+                className="px-3 py-1 text-xs font-bold bg-[#B89B5E] text-white border-2 border-[#2D2D2D] hover:opacity-90"
+              >
+                Import Backup
+              </button>
+              <button
+                onClick={() => {
+                  void resetWorkspaceFromRecovery();
+                }}
+                className="px-3 py-1 text-xs font-bold bg-red-100 text-red-800 border-2 border-red-400 hover:bg-red-200"
+              >
+                New Empty Workspace
+              </button>
+            </div>
+            <input
+              ref={recoveryImportInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void importBackupFromRecovery(file);
+                }
+                e.currentTarget.value = '';
+              }}
+            />
+          </div>
         </div>
       )}
       {isSettingsOpen && (

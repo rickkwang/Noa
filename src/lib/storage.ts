@@ -18,6 +18,10 @@ const workspaceStore = localforage.createInstance({
 });
 
 export const storage = {
+  async verifyAccess(): Promise<void> {
+    await workspaceStore.setItem('__healthcheck__', 'ok');
+    await workspaceStore.removeItem('__healthcheck__');
+  },
   // Per-note storage (new)
   async saveNote(note: Note): Promise<void> {
     try {
@@ -121,6 +125,14 @@ export const storage = {
     } catch (err) {
       console.error('Error pruning orphaned notes:', err);
     }
+  },
+
+  async clearAll(): Promise<void> {
+    await Promise.all([
+      notesStore.clear(),
+      foldersStore.clear(),
+      workspaceStore.clear(),
+    ]);
   },
 
   async getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {

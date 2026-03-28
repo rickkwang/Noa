@@ -5,6 +5,7 @@ import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
 import AppearanceSettings from './sections/AppearanceSettings';
 import DataSettings from './sections/DataSettings';
 import EditorSettings from './sections/EditorSettings';
+import AppUpdateSettings from './sections/AppUpdateSettings';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -101,6 +102,10 @@ export default function SettingsModal({
                 syncStatus={syncStatus}
                 onRetryFsSync={onRetryFsSync}
               />
+            )}
+
+            {activeTab === 'updates' && (
+              <AppUpdateSettings />
             )}
 
             {activeTab === 'about' && (

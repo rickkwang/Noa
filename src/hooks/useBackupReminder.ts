@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getLastExportAt } from '../lib/exportTimestamp';
+import { getBackupHealth } from '../lib/backupHealth';
+import { BackupHealthStatus } from '../types';
 
 const DISMISS_KEY = 'redaction-backup-reminder-dismissed-until';
 
@@ -11,6 +13,8 @@ function getDismissedUntil(): number {
 export function useBackupReminder(noteCount: number): {
   showReminder: boolean;
   daysSinceExport: number | null;
+  lastExportAt: string | null;
+  backupHealth: BackupHealthStatus;
   dismiss: () => void;
 } {
   const [lastExportAt, setLastExportAt] = useState(() => getLastExportAt());
@@ -27,7 +31,8 @@ export function useBackupReminder(noteCount: number): {
     return () => window.removeEventListener('redaction-exported', handler);
   }, []);
 
-  let daysSinceExport: number | null = null;
+  const health = getBackupHealth(lastExportAt);
+  let daysSinceExport: number | null = health.daysSinceExport;
   let showReminder = false;
 
   const now = Date.now();
@@ -35,9 +40,7 @@ export function useBackupReminder(noteCount: number): {
     if (!lastExportAt) {
       showReminder = true;
     } else {
-      const diff = now - new Date(lastExportAt).getTime();
-      daysSinceExport = Math.floor(diff / (1000 * 60 * 60 * 24));
-      if (daysSinceExport > 7) {
+      if ((daysSinceExport ?? 0) > 7) {
         showReminder = true;
       }
     }
@@ -50,5 +53,11 @@ export function useBackupReminder(noteCount: number): {
     setDismissedUntil(until);
   };
 
-  return { showReminder, daysSinceExport, dismiss };
+  return {
+    showReminder,
+    daysSinceExport,
+    lastExportAt,
+    backupHealth: health.status,
+    dismiss,
+  };
 }

@@ -1,0 +1,37 @@
+name: desktop-beta
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  mac-arm64-beta:
+    runs-on: macos-14
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      GH_OWNER: ${{ secrets.GH_OWNER }}
+      GH_REPO: ${{ secrets.GH_REPO }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      NOA_UPDATE_CHANNEL: beta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build:budget
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:smoke
+
+      - name: Build and publish mac arm64 beta
+        run: npm run desktop:publish:beta

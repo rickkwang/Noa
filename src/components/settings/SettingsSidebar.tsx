@@ -1,7 +1,7 @@
 import React from 'react';
-import { Palette, PenTool, Database, Info, Link, Calendar, Search, Puzzle, Settings2 } from 'lucide-react';
+import { Palette, PenTool, Database, Info, Download } from 'lucide-react';
 
-export type SettingsTab = 'editor' | 'appearance' | 'data' | 'about';
+export type SettingsTab = 'editor' | 'appearance' | 'data' | 'updates' | 'about';
 
 interface SettingsSidebarProps {
   activeTab: SettingsTab;
@@ -13,6 +13,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
     { id: 'editor', label: 'Editor', icon: PenTool },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'data', label: 'Data', icon: Database },
+    { id: 'updates', label: 'App Update', icon: Download },
     { id: 'about', label: 'About', icon: Info },
   ] as const;
 

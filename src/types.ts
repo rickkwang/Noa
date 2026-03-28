@@ -25,6 +25,16 @@ export interface Folder {
   name: string;
 }
 
+export type BackupHealthStatus = 'healthy' | 'warning' | 'risk';
+export type RecoveryAction = 'retry' | 'import_backup' | 'reset_workspace';
+export type AppErrorCode =
+  | 'storage_unavailable'
+  | 'import_invalid_json'
+  | 'import_integrity_failed'
+  | 'import_replace_risky'
+  | 'sync_permission_denied'
+  | 'unknown_error';
+
 export type Priority = 'high' | 'medium' | 'low' | 'none';
 
 export interface GlobalTask {

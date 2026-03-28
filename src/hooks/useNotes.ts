@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Note, Folder, GlobalTask } from '../types';
-import { AppSettings } from '../types';
+import { AppErrorCode, AppSettings, Folder, GlobalTask, Note } from '../types';
 import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
+import { fromStorageError } from '../lib/appErrors';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
+
+interface LoadErrorState {
+  code: AppErrorCode;
+  message: string;
+}
 
 const extractLinks = (content: string) => {
   const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
@@ -18,6 +24,8 @@ const extractTags = (content: string) => {
 
 export function useNotes(settings?: AppSettings) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [workspaceName, setWorkspaceName] = useState('Default Workspace');
   const [folders, setFolders] = useState<Folder[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -37,30 +45,52 @@ export function useNotes(settings?: AppSettings) {
     saveTimers.current.set(note.id, t);
   }, []);
 
+  const applyEmptyWorkspace = useCallback((name: string) => {
+    const initialFolders = [
+      { id: 'diary', name: 'diaries' },
+      { id: 'essay', name: 'essays' },
+    ];
+    setFolders(initialFolders);
+    setNotes([]);
+    setWorkspaceName(name);
+    setActiveNoteId('');
+    void storage.saveFolders(initialFolders);
+    void storage.saveWorkspaceName(name);
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
-      await storage.migrateFromLocalStorage();
-      await storage.migrateToPerNoteStorage();
+      try {
+        await storage.verifyAccess();
+        await storage.migrateFromLocalStorage();
+        await storage.migrateToPerNoteStorage();
 
-      const savedWorkspace = await storage.getWorkspaceName();
-      if (savedWorkspace) setWorkspaceName(savedWorkspace);
+        const savedWorkspace = await storage.getWorkspaceName();
+        if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
-      const savedFolders = await storage.getFolders();
-      if (savedFolders && savedFolders.length > 0) {
-        setFolders(savedFolders);
-      } else {
-        setFolders([
-          { id: 'diary', name: 'diaries' },
-          { id: 'essay', name: 'essays' }
-        ]);
-      }
+        const savedFolders = await storage.getFolders();
+        if (savedFolders && savedFolders.length > 0) {
+          setFolders(savedFolders);
+        } else {
+          setFolders([
+            { id: 'diary', name: 'diaries' },
+            { id: 'essay', name: 'essays' }
+          ]);
+        }
 
-      const savedNotes = await storage.getNotes();
-      if (savedNotes && savedNotes.length > 0) {
-        setNotes(savedNotes);
-        setActiveNoteId(savedNotes[0].id);
-      } else {
-        const welcomeNote: Note = {
+        const savedNotes = await storage.getNotes();
+        if (savedNotes && savedNotes.length > 0) {
+          const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes);
+          if (!report.ok) {
+            throw new Error(
+              report.issues.find((issue) => issue.level === 'error')?.message ??
+              'Data integrity check failed while loading notes.',
+            );
+          }
+          setNotes(normalized);
+          setActiveNoteId(normalized[0].id);
+        } else {
+          const welcomeNote: Note = {
           id: 'welcome',
           title: 'Welcome to Noa',
           content: `# Welcome to Noa
@@ -96,36 +126,49 @@ Export regularly: use Settings → Data → Export Backup.`,
           tags: [],
           links: []
         };
-        const dailyFolderId = crypto.randomUUID();
-        const dateFormat = 'YYYY-MM-DD';
-        const todayStr = formatDate(dateFormat);
-        const dailyTemplate = builtinTemplates.find(t => t.id === 'daily')!;
-        const dailyNote: Note = {
-          id: crypto.randomUUID(),
-          title: todayStr,
-          content: applyTemplate(dailyTemplate, todayStr, dateFormat),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          folder: dailyFolderId,
-          tags: ['daily'],
-          links: []
-        };
-        const initialFolders = [
-          { id: 'diary', name: 'diaries' },
-          { id: 'essay', name: 'essays' },
-          { id: dailyFolderId, name: 'Daily Notes' }
-        ];
-        setFolders(initialFolders);
-        storage.saveFolders(initialFolders);
-        setNotes([welcomeNote, dailyNote]);
-        setActiveNoteId(welcomeNote.id);
-        storage.saveNote(welcomeNote);
-        storage.saveNote(dailyNote);
+          const dailyFolderId = crypto.randomUUID();
+          const dateFormat = 'YYYY-MM-DD';
+          const todayStr = formatDate(dateFormat);
+          const dailyTemplate = builtinTemplates.find(t => t.id === 'daily')!;
+          const dailyNote: Note = {
+            id: crypto.randomUUID(),
+            title: todayStr,
+            content: applyTemplate(dailyTemplate, todayStr, dateFormat),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            folder: dailyFolderId,
+            tags: ['daily'],
+            links: []
+          };
+          const initialFolders = [
+            { id: 'diary', name: 'diaries' },
+            { id: 'essay', name: 'essays' },
+            { id: dailyFolderId, name: 'Daily Notes' }
+          ];
+          setFolders(initialFolders);
+          void storage.saveFolders(initialFolders);
+          setNotes([welcomeNote, dailyNote]);
+          setActiveNoteId(welcomeNote.id);
+          void storage.saveNote(welcomeNote);
+          void storage.saveNote(dailyNote);
+        }
+        setLoadError(null);
+      } catch (error) {
+        const appError = fromStorageError(error);
+        setLoadError({ code: appError.code, message: appError.userMessage });
+        recordErrorSnapshot({
+          at: new Date().toISOString(),
+          operation: 'app_bootstrap',
+          code: appError.code,
+          message: appError.rawMessage || appError.userMessage,
+          suggestedAction: appError.suggestedAction,
+        });
+      } finally {
+        setIsLoaded(true);
       }
-      setIsLoaded(true);
     };
     loadData();
-  }, []);
+  }, [applyEmptyWorkspace, loadAttempt]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -352,8 +395,45 @@ Export regularly: use Settings → Data → Export Backup.`,
     if (newWorkspaceName) storage.saveWorkspaceName(newWorkspaceName);
   }, []);
 
+  const retryInitialization = useCallback(() => {
+    setIsLoaded(false);
+    setLoadError(null);
+    setLoadAttempt((v) => v + 1);
+  }, []);
+
+  const resetWorkspaceFromRecovery = useCallback(async () => {
+    try {
+      await storage.clearAll();
+      applyEmptyWorkspace('Recovered Workspace');
+      setLoadError(null);
+    } catch (error) {
+      const appError = fromStorageError(error);
+      setLoadError({ code: appError.code, message: appError.userMessage });
+    }
+  }, [applyEmptyWorkspace]);
+
+  const importBackupFromRecovery = useCallback(async (file: File) => {
+    try {
+      const content = await file.text();
+      const parsed = JSON.parse(content);
+      if (!parsed.notes || !Array.isArray(parsed.notes)) {
+        throw new Error('Invalid backup file.');
+      }
+      const { notes: normalized, report } = normalizeAndValidateNotes(parsed.notes);
+      if (!report.ok) {
+        throw new Error(report.issues.find((issue) => issue.level === 'error')?.message || 'Invalid backup payload.');
+      }
+      handleImportData(normalized, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace');
+      setLoadError(null);
+    } catch (error) {
+      const appError = fromStorageError(error);
+      setLoadError({ code: appError.code, message: appError.userMessage });
+    }
+  }, [handleImportData]);
+
   return {
     isLoaded,
+    loadError,
     workspaceName,
     setWorkspaceName,
     folders,
@@ -373,5 +453,8 @@ Export regularly: use Settings → Data → Export Backup.`,
     handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => void,
     handleToggleTask,
     handleImportData,
+    retryInitialization,
+    resetWorkspaceFromRecovery,
+    importBackupFromRecovery,
   };
 }

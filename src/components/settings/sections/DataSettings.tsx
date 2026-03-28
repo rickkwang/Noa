@@ -7,6 +7,8 @@ import BackupSection from './data/BackupSection';
 import ImportSection from './data/ImportSection';
 import WorkspaceSection from './data/WorkspaceSection';
 import { ConfirmState } from './data/types';
+import { getLastExportAt } from '../../../lib/exportTimestamp';
+import { getBackupHealth } from '../../../lib/backupHealth';
 
 interface DataSettingsProps {
   settings: AppSettings;
@@ -52,6 +54,8 @@ export default function DataSettings({
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [importStrategy, setImportStrategy] = useState<'overwrite' | 'merge' | 'skip'>('overwrite');
   const storageEstimate = useStorageEstimate();
+  const [lastExportAt, setLastExportAt] = useState<string | null>(() => getLastExportAt());
+  const backupHealth = getBackupHealth(lastExportAt);
 
   const requestConfirm = (request: ConfirmRequest) => {
     setImportStrategy('overwrite');
@@ -90,8 +94,17 @@ export default function DataSettings({
     if (folderInputRef.current) folderInputRef.current.value = '';
   };
 
+  React.useEffect(() => {
+    const handler = () => setLastExportAt(getLastExportAt());
+    window.addEventListener('redaction-exported', handler);
+    return () => window.removeEventListener('redaction-exported', handler);
+  }, []);
+
   return (
     <div className="space-y-8">
+      <div className="border border-[#2D2D2D]/20 bg-[#DCD9CE] px-3 py-2 text-xs text-[#2D2D2D]/70">
+        Data ownership: notes are stored in your current browser/device only. No automatic cloud or cross-device sync.
+      </div>
       {confirmState && (
         <div className="border-2 border-[#B89B5E] bg-[#B89B5E]/10 p-3 flex flex-col gap-2 font-redaction">
           <div className="flex items-start justify-between gap-3">
@@ -184,7 +197,11 @@ export default function DataSettings({
               : 'border-red-400 bg-red-50 text-red-700'
           }`}
         >
-          <span>{message.text}</span>
+          <span>
+            {message.text}
+            {message.code ? ` (${message.code})` : ''}
+            {message.suggestedAction ? ` · Suggested action: ${message.suggestedAction}` : ''}
+          </span>
           <button
             onClick={() => setMessage(null)}
             className="ml-2 opacity-60 hover:opacity-100 text-xs"
@@ -225,6 +242,9 @@ export default function DataSettings({
           void transfer.exportHtmlZip();
         }}
         storageEstimate={storageEstimate}
+        backupHealth={backupHealth.status}
+        daysSinceExport={backupHealth.daysSinceExport}
+        lastExportAt={backupHealth.lastExportAt}
       />
 
       <ImportSection

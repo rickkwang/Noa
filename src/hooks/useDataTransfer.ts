@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import JSZip from 'jszip';
-import { Folder, Note } from '../types';
+import { AppErrorCode, Folder, Note, RecoveryAction } from '../types';
 import { mdToHtml } from '../lib/export';
 import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
 import { markExported } from '../lib/exportTimestamp';
+import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
 
 export interface ConflictSummary {
   sameIdCount: number;
@@ -56,6 +58,8 @@ export function applyImportStrategy(
 export interface DataTransferMessage {
   type: 'success' | 'error';
   text: string;
+  code?: AppErrorCode;
+  suggestedAction?: RecoveryAction;
 }
 
 export interface ConfirmRequest {
@@ -123,9 +127,19 @@ export function useDataTransfer({
   const ensureExportIntegrity = useCallback(() => {
     const report = validateExportData(notes, folders);
     if (!report.ok) {
+      const appError = fromImportError('import_integrity_failed', 'Export integrity check failed.');
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'export_integrity_check',
+        code: appError.code,
+        message: appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
       notify({
         type: 'error',
-        text: `Export blocked: ${report.issues[0]?.message ?? 'data integrity check failed'}`,
+        text: `Export blocked: ${report.issues[0]?.message ?? appError.userMessage}`,
+        code: appError.code,
+        suggestedAction: appError.suggestedAction,
       });
       return false;
     }
@@ -208,17 +222,35 @@ export function useDataTransfer({
         try {
           const parsed = JSON.parse(event.target?.result as string);
           if (!parsed.notes || !Array.isArray(parsed.notes)) {
-            notify({ type: 'error', text: 'Invalid backup file: missing notes array.' });
+            const appError = fromImportError('import_invalid_json', 'Invalid backup file.');
+            recordErrorSnapshot({
+              at: new Date().toISOString(),
+              operation: 'import_json',
+              code: appError.code,
+              message: appError.userMessage,
+              suggestedAction: appError.suggestedAction,
+            });
+            notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
             return;
           }
 
           const { notes: normalizedNotes, report } = normalizeAndValidateNotes(parsed.notes);
           if (!report.ok) {
+            const appError = fromImportError('import_integrity_failed', 'Import integrity check failed.');
+            recordErrorSnapshot({
+              at: new Date().toISOString(),
+              operation: 'import_json',
+              code: appError.code,
+              message: appError.userMessage,
+              suggestedAction: appError.suggestedAction,
+            });
             notify({
               type: 'error',
               text:
                 report.issues.find((issue) => issue.level === 'error')?.message ||
-                'Import integrity check failed.',
+                appError.userMessage,
+              code: appError.code,
+              suggestedAction: appError.suggestedAction,
             });
             return;
           }
@@ -227,7 +259,7 @@ export function useDataTransfer({
           importStrategyRef.current = 'overwrite';
 
           requestConfirm({
-            message: 'This will overwrite your current workspace. Continue?',
+            message: `This may replace existing data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
             conflictSummary,
             onStrategyChange: (s) => { importStrategyRef.current = s; },
             onConfirm: () => {
@@ -249,8 +281,16 @@ export function useDataTransfer({
               });
             },
           });
-        } catch {
-          notify({ type: 'error', text: 'Error parsing backup file. Make sure it is valid JSON.' });
+        } catch (error) {
+          const appError = fromImportError('import_invalid_json', 'Error parsing backup file.');
+          recordErrorSnapshot({
+            at: new Date().toISOString(),
+            operation: 'import_json',
+            code: appError.code,
+            message: error instanceof Error ? error.message : appError.userMessage,
+            suggestedAction: appError.suggestedAction,
+          });
+          notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
         }
       };
       reader.readAsText(file);
@@ -299,7 +339,8 @@ export function useDataTransfer({
         }
 
         if (newNotes.length === 0) {
-          notify({ type: 'error', text: 'No Markdown files found in the selected folder.' });
+          const appError = fromImportError('import_integrity_failed', 'No Markdown files found.');
+          notify({ type: 'error', text: 'No Markdown files found in the selected folder.', code: appError.code, suggestedAction: appError.suggestedAction });
           return;
         }
 
@@ -311,7 +352,7 @@ export function useDataTransfer({
       };
 
       requestConfirm({
-        message: 'Importing a folder will replace your current workspace. Continue?',
+        message: `Importing a folder will replace current data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
         onConfirm: () => {
           void doImport();
         },
@@ -323,7 +364,7 @@ export function useDataTransfer({
   const createNewWorkspace = useCallback(() => {
     requestConfirm({
       message:
-        'Create a new workspace? This will clear all current notes. Make sure you have exported your data!',
+        `Create a new workspace? This will clear current data (${notes.length} note(s), ${folders.length} folder(s)). Export backup first.`,
       defaultInput: 'New Workspace',
       inputLabel: 'Workspace name:',
       onConfirm: (nameValue) => {
@@ -342,16 +383,36 @@ export function useDataTransfer({
         type: 'success',
         text: 'Connected to local folder. Notes will sync automatically.',
       });
-    } catch {
-      notify({ type: 'error', text: 'Failed to connect local folder.' });
+    } catch (error) {
+      const appError = fromSyncError(error);
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'connect_folder',
+        code: appError.code,
+        message: appError.rawMessage || appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
+      notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
     } finally {
       setConnectingFs(false);
     }
   }, [notify, onConnectFolder]);
 
   const disconnectFolder = useCallback(async () => {
-    await onDisconnectFolder();
-    notify({ type: 'success', text: 'Disconnected from local folder. Using IndexedDB.' });
+    try {
+      await onDisconnectFolder();
+      notify({ type: 'success', text: 'Disconnected from local folder. Using IndexedDB.' });
+    } catch (error) {
+      const appError = fromStorageError(error);
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'disconnect_folder',
+        code: appError.code,
+        message: appError.rawMessage || appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
+      notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+    }
   }, [notify, onDisconnectFolder]);
 
   return {

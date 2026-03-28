@@ -3,6 +3,8 @@ import { Download, FileArchive, FileText, Loader2 } from 'lucide-react';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
 import { StorageEstimate } from '../../../../hooks/useStorageEstimate';
+import { BackupHealthStatus } from '../../../../types';
+import { formatExportTimestamp } from '../../../../lib/exportTimestamp';
 
 interface BackupSectionProps {
   exportingZip: boolean;
@@ -11,6 +13,9 @@ interface BackupSectionProps {
   onExportZip: () => void;
   onExportHtmlZip: () => void;
   storageEstimate?: StorageEstimate | null;
+  backupHealth: BackupHealthStatus;
+  daysSinceExport: number | null;
+  lastExportAt: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -25,10 +30,31 @@ export default function BackupSection({
   onExportZip,
   onExportHtmlZip,
   storageEstimate,
+  backupHealth,
+  daysSinceExport,
+  lastExportAt,
 }: BackupSectionProps) {
   const showStorage = storageEstimate?.supported === true;
+  const healthLabel = backupHealth === 'healthy'
+    ? 'Healthy'
+    : backupHealth === 'warning'
+      ? 'Warning'
+      : 'Risk';
+  const healthColor = backupHealth === 'healthy'
+    ? 'text-emerald-700'
+    : backupHealth === 'warning'
+      ? 'text-amber-700'
+      : 'text-red-700';
   return (
     <SettingSection title="Backup" description="Export your data for safekeeping.">
+      <div className="px-1 pb-2 space-y-1 text-[11px]">
+        <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
+        <div className="text-[#2D2D2D]/60">
+          Last export: {formatExportTimestamp(lastExportAt)}
+          {daysSinceExport !== null ? ` (${daysSinceExport} day(s) ago)` : ''}
+        </div>
+        <div className="text-[#2D2D2D]/60">Recommended cadence: export JSON at least every 7 days.</div>
+      </div>
       {showStorage && storageEstimate && (
         <div className="px-1 pb-2 space-y-1">
           <div className="text-[11px] text-[#2D2D2D]/60 font-redaction">

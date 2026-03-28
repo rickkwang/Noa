@@ -11,6 +11,8 @@ import {
   syncNoteRename,
   syncNoteUpdate,
 } from '../services/fileSyncService';
+import { fromSyncError } from '../lib/appErrors';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
 
 interface UseFileSyncOptions {
   isLoaded: boolean;
@@ -66,8 +68,16 @@ export function useFileSync({
 
   const recordFailure = useCallback((error: unknown) => {
     const normalized = classifySyncError(error);
+    const appError = fromSyncError(error);
     setSyncStatus('error');
-    setFsSyncError(normalized.message);
+    setFsSyncError(appError.userMessage || normalized.message);
+    recordErrorSnapshot({
+      at: new Date().toISOString(),
+      operation: 'file_sync',
+      code: appError.code,
+      message: normalized.message,
+      suggestedAction: appError.suggestedAction,
+    });
   }, []);
 
   const retry = useCallback(() => {

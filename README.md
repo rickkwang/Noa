@@ -10,6 +10,8 @@ A pixel-aesthetic, local-first personal knowledge base. Write notes, keep a diar
 
 Noa is a fully client-side Markdown note-taking app inspired by tools like Obsidian, wrapped in a retro pixel aesthetic. No accounts. No servers. No sync fees. Everything lives in your browser's IndexedDB.
 
+Important: data is stored in your current browser/device only. No automatic cloud sync or cross-device sync is provided.
+
 **Core principles:**
 
 - **Local-first** — your data never leaves your device
@@ -57,6 +59,16 @@ npm install    # Install dependencies
 npm run dev    # Start dev server at http://localhost:3000
 ```
 
+## Desktop (Electron, macOS arm64)
+
+```bash
+npm run desktop:dev        # Vite + Electron desktop dev
+npm run desktop:build      # Build unpacked desktop app
+npm run desktop:pack:mac   # Build .dmg/.zip for Apple Silicon
+```
+
+App updates are powered by `electron-updater` via GitHub Releases (`beta` channel by default).
+
 ## Quality Gates
 
 ```bash
@@ -64,6 +76,8 @@ npm run lint           # Type check
 npm run build:budget   # Production build + bundle budget check
 npm run test:smoke     # Playwright smoke tests (requires browser install)
 ```
+
+`beta` release is blocked unless all three gates above pass.
 
 ---
 
@@ -83,3 +97,4 @@ npm run test:smoke     # Playwright smoke tests (requires browser install)
 - [Release Policy](./docs/release-policy.md)
 - [Release Checklist](./docs/release-checklist.md)
 - [Operating Rhythm](./docs/operating-rhythm.md)
+- [Desktop Release](./docs/desktop-release.md)

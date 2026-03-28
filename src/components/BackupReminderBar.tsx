@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { Download, X } from 'lucide-react';
+import { formatExportTimestamp } from '../lib/exportTimestamp';
+import { BackupHealthStatus } from '../types';
 
 interface BackupReminderBarProps {
   daysSinceExport: number | null;
+  lastExportAt: string | null;
+  backupHealth: BackupHealthStatus;
   onExportJson: () => void;
   onDismiss: () => void;
 }
 
-export default function BackupReminderBar({ daysSinceExport, onExportJson, onDismiss }: BackupReminderBarProps) {
+export default function BackupReminderBar({
+  daysSinceExport,
+  lastExportAt,
+  backupHealth,
+  onExportJson,
+  onDismiss,
+}: BackupReminderBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -19,6 +29,11 @@ export default function BackupReminderBar({ daysSinceExport, onExportJson, onDis
   const message = daysSinceExport === null
     ? 'No backup yet'
     : `${daysSinceExport}d since last backup`;
+  const statusColor = backupHealth === 'healthy'
+    ? 'text-emerald-700'
+    : backupHealth === 'warning'
+      ? 'text-amber-700'
+      : 'text-red-700';
 
   return (
     <div
@@ -26,7 +41,12 @@ export default function BackupReminderBar({ daysSinceExport, onExportJson, onDis
       style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
     >
       <div className="flex items-center gap-3 bg-[#EAE8E0] border border-[#2D2D2D]/30 shadow-[2px_2px_0px_0px_rgba(45,45,45,0.15)] px-3 py-2">
-        <span className="text-xs text-[#2D2D2D]/60">{message}</span>
+        <div className="flex flex-col">
+          <span className={`text-[11px] ${statusColor}`}>{message} · backup every 7d</span>
+          <span className="text-[10px] text-[#2D2D2D]/50">
+            Last export: {formatExportTimestamp(lastExportAt)}
+          </span>
+        </div>
         <button
           onClick={onExportJson}
           className="flex items-center gap-1 text-[11px] font-bold text-[#B89B5E] border border-[#B89B5E]/50 px-2 py-0.5 hover:bg-[#B89B5E]/10 active:opacity-70 transition-colors shrink-0"
