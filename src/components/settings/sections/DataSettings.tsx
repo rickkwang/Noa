@@ -16,7 +16,7 @@ interface DataSettingsProps {
   workspaceName: string;
   notes: Note[];
   folders: Folder[];
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => void;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   fsLastSyncAt?: string | null;
   fsSyncError?: string | null;

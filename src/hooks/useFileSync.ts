@@ -21,7 +21,7 @@ interface UseFileSyncOptions {
   workspaceName: string;
   activeNoteId: string;
   ensureInitialNote: () => void;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => void;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
 }
 
 interface UseFileSyncResult {

@@ -198,17 +198,17 @@ export default function App() {
     exportJsonSnapshot(notes, folders, workspaceName);
   }, [notes, folders, workspaceName]);
 
-  // BUG-B: flush pending saves before Electron quits
+  // BUG-B: flush pending saves before Electron quits — register once, use ref for latest notes
+  const notesForQuitRef = useRef(notes);
+  useEffect(() => { notesForQuitRef.current = notes; }, [notes]);
   useEffect(() => {
     const desktop = window.noaDesktop;
     if (!desktop?.lifecycle?.onBeforeQuit) return;
-    const notesRef = { current: notes };
-    notesRef.current = notes;
-    const unsub = desktop.lifecycle.onBeforeQuit(() => {
-      void flushAllPendingSaves(notesRef.current);
+    return desktop.lifecycle.onBeforeQuit(() => {
+      void flushAllPendingSaves(notesForQuitRef.current);
     });
-    return unsub;
-  }, [notes, flushAllPendingSaves]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flushAllPendingSaves]);
 
   useGlobalShortcuts({
     searchQuery,

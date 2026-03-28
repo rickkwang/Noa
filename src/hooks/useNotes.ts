@@ -54,7 +54,7 @@ export function useNotes(settings?: AppSettings) {
     }
   }, []);
 
-  const applyEmptyWorkspace = useCallback((name: string) => {
+  const applyEmptyWorkspace = useCallback(async (name: string) => {
     const initialFolders = [
       { id: 'diary', name: 'diaries' },
       { id: 'essay', name: 'essays' },
@@ -63,8 +63,8 @@ export function useNotes(settings?: AppSettings) {
     setNotes([]);
     setWorkspaceName(name);
     setActiveNoteId('');
-    void storage.saveFolders(initialFolders);
-    void storage.saveWorkspaceName(name);
+    await storage.saveFolders(initialFolders);
+    await storage.saveWorkspaceName(name);
   }, []);
 
   useEffect(() => {
@@ -155,11 +155,11 @@ Export regularly: use Settings → Data → Export Backup.`,
             { id: dailyFolderId, name: 'Daily Notes' }
           ];
           setFolders(initialFolders);
-          void storage.saveFolders(initialFolders);
           setNotes([welcomeNote, dailyNote]);
           setActiveNoteId(welcomeNote.id);
-          void storage.saveNote(welcomeNote);
-          void storage.saveNote(dailyNote);
+          await storage.saveFolders(initialFolders);
+          await storage.saveNote(welcomeNote);
+          await storage.saveNote(dailyNote);
         }
         setLoadError(null);
       } catch (error) {
@@ -177,7 +177,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
     };
     loadData();
-  }, [applyEmptyWorkspace, loadAttempt]);
+  }, [loadAttempt]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -304,14 +304,7 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleDeleteNote = useCallback((id: string) => {
     storage.deleteNote(id);
-    setNotes(prev => {
-      const next = prev.filter(n => n.id !== id);
-      setActiveNoteId(curr => {
-        if (curr === id) return next.length > 0 ? next[0].id : '';
-        return curr;
-      });
-      return next;
-    });
+    setNotes(prev => prev.filter(n => n.id !== id));
   }, []);
 
   const handleCreateFolder = useCallback(() => {
@@ -408,16 +401,15 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave]);
 
-  const handleImportData = useCallback((importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string) => {
+  const handleImportData = useCallback(async (importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string) => {
     const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
     setNotes(normalizedNotes);
     if (importedFolders) setFolders(importedFolders);
     if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
-    // Persist all imported notes and remove orphaned entries
-    storage.saveNotes(normalizedNotes);
-    storage.pruneOrphanedNotes(normalizedNotes.map(n => n.id));
-    if (importedFolders) storage.saveFolders(importedFolders);
-    if (newWorkspaceName) storage.saveWorkspaceName(newWorkspaceName);
+    await storage.saveNotes(normalizedNotes);
+    await storage.pruneOrphanedNotes(normalizedNotes.map(n => n.id));
+    if (importedFolders) await storage.saveFolders(importedFolders);
+    if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
   }, []);
 
   const retryInitialization = useCallback(() => {
@@ -429,7 +421,7 @@ Export regularly: use Settings → Data → Export Backup.`,
   const resetWorkspaceFromRecovery = useCallback(async () => {
     try {
       await storage.clearAll();
-      applyEmptyWorkspace('Recovered Workspace');
+      await applyEmptyWorkspace('Recovered Workspace');
       setLoadError(null);
     } catch (error) {
       const appError = fromStorageError(error);
@@ -448,7 +440,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (!report.ok) {
         throw new Error(report.issues.find((issue) => issue.level === 'error')?.message || 'Invalid backup payload.');
       }
-      handleImportData(normalized, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace');
+      await handleImportData(normalized, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace');
       setLoadError(null);
     } catch (error) {
       const appError = fromStorageError(error);

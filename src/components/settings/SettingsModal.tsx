@@ -16,7 +16,7 @@ interface SettingsModalProps {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => void;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   onConnectFs: () => Promise<void>;
   onDisconnectFs: () => Promise<void>;

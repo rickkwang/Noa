@@ -76,7 +76,7 @@ interface UseDataTransferOptions {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => void;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string) => Promise<void>;
   onConnectFolder: () => Promise<void>;
   onDisconnectFolder: () => Promise<void>;
   notify: (message: DataTransferMessage) => void;
