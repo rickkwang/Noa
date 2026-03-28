@@ -1,7 +1,7 @@
 {
   "name": "noa",
   "private": true,
-  "version": "1.0.1-beta.2",
+  "version": "1.0.1",
   "description": "A fully client-side Markdown note-taking app",
   "type": "module",
   "main": "electron/main.cjs",
@@ -36,7 +36,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "d3-force": "^3.0.0",
     "dompurify": "^3.3.3",
-"fuse.js": "^7.1.0",
+    "fuse.js": "^7.1.0",
     "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
     "katex": "^0.16.40",
