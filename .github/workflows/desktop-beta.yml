@@ -9,6 +9,8 @@ on:
 jobs:
   mac-arm64-beta:
     runs-on: macos-14
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       CSC_IDENTITY_AUTO_DISCOVERY: false
