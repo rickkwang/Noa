@@ -1,12 +1,9 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
-const https = require('https');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 const isDev = !app.isPackaged;
-const DEV_URL = 'http://127.0.0.1:3000';
-
-const GITHUB_OWNER = 'rickkwang';
-const GITHUB_REPO = 'Noa';
+const RELEASES_LATEST_URL = 'https://github.com/rickkwang/Noa/releases/latest';
 
 let win;
 let updateState = { state: 'idle', message: '' };
@@ -18,30 +15,73 @@ function emitUpdateStatus(payload) {
   }
 }
 
-function checkVersionViaGitHub() {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.github.com',
-      path: `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
-      headers: { 'User-Agent': 'Noa-Desktop-Updater' },
-    };
-    https.get(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const releases = JSON.parse(data);
-          const latest = releases.find(r => !r.draft && !r.prerelease)
-                      || releases.find(r => !r.draft);
-          if (!latest) return resolve(null);
-          const dmgAsset = latest.assets?.find(a => a.name.endsWith('.dmg'));
-          resolve({
-            latestVersion: latest.tag_name.replace(/^v/, ''),
-            downloadUrl: dmgAsset?.browser_download_url || latest.html_url,
-          });
-        } catch (e) { reject(e); }
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  // Allow adhoc/unsigned builds to attempt update flow
+  autoUpdater.forceDevUpdateConfig = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    emitUpdateStatus({ state: 'checking', message: 'Checking for updates...' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    emitUpdateStatus({
+      state: 'available',
+      version: info.version,
+      message: `New version available: v${info.version}. Downloading...`,
+    });
+    // Auto-start download
+    autoUpdater.downloadUpdate().catch(() => {
+      // Download failed — fall back to manual
+      emitUpdateStatus({
+        state: 'available',
+        version: info.version,
+        downloadUrl: RELEASES_LATEST_URL,
+        message: `New version available: v${info.version}`,
       });
-    }).on('error', reject);
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    emitUpdateStatus({ state: 'idle', message: `You're up to date (v${app.getVersion()}).` });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    emitUpdateStatus({
+      state: 'downloading',
+      message: `Downloading... ${Math.round(progress.percent)}%`,
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    emitUpdateStatus({
+      state: 'ready',
+      version: info.version,
+      message: `v${info.version} ready to install. Restart to apply.`,
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    const isSignatureIssue =
+      err.message?.includes('Could not get code signature') ||
+      err.message?.includes('ERR_UPDATER_INVALID_RELEASE_FEED') ||
+      err.message?.includes('No published versions');
+
+    if (isSignatureIssue) {
+      // Signature/trust issue — offer manual download as fallback
+      emitUpdateStatus({
+        state: 'available',
+        downloadUrl: RELEASES_LATEST_URL,
+        message: 'Update available. Click to download manually.',
+      });
+    } else {
+      emitUpdateStatus({
+        state: 'error',
+        message: 'Could not check for updates. Please check your connection.',
+      });
+    }
   });
 }
 
@@ -54,9 +94,7 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: 'Check for Updates',
-          click: () => {
-            void doCheckForUpdates();
-          },
+          click: () => { void doCheckForUpdates(); },
         },
         { type: 'separator' },
         { role: 'quit' },
@@ -66,9 +104,7 @@ function buildMenu() {
     { role: 'viewMenu' },
     { role: 'windowMenu' },
   ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 function createWindow() {
@@ -89,32 +125,22 @@ function createWindow() {
   });
 
   if (isDev) {
-    void win.loadURL(DEV_URL);
+    void win.loadURL('http://127.0.0.1:3000');
   } else {
     void win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 }
 
 async function doCheckForUpdates() {
-  emitUpdateStatus({ state: 'checking', message: 'Checking for updates...' });
   try {
-    const result = await checkVersionViaGitHub();
-    if (!result) {
-      emitUpdateStatus({ state: 'idle', message: 'No releases found.' });
-      return;
-    }
-    const current = app.getVersion();
-    const hasUpdate = result.latestVersion !== current;
-    emitUpdateStatus(hasUpdate
-      ? { state: 'available', version: result.latestVersion, downloadUrl: result.downloadUrl, message: `New version available: v${result.latestVersion}` }
-      : { state: 'idle', message: `You're up to date (v${current}).` }
-    );
+    await autoUpdater.checkForUpdates();
   } catch {
     emitUpdateStatus({ state: 'error', message: 'Could not check for updates. Please check your connection.' });
   }
 }
 
 app.whenReady().then(() => {
+  setupAutoUpdater();
   buildMenu();
   createWindow();
 
@@ -125,16 +151,20 @@ app.whenReady().then(() => {
     return true;
   });
   ipcMain.handle('app-updater:quit-and-install', () => {
-    if (updateState.downloadUrl) {
+    if (updateState.state === 'ready') {
+      // Downloaded successfully — quit and install
+      autoUpdater.quitAndInstall(false, true);
+    } else if (updateState.downloadUrl) {
+      // Fallback — open browser
       void shell.openExternal(updateState.downloadUrl);
+    } else {
+      void shell.openExternal(RELEASES_LATEST_URL);
     }
     return true;
   });
 
   if (!isDev) {
-    setTimeout(() => {
-      void doCheckForUpdates();
-    }, 10_000);
+    setTimeout(() => { void doCheckForUpdates(); }, 10_000);
   }
 
   app.on('activate', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCcw, ExternalLink } from 'lucide-react';
+import { RefreshCcw, ExternalLink, Download } from 'lucide-react';
 import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';
@@ -9,8 +9,20 @@ export default function AppUpdateSettings() {
 
   const statusColor =
     status.state === 'error' ? 'text-red-600' :
-    status.state === 'available' ? 'text-emerald-700' :
+    status.state === 'available' || status.state === 'ready' ? 'text-emerald-700' :
     'text-[#2D2D2D]/70';
+
+  const installLabel =
+    status.state === 'ready' ? 'Restart & Install' :
+    status.state === 'downloading' ? 'Downloading...' :
+    status.downloadUrl ? 'Open Download Page' :
+    'Open Download Page';
+
+  const InstallIcon = status.state === 'ready' ? Download : ExternalLink;
+
+  const installDisabled = !isDesktop || busy ||
+    (status.state !== 'available' && status.state !== 'ready') ||
+    (status.state === 'available' && !status.downloadUrl);
 
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">
@@ -26,7 +38,6 @@ export default function AppUpdateSettings() {
         </div>
       </SettingItem>
 
-      {/* Update Status: full-width vertical layout to prevent label wrapping */}
       <div className="py-4 border-b border-[#2D2D2D]/20 last:border-0 space-y-3">
         <div>
           <div className="font-bold text-sm text-[#2D2D2D]">Update Status</div>
@@ -47,11 +58,11 @@ export default function AppUpdateSettings() {
           </button>
           <button
             onClick={() => void installUpdate()}
-            disabled={!isDesktop || busy || status.state !== 'available'}
+            disabled={installDisabled}
             className="flex items-center justify-center gap-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
           >
-            <ExternalLink size={14} />
-            <span>Open Download Page</span>
+            <InstallIcon size={14} />
+            <span>{installLabel}</span>
           </button>
         </div>
       </div>

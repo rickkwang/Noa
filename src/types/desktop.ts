@@ -4,6 +4,7 @@ export type UpdateStatusState =
   | 'available'
   | 'downloading'
   | 'downloaded'
+  | 'ready'
   | 'error';
 
 export interface UpdateStatus {

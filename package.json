@@ -36,6 +36,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "d3-force": "^3.0.0",
     "dompurify": "^3.3.3",
+    "electron-updater": "^6.8.3",
     "fuse.js": "^7.1.0",
     "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
@@ -100,9 +101,9 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "${env.GH_OWNER}",
-        "repo": "${env.GH_REPO}",
-        "releaseType": "prerelease"
+        "owner": "rickkwang",
+        "repo": "Noa",
+        "releaseType": "release"
       }
     ]
   }
