@@ -3,22 +3,23 @@ import { CheckSquare, ExternalLink, Check, Link, Network, Search, GitBranch, Cir
 import { GlobalTask, Note } from '../types';
 import { AppSettings } from '../types';
 import GraphView from './GraphView';
+import { buildTitleToIdsMap } from '../lib/noteUtils';
 
 interface RightPanelProps {
   tasks: GlobalTask[];
   onToggleTask: (task: GlobalTask) => void;
-  onNavigateToNote: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
   activeNote?: Note;
   activeTab: 'tasks' | 'backlinks' | 'graph';
   onTabChange: (tab: 'tasks' | 'backlinks' | 'graph') => void;
   notes: Note[];
   settings: AppSettings;
-  activeNoteTitle?: string;
+  activeNoteId?: string;
 }
 
 export default function RightPanel({
-  tasks, onToggleTask, onNavigateToNote, activeNote,
-  activeTab, onTabChange, notes, settings, activeNoteTitle,
+  tasks, onToggleTask, onNavigateToNoteById, activeNote,
+  activeTab, onTabChange, notes, settings, activeNoteId,
 }: RightPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [dueDateFilter, setDueDateFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
@@ -44,6 +45,7 @@ export default function RightPanel({
   }), [activeTasks, priorityFilter, dueDateFilter]);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
+  const [showGraphGuide, setShowGraphGuide] = useState(() => !localStorage.getItem('app-graph-guide-seen'));
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphDimensions, setGraphDimensions] = useState({ width: 320, height: 400 });
 
@@ -73,7 +75,10 @@ export default function RightPanel({
 
   const backlinks = useMemo(() => {
     if (!activeNote) return [];
-    return notes.filter(n => n.id !== activeNote.id && n.links.includes(activeNote.title));
+    return notes.filter(n =>
+      n.id !== activeNote.id &&
+      ((n.linkRefs ?? []).includes(activeNote.id) || (!(n.linkRefs?.length) && n.links.includes(activeNote.title)))
+    );
   }, [activeNote, notes]);
 
   const getSnippet = (note: Note, targetTitle: string) => {
@@ -82,6 +87,15 @@ export default function RightPanel({
     if (idx === -1) return '';
     return lines.slice(Math.max(0, idx - 1), idx + 2).join('\n').trim();
   };
+
+  const backlinkSnippets = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!activeNote) return map;
+    backlinks.forEach((note) => {
+      map.set(note.id, getSnippet(note, activeNote.title));
+    });
+    return map;
+  }, [activeNote, backlinks]);
 
   const PriorityBadge = ({ priority }: { priority: string }) => {
     if (priority === 'none') return null;
@@ -125,6 +139,21 @@ export default function RightPanel({
 
       {activeTab === 'graph' ? (
         <div className="flex-1 flex flex-col overflow-hidden p-3 gap-3">
+          {showGraphGuide && (
+            <div className="border border-[#2D2D2D]/30 bg-[#DCD9CE] px-3 py-2 text-[11px] text-[#2D2D2D]/80 leading-relaxed">
+              <div className="font-bold uppercase tracking-wider text-[10px] text-[#2D2D2D]/60 mb-1">Graph Guide</div>
+              <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
+              <button
+                onClick={() => {
+                  setShowGraphGuide(false);
+                  localStorage.setItem('app-graph-guide-seen', '1');
+                }}
+                className="mt-2 text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 hover:border-[#2D2D2D]"
+              >
+                Got It
+              </button>
+            </div>
+          )}
           {/* Graph window with border */}
           <div className="flex flex-col border-2 border-[#2D2D2D]" style={{ height: '55%', minHeight: 180 }}>
             {/* Graph toolbar */}
@@ -153,10 +182,10 @@ export default function RightPanel({
             <div ref={graphContainerRef} className="flex-1 overflow-hidden">
               <GraphView
                 notes={notes}
-                onNavigateToNote={onNavigateToNote}
+                onNavigateToNoteById={onNavigateToNoteById}
                 settings={settings}
                 searchQuery={deferredGraphSearch}
-                activeNoteTitle={activeNoteTitle}
+                activeNoteId={activeNoteId}
                 width={graphDimensions.width}
                 height={graphDimensions.height}
                 hideIsolated={hideIsolated}
@@ -167,8 +196,8 @@ export default function RightPanel({
           {/* Info panel */}
           <GraphInfoPanel
             notes={notes}
-            activeNoteTitle={activeNoteTitle}
-            onNavigateToNote={onNavigateToNote}
+            activeNoteId={activeNoteId}
+            onNavigateToNoteById={onNavigateToNoteById}
           />
         </div>
       ) : (
@@ -184,15 +213,15 @@ export default function RightPanel({
                   {backlinks.map(note => (
                     <div key={note.id} className="border-2 border-[#2D2D2D] bg-[#EAE8E0] p-3">
                       <button
-                        onClick={() => onNavigateToNote(note.title)}
+                        onClick={() => onNavigateToNoteById(note.id)}
                         className="font-bold text-sm text-[#2D2D2D] hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left"
                       >
                         <ExternalLink size={12} className="shrink-0" />
                         <span className="truncate">{note.title}</span>
                       </button>
-                      {getSnippet(note, activeNote.title) && (
+                      {backlinkSnippets.get(note.id) && (
                         <p className="mt-1.5 text-xs text-[#2D2D2D]/60 leading-relaxed line-clamp-3 whitespace-pre-wrap">
-                          {getSnippet(note, activeNote.title)}
+                          {backlinkSnippets.get(note.id)}
                         </p>
                       )}
                     </div>
@@ -252,7 +281,7 @@ export default function RightPanel({
                           )}
                         </div>
                         <button
-                          onClick={() => onNavigateToNote(task.noteTitle)}
+                          onClick={() => onNavigateToNoteById(task.noteId)}
                           className="flex items-center space-x-1 hover:text-[#B89B5E] transition-colors cursor-pointer shrink-0"
                         >
                           <ExternalLink size={10} />
@@ -287,7 +316,7 @@ export default function RightPanel({
                           )}
                         </div>
                         <button
-                          onClick={() => onNavigateToNote(task.noteTitle)}
+                          onClick={() => onNavigateToNoteById(task.noteId)}
                           className="flex items-center space-x-1 hover:text-[#B89B5E] transition-colors cursor-pointer shrink-0"
                         >
                           <ExternalLink size={10} />
@@ -310,30 +339,37 @@ export default function RightPanel({
 
 interface GraphInfoPanelProps {
   notes: Note[];
-  activeNoteTitle?: string;
-  onNavigateToNote: (title: string) => void;
+  activeNoteId?: string;
+  onNavigateToNoteById: (id: string) => void;
 }
 
-function GraphInfoPanel({ notes, activeNoteTitle, onNavigateToNote }: GraphInfoPanelProps) {
+function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfoPanelProps) {
   const stats = useMemo(() => {
     let totalLinks = 0;
     let isolated = 0;
     const degreeMap = new Map<string, number>();
-    notes.forEach(n => degreeMap.set(n.title, 0));
+    notes.forEach(n => degreeMap.set(n.id, 0));
+    const titleToIds = buildTitleToIdsMap(notes);
 
     notes.forEach(note => {
-      if (note.links) {
-        note.links.forEach(target => {
-          if (degreeMap.has(target)) {
+      const targets = new Set<string>();
+      (note.linkRefs ?? []).forEach((id) => {
+        if (degreeMap.has(id)) targets.add(id);
+      });
+      (note.links ?? []).forEach((targetTitle) => {
+        const ids = titleToIds.get(targetTitle);
+        if (ids && ids.length === 1 && degreeMap.has(ids[0])) targets.add(ids[0]);
+      });
+      targets.forEach((targetId) => {
+        if (degreeMap.has(targetId)) {
             totalLinks++;
-            degreeMap.set(target, (degreeMap.get(target) ?? 0) + 1);
-            degreeMap.set(note.title, (degreeMap.get(note.title) ?? 0) + 1);
+            degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
+            degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
           }
-        });
-      }
+      });
     });
 
-    notes.forEach(n => { if ((degreeMap.get(n.title) ?? 0) === 0) isolated++; });
+    notes.forEach(n => { if ((degreeMap.get(n.id) ?? 0) === 0) isolated++; });
 
     // top connected notes
     const ranked = [...degreeMap.entries()]
@@ -345,15 +381,24 @@ function GraphInfoPanel({ notes, activeNoteTitle, onNavigateToNote }: GraphInfoP
   }, [notes]);
 
   const activeConnections = useMemo(() => {
-    if (!activeNoteTitle) return [];
-    const note = notes.find(n => n.title === activeNoteTitle);
+    if (!activeNoteId) return [];
+    const note = notes.find(n => n.id === activeNoteId);
     if (!note) return [];
-    // outgoing + incoming
-    const out = (note.links ?? []).filter(t => notes.some(n => n.title === t));
-    const inc = notes.filter(n => n.id !== note.id && n.links?.includes(activeNoteTitle)).map(n => n.title);
-    const all = [...new Set([...out, ...inc])];
-    return all;
-  }, [notes, activeNoteTitle]);
+    const titleToIds = buildTitleToIdsMap(notes);
+    const out = new Set<string>();
+    const inc = new Set<string>();
+    (note.linkRefs ?? []).forEach((id) => out.add(id));
+    (note.links ?? []).forEach((title) => {
+      const ids = titleToIds.get(title);
+      if (ids && ids.length === 1) out.add(ids[0]);
+    });
+    notes.forEach((candidate) => {
+      if (candidate.id === note.id) return;
+      if ((candidate.linkRefs ?? []).includes(note.id)) inc.add(candidate.id);
+      if (!(candidate.linkRefs?.length) && candidate.links?.includes(note.title)) inc.add(candidate.id);
+    });
+    return [...new Set([...out, ...inc])];
+  }, [notes, activeNoteId]);
 
   return (
     <div className="flex-1 overflow-y-auto border-2 border-[#2D2D2D] font-redaction min-h-0">
@@ -379,28 +424,32 @@ function GraphInfoPanel({ notes, activeNoteTitle, onNavigateToNote }: GraphInfoP
         </div>
 
         {/* Active note connections */}
-        {activeNoteTitle && (
+        {activeNoteId && (
           <div>
             <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mb-1.5 font-bold">
-              Active · {activeNoteTitle}
+              Active · {notes.find((n) => n.id === activeNoteId)?.title ?? 'Unknown'}
             </div>
             {activeConnections.length === 0 ? (
               <div className="text-[10px] text-[#2D2D2D]/40 italic">No connections</div>
             ) : (
               <div className="space-y-1">
-                {activeConnections.slice(0, 6).map(title => (
+                {activeConnections.slice(0, 6).map((id) => {
+                  const target = notes.find((n) => n.id === id);
+                  if (!target) return null;
+                  return (
                   <button
-                    key={title}
-                    onClick={() => onNavigateToNote(title)}
+                    key={id}
+                    onClick={() => onNavigateToNoteById(id)}
                     className="flex items-center gap-1.5 w-full text-left text-[11px] text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors"
                   >
                     <Circle size={5} className="shrink-0 fill-[#B89B5E] text-[#B89B5E]" />
-                    <span className="truncate">{title}</span>
+                    <span className="truncate">{target.title}</span>
                     <span className="ml-auto text-[9px] text-[#2D2D2D]/30 tabular-nums shrink-0">
-                      {stats.degreeMap.get(title) ?? 0}
+                      {stats.degreeMap.get(id) ?? 0}
                     </span>
                   </button>
-                ))}
+                  );
+                })}
                 {activeConnections.length > 6 && (
                   <div className="text-[9px] text-[#2D2D2D]/40 pl-3">+{activeConnections.length - 6} more</div>
                 )}
@@ -414,20 +463,24 @@ function GraphInfoPanel({ notes, activeNoteTitle, onNavigateToNote }: GraphInfoP
           <div>
             <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mb-1.5 font-bold">Most Connected</div>
             <div className="space-y-1">
-              {stats.ranked.map(([title, degree]) => (
+              {stats.ranked.map(([id, degree]) => {
+                const target = notes.find((n) => n.id === id);
+                if (!target) return null;
+                return (
                 <button
-                  key={title}
-                  onClick={() => onNavigateToNote(title)}
+                  key={id}
+                  onClick={() => onNavigateToNoteById(id)}
                   className="flex items-center gap-1.5 w-full text-left text-[11px] text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors"
                 >
                   <div
                     className="shrink-0 bg-[#B89B5E]"
                     style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }}
                   />
-                  <span className="truncate">{title}</span>
+                  <span className="truncate">{target.title}</span>
                   <span className="ml-auto text-[9px] text-[#2D2D2D]/40 tabular-nums shrink-0">{degree}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

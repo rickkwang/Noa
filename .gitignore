@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 .alma-snapshots
+test-results/.last-run.json

@@ -22,6 +22,7 @@ interface EditorProps {
   onRename?: (title: string) => void;
   onClose?: () => void;
   onNavigateToNote: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
   viewMode: 'edit' | 'preview' | 'split';
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   settings: AppSettings;
@@ -38,6 +39,7 @@ export default function Editor({
   onRename,
   onClose,
   onNavigateToNote,
+  onNavigateToNoteById,
   viewMode,
   setViewMode,
   settings,
@@ -362,6 +364,7 @@ export default function Editor({
             allNotes={allNotes}
             settings={settings}
             onNavigateToNote={onNavigateToNote}
+            onNavigateToNoteById={onNavigateToNoteById}
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
             style={viewMode === 'split' ? { width: `${(1 - splitRatio) * 100}%`, flex: 'none' } : undefined}

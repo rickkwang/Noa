@@ -72,7 +72,7 @@ export default function WorkspaceSection({
       {isFileSystemSupported && (
         <SettingItem
           label="Local File Sync"
-          description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Save notes as real .md files on disk.'}
+          description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Directory sync helper for .md files. Not a strongly consistent two-way engine.'}
         >
           <div className="space-y-2">
             {fsHandle ? (
@@ -110,6 +110,9 @@ export default function WorkspaceSection({
                 Last successful sync: {new Date(fsLastSyncAt).toLocaleString()}
               </p>
             )}
+            <p className="text-xs text-[#2D2D2D]/60">
+              Sync status: {syncStatusLabel}. If conflicts happen, use import strategy or manual review before overwrite.
+            </p>
             {fsSyncError && (
               <p className="text-xs text-red-700 border border-red-300 bg-red-50 px-2 py-1">
                 Sync error: {fsSyncError}

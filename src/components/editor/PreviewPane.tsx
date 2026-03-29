@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import { Note, AppSettings } from '../../types';
+import { buildTitleToIdsMap } from '../../lib/noteUtils';
 
 interface BacklinkItem {
   id: string;
@@ -18,6 +19,7 @@ interface PreviewPaneProps {
   allNotes: Note[];
   settings: AppSettings;
   onNavigateToNote: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
   editorStyle: React.CSSProperties;
   contentMaxWidthStyle: React.CSSProperties;
   style?: React.CSSProperties;
@@ -44,6 +46,7 @@ export function PreviewPane({
   allNotes,
   settings,
   onNavigateToNote,
+  onNavigateToNoteById,
   editorStyle,
   contentMaxWidthStyle,
   style,
@@ -51,19 +54,28 @@ export function PreviewPane({
   const scrollRef = useRef<HTMLDivElement>(null);
   useScrollingClass(scrollRef);
 
+  const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
+
   const previewMarkdown = useMemo(
     () =>
       note.content.replace(/\[\[(.*?)\]\]/g, (_, title) => {
         const safeTitle = String(title ?? '').trim();
+        const ids = titleToIds.get(safeTitle);
+        if (ids && ids.length === 1) {
+          return `[${safeTitle}](note-internal://id/${ids[0]})`;
+        }
         const encoded = encodeURIComponent(safeTitle);
-        return `[${safeTitle}](note-internal://${encoded})`;
+        return `[${safeTitle}](note-internal://title/${encoded})`;
       }),
-    [note.content]
+    [note.content, titleToIds]
   );
 
   const backlinks: BacklinkItem[] = useMemo(
-    () => allNotes.filter((n) => n.links && n.links.includes(note.title) && n.id !== note.id),
-    [allNotes, note.title]
+    () => allNotes.filter((n) =>
+      n.id !== note.id &&
+      ((n.linkRefs ?? []).includes(note.id) || (!(n.linkRefs?.length) && n.links && n.links.includes(note.title)))
+    ),
+    [allNotes, note.id, note.title]
   );
 
   return (
@@ -78,8 +90,19 @@ export function PreviewPane({
             rehypePlugins={[rehypeHighlight, rehypeKatex]}
             components={{
               a: ({ href, children, ...props }) => {
-                if (href?.startsWith('note-internal://')) {
-                  const encoded = href.replace('note-internal://', '');
+                if (href?.startsWith('note-internal://id/')) {
+                  const noteId = href.replace('note-internal://id/', '');
+                  return (
+                    <span
+                      className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
+                      onClick={() => onNavigateToNoteById(noteId)}
+                    >
+                      {children}
+                    </span>
+                  );
+                }
+                if (href?.startsWith('note-internal://title/')) {
+                  const encoded = href.replace('note-internal://title/', '');
                   const noteTitle = decodeURIComponent(encoded);
                   return (
                     <span
@@ -114,7 +137,7 @@ export function PreviewPane({
               <div
                 key={backlink.id}
                 className="p-3 bg-[#DCD9CE]/30 border border-[#2D2D2D]/20 hover:border-[#B89B5E] cursor-pointer transition-colors group"
-                onClick={() => onNavigateToNote(backlink.title)}
+                onClick={() => onNavigateToNoteById(backlink.id)}
               >
                 <div className="font-bold text-[#2D2D2D] group-hover:text-[#B89B5E] mb-2 transition-colors">
                   {backlink.title}

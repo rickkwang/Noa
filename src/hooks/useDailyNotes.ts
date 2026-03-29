@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { AppSettings, Folder, Note } from '../types';
 import { applyTemplate, builtinTemplates, formatDate } from '../lib/templates';
 import { storage } from '../lib/storage';
+import { recomputeLinkRefsForNotes } from '../lib/noteUtils';
 
 const DAILY_FOLDER_KEY = 'redaction-diary-daily-folder-id';
 
@@ -52,10 +53,11 @@ export function useDailyNotes({
           folder: dailyFolder.id,
           tags: ['daily'],
           links: [],
+          linkRefs: [],
         };
         storage.saveNote(newNote);
         setActiveNoteIdWithRecent(newNote.id);
-        return [...prevNotes, newNote];
+        return recomputeLinkRefsForNotes([...prevNotes, newNote]);
       });
 
       return nextFolders;

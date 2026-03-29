@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { AppSettings, Folder, Note, SyncStatus } from '../../../types';
+import { Folder, Note, SyncStatus } from '../../../types';
 import { useDataTransfer, ConfirmRequest, DataTransferMessage } from '../../../hooks/useDataTransfer';
 import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
 import { useStorageEstimate } from '../../../hooks/useStorageEstimate';
@@ -12,8 +12,6 @@ import { getBackupHealth } from '../../../lib/backupHealth';
 import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
 
 interface DataSettingsProps {
-  settings: AppSettings;
-  updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
   workspaceName: string;
   notes: Note[];
   folders: Folder[];
@@ -29,8 +27,6 @@ interface DataSettingsProps {
 
 
 export default function DataSettings({
-  settings,
-  updateSettings,
   workspaceName,
   notes,
   folders,
@@ -140,8 +136,8 @@ export default function DataSettings({
                   };
                   const descriptions: Record<string, string> = {
                     overwrite: 'Replace all current notes with imported notes.',
-                    merge: 'Conflicting notes are renamed "(imported)" and added.',
-                    skip: 'Only import notes with no ID conflict.',
+                    merge: 'Conflicting ID/title notes are renamed "(imported)" and added.',
+                    skip: 'Only import notes with no ID/title conflict.',
                   };
                   return (
                     <label key={s} className="flex items-start gap-2 cursor-pointer">

@@ -51,11 +51,12 @@ describe('normalizeAndValidateNotes', () => {
 
   it('coerces non-string fields gracefully', () => {
     const { notes, report } = normalizeAndValidateNotes([
-      { ...validNote, tags: null, links: undefined },
+      { ...validNote, tags: null, links: undefined, linkRefs: [1, 'id-2'] as any },
     ]);
     expect(report.ok).toBe(true);
     expect(notes[0].tags).toEqual([]);
     expect(notes[0].links).toEqual([]);
+    expect(notes[0].linkRefs).toEqual(['id-2']);
   });
 });
 

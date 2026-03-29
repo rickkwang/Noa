@@ -88,8 +88,6 @@ export default function SettingsModal({
 
             {activeTab === 'data' && (
               <DataSettings
-                settings={settings}
-                updateSettings={updateSettings}
                 workspaceName={workspaceName}
                 notes={notes}
                 folders={folders}

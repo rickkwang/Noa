@@ -22,7 +22,7 @@ export const defaultSettings: AppSettings = {
     fuzzySearch: true,
   },
   corePlugins: {
-    graphView: false,
+    graphView: true,
     dailyNotes: true,
   },
 };

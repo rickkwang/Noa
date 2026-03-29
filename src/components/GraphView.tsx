@@ -4,13 +4,14 @@ import { forceCollide } from 'd3-force';
 import { Note } from '../types';
 import { AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
+import { buildTitleToIdsMap, computeTopologySignature } from '../lib/noteUtils';
 
 interface GraphViewProps {
   notes: Note[];
-  onNavigateToNote: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
   settings: AppSettings;
   searchQuery?: string;
-  activeNoteTitle?: string;
+  activeNoteId?: string;
   width: number;
   height: number;
   hideIsolated?: boolean;
@@ -31,11 +32,21 @@ type GraphLinkData = {
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
 
-type TopologyNote = Pick<Note, 'id' | 'title' | 'links'>;
+type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs'>;
 
-function readLinkEndpointName(endpoint: GraphLink['source'] | GraphLink['target']): string {
+function readLinkEndpointId(endpoint: GraphLink['source'] | GraphLink['target']): string {
   if (typeof endpoint === 'string' || typeof endpoint === 'number') return String(endpoint);
-  return (endpoint?.name as string | undefined) ?? '';
+  return (endpoint?.id as string | undefined) ?? '';
+}
+
+function readLinkEndpointTitle(
+  endpoint: GraphLink['source'] | GraphLink['target'],
+  idToTitle: Map<string, string>
+): string {
+  if (typeof endpoint === 'string' || typeof endpoint === 'number') {
+    return idToTitle.get(String(endpoint)) ?? String(endpoint);
+  }
+  return (endpoint?.name as string | undefined) ?? idToTitle.get(String(endpoint?.id ?? '')) ?? '';
 }
 
 function hasDistance(force: unknown): force is { distance: (value: number) => void } {
@@ -46,16 +57,20 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
 
-export default function GraphView({ notes, onNavigateToNote, settings, searchQuery = '', activeNoteTitle, width, height, hideIsolated = false }: GraphViewProps) {
+export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
-  const topologyKey = useMemo(
-    () => notes.map(n => `${n.id}:${n.title}:${(n.links ?? []).join(',')}`).join('|'),
+  const topologyNotes = useMemo(
+    () => notes.map((note) => ({ id: note.id, title: note.title, links: note.links ?? [], linkRefs: note.linkRefs ?? [] })),
     [notes]
+  );
+  const topologyKey = useMemo(
+    () => computeTopologySignature(topologyNotes),
+    [topologyNotes]
   );
   const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[] }>({
     key: topologyKey,
-    notes: notes.map((note) => ({ id: note.id, title: note.title, links: note.links ?? [] })),
+    notes: topologyNotes,
   });
 
   // Obsidian 风格：节点小而精，degree 仅轻微放大
@@ -74,9 +89,9 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
     if (stableTopologyRef.current.key === topologyKey) return;
     stableTopologyRef.current = {
       key: topologyKey,
-      notes: notes.map((note) => ({ id: note.id, title: note.title, links: note.links ?? [] })),
+      notes: topologyNotes,
     };
-  }, [notes, topologyKey]);
+  }, [topologyKey, topologyNotes]);
 
   const graphData = useMemo(() => {
     const nodes: GraphNode[] = [];
@@ -84,46 +99,53 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
     const nodeMap = new Map<string, GraphNode>();
     const degreeMap = new Map<string, number>();
     const topologyNotes = stableTopologyRef.current.notes;
+    const titleToIds = buildTitleToIdsMap(topologyNotes);
 
     topologyNotes.forEach(note => {
-      const node: GraphNode = { id: note.title, name: note.title, degree: 0 };
+      const node: GraphNode = { id: note.id, name: note.title, degree: 0 };
       nodes.push(node);
-      nodeMap.set(note.title, node);
-      degreeMap.set(note.title, 0);
+      nodeMap.set(note.id, node);
+      degreeMap.set(note.id, 0);
     });
 
     const edgeSet = new Set<string>();
     const edgeMap = new Map<string, GraphLink>();
 
     topologyNotes.forEach(note => {
-      if (note.links) {
-        note.links.forEach(linkTarget => {
-          if (nodeMap.has(linkTarget)) {
-            const edgeKey = [note.title, linkTarget].sort().join('→');
-            if (!edgeSet.has(edgeKey)) {
-              edgeSet.add(edgeKey);
-              const nextLink: GraphLink = { source: note.title, target: linkTarget, bidirectional: false };
-              links.push(nextLink);
-              edgeMap.set(edgeKey, nextLink);
-            } else {
-              const existing = edgeMap.get(edgeKey);
-              if (existing) existing.bidirectional = true;
-            }
-            degreeMap.set(linkTarget, (degreeMap.get(linkTarget) ?? 0) + 1);
-            degreeMap.set(note.title, (degreeMap.get(note.title) ?? 0) + 1);
+      const targetIds = new Set<string>();
+      (note.linkRefs ?? []).forEach((id) => {
+        if (nodeMap.has(id)) targetIds.add(id);
+      });
+      (note.links ?? []).forEach((linkTitle) => {
+        const ids = titleToIds.get(linkTitle);
+        if (ids && ids.length === 1 && nodeMap.has(ids[0])) targetIds.add(ids[0]);
+      });
+      targetIds.forEach((targetId) => {
+        if (nodeMap.has(targetId)) {
+          const edgeKey = [note.id, targetId].sort().join('→');
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
+            const nextLink: GraphLink = { source: note.id, target: targetId, bidirectional: false };
+            links.push(nextLink);
+            edgeMap.set(edgeKey, nextLink);
+          } else {
+            const existing = edgeMap.get(edgeKey);
+            if (existing) existing.bidirectional = true;
           }
-        });
-      }
+          degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
+          degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
+        }
+      });
     });
 
     nodes.forEach(n => {
-      n.degree = degreeMap.get(n.name) ?? 0;
+      n.degree = degreeMap.get(String(n.id)) ?? 0;
     });
 
     const filteredNodes = hideIsolated ? nodes.filter(n => n.degree > 0) : nodes;
     const nodeSet = new Set(filteredNodes.map((n) => String(n.id)));
     const filteredLinks = hideIsolated
-      ? links.filter((link) => nodeSet.has(readLinkEndpointName(link.source)) && nodeSet.has(readLinkEndpointName(link.target)))
+      ? links.filter((link) => nodeSet.has(readLinkEndpointId(link.source)) && nodeSet.has(readLinkEndpointId(link.target)))
       : links;
 
     return { nodes: filteredNodes, links: filteredLinks };
@@ -154,6 +176,10 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
   }, [graphData]);
 
   const lowerSearch = searchQuery.toLowerCase().trim();
+  const idToTitle = useMemo(
+    () => new Map(graphData.nodes.map((node) => [String(node.id), node.name])),
+    [graphData.nodes]
+  );
 
   const fontFamily = settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
                      settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
@@ -182,14 +208,14 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
       backgroundColor={bgColor}
       linkColor={(link: GraphLink) => {
         if (lowerSearch) {
-          const srcMatch = readLinkEndpointName(link.source).toLowerCase().includes(lowerSearch);
-          const tgtMatch = readLinkEndpointName(link.target).toLowerCase().includes(lowerSearch);
+          const srcMatch = readLinkEndpointTitle(link.source, idToTitle).toLowerCase().includes(lowerSearch);
+          const tgtMatch = readLinkEndpointTitle(link.target, idToTitle).toLowerCase().includes(lowerSearch);
           if (!srcMatch && !tgtMatch) return `${linkColor}30`;
         }
         return link.bidirectional ? nodeColor : linkColor;
       }}
       linkWidth={(link: GraphLink) => link.bidirectional ? 2.5 : 1.5}
-      onNodeClick={(node: GraphNode) => onNavigateToNote(node.name)}
+      onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
       enableNodeDrag={true}
       onNodeDragEnd={(node: GraphNode) => {
         // 拖拽结束后固定节点位置，不再被物理模拟拉回
@@ -199,7 +225,7 @@ export default function GraphView({ notes, onNavigateToNote, settings, searchQue
       nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
         const degree = node.degree ?? 0;
         const radius = nodeRadius(degree);
-        const isActive = activeNoteTitle && node.name === activeNoteTitle;
+        const isActive = activeNoteId && String(node.id) === activeNoteId;
         const matched = !lowerSearch || node.name.toLowerCase().includes(lowerSearch);
 
         ctx.save();

@@ -39,18 +39,25 @@ export function applyImportStrategy(
 ): Note[] {
   if (strategy === 'overwrite') return incoming;
   const existingIds = new Set(existing.map(n => n.id));
+  const existingTitles = new Set(existing.map(n => n.title));
   if (strategy === 'skip') {
-    const newNotes = incoming.filter(n => !existingIds.has(n.id));
+    const newNotes = incoming.filter(n => !existingIds.has(n.id) && !existingTitles.has(n.title));
     return [...existing, ...newNotes];
   }
   // merge: conflicting notes (same ID) get " (imported)" suffix, new notes appended
   const merged = [...existing];
   const mergedIds = new Set(existing.map(n => n.id));
+  const mergedTitles = new Set(existing.map(n => n.title));
   for (const note of incoming) {
-    if (mergedIds.has(note.id)) {
-      merged.push({ ...note, id: crypto.randomUUID(), title: note.title + ' (imported)' });
+    if (mergedIds.has(note.id) || mergedTitles.has(note.title)) {
+      const renamed = { ...note, id: crypto.randomUUID(), title: note.title + ' (imported)' };
+      merged.push(renamed);
+      mergedIds.add(renamed.id);
+      mergedTitles.add(renamed.title);
     } else {
       merged.push(note);
+      mergedIds.add(note.id);
+      mergedTitles.add(note.title);
     }
   }
   return merged;

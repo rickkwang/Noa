@@ -70,7 +70,8 @@ function parseFrontMatter(text: string): { meta: Record<string, any>; content: s
 function buildFrontMatter(note: Note): string {
   const tags = note.tags?.length ? `[${note.tags.join(', ')}]` : '[]';
   const links = note.links?.length ? `[${note.links.map(l => `"${l}"`).join(', ')}]` : '[]';
-  return `---\nid: ${note.id}\nfolder: ${note.folder || ''}\ntags: ${tags}\nlinks: ${links}\ncreatedAt: ${note.createdAt}\n---\n`;
+  const linkRefs = note.linkRefs?.length ? `[${note.linkRefs.map(id => `"${id}"`).join(', ')}]` : '[]';
+  return `---\nid: ${note.id}\nfolder: ${note.folder || ''}\ntags: ${tags}\nlinks: ${links}\nlinkRefs: ${linkRefs}\ncreatedAt: ${note.createdAt}\n---\n`;
 }
 
 async function getFolderHandle(
@@ -163,6 +164,7 @@ export async function scanDirectory(
           folder: folderId,
           tags: meta.tags || [],
           links: meta.links || [],
+          linkRefs: meta.linkRefs || [],
           createdAt: meta.createdAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
         });

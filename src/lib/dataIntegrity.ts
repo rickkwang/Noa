@@ -42,6 +42,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const folder = isString(obj.folder) ? obj.folder : '';
   const tags = Array.isArray(obj.tags) ? obj.tags.filter(isString) : [];
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
+  const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : undefined;
 
   if (!id.trim()) issues.push({ level: 'error', message: `Note #${idx + 1} has empty id.` });
   if (!title.trim()) issues.push({ level: 'warning', message: `Note #${idx + 1} has empty title.` });
@@ -56,6 +57,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
       folder,
       tags,
       links,
+      linkRefs,
     },
     issues,
   };

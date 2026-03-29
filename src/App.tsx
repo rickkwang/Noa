@@ -36,6 +36,7 @@ export default function App() {
   const [showStorageNotice, setShowStorageNotice] = useState(() =>
     !localStorage.getItem('redaction-storage-notice-seen')
   );
+  const [navigationConflict, setNavigationConflict] = useState<{ title: string; noteIds: string[] } | null>(null);
   const { settings, updateSettings } = useSettings();
 
   const {
@@ -50,6 +51,7 @@ export default function App() {
     handleCreateNote: _handleCreateNote,
     handleImportNote,
     handleNavigateToNote,
+    handleNavigateToNoteById,
     handleDeleteNote: _handleDeleteNote,
     handleCreateFolder,
     handleRenameFolder,
@@ -183,6 +185,21 @@ export default function App() {
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined;
+  const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
+
+  const navigateById = useCallback((id: string) => {
+    if (!notes.some((note) => note.id === id)) return;
+    handleNavigateToNoteById(id);
+  }, [handleNavigateToNoteById, notes]);
+
+  const navigateByTitle = useCallback((title: string) => {
+    const matched = notes.filter((note) => note.title === title);
+    if (matched.length <= 1) {
+      handleNavigateToNote(title);
+      return;
+    }
+    setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
+  }, [handleNavigateToNote, notes]);
 
   const {
     showReminder,
@@ -206,7 +223,7 @@ export default function App() {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     },
-    onOpenNoteById: (id) => setActiveNoteId(id),
+    onOpenNoteById: (id) => navigateById(id),
   });
 
   // BUG-B: flush pending saves before Electron quits — register once, use ref for latest notes
@@ -337,7 +354,8 @@ export default function App() {
               onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
               onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
               onClose={() => handleTabClose(activeNoteId)}
-              onNavigateToNote={handleNavigateToNote}
+              onNavigateToNote={navigateByTitle}
+              onNavigateToNoteById={navigateById}
               viewMode={editorViewMode}
               setViewMode={setEditorViewMode}
               settings={settings}
@@ -379,8 +397,8 @@ export default function App() {
                 <RightPanel
                   tasks={globalTasks}
                   onToggleTask={handleToggleTask}
-                  onNavigateToNote={(title) => {
-                    handleNavigateToNote(title);
+                  onNavigateToNoteById={(id) => {
+                    navigateById(id);
                     if (isMobile) setIsRightPanelOpen(false);
                   }}
                   activeNote={activeNote}
@@ -388,7 +406,7 @@ export default function App() {
                   onTabChange={setActiveRightTab}
                   notes={notes}
                   settings={settings}
-                  activeNoteTitle={activeNote?.title}
+                  activeNoteId={activeNote?.id}
                 />
               </Suspense>
               </ErrorBoundary>
@@ -548,6 +566,47 @@ export default function App() {
             onRetryFsSync={retry}
           />
         </Suspense>
+      )}
+      {navigationConflict && (
+        <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
+          <div className="w-full max-w-lg border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE]">
+              <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Duplicate Title</div>
+              <div className="text-sm text-[#2D2D2D] mt-1">
+                Multiple notes match "<span className="font-bold">{navigationConflict.title}</span>". Select one:
+              </div>
+            </div>
+            <div className="max-h-72 overflow-y-auto p-2 space-y-1">
+              {navigationConflict.noteIds.map((id) => {
+                const note = notes.find((item) => item.id === id);
+                if (!note) return null;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      navigateById(id);
+                      setNavigationConflict(null);
+                    }}
+                    className="w-full text-left border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 px-3 py-2 bg-[#EAE8E0] hover:bg-[#DCD9CE]/40"
+                  >
+                    <div className="text-sm font-bold text-[#2D2D2D] truncate">{note.title}</div>
+                    <div className="text-[11px] text-[#2D2D2D]/60 mt-0.5">
+                      {folderNameById.get(note.folder) ?? 'No Folder'} · Created {new Date(note.createdAt).toLocaleString()}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="border-t border-[#2D2D2D]/20 px-4 py-2 flex justify-end">
+              <button
+                onClick={() => setNavigationConflict(null)}
+                className="text-xs uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-1 text-[#2D2D2D]/70 hover:text-[#2D2D2D]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

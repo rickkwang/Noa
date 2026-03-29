@@ -148,7 +148,8 @@ export const storage = {
           createdAt: n.createdAt || n.date || new Date().toISOString(),
           updatedAt: n.updatedAt || n.date || new Date().toISOString(),
           tags: n.tags || [],
-          links: n.links || []
+          links: n.links || [],
+          linkRefs: n.linkRefs || []
         }));
         await this.saveNotes(migratedNotes);
         localStorage.removeItem('pixel-notes');

@@ -7,6 +7,7 @@ export interface Note {
   folder: string;
   tags: string[];
   links: string[];
+  linkRefs?: string[];
 }
 
 export interface Link {

@@ -13,7 +13,7 @@ interface LoadErrorState {
   message: string;
 }
 
-import { extractLinks, extractTags } from '../lib/noteUtils';
+import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { useDailyNotes } from './useDailyNotes';
 
@@ -45,6 +45,26 @@ export function useNotes(settings?: AppSettings) {
     }, 500);
     saveTimers.current.set(note.id, t);
   }, []);
+
+  const sameStringArray = useCallback((a: string[] = [], b: string[] = []) => {
+    if (a.length !== b.length) return false;
+    return a.every((value, index) => value === b[index]);
+  }, []);
+
+  const syncLinkRefs = useCallback((nextNotes: Note[], previousNotes?: Note[], changedIds?: Set<string>) => {
+    const withRefs = changedIds
+      ? recomputeLinkRefsForSubset(nextNotes, changedIds)
+      : recomputeLinkRefsForNotes(nextNotes);
+    if (!previousNotes) return withRefs;
+    const previousById = new Map(previousNotes.map((note) => [note.id, note]));
+    withRefs.forEach((note) => {
+      const previous = previousById.get(note.id);
+      if (!previous || !sameStringArray(previous.linkRefs ?? [], note.linkRefs ?? [])) {
+        debounceSave(note);
+      }
+    });
+    return withRefs;
+  }, [debounceSave, sameStringArray]);
 
   // Cleanup all pending save timers on unmount
   useEffect(() => {
@@ -111,8 +131,12 @@ export function useNotes(settings?: AppSettings) {
               'Data integrity check failed while loading notes.',
             );
           }
-          const sorted = sortNotesByRecent(normalized);
+          const hasLegacyLinkRefs = normalized.some((note) => note.linkRefs == null);
+          const sorted = sortNotesByRecent(syncLinkRefs(normalized));
           setNotes(sorted);
+          if (hasLegacyLinkRefs) {
+            void storage.saveNotes(sorted).catch(() => setSaveError('Failed to save note. Storage may be full.'));
+          }
           const lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY);
           const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
             ? lastActiveId
@@ -154,7 +178,8 @@ Export regularly: use Settings → Data → Export Backup.`,
           updatedAt: new Date().toISOString(),
           folder: 'diary',
           tags: [],
-          links: []
+          links: [],
+          linkRefs: [],
         };
           const dailyFolderId = crypto.randomUUID();
           const dateFormat = 'YYYY-MM-DD';
@@ -168,7 +193,8 @@ Export regularly: use Settings → Data → Export Backup.`,
             updatedAt: new Date().toISOString(),
             folder: dailyFolderId,
             tags: ['daily'],
-            links: []
+            links: [],
+            linkRefs: [],
           };
           const initialFolders = [
             { id: 'diary', name: 'diaries' },
@@ -176,7 +202,7 @@ Export regularly: use Settings → Data → Export Backup.`,
             { id: dailyFolderId, name: 'Daily Notes' }
           ];
           setFolders(initialFolders);
-          setNotes([welcomeNote, dailyNote]);
+          setNotes(syncLinkRefs([welcomeNote, dailyNote]));
           setActiveNoteId(welcomeNote.id);
           await storage.saveFolders(initialFolders);
           await storage.saveNote(welcomeNote);
@@ -219,11 +245,12 @@ Export regularly: use Settings → Data → Export Backup.`,
           ? { ...n, content, updatedAt: new Date().toISOString(), links: extractLinks(content), tags: extractTags(content) }
           : n
       );
-      const note = updated.find(n => n.id === id);
+      const withRefs = syncLinkRefs(updated, prev, new Set([id]));
+      const note = withRefs.find(n => n.id === id);
       if (note) debounceSave(note);
-      return updated;
+      return withRefs;
     });
-  }, [debounceSave]);
+  }, [debounceSave, syncLinkRefs]);
 
   const handleRenameNote = useCallback((id: string, newTitle: string) => {
     setNotes(prev => {
@@ -249,14 +276,15 @@ Export regularly: use Settings → Data → Export Backup.`,
         }
         return n;
       });
-      updated.forEach(n => {
+      const withRefs = syncLinkRefs(updated, prev);
+      withRefs.forEach(n => {
         if (n.id === id || (n.links?.includes(newTitle) && n.id !== id)) {
           debounceSave(n);
         }
       });
-      return updated;
+      return withRefs;
     });
-  }, [debounceSave]);
+  }, [debounceSave, syncLinkRefs]);
 
   const setActiveNoteIdWithRecent = useCallback((id: string) => {
     setActiveNoteId(id);
@@ -282,12 +310,14 @@ Export regularly: use Settings → Data → Export Backup.`,
       updatedAt: new Date().toISOString(),
       folder: folderId,
       tags: [],
-      links: []
+      links: [],
+      linkRefs: [],
     };
-    setNotes(prev => [...prev, newNote]);
-    storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
+    setNotes(prev => {
+      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+    });
     setActiveNoteIdWithRecent(newNote.id);
-  }, [setActiveNoteIdWithRecent]);
+  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleImportNote = useCallback((title: string, content: string, folderId: string = 'diary') => {
     const newNote: Note = {
@@ -298,11 +328,17 @@ Export regularly: use Settings → Data → Export Backup.`,
       updatedAt: new Date().toISOString(),
       folder: folderId,
       tags: extractTags(content),
-      links: extractLinks(content)
+      links: extractLinks(content),
+      linkRefs: [],
     };
-    setNotes(prev => [...prev, newNote]);
-    storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
+    setNotes(prev => {
+      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+    });
     setActiveNoteIdWithRecent(newNote.id);
+  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
+
+  const handleNavigateToNoteById = useCallback((id: string) => {
+    setActiveNoteIdWithRecent(id);
   }, [setActiveNoteIdWithRecent]);
 
   const handleNavigateToNote = useCallback((title: string) => {
@@ -320,13 +356,13 @@ Export regularly: use Settings → Data → Export Backup.`,
         updatedAt: new Date().toISOString(),
         folder: folders[0]?.id ?? 'diary',
         tags: [],
-        links: []
+        links: [],
+        linkRefs: [],
       };
-      storage.saveNote(newNote).catch(() => setSaveError('Failed to save note. Storage may be full.'));
       setActiveNoteIdWithRecent(newNote.id);
-      return [...prev, newNote];
+      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-  }, [setActiveNoteIdWithRecent, folders]);
+  }, [setActiveNoteIdWithRecent, folders, syncLinkRefs]);
 
   const handleDeleteNote = useCallback(async (id: string) => {
     try {
@@ -335,9 +371,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       setSaveError('Failed to delete note.');
       return;
     }
-    setNotes(prev => prev.filter(n => n.id !== id));
+    setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
-  }, []);
+  }, [syncLinkRefs]);
 
   const handleCreateFolder = useCallback(() => {
     const newFolder: Folder = { id: crypto.randomUUID(), name: 'New Folder' };
@@ -355,9 +391,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       Promise.all(toDelete.map(n => storage.deleteNote(n.id))).catch(() => {
         setSaveError('Failed to delete some notes in folder.');
       });
-      return prev.filter(n => n.folder !== id);
+      return syncLinkRefs(prev.filter(n => n.folder !== id), prev);
     });
-  }, []);
+  }, [syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
     settings,
@@ -372,25 +408,31 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (!targetNote) return prev;
       const { updatedContent, updated: didUpdate } = toggleTaskInNoteContent(targetNote.content, task);
       if (!didUpdate) return prev;
-      const updated = prev.map(n => n.id === task.noteId ? { ...n, content: updatedContent, updatedAt: new Date().toISOString() } : n);
-      const updatedNote = updated.find(n => n.id === task.noteId)!;
+      const updated = prev.map(n =>
+        n.id === task.noteId
+          ? { ...n, content: updatedContent, updatedAt: new Date().toISOString(), links: extractLinks(updatedContent), tags: extractTags(updatedContent) }
+          : n
+      );
+      const withRefs = syncLinkRefs(updated, prev, new Set([task.noteId]));
+      const updatedNote = withRefs.find(n => n.id === task.noteId)!;
       debounceSave(updatedNote);
-      return updated;
+      return withRefs;
     });
-  }, [debounceSave]);
+  }, [debounceSave, syncLinkRefs]);
 
   const handleImportData = useCallback(async (importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
     const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
-    setNotes(normalizedNotes);
+    const withRefs = syncLinkRefs(normalizedNotes);
+    setNotes(withRefs);
     if (importedFolders) setFolders(importedFolders);
     if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
-    await storage.saveNotes(normalizedNotes);
+    await storage.saveNotes(withRefs);
     if (shouldPrune) {
-      await storage.pruneOrphanedNotes(normalizedNotes.map(n => n.id));
+      await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
     }
     if (importedFolders) await storage.saveFolders(importedFolders);
     if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
-  }, []);
+  }, [syncLinkRefs]);
 
   const retryInitialization = useCallback(() => {
     setIsLoaded(false);
@@ -446,6 +488,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     handleCreateNote,
     handleImportNote,
     handleNavigateToNote,
+    handleNavigateToNoteById,
     handleDeleteNote,
     handleCreateFolder,
     handleRenameFolder,

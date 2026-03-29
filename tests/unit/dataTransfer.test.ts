@@ -75,4 +75,18 @@ describe('applyImportStrategy', () => {
     const result = applyImportStrategy(allExisting, existing, 'skip');
     expect(result).toHaveLength(2);
   });
+
+  it('skip: skips duplicate titles even with different ids', () => {
+    const duplicateTitle = [makeNote('id99', 'Note A')];
+    const result = applyImportStrategy(duplicateTitle, existing, 'skip');
+    expect(result).toHaveLength(2);
+    expect(result.some(n => n.id === 'id99')).toBe(false);
+  });
+
+  it('merge: renames duplicate titles even when id is new', () => {
+    const duplicateTitle = [makeNote('id99', 'Note A')];
+    const result = applyImportStrategy(duplicateTitle, existing, 'merge');
+    const imported = result.find((n) => n.id !== 'id1' && n.id !== 'id2');
+    expect(imported?.title).toBe('Note A (imported)');
+  });
 });
