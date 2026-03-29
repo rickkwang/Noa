@@ -1,6 +1,7 @@
 @import "@fontsource/redaction-50";
 @import "@fontsource/pixelify-sans";
 @import "@fontsource/work-sans";
+@import "@fontsource/jetbrains-mono";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -8,6 +9,7 @@
   --font-redaction: "Redaction 50", serif;
   --font-pixelify: "Pixelify Sans", sans-serif;
   --font-work-sans: "Work Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 button {
@@ -33,18 +35,31 @@ body {
   height: 8px;
   background: transparent;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+@keyframes scrollbar-fadeout {
+  from { background: rgba(45, 45, 45, 0.25); }
+  to   { background: rgba(45, 45, 45, 0); }
+}
+@keyframes scrollbar-fadein {
+  from { background: rgba(45, 45, 45, 0); }
+  to   { background: rgba(45, 45, 45, 0.25); }
+}
 ::-webkit-scrollbar-thumb {
-  background: transparent;
+  background: rgba(45, 45, 45, 0);
   border-radius: 4px;
 }
-*:hover::-webkit-scrollbar-thumb {
-  background: rgba(45, 45, 45, 0.2);
-}
-*:hover::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: rgba(45, 45, 45, 0.4);
+}
+.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(45, 45, 45, 0.25);
+  animation: scrollbar-fadein 0.15s ease;
+}
+.is-scrolling-out::-webkit-scrollbar-thumb {
+  animation: scrollbar-fadeout 1.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;

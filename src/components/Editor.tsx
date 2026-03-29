@@ -8,6 +8,7 @@ import { EditorToolbar } from './editor/EditorToolbar';
 import { TocPanel } from './editor/TocPanel';
 import { PreviewPane } from './editor/PreviewPane';
 import { MentionDropdown } from './editor/MentionDropdown';
+import { useScrollingClass } from '../hooks/useScrollingClass';
 
 interface EditorTab {
   id: string;
@@ -51,14 +52,46 @@ export default function Editor({
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(true);
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => { dragCleanupRef.current?.(); }, []);
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const container = splitContainerRef.current;
+    if (!container) return;
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const rect = container.getBoundingClientRect();
+      const ratio = Math.min(Math.max((ev.clientX - rect.left) / rect.width, 0.2), 0.8);
+      setSplitRatio(ratio);
+    };
+    const cleanup = () => {
+      isDragging.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', cleanup);
+      dragCleanupRef.current = null;
+    };
+    dragCleanupRef.current = cleanup;
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', cleanup);
+  }, []);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editPaneRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
 
+  useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
+
   const { insertFormatting, jumpToLine, insertMention } = useCodeMirror({
     containerRef: editorContainerRef,
+    maxWidth: settings.appearance.maxWidth,
     note,
     isDark,
     onUpdate,
@@ -279,6 +312,7 @@ export default function Editor({
       )}
 
       <div
+        ref={splitContainerRef}
         className={`flex-1 flex overflow-hidden z-10 relative ${
           settings.appearance.focusMode ? 'opacity-50 hover:opacity-100 transition-opacity duration-300' : ''
         }`}
@@ -286,10 +320,15 @@ export default function Editor({
         {/* Edit Pane — always mounted to preserve undo history */}
         <div
           ref={editPaneRef}
-          className={`flex-1 p-8 overflow-y-auto relative ${viewMode === 'split' ? 'border-r border-[#2D2D2D] border-dashed' : ''}`}
-          style={{ display: viewMode === 'preview' ? 'none' : undefined }}
+          className="overflow-y-auto relative"
+          style={{
+            display: viewMode === 'preview' ? 'none' : undefined,
+            width: viewMode === 'split' ? `${splitRatio * 100}%` : undefined,
+            flex: viewMode === 'split' ? 'none' : '1',
+            padding: '2rem 0 2rem 2rem',
+          }}
         >
-          <div className="h-full" style={{ ...contentMaxWidthStyle, ...editorStyle }}>
+          <div className="h-full" style={editorStyle}>
             <div ref={editorContainerRef} className="h-full" />
           </div>
 
@@ -310,6 +349,13 @@ export default function Editor({
           )}
         </div>
 
+        {viewMode === 'split' && (
+          <div
+            className="w-px bg-[#2D2D2D]/20 cursor-col-resize hover:bg-[#B89B5E]/60 transition-colors shrink-0 select-none"
+            onMouseDown={handleDividerMouseDown}
+          />
+        )}
+
         {viewMode !== 'edit' && (
           <PreviewPane
             note={note}
@@ -318,6 +364,7 @@ export default function Editor({
             onNavigateToNote={onNavigateToNote}
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
+            style={viewMode === 'split' ? { width: `${(1 - splitRatio) * 100}%`, flex: 'none' } : undefined}
           />
         )}
       </div>

@@ -33,10 +33,10 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'monospace', color: '#C9AA72', background: '#3D382820' },
+  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#C9AA72', background: '#3D382820' },
   { tag: tags.link, color: '#C9AA72', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#9A908060' },
+  { tag: [tags.processingInstruction, tags.meta], color: '#9A908060', fontFamily: '"JetBrains Mono", monospace' },
   { tag: tags.quote, fontStyle: 'italic', color: '#9A9080' },
 ]);
 
@@ -62,10 +62,10 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'monospace', color: '#B89B5E', background: '#DCD9CE' },
+  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#B89B5E', background: '#DCD9CE' },
   { tag: tags.link, color: '#B89B5E', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2D40' },
+  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2D40', fontFamily: '"JetBrains Mono", monospace' },
   { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2D80' },
 ]);
 
@@ -76,6 +76,7 @@ interface UseCodeMirrorOptions {
   onUpdate: (content: string) => void;
   onMentionTrigger: (query: { query: string; index: number; x: number; y: number } | null) => void;
   editPaneRef: React.RefObject<HTMLDivElement | null>;
+  maxWidth: number;
 }
 
 export function useCodeMirror({
@@ -85,6 +86,7 @@ export function useCodeMirror({
   onUpdate,
   onMentionTrigger,
   editPaneRef,
+  maxWidth,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -134,6 +136,10 @@ export function useCodeMirror({
       },
     ]);
 
+    const contentWidthTheme = EditorView.theme({
+      '.cm-content': { maxWidth: `${maxWidth}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
+    });
+
     const extensions = [
       markdown(),
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
@@ -143,6 +149,7 @@ export function useCodeMirror({
       cmPlaceholder('Start typing...'),
       EditorView.lineWrapping,
       isDark ? darkTheme : lightTheme,
+      contentWidthTheme,
     ];
 
     const docContent = note?.content ?? '';
@@ -162,7 +169,7 @@ export function useCodeMirror({
       view.destroy();
       editorViewRef.current = null;
     };
-  }, [note?.id, isDark]);
+  }, [note?.id, isDark, maxWidth]);
 
   // Sync external content changes without destroying undo history
   useEffect(() => {

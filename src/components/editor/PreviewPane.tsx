@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { useScrollingClass } from '../../hooks/useScrollingClass';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -19,6 +20,7 @@ interface PreviewPaneProps {
   onNavigateToNote: (title: string) => void;
   editorStyle: React.CSSProperties;
   contentMaxWidthStyle: React.CSSProperties;
+  style?: React.CSSProperties;
 }
 
 function getSnippet(content: string, title: string) {
@@ -44,7 +46,11 @@ export function PreviewPane({
   onNavigateToNote,
   editorStyle,
   contentMaxWidthStyle,
+  style,
 }: PreviewPaneProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useScrollingClass(scrollRef);
+
   const previewMarkdown = useMemo(
     () =>
       note.content.replace(/\[\[(.*?)\]\]/g, (_, title) => {
@@ -61,7 +67,7 @@ export function PreviewPane({
   );
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50">
+    <div ref={scrollRef} className="flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50" style={{ paddingRight: '2rem', ...style }}>
       <div className="flex-1">
         <div
           className="w-full h-full text-[#2D2D2D] prose prose-sm max-w-none prose-headings:font-bold prose-a:text-[#B89B5E] prose-a:no-underline hover:prose-a:underline prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-code:px-1 prose-code:rounded-sm"
