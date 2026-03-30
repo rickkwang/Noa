@@ -7,6 +7,7 @@ interface WorkspaceSectionProps {
   workspaceName: string;
   folderInputRef: RefObject<HTMLInputElement | null>;
   onImportFolderInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImportVaultFolder: () => void;
   onCreateWorkspace: () => void;
   isFileSystemSupported: boolean;
   fsHandle: FileSystemDirectoryHandle | null;
@@ -23,6 +24,7 @@ export default function WorkspaceSection({
   workspaceName,
   folderInputRef,
   onImportFolderInput,
+  onImportVaultFolder,
   onCreateWorkspace,
   isFileSystemSupported,
   fsHandle,
@@ -44,11 +46,17 @@ export default function WorkspaceSection({
 
       <div className="flex space-x-4 mt-4">
         <button
-          onClick={() => folderInputRef.current?.click()}
+          onClick={() => {
+            if (typeof window.showDirectoryPicker === 'function') {
+              onImportVaultFolder();
+              return;
+            }
+            folderInputRef.current?.click();
+          }}
           className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
         >
           <FolderOpen size={14} />
-          <span>Open Vault Folder</span>
+          <span>Import Vault Folder</span>
         </button>
         <button
           onClick={onCreateWorkspace}
@@ -64,6 +72,7 @@ export default function WorkspaceSection({
         webkitdirectory
         directory
         multiple
+        data-testid="vault-folder-input"
         className="hidden"
         ref={folderInputRef}
         onChange={onImportFolderInput}
@@ -112,6 +121,9 @@ export default function WorkspaceSection({
             )}
             <p className="text-xs text-[#2D2D2D]/60">
               Sync status: {syncStatusLabel}. If conflicts happen, use import strategy or manual review before overwrite.
+            </p>
+            <p className="text-xs text-[#2D2D2D]/60">
+              Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
             </p>
             {fsSyncError && (
               <p className="text-xs text-red-700 border border-red-300 bg-red-50 px-2 py-1">

@@ -39,24 +39,55 @@ async function waitForMarkerPersisted(page: import('@playwright/test').Page, mar
   );
 }
 
+async function waitForFoldersPersisted(page: import('@playwright/test').Page, expectedPaths: string[]) {
+  await page.waitForFunction(
+    async (paths) => {
+      const request = indexedDB.open('redaction-diary-folders-db');
+      const db = await new Promise<IDBDatabase | null>((resolve) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+      });
+      if (!db) return false;
+
+      const tx = db.transaction('folders', 'readonly');
+      const store = tx.objectStore('folders');
+      const folders = await new Promise<any[]>((resolve) => {
+        const out: any[] = [];
+        const cursorReq = store.openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (!cursor) {
+            resolve(out);
+            return;
+          }
+          out.push(cursor.value);
+          cursor.continue();
+        };
+        cursorReq.onerror = () => resolve([]);
+      });
+
+      db.close();
+      const names = new Set(folders.filter((folder) => folder && typeof folder.name === 'string').map((folder) => folder.name));
+      return paths.every((path) => names.has(path));
+    },
+    expectedPaths,
+    { timeout: 10_000 },
+  );
+}
+
 async function installMockDirectoryPicker(
   page: import('@playwright/test').Page,
 ) {
   await page.addInitScript(async () => {
-    await new Promise<void>((resolve) => {
-      const request = indexedDB.deleteDatabase('redaction-diary-fs-db');
-      request.onsuccess = () => resolve();
-      request.onerror = () => resolve();
-      request.onblocked = () => resolve();
-    });
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const syncMode = { failWrites: false };
     (window as typeof window & { __syncMode?: typeof syncMode }).__syncMode = syncMode;
+    (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = false;
 
     class MockFileHandle {
       kind = 'file' as const;
       name: string;
-      private content = '';
+      content = '';
 
       constructor(name: string) {
         this.name = name;
@@ -64,8 +95,10 @@ async function installMockDirectoryPicker(
 
       async getFile() {
         return {
+          name: this.name,
           text: async () => this.content,
           lastModified: Date.now(),
+          type: '',
         };
       }
 
@@ -139,14 +172,68 @@ async function installMockDirectoryPicker(
       }
     }
 
+    const seedFromPath = (root: MockDirectoryHandle, path: string, content?: string) => {
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length === 0) return;
+      let current: MockDirectoryHandle = root;
+      for (let i = 0; i < parts.length - 1; i += 1) {
+        const dirName = parts[i];
+        const existing = current.entriesMap.get(dirName);
+        if (existing instanceof MockDirectoryHandle) {
+          current = existing;
+          continue;
+        }
+        const next = new MockDirectoryHandle(dirName);
+        current.entriesMap.set(dirName, next);
+        current = next;
+      }
+      const fileName = parts[parts.length - 1];
+      const file = new MockFileHandle(fileName);
+      if (typeof content === 'string') {
+        file['content'] = content;
+      }
+      current.entriesMap.set(fileName, file);
+    };
+
     const picker: NonNullable<typeof window.showDirectoryPicker> = async () => {
       await delay(30);
-      return new MockDirectoryHandle('mock-sync') as unknown as FileSystemDirectoryHandle;
+      (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = true;
+      const seed = (window as typeof window & {
+        __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
+      }).__pickerSeed;
+      const root = new MockDirectoryHandle(seed?.rootName || 'mock-vault');
+      if (seed) {
+        (seed.dirs ?? []).forEach((dirPath) => {
+          const parts = dirPath.split('/').filter(Boolean);
+          let current = root;
+          for (const part of parts) {
+            const existing = current.entriesMap.get(part);
+            if (existing instanceof MockDirectoryHandle) {
+              current = existing;
+              continue;
+            }
+            const next = new MockDirectoryHandle(part);
+            current.entriesMap.set(part, next);
+            current = next;
+          }
+        });
+        (seed.files ?? []).forEach(({ path, content }) => seedFromPath(root, path, content));
+      }
+      return root as unknown as FileSystemDirectoryHandle;
     };
+    try {
+      // Some browsers expose a native directory picker that is not writable;
+      // delete first so the mock reliably shadows it in Playwright.
+      delete (window as typeof window & { showDirectoryPicker?: unknown }).showDirectoryPicker;
+    } catch {
+      // Best effort only.
+    }
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
+      writable: true,
       value: picker,
     });
+
   });
 }
 
@@ -219,6 +306,52 @@ test('graph tab opens in right panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Graph' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Backlinks' })).toBeVisible();
+});
+
+test('vault import entry is labeled as migration', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Data' }).click();
+  await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
+});
+
+test('vault import preserves nested folder structure', async ({ page }) => {
+  const vaultSuffix = `vault-${Date.now()}`;
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Data' }).click();
+  await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
+  await page.evaluate((suffix) => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
+    }).__pickerSeed = {
+      rootName: `Projects-${suffix}`,
+      dirs: [
+        `Projects-${suffix}/Noa`,
+        `Projects-${suffix}/Noa/Specs`,
+        `Projects-${suffix}/Noa/empty-folder`,
+      ],
+      files: [
+        { path: `Projects-${suffix}/Noa/Specs/plan.md`, content: '# Plan\n\nVault import test.' },
+        { path: `Projects-${suffix}/root-note.md`, content: '# Root Note\n\nVault import test.' },
+      ],
+    };
+  }, vaultSuffix);
+  await page.getByRole('button', { name: 'Import Vault Folder' }).click();
+  await page.waitForFunction(() => (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked === true, null, { timeout: 5_000 });
+  await expect(page.getByRole('button', { name: 'Confirm' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  await waitForFoldersPersisted(page, [
+    `Projects-${vaultSuffix}`,
+    `Projects-${vaultSuffix}/Noa`,
+    `Projects-${vaultSuffix}/Noa/Specs`,
+    `Projects-${vaultSuffix}/Noa/empty-folder`,
+  ]);
+
+  const fileTree = page.getByTestId('sidebar-file-tree');
+  await expect(fileTree.getByText(`Projects-${vaultSuffix}`, { exact: true })).toBeVisible();
 });
 
 test('multi-tab content persists after closing and reopening tabs', async ({ page }) => {

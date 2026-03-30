@@ -186,8 +186,9 @@ export function getFolderImportPath(file: Pick<File, 'webkitRelativePath'>): str
   const relativePath = (file.webkitRelativePath || '').trim();
   if (!relativePath) return '';
   const parts = relativePath.split('/').filter(Boolean);
-  if (parts.length <= 2) return '';
-  return parts.slice(1, -1).join('/');
+  if (parts.length < 2) return '';
+  if (parts.length === 2) return parts[0];
+  return parts.slice(0, -1).join('/');
 }
 
 export function classifyFolderImportFile(file: Pick<File, 'name' | 'type'>): { kind: 'text' | 'attachment' | 'unsupported' } {
@@ -278,6 +279,56 @@ function canDecodeBase64(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+interface VaultScanFile {
+  pathSegments: string[];
+  file: File;
+}
+
+function expandFolderHierarchy(paths: Iterable<string>): string[] {
+  const allPaths = new Set<string>();
+  for (const path of paths) {
+    const segments = sanitizeFolderPath(path).split('/').filter(Boolean);
+    if (segments.length === 0) continue;
+    const accum: string[] = [];
+    for (const segment of segments) {
+      accum.push(segment);
+      allPaths.add(accum.join('/'));
+    }
+  }
+  return Array.from(allPaths);
+}
+
+async function collectVaultDirectoryEntries(
+  dirHandle: FileSystemDirectoryHandle,
+  relativeSegments: string[] = [],
+  folderPaths = new Set<string>(),
+  files: VaultScanFile[] = [],
+): Promise<{ folderPaths: Set<string>; files: VaultScanFile[] }> {
+  const folderPath = sanitizeFolderPath(relativeSegments.join('/'));
+  if (folderPath) {
+    folderPaths.add(folderPath);
+  }
+
+  for await (const [entryName, handle] of dirHandle.entries()) {
+    if (entryName === '.obsidian' || entryName === '.DS_Store') continue;
+    if (handle.kind === 'directory') {
+      await collectVaultDirectoryEntries(
+        handle as FileSystemDirectoryHandle,
+        [...relativeSegments, entryName],
+        folderPaths,
+        files,
+      );
+      continue;
+    }
+
+    const file = await (handle as FileSystemFileHandle).getFile();
+    if (file.name === '.DS_Store') continue;
+    files.push({ pathSegments: [...relativeSegments, file.name], file });
+  }
+
+  return { folderPaths, files };
 }
 
 function findInvalidAttachmentPayload(notes: ImportedNote[]): string | null {
@@ -635,6 +686,123 @@ export function useDataTransfer({
     [notes, folders, notify, onImportData, requestConfirm],
   );
 
+  const importVaultFolder = useCallback(async () => {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      notify({
+        type: 'error',
+        text: 'Vault migration requires directory picker support in this environment.',
+      });
+      return;
+    }
+
+    try {
+      const rootHandle = await window.showDirectoryPicker({ mode: 'read' });
+      const workspaceLabel = rootHandle.name || 'Imported Vault';
+      const { folderPaths, files } = await collectVaultDirectoryEntries(rootHandle, rootHandle.name ? [rootHandle.name] : []);
+      const sortedFolderPaths = expandFolderHierarchy(folderPaths).sort((a, b) => {
+        const depthDiff = a.split('/').length - b.split('/').length;
+        return depthDiff !== 0 ? depthDiff : a.localeCompare(b);
+      });
+      const newFolders = sortedFolderPaths.map((name) => ({ id: crypto.randomUUID(), name }));
+      const folderIdByPath = new Map(newFolders.map((folder) => [folder.name, folder.id]));
+      const newNotes: ImportedNote[] = [];
+
+      for (const entry of files) {
+        if (entry.pathSegments.some((segment) => segment === '.obsidian')) continue;
+        const file = entry.file;
+        const folderPath = sanitizeFolderPath(entry.pathSegments.slice(0, -1).join('/'));
+        const folderId = folderPath ? folderIdByPath.get(folderPath) ?? '' : '';
+        const classification = classifyFolderImportFile(file);
+        if (classification.kind === 'unsupported') continue;
+
+        if (classification.kind === 'text') {
+          const content = await file.text();
+          newNotes.push({
+            id: crypto.randomUUID(),
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            content,
+            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
+            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
+            folder: folderId,
+            tags: extractTags(content),
+            links: extractLinks(content),
+          });
+        } else {
+          const noteId = crypto.randomUUID();
+          const attachmentId = crypto.randomUUID();
+          const mimeType = inferAttachmentMimeType(file);
+          const attachment: Attachment = {
+            id: attachmentId,
+            noteId,
+            filename: file.name,
+            mimeType,
+            size: file.size,
+            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
+            vaultPath: `attachments/${noteId}/${attachmentId}-${file.name}`,
+          };
+          newNotes.push({
+            id: noteId,
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            content: isInlinePreviewableMimeType(mimeType)
+              ? `![[attachments/${noteId}/${attachmentId}-${file.name}]]`
+              : `Attached file: ${file.name}`,
+            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
+            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
+            folder: folderId,
+            tags: [],
+            links: [],
+            attachments: [attachment],
+          });
+        }
+      }
+
+      const { notes: validatedNotes, report } = normalizeAndValidateNotes(newNotes);
+      if (!report.ok) {
+        const appError = fromImportError('import_integrity_failed', 'Vault migration integrity check failed.');
+        notify({
+          type: 'error',
+          text: report.issues.find((issue) => issue.level === 'error')?.message ?? appError.userMessage,
+          code: appError.code,
+          suggestedAction: appError.suggestedAction,
+        });
+        return;
+      }
+
+      requestConfirm({
+        message: `Importing "${workspaceLabel}" will replace current data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
+        onConfirm: async () => {
+          try {
+            await onImportData(validatedNotes as ImportedNote[], newFolders, workspaceLabel, true);
+            notify({
+              type: 'success',
+              text: `Migrated ${validatedNotes.length} note(s) and ${newFolders.length} folder(s) from "${workspaceLabel}".`,
+            });
+          } catch (error) {
+            const appError = fromStorageError(error);
+            recordErrorSnapshot({
+              at: new Date().toISOString(),
+              operation: 'import_vault',
+              code: appError.code,
+              message: error instanceof Error ? error.message : appError.userMessage,
+              suggestedAction: appError.suggestedAction,
+            });
+            notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+          }
+        },
+      });
+    } catch (error) {
+      const appError = fromStorageError(error);
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'import_vault',
+        code: appError.code,
+        message: error instanceof Error ? error.message : appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
+      notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+    }
+  }, [folders, notes, notify, onImportData, requestConfirm]);
+
   const importFolderFiles = useCallback(
     (files: FileList) => {
       const doImport = async () => {
@@ -649,11 +817,24 @@ export function useDataTransfer({
 
         const getOrCreateFolder = (folderName: string) => {
           const normalized = sanitizeFolderPath(folderName);
-          const existing = newFolders.find((f) => f.name === normalized);
-          if (existing) return existing;
-          const folder = { id: crypto.randomUUID(), name: normalized };
-          newFolders.push(folder);
-          return folder;
+          const segments = normalized.split('/').filter(Boolean);
+          if (segments.length === 0) {
+            return null;
+          }
+
+          let currentPath = '';
+          let currentFolder = null as Folder | null;
+          for (const segment of segments) {
+            currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+            const existing = newFolders.find((f) => f.name === currentPath);
+            if (existing) {
+              currentFolder = existing;
+              continue;
+            }
+            currentFolder = { id: crypto.randomUUID(), name: currentPath };
+            newFolders.push(currentFolder);
+          }
+          return currentFolder;
         };
 
         const addTextNote = async (file: File, folderId: string) => {
@@ -703,7 +884,7 @@ export function useDataTransfer({
           if (classification.kind === 'unsupported') continue;
 
           const folderPath = getFolderImportPath(file);
-          const folderId = folderPath ? getOrCreateFolder(folderPath).id : '';
+          const folderId = folderPath ? (getOrCreateFolder(folderPath)?.id ?? '') : '';
           if (classification.kind === 'text') {
             await addTextNote(file, folderId);
           } else {
@@ -1055,6 +1236,7 @@ export function useDataTransfer({
     exportZip,
     exportHtmlZip,
     importJsonFile,
+    importVaultFolder,
     importFolderFiles,
     createNewWorkspace,
     connectFolder,

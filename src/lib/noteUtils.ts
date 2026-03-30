@@ -6,7 +6,7 @@ export const extractLinks = (content: string): string[] => {
 };
 
 export const extractTags = (content: string): string[] => {
-  const matches = Array.from(content.matchAll(/(?<=^|\s)#([\w\u4e00-\u9fa5]+)/g));
+  const matches = Array.from(content.matchAll(/(?:^|(?<=\s))#([\w\u4e00-\u9fa5]+)(?![\w\u4e00-\u9fa5#])/g));
   return Array.from(new Set(matches.map(m => m[1])));
 };
 

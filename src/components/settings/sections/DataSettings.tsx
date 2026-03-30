@@ -210,6 +210,9 @@ export default function DataSettings({
         workspaceName={workspaceName}
         folderInputRef={folderInputRef}
         onImportFolderInput={handleImportFolderInput}
+        onImportVaultFolder={() => {
+          void transfer.importVaultFolder();
+        }}
         onCreateWorkspace={transfer.createNewWorkspace}
         isFileSystemSupported={isFileSystemSupported()}
         fsHandle={fsHandle}

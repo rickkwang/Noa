@@ -28,7 +28,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
         />
       </SettingItem>
       <p className="text-[11px] text-[#2D2D2D]/60 px-1">
-        To restore a Vault ZIP, unzip it first and use Open Vault Folder to import the folder.
+        To migrate an Obsidian vault or restore a Vault ZIP, select the folder with Import Vault Folder above.
       </p>
     </SettingSection>
   );

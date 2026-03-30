@@ -177,11 +177,15 @@ describe('folder import file classification', () => {
 });
 
 describe('getFolderImportPath', () => {
-  it('preserves nested relative folder paths below the selected root', () => {
-    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/Research/notes/today.md' })).toBe('Research/notes');
+  it('preserves nested relative folder paths including the selected root', () => {
+    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/Research/notes/today.md' })).toBe('Workspace/Research/notes');
   });
 
-  it('returns empty string for root-level files', () => {
-    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/note.md' })).toBe('');
+  it('returns the root folder for root-level files', () => {
+    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/note.md' })).toBe('Workspace');
+  });
+
+  it('keeps the full subtree beneath the selected vault root', () => {
+    expect(getFolderImportPath({ webkitRelativePath: 'MyVault/Projects/Noa/specs/plan.md' })).toBe('MyVault/Projects/Noa/specs');
   });
 });

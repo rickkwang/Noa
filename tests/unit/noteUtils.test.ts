@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTitleToIdsMap, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
+import { buildTitleToIdsMap, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -38,5 +38,15 @@ describe('recomputeLinkRefsForNotes', () => {
     const withRefs = recomputeLinkRefsForNotes(notes);
     const a = withRefs.find((n) => n.id === 'a');
     expect(a?.linkRefs).toEqual(['b']);
+  });
+});
+
+describe('extractTags', () => {
+  it('does not merge adjacent hashtags into a single tag', () => {
+    expect(extractTags('#tag1#tag2')).toEqual([]);
+  });
+
+  it('still extracts separated tags at line start and after whitespace', () => {
+    expect(extractTags('#tag1 #tag2\n中文 #标签')).toEqual(['tag1', 'tag2', '标签']);
   });
 });

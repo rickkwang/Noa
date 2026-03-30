@@ -657,40 +657,42 @@ export default function Sidebar({
                   )}
                 </div>
               )}
-              <FileNode
-                name="workspace"
-                isFolder
-                defaultOpen
-                icon={Folder}
-                onAdd={() => onCreateFolder()}
-                onDragEnter={handleDragEnterTarget(ROOT_DROP_TARGET_ID)}
-                onDragOver={handleDragOverTarget(ROOT_DROP_TARGET_ID)}
-                onDrop={(e) => handleDropItem(null, e)}
-                onDragEnd={handleDragEndItem}
-                isDropTarget={dropTargetId === ROOT_DROP_TARGET_ID}
-                dropPosition={dropTargetId === ROOT_DROP_TARGET_ID ? dropPosition : null}
-                depth={0}
-              >
-                {folderTree.map((node) => renderFolderNode(node, 1))}
-                {(notesByFolderId.get('') || []).map((note) => (
-                  <FileNode
-                    key={note.id}
-                    name={(note.title || 'Untitled') + '.md'}
-                    isActive={activeNoteId === note.id}
-                    onClick={() => onSelectNote(note.id)}
-                    onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
-                    onRename={(newName: string) => onRenameNote(note.id, newName)}
-                    iconColor="#B89B5E"
-                    draggable
-                    onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
-                    onDragEnd={handleDragEndItem}
-                    depth={1}
-                  />
-                ))}
-                {folderTree.length === 0 && (notesByFolderId.get('') || []).length === 0 && (
-                  <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
-                )}
-              </FileNode>
+              <div data-testid="sidebar-file-tree">
+                <FileNode
+                  name="workspace"
+                  isFolder
+                  defaultOpen
+                  icon={Folder}
+                  onAdd={() => onCreateFolder()}
+                  onDragEnter={handleDragEnterTarget(ROOT_DROP_TARGET_ID)}
+                  onDragOver={handleDragOverTarget(ROOT_DROP_TARGET_ID)}
+                  onDrop={(e) => handleDropItem(null, e)}
+                  onDragEnd={handleDragEndItem}
+                  isDropTarget={dropTargetId === ROOT_DROP_TARGET_ID}
+                  dropPosition={dropTargetId === ROOT_DROP_TARGET_ID ? dropPosition : null}
+                  depth={0}
+                >
+                  {folderTree.map((node) => renderFolderNode(node, 1))}
+                  {(notesByFolderId.get('') || []).map((note) => (
+                    <FileNode
+                      key={note.id}
+                      name={(note.title || 'Untitled') + '.md'}
+                      isActive={activeNoteId === note.id}
+                      onClick={() => onSelectNote(note.id)}
+                      onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                      onRename={(newName: string) => onRenameNote(note.id, newName)}
+                      iconColor="#B89B5E"
+                      draggable
+                      onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                      onDragEnd={handleDragEndItem}
+                      depth={1}
+                    />
+                  ))}
+                  {folderTree.length === 0 && (notesByFolderId.get('') || []).length === 0 && (
+                    <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
+                  )}
+                </FileNode>
+              </div>
               </>
             )}
           </div>
