@@ -51,6 +51,12 @@ jobs:
       - name: Upload to GitHub Release
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          if ! gh release view "v${VERSION}" --json tagName >/dev/null 2>&1; then
+            gh release create "v${VERSION}" \
+              --title "Noa v${VERSION}" \
+              --notes "Release v${VERSION}" \
+              --target "${GITHUB_SHA}"
+          fi
           gh release upload "v${VERSION}" \
             release/Noa-${VERSION}-arm64.dmg \
             release/Noa-${VERSION}-arm64-mac.zip \
