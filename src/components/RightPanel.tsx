@@ -4,6 +4,7 @@ import { GlobalTask, Note } from '../types';
 import { AppSettings } from '../types';
 import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 interface RightPanelProps {
   tasks: GlobalTask[];
@@ -45,7 +46,7 @@ export default function RightPanel({
   }), [activeTasks, priorityFilter, dueDateFilter]);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
-  const [showGraphGuide, setShowGraphGuide] = useState(() => !localStorage.getItem('app-graph-guide-seen'));
+  const [showGraphGuide, setShowGraphGuide] = useState(() => !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN));
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphDimensions, setGraphDimensions] = useState({ width: 320, height: 400 });
 
@@ -146,7 +147,7 @@ export default function RightPanel({
               <button
                 onClick={() => {
                   setShowGraphGuide(false);
-                  localStorage.setItem('app-graph-guide-seen', '1');
+                  localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1');
                 }}
                 className="mt-2 text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 hover:border-[#2D2D2D]"
               >

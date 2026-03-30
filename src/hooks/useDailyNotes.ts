@@ -4,8 +4,9 @@ import { AppSettings, Folder, Note } from '../types';
 import { applyTemplate, builtinTemplates, formatDate } from '../lib/templates';
 import { storage } from '../lib/storage';
 import { recomputeLinkRefsForNotes } from '../lib/noteUtils';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
-const DAILY_FOLDER_KEY = 'redaction-diary-daily-folder-id';
+const DAILY_FOLDER_KEY = STORAGE_KEYS.DAILY_FOLDER_ID;
 
 type UseDailyNotesOptions = {
   settings?: AppSettings;

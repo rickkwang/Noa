@@ -48,7 +48,7 @@ export default function WorkspaceSection({
           className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
         >
           <FolderOpen size={14} />
-          <span>Open Folder</span>
+          <span>Open Vault Folder</span>
         </button>
         <button
           onClick={onCreateWorkspace}
@@ -71,8 +71,8 @@ export default function WorkspaceSection({
 
       {isFileSystemSupported && (
         <SettingItem
-          label="Local File Sync"
-          description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Directory sync helper for .md files. Not a strongly consistent two-way engine.'}
+          label="Vault Folder"
+          description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Pick a local folder to mirror notes as vault-style .md files.'}
         >
           <div className="space-y-2">
             {fsHandle ? (

@@ -12,6 +12,20 @@ const validNote = {
   links: [],
 };
 
+const noteWithAttachment = {
+  ...validNote,
+  attachments: [
+    {
+      id: 'att-1',
+      noteId: 'abc',
+      filename: 'image.png',
+      mimeType: 'image/png',
+      size: 123,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    },
+  ],
+};
+
 describe('normalizeAndValidateNotes', () => {
   it('accepts valid notes', () => {
     const { notes, report } = normalizeAndValidateNotes([validNote]);
@@ -57,6 +71,13 @@ describe('normalizeAndValidateNotes', () => {
     expect(notes[0].tags).toEqual([]);
     expect(notes[0].links).toEqual([]);
     expect(notes[0].linkRefs).toEqual(['id-2']);
+  });
+
+  it('preserves attachments when normalizing imported notes', () => {
+    const { notes, report } = normalizeAndValidateNotes([noteWithAttachment]);
+    expect(report.ok).toBe(true);
+    expect(notes[0].attachments).toHaveLength(1);
+    expect(notes[0].attachments?.[0].filename).toBe('image.png');
   });
 });
 

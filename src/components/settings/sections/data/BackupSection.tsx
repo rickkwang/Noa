@@ -86,14 +86,14 @@ export default function BackupSection({
         </button>
       </SettingItem>
 
-      <SettingItem label="Export as Markdown" description="Export all notes as standard .md files in a ZIP archive.">
+      <SettingItem label="Export Vault" description="Export a local vault-style ZIP with markdown notes, attachments, and a manifest.">
         <button
           onClick={onExportZip}
           disabled={exportingZip}
           className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingZip ? <Loader2 size={14} className="animate-spin" /> : <FileArchive size={14} />}
-          <span>{exportingZip ? 'Exporting…' : 'Export ZIP'}</span>
+          <span>{exportingZip ? 'Exporting…' : 'Export Vault'}</span>
         </button>
       </SettingItem>
 

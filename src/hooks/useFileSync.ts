@@ -7,6 +7,8 @@ import {
   mergeScannedNotes,
   restorePersistedFsHandle,
   retryFullSync,
+  syncFolderRename,
+  syncNoteMove,
   syncNoteDelete,
   syncNoteRename,
   syncNoteUpdate,
@@ -33,7 +35,9 @@ interface UseFileSyncResult {
   disconnect: () => Promise<void>;
   retry: () => void;
   syncNoteOnUpdate: (id: string, content: string) => void;
+  syncNoteOnMove: (id: string, previousFolderId: string) => void;
   syncNoteOnRename: (id: string, newTitle: string) => void;
+  syncFolderOnRename: (folderId: string, previousName: string) => void;
   syncNoteOnDelete: (id: string) => void;
 }
 
@@ -113,7 +117,7 @@ export function useFileSync({
         const currentFolders = foldersRef.current;
         const merged = await mergeScannedNotes(handle, currentNotes, currentFolders);
         if (merged.length > currentNotes.length) {
-          onImportData(merged, currentFolders, workspaceNameRef.current);
+          await onImportData(merged, currentFolders, workspaceNameRef.current);
         }
         recordSuccess();
       } catch (error) {
@@ -136,7 +140,7 @@ export function useFileSync({
       const merged = await mergeScannedNotes(handle, notes, folders);
       setFsHandle(handle);
       if (merged.length > notes.length) {
-        onImportData(merged, folders, workspaceName);
+        await onImportData(merged, folders, workspaceName);
       }
       recordSuccess();
     } catch (error) {
@@ -160,6 +164,28 @@ export function useFileSync({
 
       setSyncStatus('syncing');
       void syncNoteUpdate(fsHandle, note, content, foldersRef.current)
+        .then(recordSuccess)
+        .catch((error) => {
+          recordFailure(error);
+          if (!autoRetryAttempted.current) {
+            autoRetryAttempted.current = true;
+            retry();
+          }
+        });
+    },
+    [fsHandle, recordFailure, recordSuccess, retry],
+  );
+
+  const syncNoteOnMove = useCallback(
+    (id: string, previousFolderId: string) => {
+      if (!fsHandle) return;
+      const note = notesRef.current.find((n) => n.id === id);
+      if (!note) return;
+      const movedNote = { ...note };
+      const previousNote = { ...note, folder: previousFolderId };
+
+      setSyncStatus('syncing');
+      void syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current)
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
@@ -212,6 +238,23 @@ export function useFileSync({
     [fsHandle, recordFailure, recordSuccess, retry],
   );
 
+  const syncFolderOnRename = useCallback(
+    (folderId: string, previousName: string) => {
+      if (!fsHandle) return;
+      setSyncStatus('syncing');
+      void syncFolderRename(fsHandle, folderId, previousName, foldersRef.current, notesRef.current)
+        .then(recordSuccess)
+        .catch((error) => {
+          recordFailure(error);
+          if (!autoRetryAttempted.current) {
+            autoRetryAttempted.current = true;
+            retry();
+          }
+        });
+    },
+    [fsHandle, recordFailure, recordSuccess, retry],
+  );
+
   return {
     fsHandle,
     syncStatus,
@@ -221,7 +264,9 @@ export function useFileSync({
     disconnect,
     retry,
     syncNoteOnUpdate,
+    syncNoteOnMove,
     syncNoteOnRename,
+    syncFolderOnRename,
     syncNoteOnDelete,
   };
 }

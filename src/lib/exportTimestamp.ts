@@ -1,4 +1,6 @@
-const KEY = 'redaction-last-export-at';
+import { STORAGE_KEYS } from '../constants/storageKeys';
+
+const KEY = STORAGE_KEYS.LAST_EXPORT_AT;
 
 export function markExported(): void {
   localStorage.setItem(KEY, new Date().toISOString());

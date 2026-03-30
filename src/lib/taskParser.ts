@@ -1,6 +1,6 @@
 import { Note, GlobalTask, Priority } from '../types';
 
-const TASK_REGEX = /^(\s*(?:-|\*|\+|\d+\.)\s+)\[( |x|X)\]\s+(.*)$/;
+const TASK_REGEX = /^(?<indent>\s*(?:-|\*|\+|\d+\.)\s+)\[(?<checked> |x|X)\]\s+(?<text>.*)$/;
 const DUE_REGEX = /(?:📅|\[due:)\s*(\d{4}-\d{2}-\d{2})(?:\]?)|due:(\d{4}-\d{2}-\d{2})/i;
 const PRIORITY_HIGH_REGEX = /(?:🔺|⏫|\[p1\]|!high)/i;
 const PRIORITY_MED_REGEX = /(?:🔼|\[p2\]|!medium)/i;
@@ -21,9 +21,9 @@ function parseTaskLine(line: string, index: number, occurrenceMap: Map<string, n
   const match = line.match(TASK_REGEX);
   if (!match) return null;
 
-  const marker = match[1].trim();
-  const isCompleted = match[2].toLowerCase() === 'x';
-  const rawText = match[3];
+  const { indent, checked, text: rawText } = match.groups!;
+  const marker = indent.trim();
+  const isCompleted = checked.toLowerCase() === 'x';
   const taskIdMatch = rawText.match(TASK_ID_REGEX);
   const taskId = taskIdMatch?.[1];
 
@@ -86,7 +86,7 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
         item.content === task.content &&
         item.completed === task.completed &&
         item.occurrenceIndex === task.occurrenceIndex &&
-        item.marker === task.originalString.match(TASK_REGEX)?.[1].trim(),
+        item.marker === task.originalString.match(TASK_REGEX)?.groups?.indent?.trim(),
     );
   }
 

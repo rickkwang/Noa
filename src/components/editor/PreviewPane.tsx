@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
 
@@ -18,11 +19,16 @@ interface PreviewPaneProps {
   note: Note;
   allNotes: Note[];
   settings: AppSettings;
-  onNavigateToNote: (title: string) => void;
+  onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
   editorStyle: React.CSSProperties;
   contentMaxWidthStyle: React.CSSProperties;
+  objectUrls?: Map<string, string>;
   style?: React.CSSProperties;
+}
+
+function cleanDisplayFilename(filename: string): string {
+  return filename.replace(/\s*\(\d+\)(?=\.[^.]+$)/, '');
 }
 
 function getSnippet(content: string, title: string) {
@@ -45,10 +51,11 @@ export function PreviewPane({
   note,
   allNotes,
   settings,
-  onNavigateToNote,
+  onNavigateToNoteLegacy,
   onNavigateToNoteById,
   editorStyle,
   contentMaxWidthStyle,
+  objectUrls,
   style,
 }: PreviewPaneProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,19 +63,44 @@ export function PreviewPane({
 
   const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
 
-  const previewMarkdown = useMemo(
-    () =>
-      note.content.replace(/\[\[(.*?)\]\]/g, (_, title) => {
-        const safeTitle = String(title ?? '').trim();
-        const ids = titleToIds.get(safeTitle);
-        if (ids && ids.length === 1) {
-          return `[${safeTitle}](note-internal://id/${ids[0]})`;
-        }
-        const encoded = encodeURIComponent(safeTitle);
-        return `[${safeTitle}](note-internal://title/${encoded})`;
-      }),
-    [note.content, titleToIds]
-  );
+  const previewMarkdown = useMemo(() => {
+    const renderAttachmentTag = (attId: string, filename: string, mimeType: string) => {
+      const safeId = encodeURIComponent(attId);
+      const safeFilename = encodeURIComponent(filename);
+      const safeMimeType = encodeURIComponent(mimeType);
+      return `<attachment-embed data-attachment-id="${safeId}" data-filename="${safeFilename}" data-mime-type="${safeMimeType}"></attachment-embed>`;
+    };
+
+    const findAttachment = (ref: string) => {
+      const exact = (note.attachments ?? []).find((a) => a.filename === ref || a.vaultPath === ref);
+      if (exact) return exact;
+      const basename = ref.split('/').pop() ?? ref;
+      return (note.attachments ?? []).find((a) => a.filename === basename || a.vaultPath === ref);
+    };
+
+    // Step 1: rewrite ![[filename]] attachment embeds into explicit HTML tags
+    const withAttachments = note.content.replace(/!\[\[(.*?)\]\]/g, (_, filename) => {
+      const safeFilename = String(filename ?? '').trim();
+      const att = findAttachment(safeFilename);
+      if (!att) return `<span data-attachment-missing="true">${safeFilename}</span>`;
+      return renderAttachmentTag(att.id, safeFilename, att.mimeType);
+    });
+
+    // Step 2: rewrite [[title]] wiki-links (skip already-rewritten attachment links)
+    return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, title) => {
+      const safeTitle = String(title ?? '').trim();
+      const ids = titleToIds.get(safeTitle);
+      if (ids && ids.length === 1) {
+        return `[${safeTitle}](note-internal://id/${ids[0]})`;
+      }
+      const legacyAttachment = findAttachment(safeTitle);
+      if (legacyAttachment) {
+        return renderAttachmentTag(legacyAttachment.id, safeTitle, legacyAttachment.mimeType);
+      }
+      const encoded = encodeURIComponent(safeTitle);
+      return `[${safeTitle}](note-internal://title/${encoded})`;
+    });
+  }, [note.content, note.attachments, titleToIds]);
 
   const backlinks: BacklinkItem[] = useMemo(
     () => allNotes.filter((n) =>
@@ -85,11 +117,29 @@ export function PreviewPane({
           className="w-full h-full text-[#2D2D2D] prose prose-sm max-w-none prose-headings:font-bold prose-a:text-[#B89B5E] prose-a:no-underline hover:prose-a:underline prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-code:px-1 prose-code:rounded-sm"
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
-          <Markdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeHighlight, rehypeKatex]}
-            components={{
-              a: ({ href, children, ...props }) => {
+          {(() => {
+            const markdownComponents: any = {
+              'attachment-embed': ({ ...props }: any) => {
+                const attachmentId = String(props['data-attachment-id'] ?? '');
+                const filename = decodeURIComponent(String(props['data-filename'] ?? 'document'));
+                const mimeType = decodeURIComponent(String(props['data-mime-type'] ?? ''));
+                const attachmentByName = (note.attachments ?? []).find((a) => a.filename === filename || a.vaultPath === filename || a.vaultPath?.endsWith(`/${filename}`));
+                const resolvedAttachmentId = attachmentId || attachmentByName?.id || '';
+                const resolvedMimeType = mimeType || attachmentByName?.mimeType || '';
+                const url = objectUrls?.get(resolvedAttachmentId) ?? '';
+                const displayFilename = cleanDisplayFilename(filename);
+
+                if (!resolvedAttachmentId) {
+                  return <span className="text-[#2D2D2D]/40 text-xs italic">[Attachment not found]</span>;
+                }
+
+                if (!url) {
+                  return <span className="text-[#2D2D2D]/40 text-xs italic">[Loading attachment...]</span>;
+                }
+
+                return <img src={url} alt={filename} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
+              },
+              a: ({ href, children, ...props }: any) => {
                 if (href?.startsWith('note-internal://id/')) {
                   const noteId = href.replace('note-internal://id/', '');
                   return (
@@ -107,7 +157,7 @@ export function PreviewPane({
                   return (
                     <span
                       className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
-                      onClick={() => onNavigateToNote(noteTitle)}
+                      onClick={() => onNavigateToNoteLegacy(noteTitle)}
                     >
                       {children}
                     </span>
@@ -119,10 +169,37 @@ export function PreviewPane({
                   </a>
                 );
               },
-            }}
+              img: ({ src, alt, ...props }: any) => {
+                if (!src || src === '#attachment-not-found') {
+                  return (
+                    <span className="text-[#2D2D2D]/40 text-xs italic border border-dashed border-[#2D2D2D]/20 px-2 py-1">
+                      [{alt ?? 'Image not found'}]
+                    </span>
+                  );
+                }
+                return (
+                  <img
+                    src={src}
+                    alt={alt}
+                    loading="lazy"
+                    className="max-w-full"
+                    style={{ display: 'block' }}
+                    {...props}
+                  />
+                );
+              },
+            };
+
+            return (
+          <Markdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeHighlight, rehypeKatex, rehypeRaw]}
+            components={markdownComponents}
           >
             {previewMarkdown}
           </Markdown>
+            );
+          })()}
         </div>
       </div>
 

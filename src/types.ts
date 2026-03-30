@@ -1,3 +1,14 @@
+export interface Attachment {
+  id: string;
+  noteId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  dataBase64?: string;
+  vaultPath?: string;
+}
+
 export interface Note {
   id: string;
   title: string;
@@ -8,6 +19,7 @@ export interface Note {
   tags: string[];
   links: string[];
   linkRefs?: string[];
+  attachments?: Attachment[];
 }
 
 export interface Link {
@@ -62,7 +74,6 @@ export interface AppSettings {
     accentColor: string;
     fontFamily: string;
     maxWidth: number;
-    focusMode: boolean;
   };
   dailyNotes: {
     template: string;

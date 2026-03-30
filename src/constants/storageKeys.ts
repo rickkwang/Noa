@@ -1,0 +1,16 @@
+export const STORAGE_KEYS = {
+  OPEN_TABS: 'redaction-diary-open-tabs',
+  SIDEBAR_OPEN: 'app-sidebar-open',
+  RIGHT_TAB: 'app-right-tab',
+  EDITOR_VIEW_MODE: 'app-editor-view-mode',
+  SETTINGS: 'app-settings',
+  STORAGE_NOTICE_SEEN: 'redaction-storage-notice-seen',
+  RECENT_NOTES: 'redaction-diary-recent-notes',
+  DAILY_FOLDER_ID: 'redaction-diary-daily-folder-id',
+  BACKUP_REMINDER: 'redaction-backup-reminder-dismissed-until',
+  RIGHT_PANEL_OPEN: 'app-right-panel-open',
+  GRAPH_GUIDE_SEEN: 'app-graph-guide-seen',
+  LAST_EXPORT_AT:   'redaction-last-export-at',
+  ERROR_SNAPSHOTS:  'redaction-error-snapshots',
+  LAST_ACTIVE_NOTE: 'redaction-last-active-note-id',
+} as const;

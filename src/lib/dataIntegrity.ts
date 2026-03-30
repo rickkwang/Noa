@@ -1,4 +1,4 @@
-import { Folder, Note } from '../types';
+import { Attachment, Folder, Note } from '../types';
 
 export const REQUIRED_NOTE_FIELDS = ['id', 'title', 'content', 'createdAt', 'updatedAt'] as const;
 
@@ -16,6 +16,33 @@ export interface IntegrityReport {
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';
+}
+
+function normalizeAttachment(raw: unknown, noteId: string, idx: number, attachmentIdx: number): Attachment | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  const obj = raw as Record<string, unknown>;
+  const id = isString(obj.id) ? obj.id : String(obj.id ?? '');
+  const filename = isString(obj.filename) ? obj.filename : String(obj.filename ?? '');
+  const mimeType = isString(obj.mimeType) ? obj.mimeType : 'application/octet-stream';
+  const size = typeof obj.size === 'number' ? obj.size : Number(obj.size ?? 0);
+  const createdAt = isString(obj.createdAt) ? obj.createdAt : new Date().toISOString();
+  const attachmentNoteId = isString(obj.noteId) ? obj.noteId : noteId;
+
+  if (!id.trim() || !filename.trim()) {
+    return null;
+  }
+
+  return {
+    id,
+    noteId: attachmentNoteId,
+    filename,
+    mimeType,
+    size: Number.isFinite(size) ? size : 0,
+    createdAt,
+  };
 }
 
 function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: IntegrityIssue[] } {
@@ -43,6 +70,11 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const tags = Array.isArray(obj.tags) ? obj.tags.filter(isString) : [];
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
   const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : undefined;
+  const attachments = Array.isArray(obj.attachments)
+    ? obj.attachments
+        .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx))
+        .filter((attachment): attachment is Attachment => attachment !== null)
+    : undefined;
 
   if (!id.trim()) issues.push({ level: 'error', message: `Note #${idx + 1} has empty id.` });
   if (!title.trim()) issues.push({ level: 'warning', message: `Note #${idx + 1} has empty title.` });
@@ -58,6 +90,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
       tags,
       links,
       linkRefs,
+      attachments,
     },
     issues,
   };

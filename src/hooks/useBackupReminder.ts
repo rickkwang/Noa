@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { getLastExportAt } from '../lib/exportTimestamp';
 import { getBackupHealth } from '../lib/backupHealth';
 import { BackupHealthStatus } from '../types';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
-const DISMISS_KEY = 'redaction-backup-reminder-dismissed-until';
+const DISMISS_KEY = STORAGE_KEYS.BACKUP_REMINDER;
 
 function getDismissedUntil(): number {
   const v = localStorage.getItem(DISMISS_KEY);

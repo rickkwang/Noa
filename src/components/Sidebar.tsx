@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
 import { useResizeDrag } from '../hooks/useResizeDrag';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
+import { classifyFolderImportFile } from '../hooks/useDataTransfer';
 import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
+
+function isInlinePreviewableAttachment(file: File): boolean {
+  return file.type.startsWith('image/')
+    || /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp|ico|tif|tiff)$/i.test(file.name);
+}
 
 interface FileNodeProps {
   name: string;
@@ -19,11 +25,67 @@ interface FileNodeProps {
   icon?: React.ElementType;
   iconColor?: string;
   onAdd?: () => void;
+  onAddFolder?: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnter?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
+  isDropTarget?: boolean;
+  dropPosition?: 'top' | 'bottom' | null;
   addButtonProps?: Record<string, unknown>;
   depth?: number;
 }
 
-const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
+interface FolderTreeNode {
+  folder: FolderType;
+  children: FolderTreeNode[];
+}
+
+const ROOT_DROP_TARGET_ID = '__root__';
+
+function getFolderParentPath(path: string): string {
+  const idx = path.lastIndexOf('/');
+  return idx === -1 ? '' : path.slice(0, idx);
+}
+
+function getFolderLeafName(path: string): string {
+  const segments = path.split('/').filter(Boolean);
+  return segments[segments.length - 1] || path || 'Untitled Folder';
+}
+
+function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
+  const sorted = [...folders].sort((a, b) => a.name.localeCompare(b.name));
+  const nodeByPath = new Map<string, FolderTreeNode>();
+  const roots: FolderTreeNode[] = [];
+
+  for (const folder of sorted) {
+    const node: FolderTreeNode = { folder, children: [] };
+    nodeByPath.set(folder.name, node);
+  }
+
+  for (const folder of sorted) {
+    const node = nodeByPath.get(folder.name);
+    if (!node) continue;
+    const parentPath = getFolderParentPath(folder.name);
+    const parent = parentPath ? nodeByPath.get(parentPath) : null;
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (nodes: FolderTreeNode[]) => {
+    nodes.sort((a, b) => a.folder.name.localeCompare(b.folder.name));
+    nodes.forEach((node) => sortNodes(node.children));
+  };
+  sortNodes(roots);
+  return roots;
+}
+
+const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name.replace('.md', ''));
@@ -58,9 +120,27 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
 
   return (
     <div className="font-redaction">
+      {isDropTarget && dropPosition === 'top' && (
+        <div
+          className="h-px bg-[#B89B5E] ml-2"
+          style={{ marginLeft: `${depth * 12 + 24}px` }}
+        />
+      )}
       <div 
-        className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50'}`}
+        className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
+          isDropTarget
+            ? (isFolder
+              ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
+              : 'bg-[#DCD9CE]/80 border-l-2 border-[#B89B5E]')
+            : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
+        }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
         onClick={() => {
           if (isFolder) setIsOpen(!isOpen);
           if (onClick) onClick();
@@ -85,13 +165,21 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span 
-              className={`truncate ${isActive ? 'font-bold' : ''}`}
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(name) }}
-            />
+            <span className={`truncate ${isActive ? 'font-bold' : ''}`}>
+              {name}
+            </span>
           )}
         </div>
         <div className="flex items-center opacity-0 group-hover:opacity-100 shrink-0 ml-2">
+          {isFolder && onAddFolder && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddFolder(); }}
+              className="hover:text-[#B89B5E] p-1"
+              title="Add subfolder"
+            >
+              <FolderPlus size={14} />
+            </button>
+          )}
           {isFolder && onAdd && (
             <button
               {...addButtonProps}
@@ -113,6 +201,12 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
           )}
         </div>
       </div>
+      {isDropTarget && dropPosition === 'bottom' && (
+        <div
+          className="h-px bg-[#B89B5E] ml-2"
+          style={{ marginLeft: `${depth * 12 + 24}px` }}
+        />
+      )}
       {isFolder && isOpen && children && (
         <div>
           {children}
@@ -132,12 +226,13 @@ interface SidebarProps {
   onCreateNote: (folderId: string, initialContent?: string) => void;
   onDeleteNote: (id: string) => void;
   onRenameNote: (id: string, newName: string) => void;
-  onCreateFolder: () => void;
+  onMoveNote: (id: string, folderId: string) => void;
+  onCreateFolder: (parentFolderId?: string) => void;
   onRenameFolder: (id: string, newName: string) => void;
   onDeleteFolder: (id: string) => void;
   onUpdateNoteContent?: (id: string, content: string) => void;
   onOpenDailyNote?: (targetDate?: string) => void;
-  onImportNote?: (title: string, content: string, folderId?: string) => void;
+  onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
   caseSensitive?: boolean;
   fuzzySearch?: boolean;
@@ -147,7 +242,7 @@ interface SidebarProps {
 export default function Sidebar({
   notes, folders, searchQuery, activeNoteId, recentNoteIds = [],
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
-  onCreateFolder, onRenameFolder, onDeleteFolder,
+  onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onUpdateNoteContent, onOpenDailyNote,
   onImportNote, onSearchTag, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
@@ -158,6 +253,169 @@ export default function Sidebar({
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const searchEngineRef = useRef<SearchEngine | null>(null);
   const [templateMenuFolderId, setTemplateMenuFolderId] = useState<string | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{ kind: 'note' | 'folder'; id: string; name: string } | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
+  const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
+  const notesByFolderId = useMemo(() => {
+    const map = new Map<string, Note[]>();
+    notes.forEach((note) => {
+      const key = note.folder || '';
+      const list = map.get(key) || [];
+      list.push(note);
+      map.set(key, list);
+    });
+    return map;
+  }, [notes]);
+
+  const getFolderSubtreeNoteCount = useCallback((folderPath: string) => {
+    const targetIds = new Set(
+      folders
+        .filter((folder) => folder.name === folderPath || folder.name.startsWith(`${folderPath}/`))
+        .map((folder) => folder.id)
+    );
+    return notes.filter((note) => targetIds.has(note.folder)).length;
+  }, [folders, notes]);
+
+  const parseDraggedItem = useCallback((e: React.DragEvent) => {
+    const raw = e.dataTransfer.getData('application/x-noa-tree-item') || e.dataTransfer.getData('text/plain');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as { kind: 'note' | 'folder'; id: string; name: string };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const moveFolderToTarget = useCallback((folderId: string, targetFolderId: string | null) => {
+    const source = folders.find((folder) => folder.id === folderId);
+    if (!source) return;
+    const sourcePath = source.name;
+    const sourceLeaf = getFolderLeafName(sourcePath);
+    const targetPath = targetFolderId ? folders.find((folder) => folder.id === targetFolderId)?.name ?? '' : '';
+    if (targetPath === sourcePath || targetPath.startsWith(`${sourcePath}/`)) return;
+    const nextPath = targetPath ? `${targetPath}/${sourceLeaf}` : sourceLeaf;
+    onRenameFolder(folderId, nextPath);
+  }, [folders, onRenameFolder]);
+
+  const handleDropItem = useCallback((targetFolderId: string | null, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const item = parseDraggedItem(e);
+    setDraggedItem(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+    if (!item) return;
+
+    if (item.kind === 'note') {
+      onMoveNote(item.id, targetFolderId ?? '');
+      return;
+    }
+
+    if (item.kind === 'folder') {
+      moveFolderToTarget(item.id, targetFolderId);
+    }
+  }, [moveFolderToTarget, onMoveNote, parseDraggedItem]);
+
+  const handleDragStartItem = useCallback((kind: 'note' | 'folder', id: string, name: string) => (e: React.DragEvent) => {
+    const payload = { kind, id, name };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/x-noa-tree-item', JSON.stringify(payload));
+    e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+    setDraggedItem(payload);
+  }, []);
+
+  const handleDragEndItem = useCallback(() => {
+    setDraggedItem(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDragOverTarget = useCallback((targetId: string | null) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedItem) return;
+    setDropTargetId(targetId);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const isUpperHalf = e.clientY < rect.top + rect.height / 2;
+    setDropPosition(isUpperHalf ? 'top' : 'bottom');
+    e.dataTransfer.dropEffect = 'move';
+  }, [draggedItem]);
+
+  const handleDragEnterTarget = useCallback((targetId: string | null) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedItem) return;
+    setDropTargetId(targetId);
+  }, [draggedItem]);
+
+  const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, parentPath: string = '') => {
+    const leafName = getFolderLeafName(node.folder.name);
+    const childNotes = notesByFolderId.get(node.folder.id) || [];
+    const hasChildren = node.children.length > 0 || childNotes.length > 0;
+    const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
+    return (
+      <div key={node.folder.id} className="relative">
+        {templateMenuFolderId === node.folder.id && (
+          <div
+            data-template-menu
+            className="absolute right-0 top-7 z-50 bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)] min-w-[160px]"
+          >
+            {builtinTemplates.map(t => (
+              <button
+                key={t.id}
+                className="w-full text-left px-3 py-1.5 text-sm font-redaction hover:bg-[#DCD9CE] text-[#2D2D2D]"
+                onClick={() => {
+                  onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
+                  setTemplateMenuFolderId(null);
+                }}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <FileNode
+          name={leafName}
+          isFolder
+          defaultOpen={false}
+          icon={Folder}
+          onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
+          onAddFolder={() => onCreateFolder(node.folder.id)}
+          draggable
+          onDragStart={handleDragStartItem('folder', node.folder.id, node.folder.name)}
+          onDragEnter={handleDragEnterTarget(node.folder.id)}
+          onDragOver={handleDragOverTarget(node.folder.id)}
+          onDrop={(e) => handleDropItem(node.folder.id, e)}
+          onDragEnd={handleDragEndItem}
+          isDropTarget={dropTargetId === node.folder.id}
+          dropPosition={dropTargetId === node.folder.id ? dropPosition : null}
+          addButtonProps={{ 'data-template-btn': node.folder.id }}
+          onRename={(newName: string) => onRenameFolder(node.folder.id, parentPath ? `${parentPath}/${newName}` : newName)}
+          onDelete={() => setPendingDelete({ type: 'folder', id: node.folder.id, name: node.folder.name })}
+          depth={depth}
+        >
+          {node.children.map((child) => renderFolderNode(child, depth + 1, nextPath))}
+          {childNotes.map((note) => (
+              <FileNode
+              key={note.id}
+              name={(note.title || 'Untitled') + '.md'}
+              isActive={activeNoteId === note.id}
+              onClick={() => onSelectNote(note.id)}
+              onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+              onRename={(newName: string) => onRenameNote(note.id, newName)}
+              iconColor="#B89B5E"
+              draggable
+              onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+              onDragEnd={handleDragEndItem}
+              depth={depth + 1}
+            />
+          ))}
+          {!hasChildren && <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}>Empty</div>}
+        </FileNode>
+      </div>
+    );
+  }, [activeNoteId, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -202,33 +460,52 @@ export default function Sidebar({
     'row-resize'
   );
 
+  const isFileImportDrag = (e: React.DragEvent) => e.dataTransfer.files.length > 0;
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    if (isFileImportDrag(e)) {
+      setIsDragOver(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    if (isFileImportDrag(e)) {
+      setIsDragOver(false);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    if (isFileImportDrag(e)) {
+      setIsDragOver(false);
+    }
 
     if (!onImportNote) return;
 
-    const files = Array.from(e.dataTransfer.files).filter(
-      file => file.name.endsWith('.md') || file.name.endsWith('.txt')
-    );
+    const files = Array.from(e.dataTransfer.files);
 
     let failCount = 0;
     for (const file of files) {
       try {
-        const text = await file.text();
-        const title = file.name.replace(/\.(md|txt)$/i, '');
         const folderId = folders.length > 0 ? folders[0].id : 'diary';
-        onImportNote(title, text, folderId);
+        const importKind = classifyFolderImportFile(file);
+        const title = file.name.replace(/\.[^/.]+$/, '');
+
+        if (importKind.kind === 'text') {
+          const text = await file.text();
+          onImportNote(title, text, folderId);
+          continue;
+        }
+
+        if (importKind.kind === 'attachment') {
+          const inlinePreview = isInlinePreviewableAttachment(file);
+          onImportNote(title, inlinePreview ? `![[${file.name}]]` : `Attached file: ${file.name}`, folderId, file);
+          continue;
+        }
+
+        failCount++;
       } catch {
         failCount++;
       }
@@ -259,19 +536,20 @@ export default function Sidebar({
         <div className="absolute inset-0 bg-[#B89B5E]/10 border-2 border-dashed border-[#B89B5E] z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-[#EAE8E0] px-4 py-2 border border-[#B89B5E] shadow-lg font-redaction font-bold text-[#B89B5E] flex items-center">
             <Plus size={16} className="mr-2" />
-            Drop markdown files to import
+            Drop files to import
           </div>
         </div>
       )}
-      {pendingDelete && (
+          {pendingDelete && (
         <div className="border-b-2 border-[#B89B5E] bg-[#B89B5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
           <p className="text-xs text-[#2D2D2D]">
             Delete "<span className="font-bold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
               ? (() => {
-                  const count = notes.filter(n => n.folder === pendingDelete.id).length;
+                  const target = folders.find((folder) => folder.id === pendingDelete.id);
+                  const count = target ? getFolderSubtreeNoteCount(target.name) : notes.filter(n => n.folder === pendingDelete.id).length;
                   return count > 0
-                    ? `This folder contains ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`
+                    ? `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`
                     : 'This cannot be undone.';
                 })()
               : 'This cannot be undone.'}
@@ -384,61 +662,34 @@ export default function Sidebar({
                 isFolder
                 defaultOpen
                 icon={Folder}
-                onAdd={onCreateFolder}
+                onAdd={() => onCreateFolder()}
+                onDragEnter={handleDragEnterTarget(ROOT_DROP_TARGET_ID)}
+                onDragOver={handleDragOverTarget(ROOT_DROP_TARGET_ID)}
+                onDrop={(e) => handleDropItem(null, e)}
+                onDragEnd={handleDragEndItem}
+                isDropTarget={dropTargetId === ROOT_DROP_TARGET_ID}
+                dropPosition={dropTargetId === ROOT_DROP_TARGET_ID ? dropPosition : null}
                 depth={0}
               >
-                {folders.map(folder => {
-                  const folderNotes = notes.filter(n => n.folder === folder.id);
-                  
-                  return (
-                    <div key={folder.id} className="relative">
-                    {templateMenuFolderId === folder.id && (
-                      <div
-                        data-template-menu
-                        className="absolute right-0 top-7 z-50 bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)] min-w-[160px]"
-                      >
-                        {builtinTemplates.map(t => (
-                          <button
-                            key={t.id}
-                            className="w-full text-left px-3 py-1.5 text-sm font-redaction hover:bg-[#DCD9CE] text-[#2D2D2D]"
-                            onClick={() => {
-                              onCreateNote(folder.id, applyTemplate(t, 'New Note'));
-                              setTemplateMenuFolderId(null);
-                            }}
-                          >
-                            {t.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <FileNode
-                      name={folder.name}
-                      isFolder
-                      defaultOpen={false}
-                      icon={Folder}
-                      onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === folder.id ? null : folder.id)}
-                      addButtonProps={{ 'data-template-btn': folder.id }}
-                      onRename={(newName: string) => onRenameFolder(folder.id, newName)}
-                      onDelete={() => setPendingDelete({ type: 'folder', id: folder.id, name: folder.name })}
-                      depth={1}
-                    >
-                      {folderNotes.length === 0 && <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '44px' }}>Empty</div>}
-                      {folderNotes.map(note => (
-                        <FileNode
-                          key={note.id}
-                          name={(note.title || 'Untitled') + '.md'}
-                          isActive={activeNoteId === note.id}
-                          onClick={() => onSelectNote(note.id)}
-                          onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
-                          onRename={(newName: string) => onRenameNote(note.id, newName)}
-                          iconColor="#B89B5E"
-                          depth={2}
-                        />
-                      ))}
-                    </FileNode>
-                    </div>
-                  );
-                })}
+                {folderTree.map((node) => renderFolderNode(node, 1))}
+                {(notesByFolderId.get('') || []).map((note) => (
+                  <FileNode
+                    key={note.id}
+                    name={(note.title || 'Untitled') + '.md'}
+                    isActive={activeNoteId === note.id}
+                    onClick={() => onSelectNote(note.id)}
+                    onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                    onRename={(newName: string) => onRenameNote(note.id, newName)}
+                    iconColor="#B89B5E"
+                    draggable
+                    onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                    onDragEnd={handleDragEndItem}
+                    depth={1}
+                  />
+                ))}
+                {folderTree.length === 0 && (notesByFolderId.get('') || []).length === 0 && (
+                  <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
+                )}
               </FileNode>
               </>
             )}

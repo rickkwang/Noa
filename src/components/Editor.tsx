@@ -8,7 +8,9 @@ import { EditorToolbar } from './editor/EditorToolbar';
 import { TocPanel } from './editor/TocPanel';
 import { PreviewPane } from './editor/PreviewPane';
 import { MentionDropdown } from './editor/MentionDropdown';
+import { AttachmentPanel } from './editor/AttachmentPanel';
 import { useScrollingClass } from '../hooks/useScrollingClass';
+import { useAttachments } from '../hooks/useAttachments';
 
 interface EditorTab {
   id: string;
@@ -19,9 +21,10 @@ interface EditorProps {
   note?: Note;
   allNotes: Note[];
   onUpdate: (content: string) => void;
+  onNoteUpdate?: (note: Note) => void;
   onRename?: (title: string) => void;
   onClose?: () => void;
-  onNavigateToNote: (title: string) => void;
+  onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
   viewMode: 'edit' | 'preview' | 'split';
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
@@ -36,9 +39,10 @@ export default function Editor({
   note,
   allNotes,
   onUpdate,
+  onNoteUpdate,
   onRename,
   onClose,
-  onNavigateToNote,
+  onNavigateToNoteLegacy,
   onNavigateToNoteById,
   viewMode,
   setViewMode,
@@ -88,6 +92,15 @@ export default function Editor({
   const editPaneRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
+
+  const handleNoteUpdate = useCallback((updated: Note) => {
+    onNoteUpdate?.(updated);
+  }, [onNoteUpdate]);
+
+  const { objectUrls, uploadFile, deleteAttachment } = useAttachments(
+    note ?? null,
+    handleNoteUpdate
+  );
 
   useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
 
@@ -139,49 +152,64 @@ export default function Editor({
     }
   }, [isEditingTitle]);
 
-  // Paste/drop image support
+  // Paste/drop file support (images only → attachment system)
   useEffect(() => {
     const container = editorContainerRef.current;
     if (!container || viewMode === 'preview') return;
 
-    const IMAGE_SIZE_LIMIT = 500 * 1024;
+    const ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
-    const insertImage = (dataUrl: string) => {
-      const base64 = dataUrl.split(',')[1] ?? '';
-      if (base64.length * 0.75 > IMAGE_SIZE_LIMIT) {
-        setImageError('Image exceeds 500KB limit. Please use a smaller image.');
-        setTimeout(() => setImageError(null), 3000);
-        return;
+    const handleFiles = async (files: File[]) => {
+      for (const file of files) {
+        if (!ATTACHMENT_TYPES.has(file.type)) continue;
+        if (onNoteUpdate) {
+          // Use attachment system
+          const err = await uploadFile(file);
+          if (err) {
+            setImageError(err === 'size_exceeded' ? 'File exceeds 10MB limit' : 'Unsupported file type');
+            setTimeout(() => setImageError(null), 3000);
+          } else {
+            // Insert reference syntax
+            const syntax = `![[${file.name}]]`;
+            insertFormatting(syntax);
+          }
+        } else if (file.type.startsWith('image/')) {
+          // Fallback: base64 embed (legacy, no onNoteUpdate)
+          const IMAGE_SIZE_LIMIT = 500 * 1024;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataUrl = ev.target?.result as string;
+            const base64 = dataUrl.split(',')[1] ?? '';
+            if (base64.length * 0.75 > IMAGE_SIZE_LIMIT) {
+              setImageError('Image exceeds 500KB limit. Please use a smaller image.');
+              setTimeout(() => setImageError(null), 3000);
+              return;
+            }
+            insertFormatting(`![image](${dataUrl})`);
+          };
+          reader.readAsDataURL(file);
+        }
       }
-      insertFormatting(`![image](${dataUrl})`);
     };
 
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      const files: File[] = [];
       for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
+        if (ATTACHMENT_TYPES.has(item.type)) {
           const file = item.getAsFile();
-          if (!file) continue;
-          const reader = new FileReader();
-          reader.onload = (ev) => insertImage(ev.target?.result as string);
-          reader.readAsDataURL(file);
+          if (file) files.push(file);
         }
       }
+      if (files.length) { e.preventDefault(); handleFiles(files); }
     };
 
     const handleDrop = (e: DragEvent) => {
       const files = e.dataTransfer?.files;
       if (!files) return;
-      for (const file of Array.from(files)) {
-        if (file.type.startsWith('image/')) {
-          e.preventDefault();
-          const reader = new FileReader();
-          reader.onload = (ev) => insertImage(ev.target?.result as string);
-          reader.readAsDataURL(file);
-        }
-      }
+      const filtered = Array.from(files).filter(f => ATTACHMENT_TYPES.has(f.type));
+      if (filtered.length) { e.preventDefault(); handleFiles(filtered); }
     };
 
     container.addEventListener('paste', handlePaste);
@@ -190,7 +218,7 @@ export default function Editor({
       container.removeEventListener('paste', handlePaste);
       container.removeEventListener('drop', handleDrop);
     };
-  }, [viewMode, insertFormatting]);
+  }, [viewMode, insertFormatting, onNoteUpdate, uploadFile]);
 
   const tocHeadings = useMemo(() => {
     if (!note) return [];
@@ -315,9 +343,7 @@ export default function Editor({
 
       <div
         ref={splitContainerRef}
-        className={`flex-1 flex overflow-hidden z-10 relative ${
-          settings.appearance.focusMode ? 'opacity-50 hover:opacity-100 transition-opacity duration-300' : ''
-        }`}
+        className="flex-1 flex overflow-hidden z-10 relative"
       >
         {/* Edit Pane — always mounted to preserve undo history */}
         <div
@@ -363,14 +389,27 @@ export default function Editor({
             note={note}
             allNotes={allNotes}
             settings={settings}
-            onNavigateToNote={onNavigateToNote}
+            onNavigateToNoteLegacy={onNavigateToNoteLegacy}
             onNavigateToNoteById={onNavigateToNoteById}
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
+            objectUrls={objectUrls}
             style={viewMode === 'split' ? { width: `${(1 - splitRatio) * 100}%`, flex: 'none' } : undefined}
           />
         )}
       </div>
+
+      {onNoteUpdate && (
+        <AttachmentPanel
+          attachments={note.attachments ?? []}
+          onUpload={uploadFile}
+          onDelete={deleteAttachment}
+          onInsertReference={(filename, mimeType) => {
+            const syntax = `![[${filename}]]`;
+            insertFormatting(syntax);
+          }}
+        />
+      )}
     </div>
   );
 }

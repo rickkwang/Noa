@@ -108,14 +108,6 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             />
           </div>
         </SettingItem>
-        <SettingItem label="Focus Mode" description="Fade out inactive paragraphs while typing.">
-          <button
-            onClick={() => updateSettings(s => ({ ...s, appearance: { ...s.appearance, focusMode: !s.appearance.focusMode } }))}
-            className={`w-12 h-6 border-2 border-[#2D2D2D] relative transition-colors ${settings.appearance.focusMode ? 'bg-[#B89B5E]' : 'bg-[#EAE8E0]'}`}
-          >
-            <div className={`absolute top-0.5 w-4 h-4 bg-[#EAE8E0] border-2 border-[#2D2D2D] transition-transform ${settings.appearance.focusMode ? 'translate-x-6' : 'translate-x-0.5'}`} />
-          </button>
-        </SettingItem>
       </SettingSection>
     </div>
   );

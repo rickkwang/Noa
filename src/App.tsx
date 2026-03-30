@@ -4,6 +4,7 @@
  */
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { STORAGE_KEYS } from './constants/storageKeys';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import BackupReminderBar from './components/BackupReminderBar';
@@ -19,6 +20,8 @@ import { useCommandPalette } from './hooks/useCommandPalette';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
+import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
+import { syncFolderRename, syncNoteMove } from './services/fileSyncService';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -30,15 +33,14 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Multi-tab state: list of open note IDs in tab order
-  const OPEN_TABS_KEY = 'redaction-diary-open-tabs';
+  const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const restoredOpenTabsRef = useRef(false);
   const [showStorageNotice, setShowStorageNotice] = useState(() =>
-    !localStorage.getItem('redaction-storage-notice-seen')
+    !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN)
   );
   const [navigationConflict, setNavigationConflict] = useState<{ title: string; noteIds: string[] } | null>(null);
   const { settings, updateSettings } = useSettings();
-
   const {
     notes,
     folders,
@@ -47,15 +49,17 @@ export default function App() {
     setActiveNoteId,
     recentNoteIds,
     handleUpdateNote: _handleUpdateNote,
+    handleSaveNote,
     handleRenameNote: _handleRenameNote,
     handleCreateNote: _handleCreateNote,
+    handleMoveNote: _handleMoveNote,
     handleImportNote,
     handleNavigateToNote,
     handleNavigateToNoteById,
     handleDeleteNote: _handleDeleteNote,
-    handleCreateFolder,
-    handleRenameFolder,
-    handleDeleteFolder,
+    handleCreateFolder: _handleCreateFolder,
+    handleRenameFolder: _handleRenameFolder,
+    handleDeleteFolder: _handleDeleteFolder,
     handleOpenDailyNote,
     handleToggleTask,
     handleImportData,
@@ -106,6 +110,42 @@ export default function App() {
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
   };
 
+  const handleMoveNote = useCallback((id: string, folderId: string) => {
+    const note = notes.find((item) => item.id === id);
+    if (!note || note.folder === folderId) return;
+    _handleMoveNote(id, folderId);
+    if (!fsHandle) return;
+    void syncNoteMove(
+      fsHandle,
+      note,
+      { ...note, folder: folderId, updatedAt: new Date().toISOString() },
+      folders,
+    );
+  }, [_handleMoveNote, folders, fsHandle, notes]);
+
+  const handleCreateFolder = useCallback((parentFolderId?: string) => {
+    _handleCreateFolder(parentFolderId);
+  }, [_handleCreateFolder]);
+
+  const handleRenameFolder = useCallback((id: string, newName: string) => {
+    const oldFolder = folders.find((folder) => folder.id === id);
+    if (!oldFolder) return;
+    _handleRenameFolder(id, newName);
+    if (!fsHandle) return;
+
+    const previousName = oldFolder.name;
+    const nextName = newName.trim() || 'Untitled Folder';
+    const nextFolders = folders.map((folder) => {
+      if (folder.id === id) return { ...folder, name: nextName };
+      if (folder.name === previousName || folder.name.startsWith(`${previousName}/`)) {
+        return { ...folder, name: nextName + folder.name.slice(previousName.length) };
+      }
+      return folder;
+    });
+
+    void syncFolderRename(fsHandle, id, previousName, nextFolders, notes);
+  }, [_handleRenameFolder, folders, fsHandle, notes]);
+
   const closeTabById = useCallback((id: string) => {
     setOpenTabIds(prev => {
       const next = prev.filter(t => t !== id);
@@ -118,9 +158,20 @@ export default function App() {
   }, [activeNoteId, setActiveNoteId]);
 
   const handleDeleteNote = (id: string) => {
-    closeTabById(id);
-    syncNoteOnDelete(id);
-    _handleDeleteNote(id);
+    void deleteNoteWithLocalFirst({
+      id,
+      deleteLocal: _handleDeleteNote,
+      closeTab: closeTabById,
+      syncDelete: syncNoteOnDelete,
+    });
+  };
+
+  const handleDeleteFolder = (id: string) => {
+    void (async () => {
+      const deletedNoteIds = await _handleDeleteFolder(id);
+      deletedNoteIds.forEach((noteId) => closeTabById(noteId));
+      deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
+    })();
   };
 
   const {
@@ -194,12 +245,16 @@ export default function App() {
 
   const navigateByTitle = useCallback((title: string) => {
     const matched = notes.filter((note) => note.title === title);
-    if (matched.length <= 1) {
+    if (matched.length === 1) {
+      navigateById(matched[0].id);
+      return;
+    }
+    if (matched.length === 0) {
       handleNavigateToNote(title);
       return;
     }
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
-  }, [handleNavigateToNote, notes]);
+  }, [handleNavigateToNote, navigateById, notes]);
 
   const {
     showReminder,
@@ -210,7 +265,7 @@ export default function App() {
   } = useBackupReminder(notes.length);
 
   const exportJsonQuick = useCallback(() => {
-    exportJsonSnapshot(notes, folders, workspaceName);
+    void exportJsonSnapshot(notes, folders, workspaceName);
   }, [notes, folders, workspaceName]);
 
   const commandPalette = useCommandPalette({
@@ -325,6 +380,7 @@ export default function App() {
                 onCreateNote={handleCreateNote}
                 onDeleteNote={handleDeleteNote}
                 onRenameNote={handleRenameNote}
+                onMoveNote={handleMoveNote}
                 onCreateFolder={handleCreateFolder}
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
@@ -352,9 +408,10 @@ export default function App() {
               note={activeNote}
               allNotes={notes}
               onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
+              onNoteUpdate={handleSaveNote}
               onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
               onClose={() => handleTabClose(activeNoteId)}
-              onNavigateToNote={navigateByTitle}
+              onNavigateToNoteLegacy={navigateByTitle}
               onNavigateToNoteById={navigateById}
               viewMode={editorViewMode}
               setViewMode={setEditorViewMode}
@@ -428,7 +485,7 @@ export default function App() {
       )}
       {fsSyncError && fsHandle && (
         <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
-          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · File Sync</div>
+          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · Vault Sync</div>
           <div className="text-[11px] text-red-700 leading-relaxed mb-3">{fsSyncError}</div>
           <button
             onClick={retry}
@@ -447,7 +504,7 @@ export default function App() {
           <button
             onClick={() => {
               setShowStorageNotice(false);
-              localStorage.setItem('redaction-storage-notice-seen', '1');
+              localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1');
             }}
             className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:border-[#2D2D2D]/60 transition-colors"
           >

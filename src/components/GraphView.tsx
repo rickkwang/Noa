@@ -196,7 +196,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     <div className="relative w-full h-full">
     {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
       <div className="absolute top-2 left-2 right-2 z-10 border border-[#B89B5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-[11px] text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
-        <span>图谱包含 {graphData.nodes.length} 个节点，渲染可能较慢。建议开启「隐藏孤立节点」。</span>
+        <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
       </div>
     )}
     <ForceGraph2D

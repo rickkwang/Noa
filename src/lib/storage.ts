@@ -1,5 +1,5 @@
 import localforage from 'localforage';
-import { Note, Folder } from '../types';
+import { Note, Folder, Attachment } from '../types';
 
 // Initialize localforage instances
 const notesStore = localforage.createInstance({
@@ -15,6 +15,11 @@ const foldersStore = localforage.createInstance({
 const workspaceStore = localforage.createInstance({
   name: 'redaction-diary-workspace-db',
   storeName: 'workspace'
+});
+
+const attachmentsStore = localforage.createInstance({
+  name: 'redaction-diary-attachments-db',
+  storeName: 'attachments'
 });
 
 export const storage = {
@@ -118,7 +123,39 @@ export const storage = {
       notesStore.clear(),
       foldersStore.clear(),
       workspaceStore.clear(),
+      attachmentsStore.clear(),
     ]);
+  },
+
+  // Attachment Blob storage
+  async saveAttachmentBlob(attachmentId: string, blob: Blob): Promise<void> {
+    await attachmentsStore.setItem(`blob:${attachmentId}`, blob);
+  },
+
+  async getAttachmentBlob(attachmentId: string): Promise<Blob | null> {
+    try {
+      return await attachmentsStore.getItem<Blob>(`blob:${attachmentId}`);
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteAttachmentBlob(attachmentId: string): Promise<void> {
+    await attachmentsStore.removeItem(`blob:${attachmentId}`);
+  },
+
+  async deleteAttachmentBlobsByNoteId(noteId: string, attachments: Attachment[]): Promise<void> {
+    const noteAttachments = attachments.filter(a => a.noteId === noteId);
+    await Promise.all(noteAttachments.map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
+  },
+
+  async pruneOrphanedAttachments(validAttachmentIds: Set<string>): Promise<void> {
+    const keys = await attachmentsStore.keys();
+    const toDelete = keys.filter((k) => {
+      const id = k.replace('blob:', '');
+      return !validAttachmentIds.has(id);
+    });
+    await Promise.all(toDelete.map((k) => attachmentsStore.removeItem(k)));
   },
 
   async getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {

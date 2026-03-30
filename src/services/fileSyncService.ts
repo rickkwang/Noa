@@ -1,6 +1,7 @@
 import { Folder, Note } from '../types';
 import {
   clearPersistedHandle,
+  deleteFolderTree,
   deleteNoteFile,
   getPersistedHandle,
   persistHandle,
@@ -93,6 +94,40 @@ export async function syncNoteDelete(
   folders: Folder[],
 ): Promise<void> {
   await deleteNoteFile(handle, note, folders);
+}
+
+export async function syncNoteMove(
+  handle: FileSystemDirectoryHandle,
+  previousNote: Note,
+  nextNote: Note,
+  folders: Folder[],
+): Promise<void> {
+  await deleteNoteFile(handle, previousNote, folders);
+  await writeNote(handle, nextNote, folders);
+}
+
+export async function syncFolderRename(
+  handle: FileSystemDirectoryHandle,
+  folderId: string,
+  previousName: string,
+  currentFolders: Folder[],
+  notes: Note[],
+): Promise<void> {
+  const nextFolder = currentFolders.find((folder) => folder.id === folderId);
+  if (!nextFolder) return;
+
+  const affectedFolderIds = new Set(
+    currentFolders
+      .filter((folder) => folder.name === previousName || folder.name.startsWith(`${previousName}/`))
+      .map((folder) => folder.id)
+  );
+
+  await deleteFolderTree(handle, previousName);
+  await Promise.all(
+    notes
+      .filter((note) => affectedFolderIds.has(note.folder))
+      .map((note) => writeNote(handle, note, currentFolders))
+  );
 }
 
 export async function retryFullSync(

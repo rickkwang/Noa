@@ -1,24 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useResizeDrag } from './useResizeDrag';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 export function useLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem('app-sidebar-open');
+    const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN);
     return saved ? saved === 'true' : true;
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(() => {
-    const saved = localStorage.getItem('app-right-panel-open');
+    const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN);
     return saved ? saved === 'true' : true;
   });
   const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph'>(() => {
-    const saved = localStorage.getItem('app-right-tab');
+    const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
     return (['tasks', 'backlinks', 'graph'] as const).includes(saved as 'tasks' | 'backlinks' | 'graph')
       ? (saved as 'tasks' | 'backlinks' | 'graph')
       : 'tasks';
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
-    const saved = localStorage.getItem('app-editor-view-mode');
+    const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_VIEW_MODE);
     return (['edit', 'preview', 'split'] as const).includes(saved as 'edit' | 'preview' | 'split')
       ? (saved as 'edit' | 'preview' | 'split')
       : 'split';
@@ -65,10 +66,10 @@ export function useLayout() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('app-sidebar-open', JSON.stringify(isSidebarOpen));
-      localStorage.setItem('app-right-panel-open', JSON.stringify(isRightPanelOpen));
-      localStorage.setItem('app-right-tab', activeRightTab);
-      localStorage.setItem('app-editor-view-mode', editorViewMode);
+      localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, JSON.stringify(isSidebarOpen));
+      localStorage.setItem(STORAGE_KEYS.RIGHT_PANEL_OPEN, JSON.stringify(isRightPanelOpen));
+      localStorage.setItem(STORAGE_KEYS.RIGHT_TAB, activeRightTab);
+      localStorage.setItem(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
     } catch { /* storage full, ignore */ }
   }, [isSidebarOpen, isRightPanelOpen, activeRightTab, editorViewMode]);
 

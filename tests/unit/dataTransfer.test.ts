@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { analyzeConflicts, applyImportStrategy } from '../../src/hooks/useDataTransfer';
+import {
+  analyzeConflicts,
+  applyImportStrategy,
+  classifyFolderImportFile,
+  countImportedNotes,
+  getFolderImportPath,
+} from '../../src/hooks/useDataTransfer';
 import { Note } from '../../src/types';
 
 const makeNote = (id: string, title: string): Note => ({
@@ -88,5 +94,53 @@ describe('applyImportStrategy', () => {
     const result = applyImportStrategy(duplicateTitle, existing, 'merge');
     const imported = result.find((n) => n.id !== 'id1' && n.id !== 'id2');
     expect(imported?.title).toBe('Note A (imported)');
+  });
+});
+
+describe('countImportedNotes', () => {
+  const existing = [makeNote('id1', 'Note A'), makeNote('id2', 'Note B')];
+
+  it('counts overwrite by final notes length', () => {
+    const finalNotes = [makeNote('id3', 'New 1')];
+    expect(countImportedNotes(finalNotes, existing, 'overwrite')).toBe(1);
+  });
+
+  it('counts skip by appended notes delta', () => {
+    const incoming = [makeNote('id1', 'Note A Updated'), makeNote('id3', 'Note C')];
+    const finalNotes = applyImportStrategy(incoming, existing, 'skip');
+    expect(countImportedNotes(finalNotes, existing, 'skip')).toBe(1);
+  });
+
+  it('counts merge by merged growth (including renamed conflicts)', () => {
+    const incoming = [makeNote('id1', 'Note A Updated'), makeNote('id99', 'Note B')];
+    const finalNotes = applyImportStrategy(incoming, existing, 'merge');
+    expect(countImportedNotes(finalNotes, existing, 'merge')).toBe(2);
+  });
+});
+
+describe('folder import file classification', () => {
+  it('treats markdown and other text-like files as notes', () => {
+    expect(classifyFolderImportFile({ name: 'note.md', type: '' })).toEqual({ kind: 'text' });
+    expect(classifyFolderImportFile({ name: 'data.json', type: 'application/json' })).toEqual({ kind: 'text' });
+    expect(classifyFolderImportFile({ name: 'readme.txt', type: 'text/plain' })).toEqual({ kind: 'text' });
+  });
+
+  it('treats image files as attachments', () => {
+    expect(classifyFolderImportFile({ name: 'diagram.svg', type: '' })).toEqual({ kind: 'attachment' });
+    expect(classifyFolderImportFile({ name: 'photo.png', type: 'image/png' })).toEqual({ kind: 'attachment' });
+  });
+
+  it('rejects unsupported binary files', () => {
+    expect(classifyFolderImportFile({ name: 'archive.zip', type: 'application/zip' })).toEqual({ kind: 'unsupported' });
+  });
+});
+
+describe('getFolderImportPath', () => {
+  it('preserves nested relative folder paths below the selected root', () => {
+    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/Research/notes/today.md' })).toBe('Research/notes');
+  });
+
+  it('returns empty string for root-level files', () => {
+    expect(getFolderImportPath({ webkitRelativePath: 'Workspace/note.md' })).toBe('');
   });
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppSettings } from '../types';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 export const defaultSettings: AppSettings = {
   editor: {
@@ -11,7 +12,6 @@ export const defaultSettings: AppSettings = {
     accentColor: '#B89B5E',
     fontFamily: 'font-redaction',
     maxWidth: 800,
-    focusMode: false,
   },
   dailyNotes: {
     template: '',
@@ -29,7 +29,7 @@ export const defaultSettings: AppSettings = {
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('app-settings');
+    const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -49,7 +49,7 @@ export function useSettings() {
   });
 
   useEffect(() => {
-    localStorage.setItem('app-settings', JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
 
   const updateSettings = (updater: (prev: AppSettings) => AppSettings) => {

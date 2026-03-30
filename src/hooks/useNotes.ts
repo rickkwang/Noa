@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppErrorCode, AppSettings, Folder, GlobalTask, Note } from '../types';
+import { AppErrorCode, AppSettings, Attachment, Folder, GlobalTask, Note } from '../types';
 import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
@@ -13,9 +13,24 @@ interface LoadErrorState {
   message: string;
 }
 
+type ImportedAttachment = Attachment & { dataBase64?: string };
+type ImportedNote = Note & { attachments?: ImportedAttachment[] };
+
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { useDailyNotes } from './useDailyNotes';
+
+function inferAttachmentMimeType(file: File): string {
+  if (file.type) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.gif')) return 'image/gif';
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.svg')) return 'image/svg+xml';
+  if (name.endsWith('.avif')) return 'image/avif';
+  return 'application/octet-stream';
+}
 
 export function useNotes(settings?: AppSettings) {
   const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
@@ -167,7 +182,7 @@ Your private, local-first writing space.
 - **Tasks** — Use \`- [ ] task\` syntax, track in right panel
 - **Tags** — Use \`#tag\` in notes, browse in sidebar
 - **Knowledge Graph** — Visualize note connections
-- **File Sync** — Connect a local folder to sync \`.md\` files
+- **Vault Folder** — Connect a local folder to mirror notes as \`.md\` files
 - **Daily Notes** — One note per day, auto-dated
 
 ## Data Safety
@@ -252,6 +267,15 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave, syncLinkRefs]);
 
+  const handleSaveNote = useCallback((note: Note) => {
+    setNotes(prev => {
+      const nextNote = { ...note, updatedAt: new Date().toISOString() };
+      const updated = prev.map(n => n.id === note.id ? nextNote : n);
+      debounceSave(nextNote);
+      return updated;
+    });
+  }, [debounceSave]);
+
   const handleRenameNote = useCallback((id: string, newTitle: string) => {
     setNotes(prev => {
       const oldNote = prev.find(n => n.id === id);
@@ -314,12 +338,30 @@ Export regularly: use Settings → Data → Export Backup.`,
       linkRefs: [],
     };
     setNotes(prev => {
-      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+      const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+      const created = next.find((n) => n.id === newNote.id) ?? newNote;
+      void storage.saveNote(created).catch(() => {
+        setSaveError('Failed to save note. Storage may be full.');
+      });
+      return next;
     });
     setActiveNoteIdWithRecent(newNote.id);
   }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
-  const handleImportNote = useCallback((title: string, content: string, folderId: string = 'diary') => {
+  const handleMoveNote = useCallback((id: string, folderId: string) => {
+    setNotes(prev => {
+      const target = prev.find((note) => note.id === id);
+      if (!target || target.folder === folderId) return prev;
+      const nextNote = { ...target, folder: folderId, updatedAt: new Date().toISOString() };
+      const updated = prev.map((note) => (note.id === id ? nextNote : note));
+      void storage.saveNote(nextNote).catch(() => {
+        setSaveError('Failed to move note. Storage may be full.');
+      });
+      return syncLinkRefs(updated, prev, new Set([id]));
+    });
+  }, [syncLinkRefs]);
+
+  const handleImportNote = useCallback((title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
     const newNote: Note = {
       id: crypto.randomUUID(),
       title,
@@ -331,10 +373,64 @@ Export regularly: use Settings → Data → Export Backup.`,
       links: extractLinks(content),
       linkRefs: [],
     };
-    setNotes(prev => {
-      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
-    });
-    setActiveNoteIdWithRecent(newNote.id);
+
+    if (!attachmentFile) {
+      setNotes(prev => {
+        const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+        const created = next.find((n) => n.id === newNote.id) ?? newNote;
+        void storage.saveNote(created).catch(() => {
+          setSaveError('Failed to save note. Storage may be full.');
+        });
+        return next;
+      });
+      setActiveNoteIdWithRecent(newNote.id);
+      return;
+    }
+
+    void (async () => {
+      const attachmentId = crypto.randomUUID();
+      const mimeType = inferAttachmentMimeType(attachmentFile);
+      const attachment: Attachment = {
+        id: attachmentId,
+        noteId: newNote.id,
+        filename: attachmentFile.name,
+        mimeType,
+        size: attachmentFile.size,
+        createdAt: new Date().toISOString(),
+        vaultPath: `attachments/${newNote.id}/${attachmentId}-${attachmentFile.name}`,
+      };
+      const noteWithAttachment: Note = {
+        ...newNote,
+        content: content || (mimeType.startsWith('image/') ? `![[attachments/${newNote.id}/${attachmentId}-${attachmentFile.name}]]` : `Attached file: ${attachmentFile.name}`),
+        attachments: [attachment],
+      };
+      let blobSaved = false;
+      try {
+        await storage.saveAttachmentBlob(attachmentId, attachmentFile);
+        blobSaved = true;
+        setNotes(prev => {
+          const next = syncLinkRefs([...prev, noteWithAttachment], prev, new Set([noteWithAttachment.id]));
+          return next;
+        });
+        await storage.saveNote(noteWithAttachment);
+        setActiveNoteIdWithRecent(noteWithAttachment.id);
+      } catch {
+        const pendingSave = saveTimers.current.get(noteWithAttachment.id);
+        if (pendingSave) {
+          clearTimeout(pendingSave);
+          saveTimers.current.delete(noteWithAttachment.id);
+        }
+        setNotes(prev => prev.filter((note) => note.id !== noteWithAttachment.id));
+        if (blobSaved) {
+          try {
+            await storage.deleteAttachmentBlob(attachmentId);
+          } catch {
+            // best effort rollback
+          }
+        }
+        setSaveError('Failed to save attachment. Storage may be full.');
+      }
+    })();
   }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleNavigateToNoteById = useCallback((id: string) => {
@@ -364,36 +460,89 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [setActiveNoteIdWithRecent, folders, syncLinkRefs]);
 
-  const handleDeleteNote = useCallback(async (id: string) => {
+  const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
+    const noteToDelete = (await storage.getNotes())?.find(n => n.id === id);
     try {
       await storage.deleteNote(id);
     } catch {
       setSaveError('Failed to delete note.');
-      return;
+      return false;
+    }
+    if (noteToDelete?.attachments?.length) {
+      try {
+        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments);
+      } catch (error) {
+        console.error('Failed to clean up attachment blobs after note deletion:', error);
+      }
     }
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
+    return true;
   }, [syncLinkRefs]);
 
-  const handleCreateFolder = useCallback(() => {
-    const newFolder: Folder = { id: crypto.randomUUID(), name: 'New Folder' };
+  const handleCreateFolder = useCallback((parentFolderId?: string) => {
+    const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
+    const desiredPath = parent ? `${parent.name}/New Folder` : 'New Folder';
+    const siblingPrefix = parent ? `${parent.name}/` : '';
+    const existingNames = new Set(folders.map((folder) => folder.name));
+
+    let nextPath = desiredPath;
+    let suffix = 2;
+    while (existingNames.has(nextPath)) {
+      const leaf = `New Folder ${suffix}`;
+      nextPath = parent ? `${siblingPrefix}${leaf}` : leaf;
+      suffix += 1;
+    }
+
+    const newFolder: Folder = { id: crypto.randomUUID(), name: nextPath };
     setFolders(prev => [...prev, newFolder]);
-  }, []);
+  }, [folders]);
 
   const handleRenameFolder = useCallback((id: string, name: string) => {
-    setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+    setFolders(prev => {
+      const target = prev.find((folder) => folder.id === id);
+      if (!target) return prev;
+      const oldPath = target.name;
+      const nextPath = name.trim() || 'Untitled Folder';
+      return prev.map((folder) => {
+        if (folder.id === id) return { ...folder, name: nextPath };
+        if (folder.name === oldPath || folder.name.startsWith(`${oldPath}/`)) {
+          return { ...folder, name: nextPath + folder.name.slice(oldPath.length) };
+        }
+        return folder;
+      });
+    });
   }, []);
 
-  const handleDeleteFolder = useCallback((id: string) => {
-    setFolders(prev => prev.filter(f => f.id !== id));
-    setNotes(prev => {
-      const toDelete = prev.filter(n => n.folder === id);
-      Promise.all(toDelete.map(n => storage.deleteNote(n.id))).catch(() => {
-        setSaveError('Failed to delete some notes in folder.');
-      });
-      return syncLinkRefs(prev.filter(n => n.folder !== id), prev);
-    });
-  }, [syncLinkRefs]);
+  const handleDeleteFolder = useCallback(async (id: string): Promise<string[]> => {
+    const target = folders.find((folder) => folder.id === id);
+    const folderPrefix = target?.name ?? '';
+    const folderIdsToDelete = new Set(
+      folders
+        .filter((folder) => folder.id === id || folder.name === folderPrefix || folder.name.startsWith(`${folderPrefix}/`))
+        .map((folder) => folder.id)
+    );
+    const toDelete = notes.filter(n => folderIdsToDelete.has(n.folder));
+    try {
+      await Promise.all(
+        toDelete.flatMap((note) => {
+          const ops = [storage.deleteNote(note.id)];
+          if (note.attachments?.length) {
+            ops.push(storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments));
+          }
+          return ops;
+        })
+      );
+    } catch {
+      setSaveError('Failed to delete some notes in folder.');
+      return [];
+    }
+    const deletedIds = toDelete.map((note) => note.id);
+    setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
+    setRecentNoteIds(prev => prev.filter((noteId) => !deletedIds.includes(noteId)));
+    setNotes(prev => syncLinkRefs(prev.filter(n => !folderIdsToDelete.has(n.folder)), prev));
+    return deletedIds;
+  }, [folders, notes, syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
     settings,
@@ -420,18 +569,43 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave, syncLinkRefs]);
 
-  const handleImportData = useCallback(async (importedNotes: Note[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
-    const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
-    const withRefs = syncLinkRefs(normalizedNotes);
-    setNotes(withRefs);
-    if (importedFolders) setFolders(importedFolders);
-    if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
-    await storage.saveNotes(withRefs);
-    if (shouldPrune) {
-      await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
+  const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
+    const savedAttachmentIds: string[] = [];
+    try {
+      for (const note of importedNotes) {
+        for (const attachment of note.attachments ?? []) {
+          if (!attachment.dataBase64) continue;
+          const binary = atob(attachment.dataBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: attachment.mimeType || 'application/octet-stream' });
+          await storage.saveAttachmentBlob(attachment.id, blob);
+          savedAttachmentIds.push(attachment.id);
+        }
+      }
+
+      const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
+      const withRefs = syncLinkRefs(normalizedNotes);
+      setNotes(withRefs);
+      if (importedFolders) setFolders(importedFolders);
+      if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
+      await storage.saveNotes(withRefs);
+      if (shouldPrune) {
+        await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
+      }
+      // 清理孤立附件 Blob（best-effort）
+      const validIds = new Set(
+        importedNotes.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
+      );
+      storage.pruneOrphanedAttachments(validIds).catch(() => {});
+      if (importedFolders) await storage.saveFolders(importedFolders);
+      if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
+    } catch (error) {
+      await Promise.allSettled(savedAttachmentIds.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
+      throw error;
     }
-    if (importedFolders) await storage.saveFolders(importedFolders);
-    if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
   }, [syncLinkRefs]);
 
   const retryInitialization = useCallback(() => {
@@ -458,11 +632,12 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (!parsed.notes || !Array.isArray(parsed.notes)) {
         throw new Error('Invalid backup file.');
       }
-      const { notes: normalized, report } = normalizeAndValidateNotes(parsed.notes);
+      const rawNotes = parsed.notes as ImportedNote[];
+      const { report } = normalizeAndValidateNotes(rawNotes);
       if (!report.ok) {
         throw new Error(report.issues.find((issue) => issue.level === 'error')?.message || 'Invalid backup payload.');
       }
-      await handleImportData(normalized, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace');
+      await handleImportData(rawNotes, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace', true);
       setLoadError(null);
     } catch (error) {
       const appError = fromStorageError(error);
@@ -484,8 +659,10 @@ Export regularly: use Settings → Data → Export Backup.`,
     setActiveNoteId: setActiveNoteIdWithRecent,
     recentNoteIds,
     handleUpdateNote,
+    handleSaveNote,
     handleRenameNote,
     handleCreateNote,
+    handleMoveNote,
     handleImportNote,
     handleNavigateToNote,
     handleNavigateToNoteById,

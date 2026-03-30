@@ -1,5 +1,6 @@
 import localforage from 'localforage';
-import { Note, Folder } from '../types';
+import { Note, Folder, Attachment } from '../types';
+import { storage } from './storage';
 
 const fsHandleStore = localforage.createInstance({
   name: 'redaction-diary-fs-db',
@@ -47,6 +48,18 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[\/\\:*?"<>|]/g, '_');
 }
 
+function sanitizePathSegment(name: string): string {
+  return sanitizeFilename(name).replace(/\s+/g, '_');
+}
+
+function sanitizeFolderPath(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => sanitizeFilename(segment).replace(/\s+/g, '_'))
+    .filter(Boolean)
+    .join('/');
+}
+
 function parseFrontMatter(text: string): { meta: Record<string, any>; content: string } {
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return { meta: {}, content: text };
@@ -74,16 +87,111 @@ function buildFrontMatter(note: Note): string {
   return `---\nid: ${note.id}\nfolder: ${note.folder || ''}\ntags: ${tags}\nlinks: ${links}\nlinkRefs: ${linkRefs}\ncreatedAt: ${note.createdAt}\n---\n`;
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read attachment.'));
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      resolve(result.split(',')[1] ?? '');
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return blobToBase64(file);
+}
+
+function attachmentVaultFileName(note: Note, attachment: Attachment): string {
+  return `${sanitizePathSegment(attachment.id)}-${sanitizeFilename(attachment.filename)}`;
+}
+
+function attachmentVaultPath(note: Note, attachment: Attachment): string {
+  return attachment.vaultPath ?? `attachments/${sanitizePathSegment(note.id)}/${attachmentVaultFileName(note, attachment)}`;
+}
+
+async function ensureDirectory(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string[],
+  create = true
+): Promise<FileSystemDirectoryHandle | null> {
+  let current: FileSystemDirectoryHandle | null = rootHandle;
+  for (const segment of path) {
+    if (!current) return null;
+    try {
+      current = await current.getDirectoryHandle(segment, { create });
+    } catch {
+      return null;
+    }
+  }
+  return current;
+}
+
 async function getFolderHandle(
   rootHandle: FileSystemDirectoryHandle,
   folderName: string,
   create = true
 ): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    return await rootHandle.getDirectoryHandle(folderName, { create });
-  } catch {
-    return null;
+  const segments = folderName.split('/').filter(Boolean).map((segment) => sanitizeFilename(segment));
+  if (segments.length === 0) return rootHandle;
+  return ensureDirectory(rootHandle, segments, create);
+}
+
+async function writeAttachment(
+  rootHandle: FileSystemDirectoryHandle,
+  note: Note,
+  attachment: Attachment
+): Promise<void> {
+  const blob = await storage.getAttachmentBlob(attachment.id);
+  if (!blob) return;
+  const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(note.id)]);
+  if (!dirHandle) return;
+  const fileName = attachmentVaultFileName(note, attachment);
+  const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+async function syncAttachmentsForNote(
+  rootHandle: FileSystemDirectoryHandle,
+  note: Note
+): Promise<void> {
+  const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(note.id)]);
+  if (!dirHandle) return;
+  const expected = new Set((note.attachments ?? []).map((att) => attachmentVaultFileName(note, att)));
+  const existingEntries = [] as Array<[string, FileSystemHandle]>;
+  for await (const entry of dirHandle.entries()) {
+    existingEntries.push(entry);
   }
+  await Promise.all(
+    existingEntries.map(async ([name, handle]) => {
+      if (!expected.has(name) && handle.kind === 'file') {
+        await dirHandle.removeEntry(name);
+      }
+    })
+  );
+  await Promise.all((note.attachments ?? []).map((attachment) => writeAttachment(rootHandle, note, attachment)));
+}
+
+function rewriteAttachmentEmbedsForVault(note: Note): string {
+  const attachments = note.attachments ?? [];
+  return note.content.replace(/!\[\[(.*?)\]\]/g, (_match, rawName) => {
+    const name = String(rawName ?? '').trim();
+    const attachment = attachments.find((att) =>
+      att.filename === name ||
+      att.vaultPath === name ||
+      att.vaultPath?.endsWith(`/${name}`) ||
+      attachmentVaultPath(note, att) === name
+    );
+    if (!attachment) return `![[${name}]]`;
+    return `![[${attachmentVaultPath(note, attachment)}]]`;
+  });
+}
+
+function folderPathKey(folderName: string): string {
+  return sanitizeFolderPath(folderName);
 }
 
 export async function writeNote(
@@ -93,7 +201,7 @@ export async function writeNote(
 ): Promise<void> {
   const folder = folders.find(f => f.id === note.folder);
   const dirHandle = folder
-    ? await getFolderHandle(rootHandle, sanitizeFilename(folder.name))
+    ? await getFolderHandle(rootHandle, folder.name)
     : rootHandle;
   if (!dirHandle) return;
 
@@ -115,8 +223,9 @@ export async function writeNote(
 
   const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
-  await writable.write(buildFrontMatter(note) + note.content);
+  await writable.write(buildFrontMatter(note) + rewriteAttachmentEmbedsForVault(note));
   await writable.close();
+  await syncAttachmentsForNote(rootHandle, note);
 }
 
 export async function deleteNoteFile(
@@ -126,7 +235,7 @@ export async function deleteNoteFile(
 ): Promise<void> {
   const folder = folders.find(f => f.id === note.folder);
   const dirHandle = folder
-    ? await getFolderHandle(rootHandle, sanitizeFilename(folder.name), false)
+    ? await getFolderHandle(rootHandle, folder.name, false)
     : rootHandle;
   if (!dirHandle) return;
 
@@ -134,10 +243,37 @@ export async function deleteNoteFile(
   for (const filename of [`${baseName}.md`, `${baseName}_${note.id.slice(0, 8)}.md`]) {
     try {
       await dirHandle.removeEntry(filename);
-      return;
+      break;
     } catch {
       // try next variant
     }
+  }
+  try {
+    const attachmentsRoot = await getFolderHandle(rootHandle, 'attachments', false);
+    if (attachmentsRoot) {
+      await attachmentsRoot.removeEntry(sanitizePathSegment(note.id), { recursive: true });
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function deleteFolderTree(
+  rootHandle: FileSystemDirectoryHandle,
+  folderPath: string
+): Promise<void> {
+  const segments = folderPath.split('/').filter(Boolean).map((segment) => sanitizeFilename(segment));
+  if (segments.length === 0) return;
+  const parentSegments = segments.slice(0, -1);
+  const folderName = segments[segments.length - 1];
+  const parentHandle = parentSegments.length > 0
+    ? await ensureDirectory(rootHandle, parentSegments, false)
+    : rootHandle;
+  if (!parentHandle) return;
+  try {
+    await parentHandle.removeEntry(folderName, { recursive: true });
+  } catch {
+    // ignore missing directories during best-effort cleanup
   }
 }
 
@@ -146,14 +282,20 @@ export async function scanDirectory(
   folders: Folder[]
 ): Promise<Note[]> {
   const notes: Note[] = [];
+  const attachmentsByNoteId = new Map<string, Attachment[]>();
   const isFileHandle = (handle: FileSystemHandle): handle is FileSystemFileHandle =>
     handle.kind === 'file';
   const isDirectoryHandle = (handle: FileSystemHandle): handle is FileSystemDirectoryHandle =>
     handle.kind === 'directory';
 
-  async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string) {
+  async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string, pathSegments: string[] = []) {
     for await (const [name, handle] of dirHandle.entries()) {
+      const currentPath = [...pathSegments, name];
+      const currentPathKey = currentPath.join('/');
       if (isFileHandle(handle) && name.endsWith('.md')) {
+        if (pathSegments.length === 0 && (name === 'README.md' || name === 'manifest.json')) {
+          continue;
+        }
         const file = await handle.getFile();
         const text = await file.text();
         const { meta, content } = parseFrontMatter(text);
@@ -169,12 +311,44 @@ export async function scanDirectory(
           updatedAt: new Date(file.lastModified).toISOString(),
         });
       } else if (isDirectoryHandle(handle)) {
-        const matchedFolder = folders.find(f => sanitizeFilename(f.name) === name);
-        await readDir(handle, matchedFolder?.id);
+        if (name === 'attachments') {
+          for await (const [noteId, attachmentDir] of handle.entries()) {
+            if (!isDirectoryHandle(attachmentDir)) continue;
+            const noteAttachments: Attachment[] = [];
+            for await (const [attachmentName, attachmentHandle] of attachmentDir.entries()) {
+              if (!isFileHandle(attachmentHandle)) continue;
+              const file = await attachmentHandle.getFile();
+              const base64 = await fileToBase64(file);
+              const dashIdx = attachmentName.indexOf('-');
+              const originalFilename = dashIdx > 0 ? attachmentName.slice(dashIdx + 1) : attachmentName;
+              const attachmentId = dashIdx > 0 ? attachmentName.slice(0, dashIdx) : `${noteId}:${attachmentName}`;
+              noteAttachments.push({
+                id: attachmentId,
+                noteId,
+                filename: originalFilename,
+                mimeType: file.type || 'application/octet-stream',
+                size: file.size,
+                createdAt: new Date(file.lastModified).toISOString(),
+                dataBase64: base64,
+                vaultPath: `attachments/${noteId}/${attachmentName}`,
+              });
+            }
+            if (noteAttachments.length > 0) attachmentsByNoteId.set(noteId, noteAttachments);
+          }
+        } else {
+          const matchedFolder = folders.find((folder) => folderPathKey(folder.name) === currentPathKey);
+          await readDir(handle, matchedFolder?.id, currentPath);
+        }
       }
     }
   }
 
   await readDir(rootHandle);
+  notes.forEach((note) => {
+    const noteAttachments = attachmentsByNoteId.get(sanitizePathSegment(note.id)) ?? attachmentsByNoteId.get(note.id);
+    if (noteAttachments?.length) {
+      note.attachments = noteAttachments;
+    }
+  });
   return notes;
 }
