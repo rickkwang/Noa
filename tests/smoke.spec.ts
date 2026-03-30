@@ -303,7 +303,7 @@ test('reset and import recovery flow uses confirmation', async ({ page }) => {
 test('graph tab opens in right panel', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Toggle Panel').click();
-  await expect(page.getByRole('button', { name: 'Graph' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Backlinks' })).toBeVisible();
 });
