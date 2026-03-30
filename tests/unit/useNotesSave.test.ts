@@ -108,3 +108,56 @@ describe('useNotes handleSaveNote', () => {
     expect(persisted.updatedAt).not.toBe(input.updatedAt);
   });
 });
+
+describe('useNotes importBackupFromRecovery', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  it('reports invalid backup files as import errors instead of storage errors', async () => {
+    vi.resetModules();
+
+    const saveNote = vi.fn(async () => undefined);
+    const storageMock = {
+      saveNote,
+      verifyAccess: vi.fn(async () => undefined),
+      migrateFromLocalStorage: vi.fn(async () => false),
+      migrateToPerNoteStorage: vi.fn(async () => undefined),
+      getWorkspaceName: vi.fn(async () => null),
+      getFolders: vi.fn(async () => null),
+      getNotes: vi.fn(async () => null),
+      saveFolders: vi.fn(async () => undefined),
+      saveWorkspaceName: vi.fn(async () => undefined),
+      deleteNote: vi.fn(async () => undefined),
+      deleteAttachmentBlobsByNoteId: vi.fn(async () => undefined),
+      pruneOrphanedNotes: vi.fn(async () => undefined),
+      saveNotes: vi.fn(async () => undefined),
+      pruneOrphanedAttachments: vi.fn(async () => undefined),
+      clearAll: vi.fn(async () => undefined),
+    };
+    const fromImportError = vi.fn((code: string) => ({ code, userMessage: `import:${code}`, suggestedAction: 'import_backup' as const }));
+    const fromStorageError = vi.fn(() => ({ code: 'storage_unavailable', userMessage: 'storage', suggestedAction: 'retry' as const }));
+    const harness = createReactHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+    vi.doMock('../../src/lib/appErrors', () => ({
+      fromImportError,
+      fromStorageError,
+    }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    const api = useNotes();
+
+    await api.importBackupFromRecovery(new File([JSON.stringify({ folders: [], workspaceName: 'Recovered' })], 'bad.json', { type: 'application/json' }));
+
+    expect(fromImportError).toHaveBeenCalled();
+    expect(fromStorageError).not.toHaveBeenCalled();
+  });
+});

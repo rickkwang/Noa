@@ -4,7 +4,7 @@ import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
-import { fromStorageError } from '../lib/appErrors';
+import { fromImportError, fromStorageError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { sortNotesByRecent } from '../lib/noteSort';
 
@@ -30,6 +30,55 @@ function inferAttachmentMimeType(file: File): string {
   if (name.endsWith('.svg')) return 'image/svg+xml';
   if (name.endsWith('.avif')) return 'image/avif';
   return 'application/octet-stream';
+}
+
+function canDecodeBase64(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    if (typeof atob === 'function') {
+      atob(trimmed);
+      return true;
+    }
+    if (typeof Buffer !== 'undefined') {
+      Buffer.from(trimmed, 'base64');
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function findInvalidAttachmentPayload(notes: ImportedNote[]): string | null {
+  for (let i = 0; i < notes.length; i += 1) {
+    const note = notes[i];
+    const attachments = note.attachments ?? [];
+    for (let j = 0; j < attachments.length; j += 1) {
+      const attachment = attachments[j];
+      if (!attachment.dataBase64) continue;
+      if (!canDecodeBase64(attachment.dataBase64)) {
+        return `Attachment payload is invalid for note "${note.title || note.id}".`;
+      }
+    }
+  }
+  return null;
+}
+
+function mergeAttachmentPayloads(
+  normalizedNote: Note,
+  rawNote?: ImportedNote,
+): ImportedNote {
+  if (!normalizedNote.attachments?.length) {
+    return normalizedNote as ImportedNote;
+  }
+  const rawAttachments = rawNote?.attachments ?? [];
+  const rawById = new Map(rawAttachments.map((attachment) => [attachment.id, attachment]));
+  const attachments = normalizedNote.attachments.map((attachment) => ({
+    ...attachment,
+    dataBase64: rawById.get(attachment.id)?.dataBase64,
+  }));
+  return { ...normalizedNote, attachments };
 }
 
 export function useNotes(settings?: AppSettings) {
@@ -572,6 +621,11 @@ Export regularly: use Settings → Data → Export Backup.`,
   const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
     const savedAttachmentIds: string[] = [];
     try {
+      const attachmentError = findInvalidAttachmentPayload(importedNotes);
+      if (attachmentError) {
+        throw new Error(attachmentError);
+      }
+
       for (const note of importedNotes) {
         for (const attachment of note.attachments ?? []) {
           if (!attachment.dataBase64) continue;
@@ -587,7 +641,11 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
 
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
-      const withRefs = syncLinkRefs(normalizedNotes);
+      const withRefs = syncLinkRefs(normalizedNotes.map((note) => ({
+        ...note,
+        tags: extractTags(note.content),
+        links: extractLinks(note.content),
+      })));
       setNotes(withRefs);
       if (importedFolders) setFolders(importedFolders);
       if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
@@ -628,19 +686,56 @@ Export regularly: use Settings → Data → Export Backup.`,
   const importBackupFromRecovery = useCallback(async (file: File) => {
     try {
       const content = await file.text();
-      const parsed = JSON.parse(content);
+      let parsed: { notes?: ImportedNote[]; folders?: Folder[]; workspaceName?: string };
+      try {
+        parsed = JSON.parse(content) as { notes?: ImportedNote[]; folders?: Folder[]; workspaceName?: string };
+      } catch (error) {
+        const appError = fromImportError('import_invalid_json', 'Error parsing backup file.');
+        setLoadError({ code: appError.code, message: appError.userMessage });
+        return;
+      }
       if (!parsed.notes || !Array.isArray(parsed.notes)) {
-        throw new Error('Invalid backup file.');
+        const appError = fromImportError('import_invalid_json', 'Invalid backup file.');
+        setLoadError({ code: appError.code, message: appError.userMessage });
+        return;
       }
       const rawNotes = parsed.notes as ImportedNote[];
-      const { report } = normalizeAndValidateNotes(rawNotes);
+      const { notes: normalizedNotes, report } = normalizeAndValidateNotes(rawNotes);
       if (!report.ok) {
-        throw new Error(report.issues.find((issue) => issue.level === 'error')?.message || 'Invalid backup payload.');
+        const appError = fromImportError('import_integrity_failed', 'Invalid backup payload.');
+        setLoadError({ code: appError.code, message: appError.userMessage });
+        return;
       }
-      await handleImportData(rawNotes, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace', true);
+
+      const rawById = new Map(rawNotes.map((note) => [note.id, note]));
+      const normalizedWithPayloads: ImportedNote[] = normalizedNotes.map((note) => {
+        const merged = mergeAttachmentPayloads(note, rawById.get(note.id));
+        const contentValue = merged.content || '';
+        return {
+          ...merged,
+          tags: extractTags(contentValue),
+          links: extractLinks(contentValue),
+        };
+      });
+      const attachmentError = findInvalidAttachmentPayload(normalizedWithPayloads);
+      if (attachmentError) {
+        setLoadError({ code: 'import_integrity_failed', message: attachmentError });
+        return;
+      }
+
+      await handleImportData(normalizedWithPayloads, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace', true);
       setLoadError(null);
     } catch (error) {
-      const appError = fromStorageError(error);
+      const importErrorCode = error instanceof Error && error.message.startsWith('Attachment payload is invalid')
+        ? 'import_integrity_failed'
+        : error instanceof Error && error.message === 'Invalid backup payload.'
+          ? 'import_integrity_failed'
+          : error instanceof Error && error.message === 'Invalid backup file.'
+            ? 'import_invalid_json'
+            : null;
+      const appError = importErrorCode
+        ? fromImportError(importErrorCode, importErrorCode === 'import_invalid_json' ? 'Error parsing backup file.' : 'Import integrity check failed.')
+        : fromStorageError(error);
       setLoadError({ code: appError.code, message: appError.userMessage });
     }
   }, [handleImportData]);

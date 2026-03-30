@@ -35,9 +35,9 @@ interface UseFileSyncResult {
   disconnect: () => Promise<void>;
   retry: () => void;
   syncNoteOnUpdate: (id: string, content: string) => void;
-  syncNoteOnMove: (id: string, previousFolderId: string) => void;
+  syncNoteOnMove: (id: string, previousFolderId: string, nextFolderId: string) => void;
   syncNoteOnRename: (id: string, newTitle: string) => void;
-  syncFolderOnRename: (folderId: string, previousName: string) => void;
+  syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[]) => void;
   syncNoteOnDelete: (id: string) => void;
 }
 
@@ -177,11 +177,11 @@ export function useFileSync({
   );
 
   const syncNoteOnMove = useCallback(
-    (id: string, previousFolderId: string) => {
+    (id: string, previousFolderId: string, nextFolderId: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
       if (!note) return;
-      const movedNote = { ...note };
+      const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       const previousNote = { ...note, folder: previousFolderId };
 
       setSyncStatus('syncing');
@@ -239,10 +239,10 @@ export function useFileSync({
   );
 
   const syncFolderOnRename = useCallback(
-    (folderId: string, previousName: string) => {
+    (folderId: string, previousName: string, nextFolders: Folder[]) => {
       if (!fsHandle) return;
       setSyncStatus('syncing');
-      void syncFolderRename(fsHandle, folderId, previousName, foldersRef.current, notesRef.current)
+      void syncFolderRename(fsHandle, folderId, previousName, nextFolders, notesRef.current)
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);

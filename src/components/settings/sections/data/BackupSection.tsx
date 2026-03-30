@@ -53,7 +53,8 @@ export default function BackupSection({
           Last export: {formatExportTimestamp(lastExportAt)}
           {daysSinceExport !== null ? ` (${daysSinceExport} day(s) ago)` : ''}
         </div>
-        <div className="text-[#2D2D2D]/60">Recommended cadence: export JSON at least every 7 days.</div>
+        <div className="text-[#2D2D2D]/60">Backup health is based on JSON or Vault exports.</div>
+        <div className="text-[#2D2D2D]/60">Recommended cadence: export JSON or Vault at least every 7 days.</div>
       </div>
       {showStorage && storageEstimate && (
         <div className="px-1 pb-2 space-y-1">
@@ -76,7 +77,7 @@ export default function BackupSection({
           )}
         </div>
       )}
-      <SettingItem label="Export as JSON" description="Complete backup including metadata and settings.">
+      <SettingItem label="Export JSON Backup" description="Complete backup including metadata and settings.">
         <button
           onClick={onExportJson}
           className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
@@ -97,7 +98,7 @@ export default function BackupSection({
         </button>
       </SettingItem>
 
-      <SettingItem label="Export as HTML" description="Export all notes as static HTML pages in a ZIP archive.">
+      <SettingItem label="Export as HTML" description="Export all notes as static HTML pages in a ZIP archive (not a backup).">
         <button
           onClick={onExportHtmlZip}
           disabled={exportingHtml}

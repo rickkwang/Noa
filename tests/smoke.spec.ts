@@ -245,10 +245,11 @@ test('multi-tab content persists after closing and reopening tabs', async ({ pag
 });
 
 test('filesystem sync control and status are visible in data settings', async ({ page }) => {
+  await installMockDirectoryPicker(page);
   await page.goto('/');
   await page.getByTitle('Settings').click();
   await page.getByRole('button', { name: 'Data' }).click();
-  await expect(page.getByText('Local File Sync')).toBeVisible();
+  await expect(page.getByText('Vault Folder', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Connect Folder|Disconnect/ })).toBeVisible();
 });
 

@@ -21,7 +21,6 @@ import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
-import { syncFolderRename, syncNoteMove } from './services/fileSyncService';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -83,7 +82,9 @@ export default function App() {
     disconnect,
     retry,
     syncNoteOnUpdate,
+    syncNoteOnMove,
     syncNoteOnRename,
+    syncFolderOnRename,
     syncNoteOnDelete,
   } = useFileSync({
     isLoaded,
@@ -114,14 +115,8 @@ export default function App() {
     const note = notes.find((item) => item.id === id);
     if (!note || note.folder === folderId) return;
     _handleMoveNote(id, folderId);
-    if (!fsHandle) return;
-    void syncNoteMove(
-      fsHandle,
-      note,
-      { ...note, folder: folderId, updatedAt: new Date().toISOString() },
-      folders,
-    );
-  }, [_handleMoveNote, folders, fsHandle, notes]);
+    syncNoteOnMove(id, note.folder, folderId);
+  }, [_handleMoveNote, notes, syncNoteOnMove]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     _handleCreateFolder(parentFolderId);
@@ -131,7 +126,6 @@ export default function App() {
     const oldFolder = folders.find((folder) => folder.id === id);
     if (!oldFolder) return;
     _handleRenameFolder(id, newName);
-    if (!fsHandle) return;
 
     const previousName = oldFolder.name;
     const nextName = newName.trim() || 'Untitled Folder';
@@ -143,8 +137,8 @@ export default function App() {
       return folder;
     });
 
-    void syncFolderRename(fsHandle, id, previousName, nextFolders, notes);
-  }, [_handleRenameFolder, folders, fsHandle, notes]);
+    syncFolderOnRename(id, previousName, nextFolders);
+  }, [_handleRenameFolder, folders, syncFolderOnRename]);
 
   const closeTabById = useCallback((id: string) => {
     setOpenTabIds(prev => {

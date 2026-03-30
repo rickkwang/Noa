@@ -86,6 +86,18 @@ export function analyzeConflicts(incoming: Note[], existing: Note[]): ConflictSu
   return { sameIdCount, dupeTitleCount, newCount };
 }
 
+export function prepareImportedNotes(notes: Note[]): Note[] {
+  return notes.map((note) => ({
+    ...note,
+    tags: extractTags(note.content),
+    links: extractLinks(note.content),
+  }));
+}
+
+export function validateAttachmentPayloads(notes: ImportedNote[]): string | null {
+  return findInvalidAttachmentPayload(notes);
+}
+
 export function applyImportStrategy(
   incoming: Note[],
   existing: Note[],
@@ -250,6 +262,55 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
 }
 
+function canDecodeBase64(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    if (typeof atob === 'function') {
+      atob(trimmed);
+      return true;
+    }
+    if (typeof Buffer !== 'undefined') {
+      Buffer.from(trimmed, 'base64');
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function findInvalidAttachmentPayload(notes: ImportedNote[]): string | null {
+  for (let i = 0; i < notes.length; i += 1) {
+    const note = notes[i];
+    const attachments = note.attachments ?? [];
+    for (let j = 0; j < attachments.length; j += 1) {
+      const attachment = attachments[j];
+      if (!attachment.dataBase64) continue;
+      if (!canDecodeBase64(attachment.dataBase64)) {
+        return `Attachment payload is invalid for note "${note.title || note.id}".`;
+      }
+    }
+  }
+  return null;
+}
+
+function mergeAttachmentPayloads(
+  normalizedNote: Note,
+  rawNote?: ImportedNote,
+): ImportedNote {
+  if (!normalizedNote.attachments?.length) {
+    return normalizedNote as ImportedNote;
+  }
+  const rawAttachments = rawNote?.attachments ?? [];
+  const rawById = new Map(rawAttachments.map((attachment) => [attachment.id, attachment]));
+  const attachments = normalizedNote.attachments.map((attachment) => ({
+    ...attachment,
+    dataBase64: rawById.get(attachment.id)?.dataBase64,
+  }));
+  return { ...normalizedNote, attachments };
+}
+
 function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
   return notes.map((note) => ({
     ...note,
@@ -338,8 +399,27 @@ export function useDataTransfer({
   }, [folders, notes, notify]);
 
   const exportJson = useCallback(() => {
-    void exportJsonSnapshot(notes, folders, workspaceName);
-  }, [folders, notes, workspaceName]);
+    if (!ensureExportIntegrity()) return;
+    void (async () => {
+      const ok = await exportJsonSnapshot(notes, folders, workspaceName);
+      if (!ok) {
+        const appError = fromImportError('unknown_error', 'Export failed. Please retry.');
+        recordErrorSnapshot({
+          at: new Date().toISOString(),
+          operation: 'export_json',
+          code: appError.code,
+          message: appError.userMessage,
+          suggestedAction: appError.suggestedAction,
+        });
+        notify({
+          type: 'error',
+          text: appError.userMessage,
+          code: appError.code,
+          suggestedAction: appError.suggestedAction,
+        });
+      }
+    })();
+  }, [ensureExportIntegrity, folders, notes, notify, workspaceName]);
 
   const exportZip = useCallback(async () => {
     if (!ensureExportIntegrity()) return;
@@ -427,7 +507,6 @@ export function useDataTransfer({
 
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-html-export.zip`);
-      markExported();
     } finally {
       setExportingHtml(false);
     }
@@ -474,7 +553,30 @@ export function useDataTransfer({
             return;
           }
 
-          const conflictSummary = analyzeConflicts(normalizedNotes, notes);
+          const rawById = new Map(rawNotes.map((note) => [note.id, note]));
+          const normalizedWithPayloads: ImportedNote[] = prepareImportedNotes(normalizedNotes.map((note) => {
+            const merged = mergeAttachmentPayloads(note, rawById.get(note.id));
+            return merged;
+          }));
+          const attachmentError = validateAttachmentPayloads(normalizedWithPayloads);
+          if (attachmentError) {
+            const appError: { code: AppErrorCode; userMessage: string; suggestedAction: RecoveryAction } = {
+              code: 'import_integrity_failed',
+              userMessage: attachmentError,
+              suggestedAction: 'import_backup',
+            };
+            recordErrorSnapshot({
+              at: new Date().toISOString(),
+              operation: 'import_json',
+              code: appError.code,
+              message: attachmentError,
+              suggestedAction: appError.suggestedAction,
+            });
+            notify({ type: 'error', text: attachmentError, code: appError.code, suggestedAction: appError.suggestedAction });
+            return;
+          }
+
+          const conflictSummary = analyzeConflicts(normalizedWithPayloads, notes);
           importStrategyRef.current = 'overwrite';
 
           requestConfirm({
@@ -482,12 +584,12 @@ export function useDataTransfer({
             conflictSummary,
             onStrategyChange: (s) => { importStrategyRef.current = s; },
             onConfirm: async () => {
-              const finalNotes = applyImportStrategy(rawNotes, notes, importStrategyRef.current);
+              const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, importStrategyRef.current);
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
               const importedCount = countImportedNotes(finalNotes, notes, importStrategyRef.current);
               try {
                 await onImportData(
-                  finalNotes,
+                  finalNotes as ImportedNote[],
                   parsed.folders || [],
                   parsed.workspaceName || 'Imported Workspace',
                   importStrategyRef.current === 'overwrite',
@@ -729,7 +831,14 @@ export function useDataTransfer({
               notify({ type: 'error', text: report.issues.find(i => i.level === 'error')?.message ?? appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
               return;
             }
-            validatedNotes = normalizedNotes;
+            const manifestWithPayloads = prepareImportedNotes(normalizedNotes);
+            const attachmentError = validateAttachmentPayloads(rawNotes as ImportedNote[]);
+            if (attachmentError) {
+              const appError = fromImportError('import_integrity_failed', attachmentError);
+              notify({ type: 'error', text: attachmentError, code: appError.code, suggestedAction: appError.suggestedAction });
+              return;
+            }
+            validatedNotes = manifestWithPayloads;
             newFolders = Array.isArray(manifest.folders) ? manifest.folders : [];
             workspaceLabel = manifest.workspaceName || workspaceLabel;
             attachmentNoteLookup = rawNotes as ImportedNote[];

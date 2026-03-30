@@ -27,6 +27,9 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
           onChange={onImportJsonInput}
         />
       </SettingItem>
+      <p className="text-[11px] text-[#2D2D2D]/60 px-1">
+        To restore a Vault ZIP, unzip it first and use Open Vault Folder to import the folder.
+      </p>
     </SettingSection>
   );
 }

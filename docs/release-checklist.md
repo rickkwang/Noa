@@ -12,6 +12,8 @@
 - Run `npm run build:budget` (blocking)
 - Run `npm run test:smoke` (blocking)
 - Do not promote to `beta` if any gate above fails.
+- Generate release evidence (auditable artifact):
+  - `LINT_STATUS=pass BUILD_BUDGET_STATUS=pass SMOKE_STATUS=pass node scripts/release-evidence.mjs`
 
 ## 3) Security Quick Check
 - Verify Markdown preview does not execute raw HTML/JS payloads.

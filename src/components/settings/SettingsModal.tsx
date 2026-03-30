@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Settings, X, Book } from 'lucide-react';
 import { Note, Folder, AppSettings, SyncStatus } from '../../types';
 import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
@@ -6,6 +6,7 @@ import AppearanceSettings from './sections/AppearanceSettings';
 import DataSettings from './sections/DataSettings';
 import EditorSettings from './sections/EditorSettings';
 import AppUpdateSettings from './sections/AppUpdateSettings';
+import { buildDiagnostics, downloadDiagnostics } from '../../lib/diagnostics';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -46,7 +47,60 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
   const [mounted, setMounted] = useState(false);
+  const [diagnosticsState, setDiagnosticsState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   useEffect(() => { setMounted(true); }, []);
+
+  const feedbackMailto = useMemo(() => {
+    const appVersion = import.meta.env.PACKAGE_VERSION || 'unknown';
+    const lines = [
+      'Reporter:',
+      '- Name:',
+      `- Browser: ${navigator.userAgent}`,
+      `- OS/Platform: ${navigator.platform ?? 'unknown'}`,
+      `- Language: ${navigator.language ?? 'unknown'}`,
+      `- App version: ${appVersion}`,
+      '',
+      'What happened:',
+      '- Summary:',
+      '- Reproduction steps:',
+      '1.',
+      '2.',
+      '3.',
+      '',
+      'Impact:',
+      '- Data loss involved? (yes/no)',
+      '- Can continue working? (yes/no)',
+      '- Workaround available? (yes/no)',
+      '- Workaround details:',
+      '',
+      'Evidence:',
+      '- Screenshot/video:',
+      '- Console error (if any):',
+    ];
+    const subject = `Noa Feedback (${appVersion})`;
+    const body = lines.join('\n');
+    return `mailto:feedback@noa.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, []);
+
+  const handleExportDiagnostics = async () => {
+    setDiagnosticsState('exporting');
+    try {
+      const appVersion = import.meta.env.PACKAGE_VERSION || 'unknown';
+      const payload = await buildDiagnostics({
+        appVersion,
+        fileSync: {
+          status: syncStatus,
+          lastSyncAt: fsLastSyncAt ?? null,
+          error: fsSyncError ?? null,
+          handleName: fsHandle?.name ?? null,
+        },
+      });
+      downloadDiagnostics(payload);
+      setDiagnosticsState('success');
+    } catch {
+      setDiagnosticsState('error');
+    }
+  };
 
   return (
     <div
@@ -111,6 +165,41 @@ export default function SettingsModal({
                 <div>
                   <h2 className="font-bold mb-2 text-lg">About</h2>
                   <p className="text-[#2D2D2D]/70 text-sm">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
+                </div>
+                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-4 space-y-3">
+                  <div>
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#2D2D2D]/70">Feedback</h3>
+                    <p className="text-xs text-[#2D2D2D]/70 mt-1">
+                      Send feedback with a prefilled template. Nothing is collected automatically.
+                    </p>
+                  </div>
+                  <a
+                    href={feedbackMailto}
+                    className="inline-flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                  >
+                    <span>Send Feedback</span>
+                  </a>
+                </div>
+                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-4 space-y-3">
+                  <div>
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#2D2D2D]/70">Diagnostics</h3>
+                    <p className="text-xs text-[#2D2D2D]/70 mt-1">
+                      Export a local-only diagnostics bundle for support. Nothing is uploaded.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleExportDiagnostics}
+                    className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                    disabled={diagnosticsState === 'exporting'}
+                  >
+                    <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
+                  </button>
+                  {diagnosticsState === 'success' && (
+                    <p className="text-xs text-[#2D2D2D]/70">Diagnostics exported locally.</p>
+                  )}
+                  {diagnosticsState === 'error' && (
+                    <p className="text-xs text-red-700">Diagnostics export failed. Try again.</p>
+                  )}
                 </div>
                 <div className="border-2 border-[#2D2D2D] overflow-hidden">
                   <div className="bg-[#DCD9CE] px-4 py-2 border-b border-[#2D2D2D]">

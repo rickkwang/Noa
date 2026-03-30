@@ -5,6 +5,8 @@ import {
   classifyFolderImportFile,
   countImportedNotes,
   getFolderImportPath,
+  prepareImportedNotes,
+  validateAttachmentPayloads,
 } from '../../src/hooks/useDataTransfer';
 import { Note } from '../../src/types';
 
@@ -115,6 +117,45 @@ describe('countImportedNotes', () => {
     const incoming = [makeNote('id1', 'Note A Updated'), makeNote('id99', 'Note B')];
     const finalNotes = applyImportStrategy(incoming, existing, 'merge');
     expect(countImportedNotes(finalNotes, existing, 'merge')).toBe(2);
+  });
+});
+
+describe('prepareImportedNotes', () => {
+  it('recomputes tags and links from content', () => {
+    const imported = prepareImportedNotes([
+      {
+        ...makeNote('id1', 'Note A'),
+        content: 'Check #work and [[Linked Note]]',
+        tags: ['stale'],
+        links: ['Old Link'],
+      },
+    ]);
+
+    expect(imported[0]?.tags).toEqual(['work']);
+    expect(imported[0]?.links).toEqual(['Linked Note']);
+  });
+});
+
+describe('validateAttachmentPayloads', () => {
+  it('rejects invalid attachment payloads before write', () => {
+    const error = validateAttachmentPayloads([
+      {
+        ...makeNote('id1', 'Note A'),
+        attachments: [
+          {
+            id: 'att-1',
+            noteId: 'id1',
+            filename: 'image.png',
+            mimeType: 'image/png',
+            size: 10,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            dataBase64: 'not-base64!!',
+          },
+        ],
+      } as any,
+    ]);
+
+    expect(error).toMatch(/attachment payload is invalid/i);
   });
 });
 

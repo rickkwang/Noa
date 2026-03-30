@@ -42,7 +42,7 @@ export default function BackupReminderBar({
     >
       <div className="flex items-center gap-3 bg-[#EAE8E0] border border-[#2D2D2D]/30 shadow-[2px_2px_0px_0px_rgba(45,45,45,0.15)] px-3 py-2">
         <div className="flex flex-col">
-          <span className={`text-[11px] ${statusColor}`}>{message} · backup every 7d</span>
+          <span className={`text-[11px] ${statusColor}`}>{message} · JSON backup every 7d</span>
           <span className="text-[10px] text-[#2D2D2D]/50">
             Last export: {formatExportTimestamp(lastExportAt)}
           </span>

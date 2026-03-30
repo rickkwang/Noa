@@ -78,3 +78,9 @@ npm run dev    # http://localhost:3000
 ## 桌面版（macOS）
 
 从 [Releases](https://github.com/rickkwang/Noa/releases) 下载最新 `.dmg`，安装后即用。应用启动后会自动检查更新。
+
+---
+
+## 商业立场
+
+Noa 目前是本地优先、免费的个人笔记工具：不提供云同步，不收集用户数据。未来若探索商业化，会以自愿付费或离线增值功能为主，不改变本地优先默认和隐私承诺。
