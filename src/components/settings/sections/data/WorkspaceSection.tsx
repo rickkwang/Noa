@@ -82,6 +82,7 @@ export default function WorkspaceSection({
         <SettingItem
           label="Vault Folder"
           description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Pick a local folder to mirror notes as vault-style .md files.'}
+          stacked
         >
           <div className="space-y-2">
             {fsHandle ? (
