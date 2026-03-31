@@ -1,10 +1,17 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
 
 const isDev = !app.isPackaged;
+const isMac = process.platform === 'darwin';
+
 let win;
 let updateState = { state: 'idle', message: '' };
+let latestAvailableVersion = null;
+let latestAvailableInfo = null;
+let macInstallTask = null;
+let downloadTask = null;
 
 function emitUpdateStatus(payload) {
   updateState = payload;
@@ -13,16 +20,23 @@ function emitUpdateStatus(payload) {
   }
 }
 
-function getReleasePageUrl(version) {
-  if (!version) return 'https://github.com/rickkwang/Noa/releases';
-  return `https://github.com/rickkwang/Noa/releases/tag/v${version}`;
+function classifyUpdaterIssue(message, fallbackReason = 'update-error') {
+  const text = String(message || '').toLowerCase();
+  if (text.includes('invalid release feed') || text.includes('no published versions')) {
+    return 'feed-not-ready';
+  }
+  if (text.includes('network') || text.includes('timed out') || text.includes('econnreset') || text.includes('enotfound')) {
+    return 'network-error';
+  }
+  if (isMac && (text.includes('signed') || text.includes('verify') || text.includes('code signature') || text.includes('enoent'))) {
+    return 'mac-update-unavailable';
+  }
+  return fallbackReason;
 }
 
 function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
-
-  // Allow adhoc/unsigned builds to attempt update flow
   autoUpdater.forceDevUpdateConfig = false;
 
   autoUpdater.on('checking-for-update', () => {
@@ -30,6 +44,8 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-available', (info) => {
+    latestAvailableVersion = info?.version || latestAvailableVersion;
+    latestAvailableInfo = info || null;
     emitUpdateStatus({
       state: 'available',
       version: info.version,
@@ -38,14 +54,16 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-not-available', () => {
+    latestAvailableVersion = null;
+    latestAvailableInfo = null;
     emitUpdateStatus({ state: 'idle', message: `You're up to date (v${app.getVersion()}).` });
   });
 
   autoUpdater.on('download-progress', (progress) => {
     emitUpdateStatus({
       state: 'downloading',
-      progress: Math.round(progress.percent),
-      message: `Downloading... ${Math.round(progress.percent)}%`,
+      progress: Math.round(progress.percent || 0),
+      message: `Downloading... ${Math.round(progress.percent || 0)}%`,
     });
   });
 
@@ -53,35 +71,25 @@ function setupAutoUpdater() {
     emitUpdateStatus({
       state: 'ready',
       version: info.version,
+      progress: 100,
       message: `v${info.version} ready to install. Restart to apply.`,
     });
   });
 
   autoUpdater.on('error', (err) => {
-    const isFeedOrVersionIssue =
-      err.message?.includes('ERR_UPDATER_INVALID_RELEASE_FEED') ||
-      err.message?.includes('No published versions');
-
-    const isLikelyMacSigningIssue =
-      process.platform === 'darwin' &&
-      (
-        err.message?.includes('code signature') ||
-        err.message?.includes('signed') ||
-        err.message?.includes('download') ||
-        err.message?.includes('verify') ||
-        err.message?.includes('ENOENT')
-      );
-
     console.error('[updater] error', err);
+    const reason = classifyUpdaterIssue(err?.message, 'update-error');
 
     emitUpdateStatus({
       state: 'error',
-      message: isFeedOrVersionIssue
-        ? 'Update feed is not ready yet. Please retry in a moment.'
-        : isLikelyMacSigningIssue
-          ? 'Automatic update is unavailable on this macOS build. Open the release page to download the update manually.'
-          : 'Could not complete in-app update. Please retry.',
-      downloadUrl: isLikelyMacSigningIssue ? getReleasePageUrl(updateState.version) : updateState.downloadUrl,
+      reason,
+      message:
+        reason === 'feed-not-ready'
+          ? 'Update feed is not ready yet. Please retry in a moment.'
+          : reason === 'mac-update-unavailable'
+            ? 'Automatic update could not complete on this macOS build. Please retry the download.'
+            : 'Could not complete in-app update. Please retry.',
+      downloadUrl: reason === 'mac-update-unavailable' ? getReleasePageUrl(updateState.version) : updateState.downloadUrl,
     });
   });
 }
@@ -135,8 +143,13 @@ function createWindow() {
 async function doCheckForUpdates() {
   try {
     await autoUpdater.checkForUpdates();
-  } catch {
-    emitUpdateStatus({ state: 'error', message: 'Could not check for updates. Please check your connection.' });
+  } catch (error) {
+    console.error('[updater] check failed', error);
+    emitUpdateStatus({
+      state: 'error',
+      reason: classifyUpdaterIssue(error?.message, 'check-failed'),
+      message: 'Could not check for updates. Please check your connection and retry.',
+    });
   }
 }
 
@@ -151,34 +164,110 @@ app.whenReady().then(() => {
     await doCheckForUpdates();
     return true;
   });
-  ipcMain.handle('app-updater:quit-and-install', () => {
+  ipcMain.handle('app-updater:quit-and-install', async () => {
+    if (isDev) {
+      return { ok: false, reason: 'dev-mode' };
+    }
+
+    if (isMac) {
+      if (macInstallTask) {
+        return { ok: true, reason: 'in-progress' };
+      }
+
+      const targetVersion = latestAvailableVersion || updateState.version || app.getVersion();
+      const installInfo = latestAvailableInfo || { version: targetVersion };
+
+      emitUpdateStatus({
+        state: 'downloading',
+        version: targetVersion,
+        message: `Downloading v${targetVersion}...`,
+      });
+
+      macInstallTask = installMacUpdate({
+        app,
+        updateInfo: installInfo,
+        onProgress: (percent) => {
+          emitUpdateStatus({
+            state: 'downloading',
+            version: targetVersion,
+            progress: percent,
+            message: `Downloading... ${percent}%`,
+          });
+        },
+      }).finally(() => {
+        macInstallTask = null;
+      });
+
+      try {
+        const result = await macInstallTask;
+        emitUpdateStatus({
+          state: 'downloaded',
+          version: result.version,
+          progress: 100,
+          message: result.message,
+        });
+        setTimeout(() => app.quit(), 400);
+        return result;
+      } catch (error) {
+        console.error('[updater] mac install failed', error);
+        emitUpdateStatus({
+          state: 'error',
+          version: targetVersion,
+          downloadUrl: getReleasePageUrl(targetVersion),
+          message: `Automatic download failed. Open the release page to update manually.`,
+        });
+        return {
+          ok: false,
+          reason: classifyUpdaterIssue(error?.message, 'download-failed'),
+          message: error?.message || 'Unable to download and install the update right now.',
+        };
+      }
+    }
+
     if (updateState.state === 'ready') {
-      // Downloaded successfully — quit and install
       autoUpdater.quitAndInstall(false, true);
-    } else if (updateState.state === 'available') {
+      return { ok: true };
+    }
+
+    if (updateState.state === 'available') {
+      if (downloadTask) {
+        return { ok: true, reason: 'in-progress' };
+      }
+
       emitUpdateStatus({
         state: 'downloading',
         version: updateState.version,
         message: `Downloading v${updateState.version ?? ''}...`,
       });
-      autoUpdater.downloadUpdate().catch(() => {
-        console.error('[updater] download failed');
+
+      downloadTask = autoUpdater.downloadUpdate().finally(() => {
+        downloadTask = null;
+      });
+
+      try {
+        await downloadTask;
+        return { ok: true };
+      } catch (error) {
+        console.error('[updater] download failed', error);
         emitUpdateStatus({
           state: 'error',
           version: updateState.version,
           downloadUrl: getReleasePageUrl(updateState.version),
-          message: process.platform === 'darwin'
-            ? 'Automatic download failed on this macOS build. Open the release page to download the update manually.'
-            : 'Download failed. Please retry.',
+          message: 'Download failed. Please retry.',
         });
-      });
-    } else {
-      emitUpdateStatus({
-        state: 'error',
-        message: 'No update is ready to install.',
-      });
+        return {
+          ok: false,
+          reason: classifyUpdaterIssue(error?.message, 'download-failed'),
+          message: error?.message || 'Unable to download update right now.',
+        };
+      }
     }
-    return true;
+
+    emitUpdateStatus({
+      state: 'error',
+      message: 'No update is ready to install.',
+    });
+    return { ok: false, reason: 'not-ready', message: 'No update is ready to install.' };
   });
 
   ipcMain.handle('app-updater:open-download-url', async (_event, url) => {
@@ -205,8 +294,11 @@ app.on('before-quit', (event) => {
   if (isQuitting) return;
   event.preventDefault();
   isQuitting = true;
-  const win = BrowserWindow.getAllWindows()[0];
-  if (!win) { app.quit(); return; }
-  win.webContents.send('app:before-quit');
+  const activeWindow = BrowserWindow.getAllWindows()[0];
+  if (!activeWindow) {
+    app.quit();
+    return;
+  }
+  activeWindow.webContents.send('app:before-quit');
   setTimeout(() => app.quit(), 800);
 });
