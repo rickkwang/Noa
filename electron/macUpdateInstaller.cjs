@@ -229,6 +229,14 @@ function getCurrentAppBundlePath(app) {
   return path.resolve(path.dirname(path.dirname(path.dirname(executablePath))));
 }
 
+function getInstallTargetAppPath(app) {
+  const currentAppPath = getCurrentAppBundlePath(app);
+  if (currentAppPath.startsWith('/Applications/')) {
+    return currentAppPath;
+  }
+  return path.join('/Applications', `${app.getName()}.app`);
+}
+
 function buildInstallScript({ sourceAppPath, targetAppPath, backupAppPath, logPath, appPid, releasePageUrl }) {
   return `#!/bin/bash
 set -euo pipefail
@@ -310,7 +318,7 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
   const version = updateInfo?.version || app.getVersion();
   const productName = app.getName();
   const releasePageUrl = getReleasePageUrl(version);
-  const targetAppPath = getCurrentAppBundlePath(app);
+  const targetAppPath = getInstallTargetAppPath(app);
 
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'noa-update-'));
   const zipPath = path.join(workDir, 'update.zip');
