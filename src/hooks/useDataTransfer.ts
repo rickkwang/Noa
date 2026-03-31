@@ -173,6 +173,34 @@ function sanitizeFolderPath(path: string): string {
   return path.split('/').map((segment) => sanitizeFilename(segment)).filter(Boolean).join('/');
 }
 
+function mergeImportedWorkspaceData(
+  existingNotes: Note[],
+  existingFolders: Folder[],
+  incomingNotes: ImportedNote[],
+  incomingFolders: Folder[],
+): { notes: ImportedNote[]; folders: Folder[] } {
+  const incomingFolderPathById = new Map(incomingFolders.map((folder) => [folder.id, folder.name]));
+  const mergedFolders = [...existingFolders];
+  const mergedFolderIdByPath = new Map(existingFolders.map((folder) => [folder.name, folder.id]));
+
+  for (const folder of incomingFolders) {
+    if (mergedFolderIdByPath.has(folder.name)) continue;
+    mergedFolders.push(folder);
+    mergedFolderIdByPath.set(folder.name, folder.id);
+  }
+
+  const existingTitles = new Set(existingNotes.map((note) => note.title));
+  const remappedNotes = incomingNotes.map((note) => {
+    const sourcePath = incomingFolderPathById.get(note.folder);
+    const resolvedFolderId = sourcePath ? (mergedFolderIdByPath.get(sourcePath) ?? note.folder) : note.folder;
+    const title = existingTitles.has(note.title) ? `${note.title} (imported)` : note.title;
+    existingTitles.add(title);
+    return { ...note, folder: resolvedFolderId, title };
+  });
+
+  return { notes: remappedNotes, folders: mergedFolders };
+}
+
 function ensureZipFolder(zip: JSZip, folderPath: string): JSZip {
   return folderPath.split('/').filter(Boolean).reduce<JSZip>((current, segment) => current.folder(sanitizeFilename(segment)) ?? current, zip);
 }
@@ -779,26 +807,12 @@ export function useDataTransfer({
         return;
       }
 
-      // Merge folders: reuse existing folder IDs when path matches
-      const existingFolderByPath = new Map(folders.map((f) => [f.name, f]));
-      const mergedFolders = [...folders];
-      const mergedFolderIdByPath = new Map(folders.map((f) => [f.name, f.id]));
-      for (const f of newFolders) {
-        if (!existingFolderByPath.has(f.name)) {
-          mergedFolders.push(f);
-          mergedFolderIdByPath.set(f.name, f.id);
-        }
-      }
-
-      // Remap note folder IDs to merged folder IDs
-      const existingTitles = new Set(notes.map((n) => n.title));
-      const remappedNotes = (validatedNotes as ImportedNote[]).map((n) => {
-        const originalPath = [...folderIdByPath.entries()].find(([, id]) => id === n.folder)?.[0];
-        const resolvedFolderId = originalPath ? (mergedFolderIdByPath.get(originalPath) ?? n.folder) : n.folder;
-        const title = existingTitles.has(n.title) ? `${n.title} (imported)` : n.title;
-        existingTitles.add(title);
-        return { ...n, folder: resolvedFolderId, title };
-      });
+      const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
+        notes,
+        folders,
+        validatedNotes as ImportedNote[],
+        newFolders,
+      );
 
       requestConfirm({
         message: `Import "${workspaceLabel}" (${remappedNotes.length} note(s), ${newFolders.length} folder(s)) into current workspace?`,
@@ -952,27 +966,12 @@ export function useDataTransfer({
           return;
         }
 
-        // Merge folders: reuse existing folder IDs when path matches
-        const existingFolderByPath = new Map(folders.map((f) => [f.name, f]));
-        const mergedFolders = [...folders];
-        const mergedFolderIdByPath = new Map(folders.map((f) => [f.name, f.id]));
-        const newFolderIdByPath = new Map(newFolders.map((f) => [f.name, f.id]));
-        for (const f of newFolders) {
-          if (!existingFolderByPath.has(f.name)) {
-            mergedFolders.push(f);
-            mergedFolderIdByPath.set(f.name, f.id);
-          }
-        }
-
-        // Remap note folder IDs and deduplicate titles
-        const existingTitles = new Set(notes.map((n) => n.title));
-        const remappedNotes = validatedNotes.map((n) => {
-          const originalPath = [...newFolderIdByPath.entries()].find(([, id]) => id === n.folder)?.[0];
-          const resolvedFolderId = originalPath ? (mergedFolderIdByPath.get(originalPath) ?? n.folder) : n.folder;
-          const title = existingTitles.has(n.title) ? `${n.title} (imported)` : n.title;
-          existingTitles.add(title);
-          return { ...n, folder: resolvedFolderId, title };
-        });
+      const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
+        notes,
+        folders,
+        validatedNotes as ImportedNote[],
+        newFolders,
+      );
 
         try {
           await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);

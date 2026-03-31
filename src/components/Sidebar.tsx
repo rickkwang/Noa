@@ -255,8 +255,8 @@ export default function Sidebar({
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [isRecentOpen, setIsRecentOpen] = useState(true);
-  const [collapseKey, setCollapseKey] = useState(0);
-  const [expandKey, setExpandKey] = useState(0);
+  const [foldersExpandedByDefault, setFoldersExpandedByDefault] = useState(false);
+  const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -365,7 +365,7 @@ export default function Sidebar({
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
     return (
-      <div key={`${node.folder.id}-${collapseKey}-${expandKey}`} className="relative">
+      <div key={`${node.folder.id}-${folderTreeResetKey}`} className="relative">
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
@@ -388,7 +388,7 @@ export default function Sidebar({
         <FileNode
           name={leafName}
           isFolder
-          defaultOpen={expandKey > collapseKey}
+          defaultOpen={foldersExpandedByDefault}
           icon={Folder}
           onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
           onAddFolder={() => onCreateFolder(node.folder.id)}
@@ -438,7 +438,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [activeNoteId, collapseKey, expandKey, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, selectedNoteIds, templateMenuFolderId]);
+  }, [activeNoteId, folderTreeResetKey, foldersExpandedByDefault, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -610,16 +610,13 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => {
-            if (expandKey > collapseKey) {
-              setCollapseKey(k => k + 1);
-            } else {
-              setExpandKey(k => k + 1);
-            }
+            setFoldersExpandedByDefault((value) => !value);
+            setFolderTreeResetKey((value) => value + 1);
           }}
           className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
-          title={expandKey > collapseKey ? 'Collapse all folders' : 'Expand all folders'}
+          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
-          {expandKey > collapseKey ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
         </button>
         <button
           onClick={() => onOpenDailyNote?.()}
