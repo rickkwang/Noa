@@ -9,6 +9,7 @@ declare global {
       appUpdater: {
         checkForUpdates: () => Promise<boolean>;
         quitAndInstall: () => Promise<boolean>;
+        openDownloadUrl: (url: string) => Promise<boolean>;
         getStatus: () => Promise<UpdateStatus>;
         onStatusChange: (listener: (status: UpdateStatus) => void) => () => void;
       };

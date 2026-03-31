@@ -13,6 +13,7 @@ export default function AppUpdateSettings() {
     'text-[#2D2D2D]/70';
 
   const installLabel =
+    status.downloadUrl ? 'Open Release Page' :
     status.state === 'ready' ? 'Restart & Install' :
     status.state === 'available' ? 'Download Update' :
     status.state === 'downloading' ? 'Downloading...' :
@@ -21,7 +22,7 @@ export default function AppUpdateSettings() {
   const InstallIcon = Download;
 
   const installDisabled = !isDesktop || busy ||
-    (status.state !== 'available' && status.state !== 'ready');
+    (!status.downloadUrl && status.state !== 'available' && status.state !== 'ready');
 
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">

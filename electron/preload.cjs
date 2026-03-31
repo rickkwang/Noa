@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('noaDesktop', {
   appUpdater: {
     checkForUpdates: () => ipcRenderer.invoke('app-updater:check'),
     quitAndInstall: () => ipcRenderer.invoke('app-updater:quit-and-install'),
+    openDownloadUrl: (url) => ipcRenderer.invoke('app-updater:open-download-url', url),
     getStatus: () => ipcRenderer.invoke('app-updater:get-status'),
     onStatusChange: (listener) => {
       const handler = (_event, status) => listener(status);

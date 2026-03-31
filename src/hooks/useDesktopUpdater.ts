@@ -31,11 +31,15 @@ export function useDesktopUpdater() {
     if (!window.noaDesktop) return;
     setBusy(true);
     try {
+      if (status.downloadUrl) {
+        await window.noaDesktop.appUpdater.openDownloadUrl(status.downloadUrl);
+        return;
+      }
       await window.noaDesktop.appUpdater.quitAndInstall();
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [status.downloadUrl]);
 
   return {
     isDesktop,

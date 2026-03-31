@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
@@ -11,6 +11,11 @@ function emitUpdateStatus(payload) {
   if (win && !win.isDestroyed()) {
     win.webContents.send('app-updater:status', payload);
   }
+}
+
+function getReleasePageUrl(version) {
+  if (!version) return 'https://github.com/rickkwang/Noa/releases';
+  return `https://github.com/rickkwang/Noa/releases/tag/v${version}`;
 }
 
 function setupAutoUpdater() {
@@ -57,11 +62,26 @@ function setupAutoUpdater() {
       err.message?.includes('ERR_UPDATER_INVALID_RELEASE_FEED') ||
       err.message?.includes('No published versions');
 
+    const isLikelyMacSigningIssue =
+      process.platform === 'darwin' &&
+      (
+        err.message?.includes('code signature') ||
+        err.message?.includes('signed') ||
+        err.message?.includes('download') ||
+        err.message?.includes('verify') ||
+        err.message?.includes('ENOENT')
+      );
+
+    console.error('[updater] error', err);
+
     emitUpdateStatus({
       state: 'error',
       message: isFeedOrVersionIssue
         ? 'Update feed is not ready yet. Please retry in a moment.'
-        : 'Could not complete in-app update. Please retry.',
+        : isLikelyMacSigningIssue
+          ? 'Automatic update is unavailable on this macOS build. Open the release page to download the update manually.'
+          : 'Could not complete in-app update. Please retry.',
+      downloadUrl: isLikelyMacSigningIssue ? getReleasePageUrl(updateState.version) : updateState.downloadUrl,
     });
   });
 }
@@ -142,9 +162,14 @@ app.whenReady().then(() => {
         message: `Downloading v${updateState.version ?? ''}...`,
       });
       autoUpdater.downloadUpdate().catch(() => {
+        console.error('[updater] download failed');
         emitUpdateStatus({
           state: 'error',
-          message: 'Download failed. Please retry.',
+          version: updateState.version,
+          downloadUrl: getReleasePageUrl(updateState.version),
+          message: process.platform === 'darwin'
+            ? 'Automatic download failed on this macOS build. Open the release page to download the update manually.'
+            : 'Download failed. Please retry.',
         });
       });
     } else {
@@ -153,6 +178,12 @@ app.whenReady().then(() => {
         message: 'No update is ready to install.',
       });
     }
+    return true;
+  });
+
+  ipcMain.handle('app-updater:open-download-url', async (_event, url) => {
+    if (!url) return false;
+    await shell.openExternal(url);
     return true;
   });
 
