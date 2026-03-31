@@ -231,10 +231,24 @@ function getCurrentAppBundlePath(app) {
 
 function getInstallTargetAppPath(app) {
   const currentAppPath = getCurrentAppBundlePath(app);
+  if (currentAppPath.includes('/AppTranslocation/')) {
+    return path.join('/Applications', `${app.getName()}.app`);
+  }
   if (currentAppPath.startsWith('/Applications/')) {
     return currentAppPath;
   }
-  return path.join('/Applications', `${app.getName()}.app`);
+  return currentAppPath;
+}
+
+function assertWritableInstallTarget(targetAppPath) {
+  const parentDir = path.dirname(targetAppPath);
+  try {
+    fs.accessSync(parentDir, fs.constants.W_OK);
+  } catch {
+    throw new Error(
+      `Install target is not writable: ${parentDir}. Move the app into /Applications and try again.`,
+    );
+  }
 }
 
 function buildInstallScript({ sourceAppPath, targetAppPath, backupAppPath, logPath, appPid, releasePageUrl }) {
@@ -319,6 +333,7 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
   const productName = app.getName();
   const releasePageUrl = getReleasePageUrl(version);
   const targetAppPath = getInstallTargetAppPath(app);
+  assertWritableInstallTarget(targetAppPath);
 
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'noa-update-'));
   const zipPath = path.join(workDir, 'update.zip');

@@ -214,7 +214,9 @@ app.whenReady().then(() => {
           state: 'error',
           version: targetVersion,
           downloadUrl: getReleasePageUrl(targetVersion),
-          message: `Automatic download failed. Open the release page to update manually.`,
+          message: error?.message
+            ? `Automatic update failed: ${error.message}`
+            : 'Automatic update failed. Open the release page to try again.',
         });
         return {
           ok: false,
