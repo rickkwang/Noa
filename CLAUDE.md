@@ -91,19 +91,21 @@ npm run clean           # Remove dist/
 - Tailwind CSS v4 (via `@tailwindcss/vite`, no `tailwind.config.js`)
 - Design tokens: background `#EAE8E0`, accent `#B89B5E`, text `#2D2D2D`
 - Font: Redaction 50 default (`font-redaction`), Work Sans secondary
+- No `rounded-full` anywhere — all corners are square or `rounded-t-lg` (tabs only), consistent with retro aesthetic.
+- All interactive buttons must have `active:opacity-70` for press feedback.
+- No `window.alert`, `window.confirm`, `window.prompt` — use inline UI patterns.
 
 ### Wiki Links
 
 Notes use `[[Note Title]]` syntax.
 
-- Link graph extraction still parses `[[...]]` in note content.
-- Preview no longer relies on raw HTML injection. It rewrites `[[X]]` into a safe internal markdown link (`note-internal://...`) and handles navigation in custom `a` renderer.
+- Link graph extraction parses `[[...]]` in note content.
+- Preview rewrites `[[X]]` into a safe internal markdown link (`note-internal://...`) and handles navigation in custom `a` renderer.
 
 ### Security Constraints
 
 - Do **not** use `rehypeRaw` for note preview rendering.
 - Export HTML is safe-by-default (escape + allowlisted URL protocols).
-- Never introduce `window.alert`, `window.confirm`, or `window.prompt`; use inline UI patterns.
 
 ### Storage Keys
 
@@ -125,13 +127,6 @@ Notes use `[[Note Title]]` syntax.
 - Right panel min width: **320px** (max 480px)
 - Resize logic via `useResizeDrag`; widths never drop below min constraints
 
-### Design Conventions
-
-- No `rounded-full` anywhere — all corners are square or `rounded-t-lg` (tabs only), consistent with retro aesthetic.
-- All interactive buttons must have `active:opacity-70` for press feedback.
-- No `window.alert`, `window.confirm`, `window.prompt` — use inline UI patterns.
-- Mention autocomplete dropdown position: computed from `view.coordsAtPos(cursor)` relative to `editPaneRef`, prevents overflow on the right edge.
-
 ### Error Handling Contract
 
 - Write ops (`saveNote` etc.) throw — callers must `.catch()` and set `saveError`; `App.tsx` renders dismissible amber banner.
@@ -139,7 +134,6 @@ Notes use `[[Note Title]]` syntax.
 - `handleDeleteFolder`: optimistic UI + `Promise.all(deleteNote[]).catch(setSaveError)`.
 - Read ops return null on failure — never crash the app.
 - `handleImportData` is `async`; `onImportData` prop is `Promise<void>` throughout.
-- Electron `before-quit`: flushes pending saves via `useRef` + 800ms timeout.
 
 ### Architecture Guardrails
 

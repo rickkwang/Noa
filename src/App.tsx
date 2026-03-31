@@ -211,9 +211,10 @@ export default function App() {
     setOpenTabIds(prev => prev.includes(activeNoteId) ? prev : [...prev, activeNoteId]);
   }, [activeNoteId]);
 
-  const handleTabChange = useCallback((id: string) => {
+  const handleTabChange = useCallback(async (id: string) => {
+    await flushAllPendingSaves(notesForQuitRef.current);
     setActiveNoteId(id);
-  }, [setActiveNoteId]);
+  }, [setActiveNoteId, flushAllPendingSaves]);
 
   const handleTabClose = useCallback((id: string) => {
     closeTabById(id);
@@ -389,7 +390,7 @@ export default function App() {
             </div>
             {!isMobile && (
               <div
-                className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-50"
+                className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
                 onMouseDown={() => setIsDraggingSidebar(true)}
               />
             )}
@@ -438,7 +439,7 @@ export default function App() {
           <div style={{ width: isMobile ? '80vw' : rightPanelWidth, maxWidth: isMobile ? '320px' : undefined, transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out' }} className="flex h-full shrink-0">
             {!isMobile && (
               <div
-                className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-50"
+                className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"
                 onMouseDown={() => setIsDraggingRightPanel(true)}
               />
             )}

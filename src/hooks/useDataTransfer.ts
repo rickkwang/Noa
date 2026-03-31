@@ -425,7 +425,18 @@ export function useDataTransfer({
   const [exportingZip, setExportingZip] = useState(false);
   const [exportingHtml, setExportingHtml] = useState(false);
   const [connectingFs, setConnectingFs] = useState(false);
+  const [importingData, setImportingData] = useState(false);
   const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('overwrite');
+
+  // Wrap onImportData to track loading state
+  const trackedImportData: typeof onImportData = useCallback(async (...args) => {
+    setImportingData(true);
+    try {
+      await onImportData(...args);
+    } finally {
+      setImportingData(false);
+    }
+  }, [onImportData]);
 
   const ensureExportIntegrity = useCallback(() => {
     const report = validateExportData(notes, folders);
@@ -639,7 +650,7 @@ export function useDataTransfer({
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
               const importedCount = countImportedNotes(finalNotes, notes, importStrategyRef.current);
               try {
-                await onImportData(
+                await trackedImportData(
                   finalNotes as ImportedNote[],
                   parsed.folders || [],
                   parsed.workspaceName || 'Imported Workspace',
@@ -768,14 +779,35 @@ export function useDataTransfer({
         return;
       }
 
+      // Merge folders: reuse existing folder IDs when path matches
+      const existingFolderByPath = new Map(folders.map((f) => [f.name, f]));
+      const mergedFolders = [...folders];
+      const mergedFolderIdByPath = new Map(folders.map((f) => [f.name, f.id]));
+      for (const f of newFolders) {
+        if (!existingFolderByPath.has(f.name)) {
+          mergedFolders.push(f);
+          mergedFolderIdByPath.set(f.name, f.id);
+        }
+      }
+
+      // Remap note folder IDs to merged folder IDs
+      const existingTitles = new Set(notes.map((n) => n.title));
+      const remappedNotes = (validatedNotes as ImportedNote[]).map((n) => {
+        const originalPath = [...folderIdByPath.entries()].find(([, id]) => id === n.folder)?.[0];
+        const resolvedFolderId = originalPath ? (mergedFolderIdByPath.get(originalPath) ?? n.folder) : n.folder;
+        const title = existingTitles.has(n.title) ? `${n.title} (imported)` : n.title;
+        existingTitles.add(title);
+        return { ...n, folder: resolvedFolderId, title };
+      });
+
       requestConfirm({
-        message: `Importing "${workspaceLabel}" will replace current data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
+        message: `Import "${workspaceLabel}" (${remappedNotes.length} note(s), ${newFolders.length} folder(s)) into current workspace?`,
         onConfirm: async () => {
           try {
-            await onImportData(validatedNotes as ImportedNote[], newFolders, workspaceLabel, true);
+            await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
             notify({
               type: 'success',
-              text: `Migrated ${validatedNotes.length} note(s) and ${newFolders.length} folder(s) from "${workspaceLabel}".`,
+              text: `Imported ${remappedNotes.length} note(s) from "${workspaceLabel}" into your workspace.`,
             });
           } catch (error) {
             const appError = fromStorageError(error);
@@ -920,8 +952,30 @@ export function useDataTransfer({
           return;
         }
 
+        // Merge folders: reuse existing folder IDs when path matches
+        const existingFolderByPath = new Map(folders.map((f) => [f.name, f]));
+        const mergedFolders = [...folders];
+        const mergedFolderIdByPath = new Map(folders.map((f) => [f.name, f.id]));
+        const newFolderIdByPath = new Map(newFolders.map((f) => [f.name, f.id]));
+        for (const f of newFolders) {
+          if (!existingFolderByPath.has(f.name)) {
+            mergedFolders.push(f);
+            mergedFolderIdByPath.set(f.name, f.id);
+          }
+        }
+
+        // Remap note folder IDs and deduplicate titles
+        const existingTitles = new Set(notes.map((n) => n.title));
+        const remappedNotes = validatedNotes.map((n) => {
+          const originalPath = [...newFolderIdByPath.entries()].find(([, id]) => id === n.folder)?.[0];
+          const resolvedFolderId = originalPath ? (mergedFolderIdByPath.get(originalPath) ?? n.folder) : n.folder;
+          const title = existingTitles.has(n.title) ? `${n.title} (imported)` : n.title;
+          existingTitles.add(title);
+          return { ...n, folder: resolvedFolderId, title };
+        });
+
         try {
-          await onImportData(validatedNotes, newFolders, newWorkspaceName, true);
+          await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
         } catch (error) {
           await Promise.allSettled(
             stagedAttachments.map(async ({ attachmentId }) => {
@@ -932,12 +986,12 @@ export function useDataTransfer({
         }
         notify({
           type: 'success',
-          text: `Imported ${validatedNotes.length} item(s) from "${newWorkspaceName}".`,
+          text: `Imported ${remappedNotes.length} item(s) from "${newWorkspaceName}" into your workspace.`,
         });
       };
 
       requestConfirm({
-        message: `Importing a folder will replace current data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
+        message: `Import this folder into current workspace? Existing notes will be preserved.`,
         onConfirm: async () => {
           try {
             await doImport();
@@ -967,7 +1021,7 @@ export function useDataTransfer({
         onConfirm: async (nameValue) => {
           const value = (nameValue || '').trim() || 'New Workspace';
           try {
-            await onImportData([], [], value, true);
+            await trackedImportData([], [], value, true);
             notify({ type: 'success', text: `Workspace switched to "${value}".` });
           } catch (error) {
             const appError = fromStorageError(error);
@@ -1151,7 +1205,7 @@ export function useDataTransfer({
         }
 
         try {
-          await onImportData(validatedNotes as ImportedNote[], newFolders, workspaceLabel, true);
+          await trackedImportData(validatedNotes as ImportedNote[], newFolders, workspaceLabel, true);
         } catch (error) {
           await Promise.allSettled(
             stagedAttachments.map(async ({ attachmentId }) => {
@@ -1232,6 +1286,7 @@ export function useDataTransfer({
     exportingZip,
     exportingHtml,
     connectingFs,
+    importingData,
     exportJson,
     exportZip,
     exportHtmlZip,

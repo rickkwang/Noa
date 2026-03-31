@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
 import { useResizeDrag } from '../hooks/useResizeDrag';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X, SquarePen, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
@@ -19,7 +19,8 @@ interface FileNodeProps {
   children?: React.ReactNode;
   defaultOpen?: boolean;
   isActive?: boolean;
-  onClick?: () => void;
+  isSelected?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
   onDelete?: () => void;
   onRename?: (newName: string) => void;
   icon?: React.ElementType;
@@ -85,7 +86,7 @@ function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
   return roots;
 }
 
-const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
+const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isSelected, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name.replace('.md', ''));
@@ -126,13 +127,15 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
           style={{ marginLeft: `${depth * 12 + 24}px` }}
         />
       )}
-      <div 
+      <div
         className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
           isDropTarget
             ? (isFolder
               ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
               : 'bg-[#DCD9CE]/80 border-l-2 border-[#B89B5E]')
-            : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
+            : isSelected
+              ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
+              : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         draggable={draggable}
@@ -141,9 +144,9 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
-        onClick={() => {
+        onClick={(e) => {
           if (isFolder) setIsOpen(!isOpen);
-          if (onClick) onClick();
+          if (onClick) onClick(e);
         }}
         onDoubleClick={handleDoubleClick}
       >
@@ -208,7 +211,10 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, onC
         />
       )}
       {isFolder && isOpen && children && (
-        <div>
+        <div
+          className="border-l border-[#2D2D2D]/15"
+          style={{ marginLeft: `${depth * 12 + 16}px` }}
+        >
           {children}
         </div>
       )}
@@ -249,6 +255,10 @@ export default function Sidebar({
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [isRecentOpen, setIsRecentOpen] = useState(true);
+  const [collapseKey, setCollapseKey] = useState(0);
+  const [expandKey, setExpandKey] = useState(0);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const searchEngineRef = useRef<SearchEngine | null>(null);
@@ -355,7 +365,7 @@ export default function Sidebar({
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
     return (
-      <div key={node.folder.id} className="relative">
+      <div key={`${node.folder.id}-${collapseKey}-${expandKey}`} className="relative">
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
@@ -378,7 +388,7 @@ export default function Sidebar({
         <FileNode
           name={leafName}
           isFolder
-          defaultOpen={false}
+          defaultOpen={expandKey > collapseKey}
           icon={Folder}
           onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
           onAddFolder={() => onCreateFolder(node.folder.id)}
@@ -401,7 +411,20 @@ export default function Sidebar({
               key={note.id}
               name={(note.title || 'Untitled') + '.md'}
               isActive={activeNoteId === note.id}
-              onClick={() => onSelectNote(note.id)}
+              isSelected={selectedNoteIds.has(note.id)}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey) {
+                  setSelectedNoteIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(note.id)) next.delete(note.id);
+                    else next.add(note.id);
+                    return next;
+                  });
+                } else {
+                  setSelectedNoteIds(new Set());
+                  onSelectNote(note.id);
+                }
+              }}
               onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
               onRename={(newName: string) => onRenameNote(note.id, newName)}
               iconColor="#B89B5E"
@@ -415,7 +438,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [activeNoteId, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, templateMenuFolderId]);
+  }, [activeNoteId, collapseKey, expandKey, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -570,23 +593,88 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center px-2 justify-between shrink-0 bg-[#DCD9CE] z-10 font-redaction overflow-hidden">
-        <div className="flex space-x-1 min-w-0 shrink">
-          <span className="px-2 py-1 text-xs font-bold uppercase tracking-wider bg-[#2D2D2D] text-[#EAE8E0] truncate">
-            Files
-          </span>
-        </div>
-        <div className="flex space-x-1 shrink-0">
-          <button
-            onClick={() => onOpenDailyNote?.()}
-            className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors"
-            title="Open today's daily note"
-          >
-            <Calendar size={14} />
-          </button>
-        </div>
+      <div className="h-8 border-b border-[#2D2D2D] flex items-center px-2 gap-0.5 shrink-0 bg-[#DCD9CE] z-10 overflow-hidden">
+        <button
+          onClick={() => onCreateNote(folders[0]?.id ?? '')}
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          title="New note"
+        >
+          <SquarePen size={14} />
+        </button>
+        <button
+          onClick={() => onCreateFolder()}
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          title="New folder"
+        >
+          <FolderPlus size={14} />
+        </button>
+        <button
+          onClick={() => {
+            if (expandKey > collapseKey) {
+              setCollapseKey(k => k + 1);
+            } else {
+              setExpandKey(k => k + 1);
+            }
+          }}
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          title={expandKey > collapseKey ? 'Collapse all folders' : 'Expand all folders'}
+        >
+          {expandKey > collapseKey ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+        </button>
+        <button
+          onClick={() => onOpenDailyNote?.()}
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          title="Open today's daily note"
+        >
+          <Calendar size={14} />
+        </button>
       </div>
       
+      {/* Bulk selection action bar */}
+      {selectedNoteIds.size > 0 && (
+        <div className="border-b border-[#2D2D2D]/20 bg-[#B89B5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
+          <span className="text-xs text-[#2D2D2D]/70">{selectedNoteIds.size} selected</span>
+          <div className="flex items-center gap-1.5">
+            {!pendingBulkDelete ? (
+              <>
+                <button
+                  onClick={() => setPendingBulkDelete(true)}
+                  className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setSelectedNoteIds(new Set())}
+                  className="px-2 py-0.5 text-xs font-bold bg-[#EAE8E0] border border-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-red-600">Delete {selectedNoteIds.size} note{selectedNoteIds.size !== 1 ? 's' : ''}?</span>
+                <button
+                  onClick={() => {
+                    selectedNoteIds.forEach(id => onDeleteNote(id));
+                    setSelectedNoteIds(new Set());
+                    setPendingBulkDelete(false);
+                  }}
+                  className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setPendingBulkDelete(false)}
+                  className="px-2 py-0.5 text-xs font-bold bg-[#EAE8E0] border border-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content Section */}
       <div className="flex-1 overflow-y-auto">
         <div className="py-2">
@@ -678,7 +766,20 @@ export default function Sidebar({
                       key={note.id}
                       name={(note.title || 'Untitled') + '.md'}
                       isActive={activeNoteId === note.id}
-                      onClick={() => onSelectNote(note.id)}
+                      isSelected={selectedNoteIds.has(note.id)}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey) {
+                          setSelectedNoteIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(note.id)) next.delete(note.id);
+                            else next.add(note.id);
+                            return next;
+                          });
+                        } else {
+                          setSelectedNoteIds(new Set());
+                          onSelectNote(note.id);
+                        }
+                      }}
                       onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
                       onRename={(newName: string) => onRenameNote(note.id, newName)}
                       iconColor="#B89B5E"
@@ -714,7 +815,7 @@ export default function Sidebar({
         style={{ height: tagsHeight }}
       >
         <div 
-          className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-50 -translate-y-1/2 transition-colors"
+          className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
           onMouseDown={() => setIsDragging(true)}
         />
         <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70 border-b border-[#2D2D2D]/20 flex items-center shrink-0">

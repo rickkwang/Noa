@@ -23,6 +23,7 @@ function fileIcon(mimeType: string): string {
 const ERROR_MESSAGES: Record<AttachmentError, string> = {
   type_not_allowed: 'Unsupported file type (images only)',
   size_exceeded: 'File exceeds 10MB limit',
+  storage_full: 'Storage is almost full, please free up space',
   upload_failed: 'Upload failed, please try again',
 };
 

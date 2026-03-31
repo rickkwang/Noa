@@ -95,13 +95,19 @@ export function useNotes(settings?: AppSettings) {
 
   // Per-note debounce timers
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Ref to latest notes for stale-closure protection in debounceSave
+  const latestNotesRef = useRef<Note[]>(notes);
+  useEffect(() => { latestNotesRef.current = notes; }, [notes]);
 
   const debounceSave = useCallback((note: Note) => {
     const existing = saveTimers.current.get(note.id);
     if (existing) clearTimeout(existing);
     const t = setTimeout(async () => {
+      // Read latest version to avoid saving stale data from closures
+      const latest = latestNotesRef.current.find(n => n.id === note.id);
+      const toSave = latest ?? note;
       try {
-        await storage.saveNote(note);
+        await storage.saveNote(toSave);
       } catch {
         setSaveError('Failed to save note. Storage may be full.');
       }

@@ -104,7 +104,7 @@ export default function SettingsModal({
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
+      className="absolute inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
       style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)' }}
     >
       <div

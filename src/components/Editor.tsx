@@ -166,7 +166,13 @@ export default function Editor({
           // Use attachment system
           const err = await uploadFile(file);
           if (err) {
-            setImageError(err === 'size_exceeded' ? 'File exceeds 10MB limit' : 'Unsupported file type');
+            const errorMessages: Record<string, string> = {
+              size_exceeded: 'File exceeds 10MB limit',
+              storage_full: 'Storage is almost full, please free up space',
+              type_not_allowed: 'Unsupported file type',
+              upload_failed: 'Upload failed',
+            };
+            setImageError(errorMessages[err] ?? 'Upload failed');
             setTimeout(() => setImageError(null), 3000);
           } else {
             // Insert reference syntax

@@ -8,7 +8,7 @@ function isAllowedAttachmentMimeType(mimeType: string): boolean {
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
-export type AttachmentError = 'type_not_allowed' | 'size_exceeded' | 'upload_failed';
+export type AttachmentError = 'type_not_allowed' | 'size_exceeded' | 'storage_full' | 'upload_failed';
 
 export function useAttachments(
   note: Note | null,
@@ -84,6 +84,15 @@ export function useAttachments(
 
       if (!isAllowedAttachmentMimeType(file.type)) return 'type_not_allowed';
       if (file.size > MAX_SIZE_BYTES) return 'size_exceeded';
+
+      // Check storage quota before saving
+      try {
+        const estimate = await storage.getStorageEstimate();
+        if (estimate?.quota && estimate?.usage) {
+          const remaining = estimate.quota - estimate.usage;
+          if (file.size > remaining * 0.9) return 'storage_full';
+        }
+      } catch { /* quota API unavailable, proceed anyway */ }
 
       try {
         const id = crypto.randomUUID();
