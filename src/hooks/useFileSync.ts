@@ -46,6 +46,10 @@ const AUTO_RETRY_MULTIPLIER = 2;
 const AUTO_RETRY_MAX_DELAY_MS = 5_000;
 const AUTO_RETRY_MAX_ATTEMPTS = 3;
 
+function isObsidianImportedNote(note: Note): boolean {
+  return (note.source ?? 'noa') === 'obsidian-import';
+}
+
 export function useFileSync({
   isLoaded,
   notes,
@@ -118,7 +122,8 @@ export function useFileSync({
       autoRetryTimer.current = null;
       if (!fsHandle) return;
       setSyncStatus('syncing');
-      void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
+      const managedNotes = notesRef.current.filter(isObsidianImportedNote);
+      void retryFullSync(fsHandle, managedNotes, foldersRef.current)
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
@@ -131,7 +136,8 @@ export function useFileSync({
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
     setSyncStatus('syncing');
-    void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
+    const managedNotes = notesRef.current.filter(isObsidianImportedNote);
+    void retryFullSync(fsHandle, managedNotes, foldersRef.current)
       .then(recordSuccess)
       .catch(recordFailure);
   }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState]);
@@ -188,7 +194,8 @@ export function useFileSync({
     try {
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
+      const managedNotes = currentNotes.filter(isObsidianImportedNote);
+      const handle = await connectDirectoryAndSeed(managedNotes, currentFolders);
       const merged = await mergeScannedNotes(handle, currentNotes, currentFolders);
       setFsHandle(handle);
       if (merged.length > currentNotes.length) {
@@ -213,7 +220,7 @@ export function useFileSync({
     (id: string, content: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (!note || !isObsidianImportedNote(note)) return;
 
       setSyncStatus('syncing');
       void syncNoteUpdate(fsHandle, note, content, foldersRef.current)
@@ -230,7 +237,9 @@ export function useFileSync({
     (id: string, previousFolderId: string, nextFolderId: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (!note || !isObsidianImportedNote(note)) return;
+      const nextFolder = foldersRef.current.find((folder) => folder.id === nextFolderId);
+      if ((nextFolder?.source ?? 'noa') !== 'obsidian-import') return;
       const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       const previousNote = { ...note, folder: previousFolderId };
 
@@ -249,7 +258,7 @@ export function useFileSync({
     (id: string, newTitle: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (!note || !isObsidianImportedNote(note)) return;
 
       setSyncStatus('syncing');
       void syncNoteRename(fsHandle, note, newTitle, foldersRef.current)
@@ -266,7 +275,7 @@ export function useFileSync({
     (id: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (!note || !isObsidianImportedNote(note)) return;
 
       setSyncStatus('syncing');
       void syncNoteDelete(fsHandle, note, foldersRef.current)
@@ -282,6 +291,8 @@ export function useFileSync({
   const syncFolderOnRename = useCallback(
     (folderId: string, previousName: string, nextFolders: Folder[]) => {
       if (!fsHandle) return;
+      const targetFolder = foldersRef.current.find((folder) => folder.id === folderId);
+      if ((targetFolder?.source ?? 'noa') !== 'obsidian-import') return;
       setSyncStatus('syncing');
       void syncFolderRename(fsHandle, folderId, previousName, nextFolders, notesRef.current)
         .then(recordSuccess)

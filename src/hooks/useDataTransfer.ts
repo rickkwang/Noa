@@ -186,18 +186,22 @@ function mergeImportedWorkspaceData(
 ): { notes: ImportedNote[]; folders: Folder[] } {
   const incomingFolderPathById = new Map(incomingFolders.map((folder) => [folder.id, folder.name]));
   const mergedFolders = [...existingFolders];
-  const mergedFolderIdByPath = new Map(existingFolders.map((folder) => [folder.name, folder.id]));
+  const folderKey = (folder: Pick<Folder, 'name' | 'source'>) => `${folder.source ?? 'noa'}::${folder.name}`;
+  const mergedFolderIdByPath = new Map(existingFolders.map((folder) => [folderKey(folder), folder.id]));
 
   for (const folder of incomingFolders) {
-    if (mergedFolderIdByPath.has(folder.name)) continue;
+    const key = folderKey(folder);
+    if (mergedFolderIdByPath.has(key)) continue;
     mergedFolders.push(folder);
-    mergedFolderIdByPath.set(folder.name, folder.id);
+    mergedFolderIdByPath.set(key, folder.id);
   }
 
   const existingTitles = new Set(existingNotes.map((note) => note.title));
   const remappedNotes = incomingNotes.map((note) => {
     const sourcePath = incomingFolderPathById.get(note.folder);
-    const resolvedFolderId = sourcePath ? (mergedFolderIdByPath.get(sourcePath) ?? note.folder) : note.folder;
+    const resolvedFolderId = sourcePath
+      ? (mergedFolderIdByPath.get(`${note.source ?? 'noa'}::${sourcePath}`) ?? note.folder)
+      : note.folder;
     const title = existingTitles.has(note.title) ? `${note.title} (imported)` : note.title;
     existingTitles.add(title);
     return { ...note, folder: resolvedFolderId, title };
@@ -404,15 +408,18 @@ export function useDataTransfer({
   const [exportingHtml, setExportingHtml] = useState(false);
   const [connectingFs, setConnectingFs] = useState(false);
   const [importingData, setImportingData] = useState(false);
+  const [importStatusText, setImportStatusText] = useState<string | null>(null);
   const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('overwrite');
 
   // Wrap onImportData to track loading state
   const trackedImportData: typeof onImportData = useCallback(async (...args) => {
     setImportingData(true);
+    setImportStatusText('Saving imported data...');
     try {
       await onImportData(...args);
     } finally {
       setImportingData(false);
+      setImportStatusText(null);
     }
   }, [onImportData]);
 
@@ -706,6 +713,7 @@ export function useDataTransfer({
     }
 
     try {
+      setImportStatusText('Scanning vault folder...');
       const rootHandle = await window.showDirectoryPicker({ mode: 'read' });
       const workspaceLabel = rootHandle.name || 'Imported Vault';
       const { folderPaths, files } = await collectVaultDirectoryEntries(rootHandle, rootHandle.name ? [rootHandle.name] : []);
@@ -713,11 +721,16 @@ export function useDataTransfer({
         const depthDiff = a.split('/').length - b.split('/').length;
         return depthDiff !== 0 ? depthDiff : a.localeCompare(b);
       });
-      const newFolders = sortedFolderPaths.map((name) => ({ id: crypto.randomUUID(), name }));
+      const newFolders = sortedFolderPaths.map((name) => ({ id: crypto.randomUUID(), name, source: 'obsidian-import' as const }));
       const folderIdByPath = new Map(newFolders.map((folder) => [folder.name, folder.id]));
       const newNotes: ImportedNote[] = [];
+      let processedCount = 0;
 
       for (const entry of files) {
+        processedCount += 1;
+        if (processedCount % 25 === 0 || processedCount === files.length) {
+          setImportStatusText(`Scanning vault files (${processedCount}/${files.length})...`);
+        }
         if (entry.pathSegments.some((segment) => segment === '.obsidian')) continue;
         const file = entry.file;
         const folderPath = sanitizeFolderPath(entry.pathSegments.slice(0, -1).join('/'));
@@ -737,6 +750,7 @@ export function useDataTransfer({
             tags: extractTags(content),
             links: extractLinks(content),
             linkRefs: [],
+            source: 'obsidian-import',
           });
         } else {
           const noteId = crypto.randomUUID();
@@ -763,6 +777,7 @@ export function useDataTransfer({
             tags: [],
             links: [],
             linkRefs: [],
+            source: 'obsidian-import',
             attachments: [attachment],
           });
         }
@@ -819,12 +834,15 @@ export function useDataTransfer({
         suggestedAction: appError.suggestedAction,
       });
       notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+    } finally {
+      setImportStatusText(null);
     }
   }, [folders, notes, notify, trackedImportData, requestConfirm]);
 
   const importFolderFiles = useCallback(
     (files: FileList) => {
       const doImport = async () => {
+        setImportStatusText('Scanning folder files...');
         const newNotes: Note[] = [];
         const newFolders: Folder[] = [];
         const stagedAttachments: Array<{ attachmentId: string; blob: Blob }> = [];
@@ -850,7 +868,7 @@ export function useDataTransfer({
               currentFolder = existing;
               continue;
             }
-            currentFolder = { id: crypto.randomUUID(), name: currentPath };
+            currentFolder = { id: crypto.randomUUID(), name: currentPath, source: 'obsidian-import' };
             newFolders.push(currentFolder);
           }
           return currentFolder;
@@ -868,6 +886,7 @@ export function useDataTransfer({
             tags: extractTags(content),
             links: extractLinks(content),
             linkRefs: [],
+            source: 'obsidian-import',
           });
         };
 
@@ -894,6 +913,7 @@ export function useDataTransfer({
             tags: [],
             links: [],
             linkRefs: [],
+            source: 'obsidian-import',
             attachments: [attachment],
           });
           stagedAttachments.push({ attachmentId, blob: file });
@@ -901,6 +921,9 @@ export function useDataTransfer({
 
         for (let i = 0; i < files.length; i += 1) {
           const file = files[i];
+          if ((i + 1) % 25 === 0 || i + 1 === files.length) {
+            setImportStatusText(`Scanning folder files (${i + 1}/${files.length})...`);
+          }
           const classification = classifyFolderImportFile(file);
           if (classification.kind === 'unsupported') continue;
 
@@ -926,6 +949,7 @@ export function useDataTransfer({
           return;
         }
 
+        setImportStatusText('Saving imported attachments...');
         const attachmentResults = await Promise.allSettled(
           stagedAttachments.map(async ({ attachmentId, blob }) => {
             await storage.saveAttachmentBlob(attachmentId, blob);
@@ -979,6 +1003,8 @@ export function useDataTransfer({
               suggestedAction: appError.suggestedAction,
             });
             notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
+          } finally {
+            setImportStatusText(null);
           }
         },
       });
@@ -1034,6 +1060,11 @@ export function useDataTransfer({
           try {
             const manifest = JSON.parse(await manifestFile.async('string')) as Partial<ZipManifest>;
             const rawNotes = Array.isArray(manifest.notes) ? manifest.notes : [];
+            const sourceById = new Map(
+              rawNotes
+                .map((note) => [note?.id, note?.source] as const)
+                .filter((pair): pair is readonly [string, 'noa' | 'obsidian-import'] => typeof pair[0] === 'string' && (pair[1] === 'noa' || pair[1] === 'obsidian-import')),
+            );
             const { notes: normalizedNotes, report } = normalizeAndValidateNotes(rawNotes);
             if (!report.ok) {
               const appError = fromImportError('import_integrity_failed', 'ZIP manifest integrity check failed.');
@@ -1047,8 +1078,13 @@ export function useDataTransfer({
               notify({ type: 'error', text: attachmentError, code: appError.code, suggestedAction: appError.suggestedAction });
               return;
             }
-            validatedNotes = manifestWithPayloads;
-            newFolders = Array.isArray(manifest.folders) ? manifest.folders : [];
+            validatedNotes = manifestWithPayloads.map((note) => ({
+              ...note,
+              source: sourceById.get(note.id) ?? 'obsidian-import',
+            }));
+            newFolders = Array.isArray(manifest.folders)
+              ? manifest.folders.map((folder) => ({ ...folder, source: folder.source ?? 'obsidian-import' }))
+              : [];
             workspaceLabel = manifest.workspaceName || workspaceLabel;
             attachmentNoteLookup = rawNotes as ImportedNote[];
           } catch {
@@ -1071,7 +1107,7 @@ export function useDataTransfer({
             if (folderName && folderName !== 'attachments') {
               let folder = newFolders.find((f) => f.name === folderName);
               if (!folder) {
-                folder = { id: crypto.randomUUID(), name: folderName };
+                folder = { id: crypto.randomUUID(), name: folderName, source: 'obsidian-import' };
                 newFolders.push(folder);
               }
               folderId = folder.id;
@@ -1083,12 +1119,13 @@ export function useDataTransfer({
             id: crypto.randomUUID(),
               title: filename.replace(/\.md$/, ''),
               content,
-              createdAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               folder: folderId,
               tags: extractTags(content),
               links: extractLinks(content),
               linkRefs: [],
+              source: 'obsidian-import',
             });
           }
 
@@ -1265,6 +1302,7 @@ export function useDataTransfer({
     exportingHtml,
     connectingFs,
     importingData,
+    importStatusText,
     exportJson,
     exportZip,
     exportHtmlZip,

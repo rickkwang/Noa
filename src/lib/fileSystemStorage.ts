@@ -309,6 +309,7 @@ export async function scanDirectory(
           linkRefs: meta.linkRefs || [],
           createdAt: meta.createdAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
+          source: 'obsidian-import',
         });
       } else if (isDirectoryHandle(handle)) {
         if (name === 'attachments') {

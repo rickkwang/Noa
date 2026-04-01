@@ -127,7 +127,7 @@ export default function WorkspaceSection({
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
             </p>
             {fsSyncError && (
-              <p className="text-xs text-red-700 border border-red-300 bg-red-50 px-2 py-1">
+              <p className="text-xs text-[#2D2D2D] border border-[#B89B5E]/50 bg-[#EAE8E0] px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

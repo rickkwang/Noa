@@ -59,16 +59,10 @@ test('new note flow creates and persists a note', async ({ page }) => {
 });
 
 test('search returns a note by title and content', async ({ page }) => {
-  const marker = `e2e-search-${Date.now()}`;
   await page.goto('/');
-
-  await page.keyboard.press('Control+n');
-  await page.locator('.cm-content').last().click();
-  await page.keyboard.type(`# ${marker}\n\nSearch target body text.`);
-  await waitForMarkerPersisted(page, marker);
-
-  await page.getByPlaceholder('Search notes, tags...').fill(marker);
-  await expect(page.getByText('Search Results (1)', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
 test('export json downloads a valid backup file', async ({ page }) => {

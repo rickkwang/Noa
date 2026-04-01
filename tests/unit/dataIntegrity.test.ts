@@ -80,6 +80,24 @@ describe('normalizeAndValidateNotes', () => {
     expect(notes[0].attachments).toHaveLength(1);
     expect(notes[0].attachments?.[0].filename).toBe('image.png');
   });
+
+  it('preserves note source when provided', () => {
+    const { notes, report } = normalizeAndValidateNotes([{ ...validNote, source: 'obsidian-import' }]);
+    expect(report.ok).toBe(true);
+    expect(notes[0].source).toBe('obsidian-import');
+  });
+
+  it('includes note id in attachment warning message', () => {
+    const { report } = normalizeAndValidateNotes([
+      {
+        ...validNote,
+        id: 'note-123',
+        attachments: [{ id: '', noteId: 'note-123', filename: '', mimeType: 'text/plain', size: 0, createdAt: '2024-01-01T00:00:00.000Z' }],
+      },
+    ]);
+    const warning = report.issues.find((issue) => issue.level === 'warning');
+    expect(warning?.message).toContain('note-123');
+  });
 });
 
 describe('validateExportData', () => {

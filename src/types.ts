@@ -9,6 +9,8 @@ export interface Attachment {
   vaultPath?: string;
 }
 
+export type NoteSource = 'noa' | 'obsidian-import';
+
 export interface Note {
   id: string;
   title: string;
@@ -20,6 +22,7 @@ export interface Note {
   links: string[];
   linkRefs: string[];
   attachments?: Attachment[];
+  source?: NoteSource;
 }
 
 export interface Link {
@@ -36,6 +39,7 @@ export interface Graph {
 export interface Folder {
   id: string;
   name: string;
+  source?: NoteSource;
 }
 
 export type BackupHealthStatus = 'healthy' | 'warning' | 'risk';

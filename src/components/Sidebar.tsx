@@ -55,6 +55,8 @@ interface FolderTreeNode {
 }
 
 const ROOT_DROP_TARGET_ID = '__root__';
+const NOA_ROOT_DROP_TARGET_ID = '__root_noa__';
+const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
 
 function getFolderParentPath(path: string): string {
   const idx = path.lastIndexOf('/');
@@ -276,7 +278,12 @@ export default function Sidebar({
   const [draggedItem, setDraggedItem] = useState<{ kind: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
-  const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
+  const resolveNoteSource = useCallback((note: Note) => note.source ?? 'noa', []);
+  const resolveFolderSource = useCallback((folder: FolderType) => folder.source ?? 'noa', []);
+  const noaFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'noa'), [folders, resolveFolderSource]);
+  const importedFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'obsidian-import'), [folders, resolveFolderSource]);
+  const noaFolderTree = useMemo(() => buildFolderTree(noaFolders), [noaFolders]);
+  const importedFolderTree = useMemo(() => buildFolderTree(importedFolders), [importedFolders]);
   const notesByFolderId = useMemo(() => {
     const map = new Map<string, Note[]>();
     notes.forEach((note) => {
@@ -287,6 +294,10 @@ export default function Sidebar({
     });
     return map;
   }, [notes]);
+  const primaryNoaFolderId = useMemo(
+    () => (folders.find((folder) => resolveFolderSource(folder) === 'noa')?.id ?? folders[0]?.id ?? ''),
+    [folders, resolveFolderSource]
+  );
 
   const getFolderSubtreeNoteCount = useCallback((folderPath: string) => {
     const targetIds = new Set(
@@ -310,13 +321,22 @@ export default function Sidebar({
   const moveFolderToTarget = useCallback((folderId: string, targetFolderId: string | null) => {
     const source = folders.find((folder) => folder.id === folderId);
     if (!source) return;
+    const sourceType = resolveFolderSource(source);
+    if (targetFolderId) {
+      const target = folders.find((folder) => folder.id === targetFolderId);
+      if (!target) return;
+      if (resolveFolderSource(target) !== sourceType) return;
+    } else if (sourceType !== 'noa') {
+      // Root drops are only valid in Noa workspace to avoid cross-source mixing.
+      return;
+    }
     const sourcePath = source.name;
     const sourceLeaf = getFolderLeafName(sourcePath);
     const targetPath = targetFolderId ? folders.find((folder) => folder.id === targetFolderId)?.name ?? '' : '';
     if (targetPath === sourcePath || targetPath.startsWith(`${sourcePath}/`)) return;
     const nextPath = targetPath ? `${targetPath}/${sourceLeaf}` : sourceLeaf;
     onRenameFolder(folderId, nextPath);
-  }, [folders, onRenameFolder]);
+  }, [folders, onRenameFolder, resolveFolderSource]);
 
   const handleDropItem = useCallback((targetFolderId: string | null, e: React.DragEvent) => {
     e.preventDefault();
@@ -328,6 +348,16 @@ export default function Sidebar({
     if (!item) return;
 
     if (item.kind === 'note') {
+      const note = notes.find((n) => n.id === item.id);
+      if (!note) return;
+      const noteSource = resolveNoteSource(note);
+      if (targetFolderId) {
+        const target = folders.find((folder) => folder.id === targetFolderId);
+        if (!target) return;
+        if (resolveFolderSource(target) !== noteSource) return;
+      } else if (noteSource !== 'noa') {
+        return;
+      }
       onMoveNote(item.id, targetFolderId ?? '');
       return;
     }
@@ -335,7 +365,7 @@ export default function Sidebar({
     if (item.kind === 'folder') {
       moveFolderToTarget(item.id, targetFolderId);
     }
-  }, [moveFolderToTarget, onMoveNote, parseDraggedItem]);
+  }, [folders, moveFolderToTarget, notes, onMoveNote, parseDraggedItem, resolveFolderSource, resolveNoteSource]);
 
   const handleDragStartItem = useCallback((kind: 'note' | 'folder', id: string, name: string) => (e: React.DragEvent) => {
     const payload = { kind, id, name };
@@ -371,6 +401,8 @@ export default function Sidebar({
 
   const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
+    const folderSource = resolveFolderSource(node.folder);
+    const canCreateInsideFolder = folderSource === 'noa';
     const childNotes = notesByFolderId.get(node.folder.id) || [];
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
@@ -400,8 +432,8 @@ export default function Sidebar({
           isFolder
           defaultOpen={foldersExpandedByDefault}
           icon={Folder}
-          onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
-          onAddFolder={() => onCreateFolder(node.folder.id)}
+          onAdd={canCreateInsideFolder ? () => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id) : undefined}
+          onAddFolder={canCreateInsideFolder ? () => onCreateFolder(node.folder.id) : undefined}
           draggable
           onDragStart={handleDragStartItem('folder', node.folder.id, node.folder.name)}
           onDragEnter={handleDragEnterTarget(node.folder.id)}
@@ -448,7 +480,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [activeNoteId, folderTreeResetKey, foldersExpandedByDefault, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, selectedNoteIds, templateMenuFolderId]);
+  }, [activeNoteId, folderTreeResetKey, foldersExpandedByDefault, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, resolveFolderSource, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -524,7 +556,7 @@ export default function Sidebar({
     let failCount = 0;
     for (const file of files) {
       try {
-        const folderId = folders.length > 0 ? folders[0].id : 'diary';
+        const folderId = primaryNoaFolderId || 'diary';
         const importKind = classifyFolderImportFile(file);
         const title = file.name.replace(/\.[^/.]+$/, '');
 
@@ -607,7 +639,7 @@ export default function Sidebar({
       )}
       <div className="h-8 border-b border-[#2D2D2D] flex items-center px-2 gap-0.5 shrink-0 bg-[#DCD9CE] z-10 overflow-hidden">
         <button
-          onClick={() => onCreateNote(folders[0]?.id ?? '')}
+          onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
           title="New note"
         >
@@ -769,38 +801,105 @@ export default function Sidebar({
                   dropPosition={dropTargetId === ROOT_DROP_TARGET_ID ? dropPosition : null}
                   depth={0}
                 >
-                  {folderTree.map((node) => renderFolderNode(node, 1))}
-                  {(notesByFolderId.get('') || []).map((note) => (
-                    <FileNode
-                      key={note.id}
-                      name={(note.title || 'Untitled') + '.md'}
-                      isActive={activeNoteId === note.id}
-                      isSelected={selectedNoteIds.has(note.id)}
-                      onClick={(e) => {
-                        if (e.metaKey || e.ctrlKey) {
-                          setSelectedNoteIds(prev => {
-                            const next = new Set(prev);
-                            if (next.has(note.id)) next.delete(note.id);
-                            else next.add(note.id);
-                            return next;
-                          });
-                        } else {
-                          setSelectedNoteIds(new Set());
-                          onSelectNote(note.id);
-                        }
-                      }}
-                      onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
-                      onRename={(newName: string) => onRenameNote(note.id, newName)}
-                      iconColor="#B89B5E"
-                      draggable
-                      onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
-                      onDragEnd={handleDragEndItem}
-                      depth={1}
-                    />
-                  ))}
-                  {folderTree.length === 0 && (notesByFolderId.get('') || []).length === 0 && (
-                    <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
-                  )}
+                  <FileNode
+                    name="Noa"
+                    isFolder
+                    defaultOpen
+                    icon={Folder}
+                    onAdd={() => onCreateFolder()}
+                    onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
+                    onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
+                    onDrop={(e) => handleDropItem(null, e)}
+                    onDragEnd={handleDragEndItem}
+                    isDropTarget={dropTargetId === NOA_ROOT_DROP_TARGET_ID}
+                    dropPosition={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? dropPosition : null}
+                    depth={1}
+                  >
+                    {noaFolderTree.map((node) => renderFolderNode(node, 2))}
+                    {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa').map((note) => (
+                      <FileNode
+                        key={note.id}
+                        name={(note.title || 'Untitled') + '.md'}
+                        isActive={activeNoteId === note.id}
+                        isSelected={selectedNoteIds.has(note.id)}
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey) {
+                            setSelectedNoteIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(note.id)) next.delete(note.id);
+                              else next.add(note.id);
+                              return next;
+                            });
+                          } else {
+                            setSelectedNoteIds(new Set());
+                            onSelectNote(note.id);
+                          }
+                        }}
+                        onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                        onRename={(newName: string) => onRenameNote(note.id, newName)}
+                        iconColor="#B89B5E"
+                        draggable
+                        onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                        onDragEnd={handleDragEndItem}
+                        depth={2}
+                      />
+                    ))}
+                    {noaFolderTree.length === 0 && (notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa').length === 0 && (
+                      <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
+                    )}
+                  </FileNode>
+                  <FileNode
+                    name="Obsidian Vault"
+                    isFolder
+                    defaultOpen
+                    icon={Folder}
+                    onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}
+                    onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDraggedItem(null);
+                      setDropTargetId(null);
+                      setDropPosition(null);
+                    }}
+                    onDragEnd={handleDragEndItem}
+                    isDropTarget={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID}
+                    dropPosition={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID ? dropPosition : null}
+                    depth={1}
+                  >
+                    {importedFolderTree.map((node) => renderFolderNode(node, 2))}
+                    {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import').map((note) => (
+                      <FileNode
+                        key={note.id}
+                        name={(note.title || 'Untitled') + '.md'}
+                        isActive={activeNoteId === note.id}
+                        isSelected={selectedNoteIds.has(note.id)}
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey) {
+                            setSelectedNoteIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(note.id)) next.delete(note.id);
+                              else next.add(note.id);
+                              return next;
+                            });
+                          } else {
+                            setSelectedNoteIds(new Set());
+                            onSelectNote(note.id);
+                          }
+                        }}
+                        onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                        onRename={(newName: string) => onRenameNote(note.id, newName)}
+                        iconColor="#B89B5E"
+                        draggable
+                        onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                        onDragEnd={handleDragEndItem}
+                        depth={2}
+                      />
+                    ))}
+                    {importedFolderTree.length === 0 && (notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import').length === 0 && (
+                      <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
+                    )}
+                  </FileNode>
                 </FileNode>
               </div>
               </>

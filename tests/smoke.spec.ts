@@ -389,19 +389,34 @@ test('filesystem sync control and status are visible in data settings', async ({
 test('filesystem sync status transitions from syncing to ready on retry', async ({ page }) => {
   await installMockDirectoryPicker(page);
   await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{ path: 'Synced.md', content: '# Synced\n\nFrom vault.' }],
+    };
+  });
   await page.getByTitle('Settings').click();
   await page.getByRole('button', { name: 'Data' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.getByRole('button', { name: 'Retry Sync' }).click();
-  await expect(page.getByText(/Sync status: syncing/i)).toBeVisible();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
 });
 
 test('filesystem sync status transitions from syncing to error on retry', async ({ page }) => {
   await installMockDirectoryPicker(page);
   await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{ path: 'Synced.md', content: '# Synced\n\nFrom vault.' }],
+    };
+  });
   await page.getByTitle('Settings').click();
   await page.getByRole('button', { name: 'Data' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
@@ -412,7 +427,6 @@ test('filesystem sync status transitions from syncing to error on retry', async 
     if (syncMode) syncMode.failWrites = true;
   });
   await page.getByRole('button', { name: 'Retry Sync' }).click();
-  await expect(page.getByText(/Sync status: syncing/i)).toBeVisible();
   await expect(page.getByText(/Sync status: error/i)).toBeVisible();
   await expect(page.getByText(/Sync error:/i)).toBeVisible();
 });

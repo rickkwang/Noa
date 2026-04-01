@@ -72,6 +72,7 @@ export default function App() {
     flushAllPendingSaves,
     retryInitialization,
     resetWorkspaceFromRecovery,
+    clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
     isLoaded,
   } = useNotes(settings);
@@ -169,6 +170,15 @@ export default function App() {
       deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
     })();
   }, [_handleDeleteFolder, closeTabById, syncNoteOnDelete]);
+
+  const handleDisconnectFolder = useCallback(async () => {
+    await disconnect();
+    const removedNoteIds = await clearWorkspaceAfterDisconnect();
+    if (removedNoteIds.length > 0) {
+      const removedSet = new Set(removedNoteIds);
+      setOpenTabIds((prev) => prev.filter((id) => !removedSet.has(id)));
+    }
+  }, [clearWorkspaceAfterDisconnect, disconnect]);
 
   const {
     isMobile,
@@ -613,7 +623,7 @@ export default function App() {
             onImportData={handleImportData}
             fsHandle={fsHandle}
             onConnectFs={connect}
-            onDisconnectFs={disconnect}
+            onDisconnectFs={handleDisconnectFolder}
             fsLastSyncAt={fsLastSyncAt}
             fsSyncError={fsSyncError}
             syncStatus={syncStatus}

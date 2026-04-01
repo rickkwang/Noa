@@ -109,8 +109,8 @@ export function useNotes(settings?: AppSettings) {
 
   const applyEmptyWorkspace = useCallback(async (name: string) => {
     const initialFolders = [
-      { id: 'diary', name: 'diaries' },
-      { id: 'essay', name: 'essays' },
+      { id: 'diary', name: 'diaries', source: 'noa' as const },
+      { id: 'essay', name: 'essays', source: 'noa' as const },
     ];
     setFolders(initialFolders);
     setNotes([]);
@@ -142,8 +142,8 @@ export function useNotes(settings?: AppSettings) {
           setFolders(savedFolders);
         } else {
           setFolders([
-            { id: 'diary', name: 'diaries' },
-            { id: 'essay', name: 'essays' }
+            { id: 'diary', name: 'diaries', source: 'noa' },
+            { id: 'essay', name: 'essays', source: 'noa' }
           ]);
         }
 
@@ -202,10 +202,11 @@ Export regularly: use Settings → Data → Export Backup.`,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           folder: 'diary',
-          tags: [],
-          links: [],
-          linkRefs: [],
-        };
+            tags: [],
+            links: [],
+            linkRefs: [],
+            source: 'noa',
+          };
           const dailyFolderId = crypto.randomUUID();
           const dateFormat = 'YYYY-MM-DD';
           const todayStr = formatDate(dateFormat);
@@ -220,11 +221,12 @@ Export regularly: use Settings → Data → Export Backup.`,
             tags: ['daily'],
             links: [],
             linkRefs: [],
+            source: 'noa',
           };
           const initialFolders = [
-            { id: 'diary', name: 'diaries' },
-            { id: 'essay', name: 'essays' },
-            { id: dailyFolderId, name: 'Daily Notes' }
+            { id: 'diary', name: 'diaries', source: 'noa' as const },
+            { id: 'essay', name: 'essays', source: 'noa' as const },
+            { id: dailyFolderId, name: 'Daily Notes', source: 'noa' as const }
           ];
           setFolders(initialFolders);
           setNotes(syncLinkRefs([welcomeNote, dailyNote]));
@@ -335,6 +337,12 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [LAST_ACTIVE_NOTE_KEY]);
 
   const handleCreateNote = useCallback((folderId: string, initialContent: string = '') => {
+    const targetFolder = folders.find((folder) => folder.id === folderId);
+    const targetSource = targetFolder?.source ?? 'noa';
+    if (targetSource !== 'noa') {
+      setSaveError('Cannot create notes inside imported vault area.');
+      return;
+    }
     const newNote: Note = {
       id: crypto.randomUUID(),
       title: 'New Note',
@@ -345,6 +353,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       tags: [],
       links: [],
       linkRefs: [],
+      source: 'noa',
     };
     setNotes(prev => {
       const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
@@ -355,12 +364,20 @@ Export regularly: use Settings → Data → Export Backup.`,
       return next;
     });
     setActiveNoteIdWithRecent(newNote.id);
-  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
+  }, [folders, setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
     setNotes(prev => {
       const target = prev.find((note) => note.id === id);
       if (!target || target.folder === folderId) return prev;
+      const noteSource = target.source ?? 'noa';
+      if (!folderId) {
+        if (noteSource !== 'noa') return prev;
+      } else {
+        const targetFolder = folders.find((folder) => folder.id === folderId);
+        if (!targetFolder) return prev;
+        if ((targetFolder.source ?? 'noa') !== noteSource) return prev;
+      }
       const nextNote = { ...target, folder: folderId, updatedAt: new Date().toISOString() };
       const updated = prev.map((note) => (note.id === id ? nextNote : note));
       void storage.saveNote(nextNote).catch(() => {
@@ -368,9 +385,14 @@ Export regularly: use Settings → Data → Export Backup.`,
       });
       return syncLinkRefs(updated, prev, new Set([id]));
     });
-  }, [syncLinkRefs]);
+  }, [folders, syncLinkRefs]);
 
   const handleImportNote = useCallback((title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
+    const targetFolder = folders.find((folder) => folder.id === folderId);
+    if (targetFolder && (targetFolder.source ?? 'noa') !== 'noa') {
+      setSaveError('Cannot import files directly into imported vault area.');
+      return;
+    }
     const newNote: Note = {
       id: crypto.randomUUID(),
       title,
@@ -381,6 +403,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       tags: extractTags(content),
       links: extractLinks(content),
       linkRefs: [],
+      source: 'noa',
     };
 
     if (!attachmentFile) {
@@ -440,7 +463,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         setSaveError('Failed to save attachment. Storage may be full.');
       }
     })();
-  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
+  }, [folders, setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleNavigateToNoteById = useCallback((id: string) => {
     setActiveNoteIdWithRecent(id);
@@ -462,10 +485,11 @@ Export regularly: use Settings → Data → Export Backup.`,
         content: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        folder: foldersRef.current[0]?.id ?? 'diary',
+        folder: foldersRef.current.find((folder) => (folder.source ?? 'noa') === 'noa')?.id ?? 'diary',
         tags: [],
         links: [],
         linkRefs: [],
+        source: 'noa',
       };
       setActiveNoteIdWithRecent(newNote.id);
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
@@ -490,6 +514,10 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
+    if (parent?.source === 'obsidian-import') {
+      setSaveError('Cannot create folders inside imported vault area.');
+      return;
+    }
     const desiredPath = parent ? `${parent.name}/New Folder` : 'New Folder';
     const siblingPrefix = parent ? `${parent.name}/` : '';
     const existingNames = new Set(folders.map((folder) => folder.name));
@@ -502,7 +530,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       suffix += 1;
     }
 
-    const newFolder: Folder = { id: crypto.randomUUID(), name: nextPath };
+    const newFolder: Folder = { id: crypto.randomUUID(), name: nextPath, source: 'noa' };
     setFolders(prev => [...prev, newFolder]);
   }, [folders]);
 
@@ -592,18 +620,31 @@ Export regularly: use Settings → Data → Export Backup.`,
         throw new Error(attachmentError);
       }
 
-      for (const note of importedNotes) {
-        for (const attachment of note.attachments ?? []) {
-          if (!attachment.dataBase64) continue;
-          const binary = atob(attachment.dataBase64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i += 1) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          const blob = new Blob([bytes], { type: attachment.mimeType || 'application/octet-stream' });
-          await storage.saveAttachmentBlob(attachment.id, blob);
-          savedAttachmentIds.push(attachment.id);
-        }
+      const importAttachments = importedNotes.flatMap((note) =>
+        (note.attachments ?? [])
+          .filter((attachment) => Boolean(attachment.dataBase64))
+          .map((attachment) => ({
+            id: attachment.id,
+            mimeType: attachment.mimeType,
+            dataBase64: attachment.dataBase64 as string,
+          }))
+      );
+
+      const ATTACHMENT_BATCH_SIZE = 20;
+      for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
+        const batch = importAttachments.slice(i, i + ATTACHMENT_BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (attachment) => {
+            const binary = atob(attachment.dataBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let j = 0; j < binary.length; j += 1) {
+              bytes[j] = binary.charCodeAt(j);
+            }
+            const blob = new Blob([bytes], { type: attachment.mimeType || 'application/octet-stream' });
+            await storage.saveAttachmentBlob(attachment.id, blob);
+            savedAttachmentIds.push(attachment.id);
+          })
+        );
       }
 
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
@@ -649,6 +690,79 @@ Export regularly: use Settings → Data → Export Backup.`,
       setLoadError({ code: appError.code, message: appError.userMessage });
     }
   }, [applyEmptyWorkspace]);
+
+  const clearWorkspaceAfterDisconnect = useCallback(async (): Promise<string[]> => {
+    const pending = Array.from(saveTimers.current.values());
+    pending.forEach((timer) => clearTimeout(timer));
+    saveTimers.current.clear();
+
+    const importedFolderIds = new Set(
+      folders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import').map((folder) => folder.id),
+    );
+    const importedNotes = notes.filter(
+      (note) => (note.source ?? 'noa') === 'obsidian-import' || importedFolderIds.has(note.folder),
+    );
+    const results = await Promise.allSettled(
+      importedNotes.map(async (note) => {
+        if (note.attachments?.length) {
+          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments);
+        }
+        await storage.deleteNote(note.id);
+        return note.id;
+      }),
+    );
+
+    const deletedNoteIds = results
+      .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+      .map((result) => result.value);
+    const deletedNoteIdsSet = new Set(deletedNoteIds);
+    const failedCount = results.length - deletedNoteIds.length;
+
+    const remainingImportedNotes = importedNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
+    const importedFolders = folders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import');
+    const importedFolderById = new Map(importedFolders.map((folder) => [folder.id, folder]));
+    const importedFolderByName = new Map(importedFolders.map((folder) => [folder.name, folder]));
+
+    const keptImportedFolderIds = new Set<string>();
+    for (const note of remainingImportedNotes) {
+      const directFolder = importedFolderById.get(note.folder);
+      if (!directFolder) continue;
+      const segments = directFolder.name.split('/').filter(Boolean);
+      let currentPath = '';
+      for (const segment of segments) {
+        currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+        const matched = importedFolderByName.get(currentPath);
+        if (matched) keptImportedFolderIds.add(matched.id);
+      }
+    }
+
+    const nextFolders = folders.filter((folder) => {
+      const source = folder.source ?? 'noa';
+      if (source !== 'obsidian-import') return true;
+      return keptImportedFolderIds.has(folder.id);
+    });
+    const nextNotes = notes.filter((note) => !deletedNoteIdsSet.has(note.id));
+
+    if (deletedNoteIds.length > 0 || importedFolderIds.size > 0) {
+      const nextNotesWithRefs = syncLinkRefs(nextNotes, notes);
+      setFolders(nextFolders);
+      setNotes(nextNotesWithRefs);
+      setRecentNoteIds((prev) => {
+        const next = prev.filter((id) => !deletedNoteIdsSet.has(id));
+        saveRecentNoteIds(next);
+        return next;
+      });
+      setActiveNoteId((prev) => (prev && deletedNoteIdsSet.has(prev) ? (nextNotesWithRefs[0]?.id ?? '') : prev));
+      await storage.saveFolders(nextFolders);
+    }
+
+    if (failedCount > 0) {
+      setSaveError('Failed to remove some imported notes while disconnecting.');
+    } else {
+      setSaveError(null);
+    }
+    return deletedNoteIds;
+  }, [folders, notes, syncLinkRefs]);
 
   const importBackupFromRecovery = useCallback(async (file: File) => {
     try {
@@ -737,6 +851,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     handleImportData,
     retryInitialization,
     resetWorkspaceFromRecovery,
+    clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
   };
 }

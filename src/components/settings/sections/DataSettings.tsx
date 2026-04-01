@@ -96,9 +96,15 @@ export default function DataSettings({
   return (
     <div className="space-y-8">
       {isWorking && (
-        <div className="sticky top-0 z-10 border-2 border-[#B89B5E] bg-[#B89B5E]/10 px-3 py-2 font-redaction text-sm text-[#2D2D2D] flex items-center gap-2">
+        <div className="border-2 border-[#B89B5E] bg-[#EAE8E0] px-3 py-2 font-redaction text-sm text-[#2D2D2D] flex items-center gap-2">
           <span className="inline-block w-3 h-3 border-2 border-[#2D2D2D] border-t-transparent rounded-full animate-spin shrink-0" />
-          <span>{transfer.importingData ? 'Importing data…' : transfer.connectingFs ? 'Connecting…' : 'Exporting…'}</span>
+          <span>
+            {transfer.importingData
+              ? (transfer.importStatusText ?? 'Importing data...')
+              : transfer.connectingFs
+                ? 'Connecting...'
+                : 'Exporting...'}
+          </span>
         </div>
       )}
       <div className="border border-[#2D2D2D]/20 bg-[#DCD9CE] px-3 py-2 text-xs text-[#2D2D2D]/70">

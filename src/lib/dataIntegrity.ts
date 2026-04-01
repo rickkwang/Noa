@@ -28,7 +28,7 @@ function normalizeAttachment(
   if (!raw || typeof raw !== 'object') {
     issues.push({
       level: 'warning',
-      message: `Note #${idx + 1} attachment #${attachmentIdx + 1} is invalid and was skipped.`,
+      message: `Note #${idx + 1} (${noteId || 'unknown-id'}) attachment #${attachmentIdx + 1} is invalid and was skipped.`,
     });
     return null;
   }
@@ -44,7 +44,7 @@ function normalizeAttachment(
   if (!id.trim() || !filename.trim()) {
     issues.push({
       level: 'warning',
-      message: `Note #${idx + 1} attachment #${attachmentIdx + 1} missing id or filename and was skipped.`,
+      message: `Note #${idx + 1} (${noteId || 'unknown-id'}) attachment #${attachmentIdx + 1} missing id or filename and was skipped.`,
     });
     return null;
   }
@@ -84,6 +84,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const tags = Array.isArray(obj.tags) ? obj.tags.filter(isString) : [];
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
   const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : [];
+  const source = obj.source === 'obsidian-import' ? 'obsidian-import' : 'noa';
   const attachments = Array.isArray(obj.attachments)
     ? obj.attachments
         .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx, issues))
@@ -105,6 +106,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
       links,
       linkRefs,
       attachments,
+      source,
     },
     issues,
   };
