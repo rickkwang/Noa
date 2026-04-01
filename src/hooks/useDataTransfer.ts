@@ -8,9 +8,14 @@ import { markExported } from '../lib/exportTimestamp';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { extractLinks, extractTags } from '../lib/noteUtils';
+import {
+  inferAttachmentMimeType,
+  canDecodeBase64,
+  findInvalidAttachmentPayload,
+  mergeAttachmentPayloads,
+  type ImportedNote,
+} from '../lib/attachmentUtils';
 
-type ImportedAttachment = Attachment & { dataBase64?: string };
-type ImportedNote = Note & { attachments?: ImportedAttachment[] };
 type BackupAttachment = Attachment & { dataBase64: string };
 
 interface BackupPayload {
@@ -240,21 +245,6 @@ export function classifyFolderImportFile(file: Pick<File, 'name' | 'type'>): { k
   return { kind: 'unsupported' };
 }
 
-function inferAttachmentMimeType(file: Pick<File, 'name' | 'type'>): string {
-  if (file.type) return file.type;
-  const extension = getFileExtension(file.name);
-  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
-  if (extension === 'png') return 'image/png';
-  if (extension === 'gif') return 'image/gif';
-  if (extension === 'webp') return 'image/webp';
-  if (extension === 'svg') return 'image/svg+xml';
-  if (extension === 'avif') return 'image/avif';
-  if (extension === 'bmp') return 'image/bmp';
-  if (extension === 'ico') return 'image/x-icon';
-  if (extension === 'tif' || extension === 'tiff') return 'image/tiff';
-  return 'application/octet-stream';
-}
-
 function isInlinePreviewableMimeType(mimeType: string): boolean {
   return mimeType.startsWith('image/');
 }
@@ -268,6 +258,15 @@ function downloadBlob(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -289,24 +288,6 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
     bytes[i] = binary.charCodeAt(i);
   }
   return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
-}
-
-function canDecodeBase64(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  try {
-    if (typeof atob === 'function') {
-      atob(trimmed);
-      return true;
-    }
-    if (typeof Buffer !== 'undefined') {
-      Buffer.from(trimmed, 'base64');
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
 }
 
 interface VaultScanFile {
@@ -357,37 +338,6 @@ async function collectVaultDirectoryEntries(
   }
 
   return { folderPaths, files };
-}
-
-function findInvalidAttachmentPayload(notes: ImportedNote[]): string | null {
-  for (let i = 0; i < notes.length; i += 1) {
-    const note = notes[i];
-    const attachments = note.attachments ?? [];
-    for (let j = 0; j < attachments.length; j += 1) {
-      const attachment = attachments[j];
-      if (!attachment.dataBase64) continue;
-      if (!canDecodeBase64(attachment.dataBase64)) {
-        return `Attachment payload is invalid for note "${note.title || note.id}".`;
-      }
-    }
-  }
-  return null;
-}
-
-function mergeAttachmentPayloads(
-  normalizedNote: Note,
-  rawNote?: ImportedNote,
-): ImportedNote {
-  if (!normalizedNote.attachments?.length) {
-    return normalizedNote as ImportedNote;
-  }
-  const rawAttachments = rawNote?.attachments ?? [];
-  const rawById = new Map(rawAttachments.map((attachment) => [attachment.id, attachment]));
-  const attachments = normalizedNote.attachments.map((attachment) => ({
-    ...attachment,
-    dataBase64: rawById.get(attachment.id)?.dataBase64,
-  }));
-  return { ...normalizedNote, attachments };
 }
 
 function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
@@ -563,10 +513,20 @@ export function useDataTransfer({
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-vault.zip`);
       markExported();
+    } catch (error) {
+      const appError = fromImportError('unknown_error', 'Export failed. Please retry.');
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'export_zip',
+        code: appError.code,
+        message: appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
+      notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
     } finally {
       setExportingZip(false);
     }
-  }, [ensureExportIntegrity, folders, notes, workspaceName]);
+  }, [ensureExportIntegrity, folders, notes, notify, workspaceName]);
 
   const exportHtmlZip = useCallback(async () => {
     if (!ensureExportIntegrity()) return;
@@ -578,14 +538,15 @@ export function useDataTransfer({
 
       if (htmlFolder) {
         notes.forEach((note) => {
+          const safeTitle = escapeHtml(note.title || 'Untitled');
           const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>${note.title}</title>
+  <title>${safeTitle}</title>
 </head>
 <body>
-  <h1>${note.title}</h1>
+  <h1>${safeTitle}</h1>
   <p><small>Updated: ${new Date(note.updatedAt).toLocaleString()}</small></p>
   <hr />
   ${mdToHtml(note.content)}
@@ -597,10 +558,20 @@ export function useDataTransfer({
 
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-html-export.zip`);
+    } catch (error) {
+      const appError = fromImportError('unknown_error', 'HTML export failed. Please retry.');
+      recordErrorSnapshot({
+        at: new Date().toISOString(),
+        operation: 'export_html_zip',
+        code: appError.code,
+        message: appError.userMessage,
+        suggestedAction: appError.suggestedAction,
+      });
+      notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
     } finally {
       setExportingHtml(false);
     }
-  }, [ensureExportIntegrity, notes, workspaceName]);
+  }, [ensureExportIntegrity, notes, notify, workspaceName]);
 
   const importJsonFile = useCallback(
     (file: File) => {
@@ -722,7 +693,7 @@ export function useDataTransfer({
       };
       reader.readAsText(file);
     },
-    [notes, folders, notify, onImportData, requestConfirm],
+    [notes, folders, notify, trackedImportData, requestConfirm],
   );
 
   const importVaultFolder = useCallback(async () => {
@@ -765,6 +736,7 @@ export function useDataTransfer({
             folder: folderId,
             tags: extractTags(content),
             links: extractLinks(content),
+            linkRefs: [],
           });
         } else {
           const noteId = crypto.randomUUID();
@@ -790,6 +762,7 @@ export function useDataTransfer({
             folder: folderId,
             tags: [],
             links: [],
+            linkRefs: [],
             attachments: [attachment],
           });
         }
@@ -847,7 +820,7 @@ export function useDataTransfer({
       });
       notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
     }
-  }, [folders, notes, notify, onImportData, requestConfirm]);
+  }, [folders, notes, notify, trackedImportData, requestConfirm]);
 
   const importFolderFiles = useCallback(
     (files: FileList) => {
@@ -894,6 +867,7 @@ export function useDataTransfer({
             folder: folderId,
             tags: extractTags(content),
             links: extractLinks(content),
+            linkRefs: [],
           });
         };
 
@@ -919,6 +893,7 @@ export function useDataTransfer({
             folder: folderId,
             tags: [],
             links: [],
+            linkRefs: [],
             attachments: [attachment],
           });
           stagedAttachments.push({ attachmentId, blob: file });
@@ -1008,7 +983,7 @@ export function useDataTransfer({
         },
       });
     },
-    [notes, folders, notify, onImportData, requestConfirm],
+    [notes, folders, notify, trackedImportData, requestConfirm],
   );
 
   const createNewWorkspace = useCallback(() => {
@@ -1035,7 +1010,7 @@ export function useDataTransfer({
           }
         },
       });
-    }, [notes, folders, notify, onImportData, requestConfirm]);
+    }, [notes, folders, notify, trackedImportData, requestConfirm]);
 
   const importZip = useCallback(
     (file: File) => {
@@ -1113,6 +1088,7 @@ export function useDataTransfer({
               folder: folderId,
               tags: extractTags(content),
               links: extractLinks(content),
+              linkRefs: [],
             });
           }
 
@@ -1151,36 +1127,39 @@ export function useDataTransfer({
                 (note.attachments ?? []).some((attachment) => attachment.id === attachmentId)
               );
               if (noteMatch) {
-                const note = validatedNotes.find((candidate) => candidate.id === noteMatch.id);
-                if (note) {
+                const noteIdx = validatedNotes.findIndex((candidate) => candidate.id === noteMatch.id);
+                if (noteIdx !== -1) {
+                  const note = validatedNotes[noteIdx];
                   const attachment = noteMatch.attachments?.find((candidate) => candidate.id === attachmentId);
                   if (attachment) {
-                    note.attachments = [...(note.attachments ?? []), {
-                      id: attachmentId,
-                      noteId: note.id,
-                      filename: attachment.filename || filename,
-                      mimeType: attachment.mimeType || mimeType,
-                      size: blob.size,
-                      createdAt: attachment.createdAt || new Date().toISOString(),
-                      vaultPath: attachment.vaultPath || `attachments/${note.id}/${attachmentId}-${attachment.filename || filename}`,
-                    }];
+                    validatedNotes[noteIdx] = {
+                      ...note,
+                      attachments: [...(note.attachments ?? []), {
+                        id: attachmentId,
+                        noteId: note.id,
+                        filename: attachment.filename || filename,
+                        mimeType: attachment.mimeType || mimeType,
+                        size: blob.size,
+                        createdAt: attachment.createdAt || new Date().toISOString(),
+                        vaultPath: attachment.vaultPath || `attachments/${note.id}/${attachmentId}-${attachment.filename || filename}`,
+                      }],
+                    };
                   }
                 }
               } else {
-                for (const note of validatedNotes) {
-                  if (note.content.includes(`![[${filename}]]`) || note.content.includes(`[[${filename}]]`)) {
-                    const attachment: Attachment = {
-                      id: attachmentId,
-                      noteId: note.id,
-                      filename,
-                      mimeType,
-                      size: blob.size,
-                      createdAt: new Date().toISOString(),
-                      vaultPath: `attachments/${note.id}/${attachmentId}-${filename}`,
-                    };
-                    note.attachments = [...(note.attachments ?? []), attachment];
-                  }
-                }
+                validatedNotes = validatedNotes.map((note) => {
+                  if (!note.content.includes(`![[${filename}]]`) && !note.content.includes(`[[${filename}]]`)) return note;
+                  const attachment: Attachment = {
+                    id: attachmentId,
+                    noteId: note.id,
+                    filename,
+                    mimeType,
+                    size: blob.size,
+                    createdAt: new Date().toISOString(),
+                    vaultPath: `attachments/${note.id}/${attachmentId}-${filename}`,
+                  };
+                  return { ...note, attachments: [...(note.attachments ?? []), attachment] };
+                });
               }
             } catch {
               // 单个附件失败不阻塞整体导入
@@ -1238,7 +1217,7 @@ export function useDataTransfer({
         },
       });
     },
-    [notes, folders, notify, onImportData, requestConfirm],
+    [notes, folders, notify, trackedImportData, requestConfirm],
   );
 
   const connectFolder = useCallback(async () => {

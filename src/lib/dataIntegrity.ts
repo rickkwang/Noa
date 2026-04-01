@@ -18,8 +18,18 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-function normalizeAttachment(raw: unknown, noteId: string, idx: number, attachmentIdx: number): Attachment | null {
+function normalizeAttachment(
+  raw: unknown,
+  noteId: string,
+  idx: number,
+  attachmentIdx: number,
+  issues: IntegrityIssue[],
+): Attachment | null {
   if (!raw || typeof raw !== 'object') {
+    issues.push({
+      level: 'warning',
+      message: `Note #${idx + 1} attachment #${attachmentIdx + 1} is invalid and was skipped.`,
+    });
     return null;
   }
 
@@ -32,6 +42,10 @@ function normalizeAttachment(raw: unknown, noteId: string, idx: number, attachme
   const attachmentNoteId = isString(obj.noteId) ? obj.noteId : noteId;
 
   if (!id.trim() || !filename.trim()) {
+    issues.push({
+      level: 'warning',
+      message: `Note #${idx + 1} attachment #${attachmentIdx + 1} missing id or filename and was skipped.`,
+    });
     return null;
   }
 
@@ -69,10 +83,10 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const folder = isString(obj.folder) ? obj.folder : '';
   const tags = Array.isArray(obj.tags) ? obj.tags.filter(isString) : [];
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
-  const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : undefined;
+  const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : [];
   const attachments = Array.isArray(obj.attachments)
     ? obj.attachments
-        .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx))
+        .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx, issues))
         .filter((attachment): attachment is Attachment => attachment !== null)
     : undefined;
 

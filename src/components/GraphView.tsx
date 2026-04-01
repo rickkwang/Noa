@@ -69,9 +69,13 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     [topologyNotes]
   );
   const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[] }>({
-    key: topologyKey,
-    notes: topologyNotes,
+    key: '',
+    notes: [],
   });
+  // Synchronously update ref during render so graphData useMemo always reads the latest topology
+  if (stableTopologyRef.current.key !== topologyKey) {
+    stableTopologyRef.current = { key: topologyKey, notes: topologyNotes };
+  }
 
   // Obsidian 风格：节点小而精，degree 仅轻微放大
   const nodeRadius = (degree: number) => 3 + Math.sqrt(degree) * 1.2;
@@ -84,14 +88,6 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     gold: '#B89B5E', blue: '#4A90E2', green: '#50E3C2', purple: '#9013FE', red: '#D0021B',
   };
   const nodeColor = accentColors[settings.appearance.accentColor] ?? settings.appearance.accentColor ?? '#B89B5E';
-
-  useEffect(() => {
-    if (stableTopologyRef.current.key === topologyKey) return;
-    stableTopologyRef.current = {
-      key: topologyKey,
-      notes: topologyNotes,
-    };
-  }, [topologyKey, topologyNotes]);
 
   const graphData = useMemo(() => {
     const nodes: GraphNode[] = [];

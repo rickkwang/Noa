@@ -179,15 +179,21 @@ export const storage = {
       let migrated = false;
 
       if (lsNotes) {
-        const parsed = JSON.parse(lsNotes);
-        const migratedNotes = parsed.map((n: any) => ({
-          ...n,
-          createdAt: n.createdAt || n.date || new Date().toISOString(),
-          updatedAt: n.updatedAt || n.date || new Date().toISOString(),
-          tags: n.tags || [],
-          links: n.links || [],
-          linkRefs: n.linkRefs || []
-        }));
+        const parsed: unknown = JSON.parse(lsNotes);
+        if (!Array.isArray(parsed)) throw new Error('pixel-notes is not an array');
+        const migratedNotes: Note[] = parsed
+          .filter((n): n is Record<string, unknown> => n !== null && typeof n === 'object')
+          .map((n) => ({
+            id: typeof n.id === 'string' ? n.id : crypto.randomUUID(),
+            title: typeof n.title === 'string' ? n.title : 'Untitled',
+            content: typeof n.content === 'string' ? n.content : '',
+            folder: typeof n.folder === 'string' ? n.folder : '',
+            createdAt: typeof n.createdAt === 'string' ? n.createdAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
+            updatedAt: typeof n.updatedAt === 'string' ? n.updatedAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
+            tags: Array.isArray(n.tags) ? n.tags.filter((t): t is string => typeof t === 'string') : [],
+            links: Array.isArray(n.links) ? n.links.filter((l): l is string => typeof l === 'string') : [],
+            linkRefs: Array.isArray(n.linkRefs) ? n.linkRefs.filter((r): r is string => typeof r === 'string') : [],
+          }));
         await this.saveNotes(migratedNotes);
         localStorage.removeItem('pixel-notes');
         migrated = true;

@@ -19,6 +19,7 @@ const makeNote = (id: string, title: string): Note => ({
   folder: '',
   tags: [],
   links: [],
+  linkRefs: [],
 });
 
 describe('analyzeConflicts', () => {

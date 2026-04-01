@@ -26,18 +26,22 @@ const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
+const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
+
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  // Multi-tab state: list of open note IDs in tab order
-  const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const restoredOpenTabsRef = useRef(false);
-  const [showStorageNotice, setShowStorageNotice] = useState(() =>
-    !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN)
-  );
+  const [showStorageNotice, setShowStorageNotice] = useState(() => {
+    try {
+      return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
+    } catch {
+      return true;
+    }
+  });
   const [navigationConflict, setNavigationConflict] = useState<{ title: string; noteIds: string[] } | null>(null);
   const { settings, updateSettings } = useSettings();
   const {
@@ -96,15 +100,15 @@ export default function App() {
     onImportData: handleImportData,
   });
 
-  const handleUpdateNote = (id: string, content: string) => {
+  const handleUpdateNote = useCallback((id: string, content: string) => {
     _handleUpdateNote(id, content);
     syncNoteOnUpdate(id, content);
-  };
+  }, [_handleUpdateNote, syncNoteOnUpdate]);
 
-  const handleRenameNote = (id: string, newTitle: string) => {
+  const handleRenameNote = useCallback((id: string, newTitle: string) => {
     _handleRenameNote(id, newTitle);
     syncNoteOnRename(id, newTitle);
-  };
+  }, [_handleRenameNote, syncNoteOnRename]);
 
   const handleCreateNote = (folderId: string, initialContent?: string) => {
     _handleCreateNote(folderId, initialContent);
@@ -141,32 +145,30 @@ export default function App() {
   }, [_handleRenameFolder, folders, syncFolderOnRename]);
 
   const closeTabById = useCallback((id: string) => {
-    setOpenTabIds(prev => {
-      const next = prev.filter(t => t !== id);
-      if (id === activeNoteId) {
-        const idx = prev.indexOf(id);
-        setActiveNoteId(next[Math.min(idx, next.length - 1)] ?? '');
-      }
-      return next;
-    });
-  }, [activeNoteId, setActiveNoteId]);
+    const next = openTabIds.filter(t => t !== id);
+    setOpenTabIds(next);
+    if (id === activeNoteId) {
+      const idx = openTabIds.indexOf(id);
+      setActiveNoteId(next[Math.min(idx, next.length - 1)] ?? '');
+    }
+  }, [activeNoteId, openTabIds, setActiveNoteId]);
 
-  const handleDeleteNote = (id: string) => {
+  const handleDeleteNote = useCallback((id: string) => {
     void deleteNoteWithLocalFirst({
       id,
       deleteLocal: _handleDeleteNote,
       closeTab: closeTabById,
       syncDelete: syncNoteOnDelete,
     });
-  };
+  }, [_handleDeleteNote, closeTabById, syncNoteOnDelete]);
 
-  const handleDeleteFolder = (id: string) => {
+  const handleDeleteFolder = useCallback((id: string) => {
     void (async () => {
       const deletedNoteIds = await _handleDeleteFolder(id);
       deletedNoteIds.forEach((noteId) => closeTabById(noteId));
       deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
     })();
-  };
+  }, [_handleDeleteFolder, closeTabById, syncNoteOnDelete]);
 
   const {
     isMobile,

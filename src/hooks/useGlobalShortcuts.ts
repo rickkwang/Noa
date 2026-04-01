@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from 'react';
+import { RefObject, useEffect, useRef } from 'react';
 
 interface UseGlobalShortcutsOptions {
   searchQuery: string;
@@ -21,6 +21,9 @@ export function useGlobalShortcuts({
   onClearSearch,
   onForceSave,
 }: UseGlobalShortcutsOptions): void {
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -52,7 +55,7 @@ export function useGlobalShortcuts({
 
       if (
         e.key === 'Escape' &&
-        searchQuery &&
+        searchQueryRef.current &&
         document.activeElement === searchInputRef.current
       ) {
         onClearSearch();
@@ -62,5 +65,5 @@ export function useGlobalShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, searchInputRef, searchQuery]);
+  }, [onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, searchInputRef]);
 }

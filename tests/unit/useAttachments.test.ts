@@ -83,6 +83,7 @@ describe('useAttachments URL lifecycle', () => {
       folder: '',
       tags: [],
       links: [],
+      linkRefs: [],
       attachments: [attachment],
     };
     const noteB = {

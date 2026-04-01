@@ -8,6 +8,16 @@ import { classifyFolderImportFile } from '../hooks/useDataTransfer';
 import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
 
+const HIGHLIGHT_SANITIZE_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'em', 'strong'],
+  ALLOWED_ATTR: [],
+};
+
+function sanitizeHighlightHtml(input: string | null | undefined): string {
+  if (!input) return '';
+  return DOMPurify.sanitize(input, HIGHLIGHT_SANITIZE_CONFIG);
+}
+
 function isInlinePreviewableAttachment(file: File): boolean {
   return file.type.startsWith('image/')
     || /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp|ico|tif|tiff)$/i.test(file.name);
@@ -124,7 +134,7 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
       {isDropTarget && dropPosition === 'top' && (
         <div
           className="h-px bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth * 12 + 24}px` }}
+          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
         />
       )}
       <div
@@ -137,7 +147,7 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
               ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
               : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
         }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${depth === 0 ? 4 : 2}px` }}
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnter={onDragEnter}
@@ -207,13 +217,13 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
       {isDropTarget && dropPosition === 'bottom' && (
         <div
           className="h-px bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth * 12 + 24}px` }}
+          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
         />
       )}
       {isFolder && isOpen && children && (
         <div
           className="border-l border-[#2D2D2D]/15"
-          style={{ marginLeft: `${depth * 12 + 16}px` }}
+          style={{ marginLeft: `18px` }}
         >
           {children}
         </div>
@@ -434,7 +444,7 @@ export default function Sidebar({
               depth={depth + 1}
             />
           ))}
-          {!hasChildren && <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: `2px` }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -454,7 +464,8 @@ export default function Sidebar({
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Rebuild index when notes/settings change (debounced)
+  // Rebuild index when notes/settings change (debounced). Does not execute search —
+  // the query effect below handles that after each index rebuild too.
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
@@ -463,12 +474,13 @@ export default function Sidebar({
       } else {
         searchEngineRef.current.updateNotes(notes, caseSensitive, fuzzySearch);
       }
-      if (deferredSearchQuery) {
+      // Re-run search after index rebuild so results reflect updated notes.
+      if (searchEngineRef.current && deferredSearchQuery) {
         setSearchResults(searchEngineRef.current.search(deferredSearchQuery, caseSensitive));
       }
     }, 250);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [notes, caseSensitive, deferredSearchQuery, fuzzySearch]);
+  }, [notes, caseSensitive, fuzzySearch]); // intentionally excludes deferredSearchQuery
 
   // Query/search execution uses deferred input to keep typing responsive.
   useEffect(() => {
@@ -688,11 +700,11 @@ export default function Sidebar({
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2D] mb-1 flex items-center">
                       <FileText size={12} className="mr-1.5 text-[#B89B5E] shrink-0" />
-                      <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.titleSnippet) || 'Untitled' }} className="truncate" />
+                      <span dangerouslySetInnerHTML={{ __html: sanitizeHighlightHtml(result.titleSnippet) || 'Untitled' }} className="truncate" />
                     </div>
                     <div 
                       className="text-xs text-[#2D2D2D]/70 font-redaction leading-relaxed break-words line-clamp-2"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.contentSnippet) }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHighlightHtml(result.contentSnippet) }}
                     />
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">

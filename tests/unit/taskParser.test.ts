@@ -10,6 +10,7 @@ const note = (content: string) => ({
   folder: '',
   tags: [],
   links: [],
+  linkRefs: [],
 });
 
 describe('parseTasksFromNotes', () => {

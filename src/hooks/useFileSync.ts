@@ -41,6 +41,11 @@ interface UseFileSyncResult {
   syncNoteOnDelete: (id: string) => void;
 }
 
+const AUTO_RETRY_INITIAL_DELAY_MS = 400;
+const AUTO_RETRY_MULTIPLIER = 2;
+const AUTO_RETRY_MAX_DELAY_MS = 5_000;
+const AUTO_RETRY_MAX_ATTEMPTS = 3;
+
 export function useFileSync({
   isLoaded,
   notes,
@@ -54,7 +59,8 @@ export function useFileSync({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [fsLastSyncAt, setFsLastSyncAt] = useState<string | null>(null);
   const [fsSyncError, setFsSyncError] = useState<string | null>(null);
-  const autoRetryAttempted = useRef(false);
+  const autoRetryAttempts = useRef(0);
+  const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapped = useRef(false);
   const notesRef = useRef(notes);
   const foldersRef = useRef(folders);
@@ -63,12 +69,23 @@ export function useFileSync({
   useEffect(() => { foldersRef.current = folders; }, [folders]);
   useEffect(() => { workspaceNameRef.current = workspaceName; }, [workspaceName]);
 
+  const clearRetryTimer = useCallback(() => {
+    if (!autoRetryTimer.current) return;
+    clearTimeout(autoRetryTimer.current);
+    autoRetryTimer.current = null;
+  }, []);
+
+  const resetRetryState = useCallback(() => {
+    clearRetryTimer();
+    autoRetryAttempts.current = 0;
+  }, [clearRetryTimer]);
+
   const recordSuccess = useCallback(() => {
     setSyncStatus('ready');
     setFsLastSyncAt(new Date().toISOString());
     setFsSyncError(null);
-    autoRetryAttempted.current = false;
-  }, []);
+    resetRetryState();
+  }, [resetRetryState]);
 
   const recordFailure = useCallback((error: unknown) => {
     const normalized = classifySyncError(error);
@@ -84,17 +101,49 @@ export function useFileSync({
     });
   }, []);
 
+  const scheduleRetry = useCallback(() => {
+    if (!fsHandle) return;
+    if (autoRetryTimer.current) return;
+    if (autoRetryAttempts.current >= AUTO_RETRY_MAX_ATTEMPTS) return;
+
+    autoRetryAttempts.current += 1;
+    const baseDelay = Math.min(
+      AUTO_RETRY_INITIAL_DELAY_MS * (AUTO_RETRY_MULTIPLIER ** (autoRetryAttempts.current - 1)),
+      AUTO_RETRY_MAX_DELAY_MS,
+    );
+    const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(baseDelay * 0.25)));
+    const delay = baseDelay + jitter;
+
+    autoRetryTimer.current = setTimeout(() => {
+      autoRetryTimer.current = null;
+      if (!fsHandle) return;
+      setSyncStatus('syncing');
+      void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
+        .then(recordSuccess)
+        .catch((error) => {
+          recordFailure(error);
+          scheduleRetry();
+        });
+    }, delay);
+  }, [fsHandle, recordFailure, recordSuccess]);
+
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
+    resetRetryState();
     setSyncStatus('syncing');
     void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
       .then(recordSuccess)
       .catch(recordFailure);
-  }, [fsHandle, syncStatus, recordFailure, recordSuccess]);
+  }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState]);
+
+  useEffect(() => () => {
+    clearRetryTimer();
+  }, [clearRetryTimer]);
 
   useEffect(() => {
     if (!isLoaded) {
       bootstrapped.current = false;
+      resetRetryState();
       return;
     }
     if (bootstrapped.current) return;
@@ -131,30 +180,34 @@ export function useFileSync({
     onImportData,
     recordFailure,
     recordSuccess,
+    resetRetryState,
   ]);
 
   const connect = useCallback(async () => {
     setSyncStatus('syncing');
     try {
-      const handle = await connectDirectoryAndSeed(notes, folders);
-      const merged = await mergeScannedNotes(handle, notes, folders);
+      const currentNotes = notesRef.current;
+      const currentFolders = foldersRef.current;
+      const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
+      const merged = await mergeScannedNotes(handle, currentNotes, currentFolders);
       setFsHandle(handle);
-      if (merged.length > notes.length) {
-        await onImportData(merged, folders, workspaceName);
+      if (merged.length > currentNotes.length) {
+        await onImportData(merged, currentFolders, workspaceNameRef.current);
       }
       recordSuccess();
     } catch (error) {
       recordFailure(error);
       throw error;
     }
-  }, [folders, notes, onImportData, recordFailure, recordSuccess, workspaceName]);
+  }, [onImportData, recordFailure, recordSuccess]);
 
   const disconnect = useCallback(async () => {
     await disconnectDirectory();
+    resetRetryState();
     setFsHandle(null);
     setSyncStatus('idle');
     setFsSyncError(null);
-  }, []);
+  }, [resetRetryState]);
 
   const syncNoteOnUpdate = useCallback(
     (id: string, content: string) => {
@@ -167,13 +220,10 @@ export function useFileSync({
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
-          if (!autoRetryAttempted.current) {
-            autoRetryAttempted.current = true;
-            retry();
-          }
+          scheduleRetry();
         });
     },
-    [fsHandle, recordFailure, recordSuccess, retry],
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
   const syncNoteOnMove = useCallback(
@@ -189,13 +239,10 @@ export function useFileSync({
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
-          if (!autoRetryAttempted.current) {
-            autoRetryAttempted.current = true;
-            retry();
-          }
+          scheduleRetry();
         });
     },
-    [fsHandle, recordFailure, recordSuccess, retry],
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
   const syncNoteOnRename = useCallback(
@@ -209,13 +256,10 @@ export function useFileSync({
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
-          if (!autoRetryAttempted.current) {
-            autoRetryAttempted.current = true;
-            retry();
-          }
+          scheduleRetry();
         });
     },
-    [fsHandle, recordFailure, recordSuccess, retry],
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
   const syncNoteOnDelete = useCallback(
@@ -229,13 +273,10 @@ export function useFileSync({
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
-          if (!autoRetryAttempted.current) {
-            autoRetryAttempted.current = true;
-            retry();
-          }
+          scheduleRetry();
         });
     },
-    [fsHandle, recordFailure, recordSuccess, retry],
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
   const syncFolderOnRename = useCallback(
@@ -246,13 +287,10 @@ export function useFileSync({
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
-          if (!autoRetryAttempted.current) {
-            autoRetryAttempted.current = true;
-            retry();
-          }
+          scheduleRetry();
         });
     },
-    [fsHandle, recordFailure, recordSuccess, retry],
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
   return {

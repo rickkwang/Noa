@@ -345,12 +345,13 @@ interface GraphInfoPanelProps {
 }
 
 function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfoPanelProps) {
+  const titleToIds = useMemo(() => buildTitleToIdsMap(notes), [notes]);
+
   const stats = useMemo(() => {
     let totalLinks = 0;
     let isolated = 0;
     const degreeMap = new Map<string, number>();
     notes.forEach(n => degreeMap.set(n.id, 0));
-    const titleToIds = buildTitleToIdsMap(notes);
 
     notes.forEach(note => {
       const targets = new Set<string>();
@@ -379,13 +380,12 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
       .filter(([, d]) => d > 0);
 
     return { totalNotes: notes.length, totalLinks, isolated, ranked, degreeMap };
-  }, [notes]);
+  }, [notes, titleToIds]);
 
   const activeConnections = useMemo(() => {
     if (!activeNoteId) return [];
     const note = notes.find(n => n.id === activeNoteId);
     if (!note) return [];
-    const titleToIds = buildTitleToIdsMap(notes);
     const out = new Set<string>();
     const inc = new Set<string>();
     (note.linkRefs ?? []).forEach((id) => out.add(id));
@@ -399,7 +399,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
       if (!(candidate.linkRefs?.length) && candidate.links?.includes(note.title)) inc.add(candidate.id);
     });
     return [...new Set([...out, ...inc])];
-  }, [notes, activeNoteId]);
+  }, [notes, activeNoteId, titleToIds]);
 
   return (
     <div className="flex-1 overflow-y-auto border-2 border-[#2D2D2D] font-redaction min-h-0">

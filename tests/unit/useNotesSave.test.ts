@@ -9,6 +9,7 @@ const makeNote = () => ({
   folder: '',
   tags: [],
   links: [],
+  linkRefs: [],
 });
 
 function createReactHarness() {

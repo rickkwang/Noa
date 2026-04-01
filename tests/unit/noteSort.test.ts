@@ -7,6 +7,7 @@ const base = {
   folder: 'diary',
   tags: [],
   links: [],
+  linkRefs: [],
 };
 
 describe('sortNotesByRecent', () => {

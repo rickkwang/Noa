@@ -13,73 +13,15 @@ interface LoadErrorState {
   message: string;
 }
 
-type ImportedAttachment = Attachment & { dataBase64?: string };
-type ImportedNote = Note & { attachments?: ImportedAttachment[] };
-
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { useDailyNotes } from './useDailyNotes';
-
-function inferAttachmentMimeType(file: File): string {
-  if (file.type) return file.type;
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
-  if (name.endsWith('.png')) return 'image/png';
-  if (name.endsWith('.gif')) return 'image/gif';
-  if (name.endsWith('.webp')) return 'image/webp';
-  if (name.endsWith('.svg')) return 'image/svg+xml';
-  if (name.endsWith('.avif')) return 'image/avif';
-  return 'application/octet-stream';
-}
-
-function canDecodeBase64(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  try {
-    if (typeof atob === 'function') {
-      atob(trimmed);
-      return true;
-    }
-    if (typeof Buffer !== 'undefined') {
-      Buffer.from(trimmed, 'base64');
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-function findInvalidAttachmentPayload(notes: ImportedNote[]): string | null {
-  for (let i = 0; i < notes.length; i += 1) {
-    const note = notes[i];
-    const attachments = note.attachments ?? [];
-    for (let j = 0; j < attachments.length; j += 1) {
-      const attachment = attachments[j];
-      if (!attachment.dataBase64) continue;
-      if (!canDecodeBase64(attachment.dataBase64)) {
-        return `Attachment payload is invalid for note "${note.title || note.id}".`;
-      }
-    }
-  }
-  return null;
-}
-
-function mergeAttachmentPayloads(
-  normalizedNote: Note,
-  rawNote?: ImportedNote,
-): ImportedNote {
-  if (!normalizedNote.attachments?.length) {
-    return normalizedNote as ImportedNote;
-  }
-  const rawAttachments = rawNote?.attachments ?? [];
-  const rawById = new Map(rawAttachments.map((attachment) => [attachment.id, attachment]));
-  const attachments = normalizedNote.attachments.map((attachment) => ({
-    ...attachment,
-    dataBase64: rawById.get(attachment.id)?.dataBase64,
-  }));
-  return { ...normalizedNote, attachments };
-}
+import {
+  inferAttachmentMimeType,
+  findInvalidAttachmentPayload,
+  mergeAttachmentPayloads,
+  type ImportedNote,
+} from '../lib/attachmentUtils';
 
 export function useNotes(settings?: AppSettings) {
   const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
@@ -120,6 +62,15 @@ export function useNotes(settings?: AppSettings) {
     if (a.length !== b.length) return false;
     return a.every((value, index) => value === b[index]);
   }, []);
+
+  const collectNotesWithChangedLinkRefs = useCallback((nextNotes: Note[], previousNotes: Note[]): Note[] => {
+    const previousById = new Map(previousNotes.map((note) => [note.id, note]));
+    return nextNotes.filter((note) => {
+      const previous = previousById.get(note.id);
+      if (!previous) return true;
+      return !sameStringArray(previous.linkRefs ?? [], note.linkRefs ?? []);
+    });
+  }, [sameStringArray]);
 
   const syncLinkRefs = useCallback((nextNotes: Note[], previousNotes?: Note[], changedIds?: Set<string>) => {
     const withRefs = changedIds
@@ -170,6 +121,7 @@ export function useNotes(settings?: AppSettings) {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
     const loadData = async () => {
       try {
         await storage.verifyAccess();
@@ -181,6 +133,8 @@ export function useNotes(settings?: AppSettings) {
           storage.getFolders(),
           storage.getNotes(),
         ]);
+
+        if (!mounted) return;
 
         if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
@@ -201,12 +155,13 @@ export function useNotes(settings?: AppSettings) {
               'Data integrity check failed while loading notes.',
             );
           }
-          const hasLegacyLinkRefs = normalized.some((note) => note.linkRefs == null);
-          const sorted = sortNotesByRecent(syncLinkRefs(normalized));
-          setNotes(sorted);
-          if (hasLegacyLinkRefs) {
-            void storage.saveNotes(sorted).catch(() => setSaveError('Failed to save note. Storage may be full.'));
+          const withRefs = syncLinkRefs(normalized);
+          const changedForPersist = collectNotesWithChangedLinkRefs(withRefs, normalized);
+          if (changedForPersist.length > 0) {
+            await storage.saveNotes(changedForPersist);
           }
+          const sorted = sortNotesByRecent(withRefs);
+          setNotes(sorted);
           const lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY);
           const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
             ? lastActiveId
@@ -280,6 +235,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         }
         setLoadError(null);
       } catch (error) {
+        if (!mounted) return;
         const appError = fromStorageError(error);
         setLoadError({ code: appError.code, message: appError.userMessage });
         recordErrorSnapshot({
@@ -290,11 +246,12 @@ Export regularly: use Settings → Data → Export Backup.`,
           suggestedAction: appError.suggestedAction,
         });
       } finally {
-        setIsLoaded(true);
+        if (mounted) setIsLoaded(true);
       }
     };
     loadData();
-  }, [loadAttempt]);
+    return () => { mounted = false; };
+  }, [collectNotesWithChangedLinkRefs, loadAttempt, syncLinkRefs]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -338,10 +295,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       const oldTitle = oldNote.title;
       const updated = prev.map(n => {
         if (n.id === id) return { ...n, title: newTitle, updatedAt: new Date().toISOString() };
-        if (n.id !== id && (
-          (n.links && n.links.includes(oldTitle)) ||
-          n.content.includes(`[[${oldTitle}]]`)
-        )) {
+        if (n.id !== id && n.content.includes(`[[${oldTitle}]]`)) {
           const updatedContent = n.content.replace(
             new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'),
             `[[${newTitle}]]`
@@ -492,6 +446,9 @@ Export regularly: use Settings → Data → Export Backup.`,
     setActiveNoteIdWithRecent(id);
   }, [setActiveNoteIdWithRecent]);
 
+  const foldersRef = useRef(folders);
+  useEffect(() => { foldersRef.current = folders; }, [folders]);
+
   const handleNavigateToNote = useCallback((title: string) => {
     setNotes(prev => {
       const target = prev.find(n => n.title === title);
@@ -505,7 +462,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         content: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        folder: folders[0]?.id ?? 'diary',
+        folder: foldersRef.current[0]?.id ?? 'diary',
         tags: [],
         links: [],
         linkRefs: [],
@@ -513,27 +470,23 @@ Export regularly: use Settings → Data → Export Backup.`,
       setActiveNoteIdWithRecent(newNote.id);
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-  }, [setActiveNoteIdWithRecent, folders, syncLinkRefs]);
+  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
-    const noteToDelete = (await storage.getNotes())?.find(n => n.id === id);
+    const noteToDelete = notes.find(n => n.id === id);
     try {
+      if (noteToDelete?.attachments?.length) {
+        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments);
+      }
       await storage.deleteNote(id);
     } catch {
       setSaveError('Failed to delete note.');
       return false;
     }
-    if (noteToDelete?.attachments?.length) {
-      try {
-        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments);
-      } catch (error) {
-        console.error('Failed to clean up attachment blobs after note deletion:', error);
-      }
-    }
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
-  }, [syncLinkRefs]);
+  }, [notes, syncLinkRefs]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
@@ -578,21 +531,28 @@ Export regularly: use Settings → Data → Export Backup.`,
         .map((folder) => folder.id)
     );
     const toDelete = notes.filter(n => folderIdsToDelete.has(n.folder));
-    try {
-      await Promise.all(
-        toDelete.flatMap((note) => {
-          const ops = [storage.deleteNote(note.id)];
-          if (note.attachments?.length) {
-            ops.push(storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments));
-          }
-          return ops;
-        })
-      );
-    } catch {
+    const results = await Promise.allSettled(
+      toDelete.map(async (note) => {
+        if (note.attachments?.length) {
+          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments);
+        }
+        await storage.deleteNote(note.id);
+        return note.id;
+      })
+    );
+    const deletedIds = results
+      .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+      .map((result) => result.value);
+    const failedCount = results.length - deletedIds.length;
+    if (failedCount > 0) {
       setSaveError('Failed to delete some notes in folder.');
-      return [];
+      if (deletedIds.length > 0) {
+        const deletedSet = new Set(deletedIds);
+        setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
+        setNotes(prev => syncLinkRefs(prev.filter((note) => !deletedSet.has(note.id)), prev));
+      }
+      return deletedIds;
     }
-    const deletedIds = toDelete.map((note) => note.id);
     setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
     setRecentNoteIds(prev => prev.filter((noteId) => !deletedIds.includes(noteId)));
     setNotes(prev => syncLinkRefs(prev.filter(n => !folderIdsToDelete.has(n.folder)), prev));
@@ -652,20 +612,21 @@ Export regularly: use Settings → Data → Export Backup.`,
         tags: extractTags(note.content),
         links: extractLinks(note.content),
       })));
-      setNotes(withRefs);
-      if (importedFolders) setFolders(importedFolders);
-      if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
       await storage.saveNotes(withRefs);
       if (shouldPrune) {
         await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
       }
-      // 清理孤立附件 Blob（best-effort）
+      if (importedFolders) await storage.saveFolders(importedFolders);
+      if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
+      // 清理孤立附件 Blob（best-effort，非关键路径）
       const validIds = new Set(
         importedNotes.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
       );
       storage.pruneOrphanedAttachments(validIds).catch(() => {});
-      if (importedFolders) await storage.saveFolders(importedFolders);
-      if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
+      // 所有 storage 写入成功后，更新 React state
+      setNotes(withRefs);
+      if (importedFolders) setFolders(importedFolders);
+      if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
     } catch (error) {
       await Promise.allSettled(savedAttachmentIds.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
       throw error;

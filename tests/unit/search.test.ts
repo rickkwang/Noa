@@ -11,6 +11,7 @@ const makeNote = (id: string, title: string, content: string, tags: string[] = [
   folder: '',
   tags,
   links: [],
+  linkRefs: [],
 });
 
 describe('parseQuery', () => {

@@ -10,6 +10,7 @@ const validNote = {
   folder: 'f1',
   tags: ['tag1'],
   links: [],
+  linkRefs: [],
 };
 
 const noteWithAttachment = {
