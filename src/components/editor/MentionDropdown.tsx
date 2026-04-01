@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Note } from '../../types';
 
 interface MentionQuery {
@@ -21,6 +21,13 @@ export function MentionDropdown({
   currentNoteId,
   onInsert,
 }: MentionDropdownProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, [mentionQuery.index, mentionQuery.query]);
+
   const suggestions = allNotes
     .filter((n) => n.title.toLowerCase().includes(mentionQuery.query) && n.id !== currentNoteId)
     .slice(0, 5);
@@ -29,7 +36,7 @@ export function MentionDropdown({
 
   return (
     <div
-      className="absolute z-50 bg-[#EAE8E0] border border-[#2D2D2D] shadow-[4px_4px_0_0_rgba(45,45,45,1)] font-redaction w-64 max-h-48 overflow-y-auto"
+      className={`absolute z-50 bg-[#EAE8E0] border border-[#2D2D2D] shadow-[4px_4px_0_0_rgba(45,45,45,1)] font-redaction w-64 max-h-48 overflow-y-auto transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
       <div className="px-3 py-1 bg-[#DCD9CE] border-b border-[#2D2D2D] text-xs font-bold text-[#2D2D2D]/70">

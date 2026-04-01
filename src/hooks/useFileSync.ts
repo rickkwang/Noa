@@ -31,9 +31,11 @@ interface UseFileSyncResult {
   syncStatus: SyncStatus;
   fsLastSyncAt: string | null;
   fsSyncError: string | null;
+  permissionRevoked: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   retry: () => void;
+  reconnect: () => Promise<void>;
   syncNoteOnUpdate: (id: string, content: string) => void;
   syncNoteOnMove: (id: string, previousFolderId: string, nextFolderId: string) => void;
   syncNoteOnRename: (id: string, newTitle: string) => void;
@@ -63,6 +65,7 @@ export function useFileSync({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [fsLastSyncAt, setFsLastSyncAt] = useState<string | null>(null);
   const [fsSyncError, setFsSyncError] = useState<string | null>(null);
+  const [permissionRevoked, setPermissionRevoked] = useState(false);
   const autoRetryAttempts = useRef(0);
   const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapped = useRef(false);
@@ -88,6 +91,7 @@ export function useFileSync({
     setSyncStatus('ready');
     setFsLastSyncAt(new Date().toISOString());
     setFsSyncError(null);
+    setPermissionRevoked(false);
     resetRetryState();
   }, [resetRetryState]);
 
@@ -108,7 +112,10 @@ export function useFileSync({
   const scheduleRetry = useCallback(() => {
     if (!fsHandle) return;
     if (autoRetryTimer.current) return;
-    if (autoRetryAttempts.current >= AUTO_RETRY_MAX_ATTEMPTS) return;
+    if (autoRetryAttempts.current >= AUTO_RETRY_MAX_ATTEMPTS) {
+      setPermissionRevoked(true);
+      return;
+    }
 
     autoRetryAttempts.current += 1;
     const baseDelay = Math.min(
@@ -135,12 +142,36 @@ export function useFileSync({
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
+    setPermissionRevoked(false);
     setSyncStatus('syncing');
     const managedNotes = notesRef.current.filter(isObsidianImportedNote);
     void retryFullSync(fsHandle, managedNotes, foldersRef.current)
       .then(recordSuccess)
       .catch(recordFailure);
   }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState]);
+
+  const reconnect = useCallback(async () => {
+    if (!fsHandle || syncStatus === 'syncing') return;
+    resetRetryState();
+    setPermissionRevoked(false);
+    setFsSyncError(null);
+    setSyncStatus('syncing');
+    try {
+      if (typeof fsHandle.requestPermission === 'function') {
+        const permission = await fsHandle.requestPermission({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          throw new Error('File system permission denied.');
+        }
+      }
+      const managedNotes = notesRef.current.filter(isObsidianImportedNote);
+      await retryFullSync(fsHandle, managedNotes, foldersRef.current);
+      recordSuccess();
+    } catch (error) {
+      setPermissionRevoked(true);
+      recordFailure(error);
+      throw error;
+    }
+  }, [fsHandle, syncStatus, resetRetryState, recordFailure, recordSuccess]);
 
   useEffect(() => () => {
     clearRetryTimer();
@@ -160,10 +191,11 @@ export function useFileSync({
     }
 
     void restorePersistedFsHandle().then(async (handle) => {
-      if (!handle) {
-        setSyncStatus('idle');
-        return;
-      }
+        if (!handle) {
+          setSyncStatus('idle');
+          setPermissionRevoked(false);
+          return;
+        }
 
       try {
         setSyncStatus('syncing');
@@ -214,6 +246,7 @@ export function useFileSync({
     setFsHandle(null);
     setSyncStatus('idle');
     setFsSyncError(null);
+    setPermissionRevoked(false);
   }, [resetRetryState]);
 
   const syncNoteOnUpdate = useCallback(
@@ -309,9 +342,11 @@ export function useFileSync({
     syncStatus,
     fsLastSyncAt,
     fsSyncError,
+    permissionRevoked,
     connect,
     disconnect,
     retry,
+    reconnect,
     syncNoteOnUpdate,
     syncNoteOnMove,
     syncNoteOnRename,

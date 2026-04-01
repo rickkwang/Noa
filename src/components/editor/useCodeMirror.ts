@@ -6,6 +6,7 @@ import { defaultKeymap } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { Note } from '../../types';
+import { buildMinimalReplaceChange } from './contentSync';
 
 // Annotation to mark external content syncs so history does not merge them
 // into the user's local undo stack.
@@ -102,25 +103,28 @@ export function useCodeMirror({
     if (!containerRef.current) return;
 
     const updateListener = EditorView.updateListener.of((update: ViewUpdate) => {
+      const isRemoteSync = update.transactions.some((transaction) => transaction.annotation(remoteSyncAnnotation));
       if (update.docChanged) {
         const content = update.state.doc.toString();
-        onUpdateRef.current(content);
+        if (!isRemoteSync) {
+          onUpdateRef.current(content);
 
-        const cursor = update.state.selection.main.head;
-        const textBefore = content.slice(0, cursor);
-        const match = textBefore.match(/\[\[([^\]]*)$/);
-        if (match) {
-          const coords = update.view.coordsAtPos(cursor);
-          const pane = editPaneRef.current;
-          let x = 32, y = 32;
-          if (coords && pane) {
-            const rect = pane.getBoundingClientRect();
-            x = Math.max(0, Math.min(coords.left - rect.left, rect.width - 270));
-            y = Math.min(coords.bottom - rect.top + 4, rect.height - 200);
+          const cursor = update.state.selection.main.head;
+          const textBefore = content.slice(0, cursor);
+          const match = textBefore.match(/\[\[([^\]]*)$/);
+          if (match) {
+            const coords = update.view.coordsAtPos(cursor);
+            const pane = editPaneRef.current;
+            let x = 32, y = 32;
+            if (coords && pane) {
+              const rect = pane.getBoundingClientRect();
+              x = Math.max(0, Math.min(coords.left - rect.left, rect.width - 270));
+              y = Math.min(coords.bottom - rect.top + 4, rect.height - 200);
+            }
+            onMentionTriggerRef.current({ query: match[1].toLowerCase(), index: match.index!, x, y });
+          } else {
+            onMentionTriggerRef.current(null);
           }
-          onMentionTriggerRef.current({ query: match[1].toLowerCase(), index: match.index!, x, y });
-        } else {
-          onMentionTriggerRef.current(null);
         }
       }
       savedCursorRef.current = update.state.selection.main.head;
@@ -176,9 +180,10 @@ export function useCodeMirror({
     const view = editorViewRef.current;
     if (!view || !note) return;
     const currentDoc = view.state.doc.toString();
-    if (currentDoc !== note.content) {
+    const minimalChange = buildMinimalReplaceChange(currentDoc, note.content);
+    if (minimalChange) {
       view.dispatch({
-        changes: { from: 0, to: currentDoc.length, insert: note.content },
+        changes: minimalChange,
         annotations: remoteSyncAnnotation.of(true),
       });
     }

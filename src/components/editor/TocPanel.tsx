@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 interface TocHeading {
@@ -14,13 +14,25 @@ interface TocPanelProps {
 }
 
 export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 100);
+  };
+
   if (headings.length === 0) return null;
 
   return (
-    <div className="absolute right-4 top-[68px] z-40 w-56 bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.15)] font-redaction max-h-80 overflow-y-auto">
+    <div className={`absolute right-4 top-[68px] z-40 w-56 bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.15)] font-redaction max-h-80 overflow-y-auto transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="px-3 py-1.5 bg-[#DCD9CE] border-b border-[#2D2D2D] text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70 flex items-center justify-between">
         <span>Outline</span>
-        <button onClick={onClose} className="text-[#2D2D2D]/50 hover:text-[#2D2D2D]">
+        <button onClick={handleClose} className="text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70">
           <X size={12} />
         </button>
       </div>

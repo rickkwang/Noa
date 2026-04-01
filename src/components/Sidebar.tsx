@@ -5,6 +5,7 @@ import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { classifyFolderImportFile } from '../hooks/useDataTransfer';
+import { getFolderLeafName, getFolderParentPath, isDescendantPath } from '../lib/pathUtils';
 import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
 
@@ -32,7 +33,7 @@ interface FileNodeProps {
   isSelected?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   onDelete?: () => void;
-  onRename?: (newName: string) => void;
+  onRename?: (newName: string) => string | void;
   icon?: React.ElementType;
   iconColor?: string;
   onAdd?: () => void;
@@ -57,16 +58,6 @@ interface FolderTreeNode {
 const ROOT_DROP_TARGET_ID = '__root__';
 const NOA_ROOT_DROP_TARGET_ID = '__root_noa__';
 const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
-
-function getFolderParentPath(path: string): string {
-  const idx = path.lastIndexOf('/');
-  return idx === -1 ? '' : path.slice(0, idx);
-}
-
-function getFolderLeafName(path: string): string {
-  const segments = path.split('/').filter(Boolean);
-  return segments[segments.length - 1] || path || 'Untitled Folder';
-}
 
 function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
   const sorted = [...folders].sort((a, b) => a.name.localeCompare(b.name));
@@ -102,6 +93,7 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name.replace('.md', ''));
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsOpen(defaultOpen);
@@ -112,14 +104,25 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
     if (onRename) {
       setIsEditing(true);
       setEditName(name.replace('.md', ''));
+      setRenameError(null);
     }
   };
 
   const handleRenameSubmit = () => {
-    setIsEditing(false);
-    if (editName.trim() && editName !== name.replace('.md', '')) {
-      onRename(editName.trim());
+    const nextName = editName.trim();
+    if (!nextName) {
+      setRenameError('Name cannot be empty.');
+      return;
     }
+    if (nextName !== name.replace('.md', '')) {
+      const error = onRename?.(nextName);
+      if (typeof error === 'string' && error.length > 0) {
+        setRenameError(error);
+        return;
+      }
+    }
+    setRenameError(null);
+    setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -128,6 +131,7 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
     } else if (e.key === 'Escape') {
       setIsEditing(false);
       setEditName(name.replace('.md', ''));
+      setRenameError(null);
     }
   };
 
@@ -135,16 +139,14 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
     <div className="font-redaction">
       {isDropTarget && dropPosition === 'top' && (
         <div
-          className="h-px bg-[#B89B5E] ml-2"
+          className="h-1 bg-[#B89B5E] ml-2"
           style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
         />
       )}
       <div
         className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
           isDropTarget
-            ? (isFolder
-              ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
-              : 'bg-[#DCD9CE]/80 border-l-2 border-[#B89B5E]')
+            ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
             : isSelected
               ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
               : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
@@ -173,7 +175,10 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
             <input
               autoFocus
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={(e) => {
+                setEditName(e.target.value);
+                if (renameError) setRenameError(null);
+              }}
               onBlur={handleRenameSubmit}
               onKeyDown={handleKeyDown}
               className="bg-transparent border-b border-[#2D2D2D] outline-none w-full text-[#2D2D2D] font-redaction"
@@ -218,13 +223,20 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
       </div>
       {isDropTarget && dropPosition === 'bottom' && (
         <div
-          className="h-px bg-[#B89B5E] ml-2"
+          className="h-1 bg-[#B89B5E] ml-2"
           style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
         />
       )}
-      {isFolder && isOpen && children && (
+      {isEditing && renameError && (
+        <div className="px-2 pt-1 text-[10px] text-red-600 font-redaction leading-snug">
+          {renameError}
+        </div>
+      )}
+      {isFolder && children && (
         <div
-          className="border-l border-[#2D2D2D]/15"
+          className={`border-l border-[#2D2D2D]/15 overflow-hidden transition-[max-height,opacity] duration-150 ease-in-out ${
+            isOpen ? 'max-h-[999px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
           style={{ marginLeft: `18px` }}
         >
           {children}
@@ -299,10 +311,29 @@ export default function Sidebar({
     [folders, resolveFolderSource]
   );
 
+  const renameFolderWithValidation = useCallback((id: string, nextPath: string): string | void => {
+    const targetFolder = folders.find((folder) => folder.id === id);
+    if (!targetFolder) return 'Folder not found.';
+    const normalizedNextPath = nextPath.trim() || 'Untitled Folder';
+    const nextParentPath = getFolderParentPath(normalizedNextPath);
+    const nextLeafName = getFolderLeafName(normalizedNextPath).toLocaleLowerCase();
+    const targetSource = resolveFolderSource(targetFolder);
+    const conflict = folders.some((folder) => {
+      if (folder.id === id) return false;
+      if (resolveFolderSource(folder) !== targetSource) return false;
+      if (getFolderParentPath(folder.name) !== nextParentPath) return false;
+      return getFolderLeafName(folder.name).toLocaleLowerCase() === nextLeafName;
+    });
+    if (conflict) {
+      return 'A folder with this name already exists in this location.';
+    }
+    onRenameFolder(id, normalizedNextPath);
+  }, [folders, onRenameFolder, resolveFolderSource]);
+
   const getFolderSubtreeNoteCount = useCallback((folderPath: string) => {
     const targetIds = new Set(
       folders
-        .filter((folder) => folder.name === folderPath || folder.name.startsWith(`${folderPath}/`))
+        .filter((folder) => isDescendantPath(folder.name, folderPath))
         .map((folder) => folder.id)
     );
     return notes.filter((note) => targetIds.has(note.folder)).length;
@@ -333,7 +364,7 @@ export default function Sidebar({
     const sourcePath = source.name;
     const sourceLeaf = getFolderLeafName(sourcePath);
     const targetPath = targetFolderId ? folders.find((folder) => folder.id === targetFolderId)?.name ?? '' : '';
-    if (targetPath === sourcePath || targetPath.startsWith(`${sourcePath}/`)) return;
+    if (isDescendantPath(targetPath, sourcePath)) return;
     const nextPath = targetPath ? `${targetPath}/${sourceLeaf}` : sourceLeaf;
     onRenameFolder(folderId, nextPath);
   }, [folders, onRenameFolder, resolveFolderSource]);
@@ -399,7 +430,7 @@ export default function Sidebar({
     setDropTargetId(targetId);
   }, [draggedItem]);
 
-  const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, parentPath: string = '') => {
+  const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, activeId: string, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
     const folderSource = resolveFolderSource(node.folder);
     const canCreateInsideFolder = folderSource === 'noa';
@@ -443,16 +474,16 @@ export default function Sidebar({
           isDropTarget={dropTargetId === node.folder.id}
           dropPosition={dropTargetId === node.folder.id ? dropPosition : null}
           addButtonProps={{ 'data-template-btn': node.folder.id }}
-          onRename={(newName: string) => onRenameFolder(node.folder.id, parentPath ? `${parentPath}/${newName}` : newName)}
+          onRename={(newName: string) => renameFolderWithValidation(node.folder.id, parentPath ? `${parentPath}/${newName}` : newName)}
           onDelete={() => setPendingDelete({ type: 'folder', id: node.folder.id, name: node.folder.name })}
           depth={depth}
         >
-          {node.children.map((child) => renderFolderNode(child, depth + 1, nextPath))}
+          {node.children.map((child) => renderFolderNode(child, depth + 1, activeId, nextPath))}
           {childNotes.map((note) => (
               <FileNode
               key={note.id}
               name={(note.title || 'Untitled') + '.md'}
-              isActive={activeNoteId === note.id}
+              isActive={activeId === note.id}
               isSelected={selectedNoteIds.has(note.id)}
               onClick={(e) => {
                 if (e.metaKey || e.ctrlKey) {
@@ -480,7 +511,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [activeNoteId, folderTreeResetKey, foldersExpandedByDefault, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameFolder, onRenameNote, onSelectNote, resolveFolderSource, selectedNoteIds, templateMenuFolderId]);
+  }, [dropPosition, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameNote, onSelectNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -815,7 +846,7 @@ export default function Sidebar({
                     dropPosition={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? dropPosition : null}
                     depth={1}
                   >
-                    {noaFolderTree.map((node) => renderFolderNode(node, 2))}
+                    {noaFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
                     {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa').map((note) => (
                       <FileNode
                         key={note.id}
@@ -867,7 +898,7 @@ export default function Sidebar({
                     dropPosition={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID ? dropPosition : null}
                     depth={1}
                   >
-                    {importedFolderTree.map((node) => renderFolderNode(node, 2))}
+                    {importedFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
                     {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import').map((note) => (
                       <FileNode
                         key={note.id}

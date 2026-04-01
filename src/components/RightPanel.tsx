@@ -78,7 +78,7 @@ export default function RightPanel({
     if (!activeNote) return [];
     return notes.filter(n =>
       n.id !== activeNote.id &&
-      ((n.linkRefs ?? []).includes(activeNote.id) || (!(n.linkRefs?.length) && n.links.includes(activeNote.title)))
+      ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
     );
   }, [activeNote, notes]);
 
@@ -267,10 +267,10 @@ export default function RightPanel({
               {filteredActiveTasks.length > 0 && (
                 <div className="space-y-2">
                   {filteredActiveTasks.map(task => (
-                    <div key={task.id} className="group flex flex-col p-2 border-2 border-[#2D2D2D] bg-[#EAE8E0]">
+                    <div key={task.id} className="group flex flex-col p-2 border-2 border-[#2D2D2D] bg-[#EAE8E0] transition-all duration-150">
                       <div className="flex items-start space-x-2">
                         <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 cursor-pointer">
-                          <div className="w-4 h-4 border-2 border-[#2D2D2D] bg-[#EAE8E0] hover:bg-[#DCD9CE] transition-colors duration-150 active:bg-[#2D2D2D]/20"></div>
+                          <div className="w-4 h-4 border-2 border-[#2D2D2D] bg-[#EAE8E0] hover:bg-[#DCD9CE] transition-all duration-150 active:bg-[#2D2D2D]/20"></div>
                         </button>
                         <span className="flex-1 text-sm leading-tight">{task.content}</span>
                       </div>
@@ -300,10 +300,10 @@ export default function RightPanel({
                     Completed ({completedTasks.length})
                   </div>
                   {completedTasks.map(task => (
-                    <div key={task.id} className="group flex flex-col p-2 border border-[#2D2D2D]/20 opacity-50 transition-opacity duration-200">
+                    <div key={task.id} className="group flex flex-col p-2 border border-[#2D2D2D]/20 opacity-50 transition-all duration-150">
                       <div className="flex items-start space-x-2">
                         <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 cursor-pointer">
-                          <div className="w-4 h-4 border-2 border-[#2D2D2D]/60 bg-[#2D2D2D]/60 flex items-center justify-center text-[#EAE8E0]">
+                          <div className="w-4 h-4 border-2 border-[#2D2D2D]/60 bg-[#2D2D2D]/60 flex items-center justify-center text-[#EAE8E0] transition-all duration-150">
                             <Check size={12} strokeWidth={4} />
                           </div>
                         </button>
@@ -364,10 +364,10 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
       });
       targets.forEach((targetId) => {
         if (degreeMap.has(targetId)) {
-            totalLinks++;
-            degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
-            degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
-          }
+          totalLinks++;
+          degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
+          degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
+        }
       });
     });
 
@@ -396,7 +396,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
     notes.forEach((candidate) => {
       if (candidate.id === note.id) return;
       if ((candidate.linkRefs ?? []).includes(note.id)) inc.add(candidate.id);
-      if (!(candidate.linkRefs?.length) && candidate.links?.includes(note.title)) inc.add(candidate.id);
+      if ((candidate.links ?? []).includes(note.title)) inc.add(candidate.id);
     });
     return [...new Set([...out, ...inc])];
   }, [notes, activeNoteId, titleToIds]);

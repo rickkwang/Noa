@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FileText, X, Eye, Edit2, Columns, Plus } from 'lucide-react';
 import { Note } from '../../types';
 
@@ -46,95 +46,129 @@ export function EditorHeader({
   onExportHtml,
   titleInputRef,
 }: EditorHeaderProps) {
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const [hasOverflowLeft, setHasOverflowLeft] = useState(false);
+  const [hasOverflowRight, setHasOverflowRight] = useState(false);
+
+  useEffect(() => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    const syncOverflow = () => {
+      const maxScrollLeft = el.scrollWidth - el.clientWidth;
+      setHasOverflowLeft(el.scrollLeft > 0);
+      setHasOverflowRight(maxScrollLeft > 1 && el.scrollLeft < maxScrollLeft - 1);
+    };
+
+    syncOverflow();
+    el.addEventListener('scroll', syncOverflow, { passive: true });
+    const observer = new ResizeObserver(syncOverflow);
+    observer.observe(el);
+    window.addEventListener('resize', syncOverflow);
+
+    return () => {
+      el.removeEventListener('scroll', syncOverflow);
+      observer.disconnect();
+      window.removeEventListener('resize', syncOverflow);
+    };
+  }, [tabs, note.id]);
+
   return (
     <div className="h-8 border-b border-[#2D2D2D] flex items-end justify-between shrink-0 bg-[#DCD9CE] z-10 font-redaction overflow-hidden gap-2 pl-1 pr-2">
       {/* Tab strip */}
-      <div className="flex items-end overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-0.5 pt-1">
-        {tabs && tabs.length > 0 ? (
-          tabs.map((tab) => {
-            const isActiveTab = tab.id === note.id;
-            return (
-              <div
-                key={tab.id}
-                onClick={() => onTabChange?.(tab.id)}
-                className={`group flex items-center gap-1.5 px-3 py-1 cursor-pointer rounded-t-lg border border-b-0 shrink-0 transition-colors ${
-                  isActiveTab
-                    ? 'bg-[#EAE8E0] border-[#2D2D2D] text-[#2D2D2D] relative z-10'
-                    : 'bg-[#DCD9CE]/60 border-[#2D2D2D]/30 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D]/80'
-                }`}
-                style={isActiveTab ? { marginBottom: '-1px' } : {}}
-              >
-                <FileText size={12} className={isActiveTab ? 'text-[#B89B5E] shrink-0' : 'shrink-0'} />
-                {isActiveTab && isEditingTitle ? (
-                  <input
-                    ref={titleInputRef}
-                    type="text"
-                    value={titleInput}
-                    onChange={(e) => onTitleInputChange(e.target.value)}
-                    onBlur={onTitleSubmit}
-                    onKeyDown={onTitleKeyDown}
-                    className="text-xs font-bold text-[#2D2D2D] bg-transparent outline-none border-b border-[#B89B5E] w-28 min-w-0"
-                  />
-                ) : (
-                  <span
-                    className="text-xs font-bold truncate max-w-[120px]"
-                    onDoubleClick={isActiveTab ? () => onSetEditingTitle(true) : undefined}
-                    title={isActiveTab ? 'Double-click to rename' : tab.title}
-                  >
-                    {tab.title || 'Untitled'}
-                  </span>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 text-[#2D2D2D]/40 hover:text-red-500 transition-all"
+      <div className="relative min-w-0 flex items-end">
+        {hasOverflowLeft && (
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#DCD9CE] to-transparent z-10" />
+        )}
+        {hasOverflowRight && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#DCD9CE] to-transparent z-10" />
+        )}
+        <div ref={tabStripRef} className="flex items-end overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-0.5 pt-1">
+          {tabs && tabs.length > 0 ? (
+            tabs.map((tab) => {
+              const isActiveTab = tab.id === note.id;
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => onTabChange?.(tab.id)}
+                  className={`group flex items-center gap-1.5 px-3 py-1 cursor-pointer rounded-t-lg border border-b-0 shrink-0 transition-colors ${
+                    isActiveTab
+                      ? 'bg-[#EAE8E0] border-[#2D2D2D] text-[#2D2D2D] relative z-10'
+                      : 'bg-[#DCD9CE]/60 border-[#2D2D2D]/30 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D]/80'
+                  }`}
+                  style={isActiveTab ? { marginBottom: '-1px' } : {}}
                 >
+                  <FileText size={12} className={isActiveTab ? 'text-[#B89B5E] shrink-0' : 'shrink-0'} />
+                  {isActiveTab && isEditingTitle ? (
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={titleInput}
+                      onChange={(e) => onTitleInputChange(e.target.value)}
+                      onBlur={onTitleSubmit}
+                      onKeyDown={onTitleKeyDown}
+                      className="text-xs font-bold text-[#2D2D2D] bg-transparent outline-none border-b border-[#B89B5E] w-28 min-w-0"
+                    />
+                  ) : (
+                    <span
+                      className="text-xs font-bold truncate max-w-[120px]"
+                      onDoubleClick={isActiveTab ? () => onSetEditingTitle(true) : undefined}
+                      title={isActiveTab ? 'Double-click to rename' : tab.title}
+                    >
+                      {tab.title || 'Untitled'}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 text-[#2D2D2D]/40 hover:text-red-500 transition-all active:opacity-70"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            /* Fallback: single tab (legacy mode) */
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-t-lg border border-b-0 border-[#2D2D2D] bg-[#EAE8E0] relative z-10 shrink-0"
+              style={{ marginBottom: '-1px' }}
+            >
+              <FileText size={12} className="text-[#B89B5E] shrink-0" />
+              {isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={titleInput}
+                  onChange={(e) => onTitleInputChange(e.target.value)}
+                  onBlur={onTitleSubmit}
+                  onKeyDown={onTitleKeyDown}
+                  className="text-xs font-bold text-[#2D2D2D] bg-transparent outline-none border-b border-[#B89B5E] w-28 shrink min-w-0"
+                />
+              ) : (
+                <span
+                  className="text-xs font-bold text-[#2D2D2D] cursor-text truncate max-w-[120px]"
+                  onClick={() => onSetEditingTitle(true)}
+                  title="Click to rename"
+                >
+                  {note.title || 'Untitled'}
+                </span>
+              )}
+              {onClose && (
+                <button onClick={onClose} className="shrink-0 text-[#2D2D2D]/40 hover:text-red-500 transition-colors active:opacity-70">
                   <X size={11} />
                 </button>
-              </div>
-            );
-          })
-        ) : (
-          /* Fallback: single tab (legacy mode) */
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-t-lg border border-b-0 border-[#2D2D2D] bg-[#EAE8E0] relative z-10 shrink-0"
-            style={{ marginBottom: '-1px' }}
-          >
-            <FileText size={12} className="text-[#B89B5E] shrink-0" />
-            {isEditingTitle ? (
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={titleInput}
-                onChange={(e) => onTitleInputChange(e.target.value)}
-                onBlur={onTitleSubmit}
-                onKeyDown={onTitleKeyDown}
-                className="text-xs font-bold text-[#2D2D2D] bg-transparent outline-none border-b border-[#B89B5E] w-28 shrink min-w-0"
-              />
-            ) : (
-              <span
-                className="text-xs font-bold text-[#2D2D2D] cursor-text truncate max-w-[120px]"
-                onClick={() => onSetEditingTitle(true)}
-                title="Click to rename"
-              >
-                {note.title || 'Untitled'}
-              </span>
-            )}
-            {onClose && (
-              <button onClick={onClose} className="shrink-0 text-[#2D2D2D]/40 hover:text-red-500 transition-colors">
-                <X size={11} />
-              </button>
-            )}
-          </div>
-        )}
-        {onNewTab && (
-          <button
-            onClick={onNewTab}
-            className="flex items-center justify-center w-6 h-6 text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70 rounded transition-colors shrink-0 self-end"
-            title="New tab"
-          >
-            <Plus size={14} />
-          </button>
-        )}
+              )}
+            </div>
+          )}
+          {onNewTab && (
+            <button
+              onClick={onNewTab}
+              className="flex items-center justify-center w-6 h-6 text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70 rounded transition-colors shrink-0 self-end"
+              title="New tab"
+            >
+              <Plus size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Right controls */}

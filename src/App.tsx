@@ -21,12 +21,14 @@ import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
+import { isDescendantPath } from './lib/pathUtils';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
 const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
+const MAX_OPEN_TABS = 20;
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -83,9 +85,11 @@ export default function App() {
     syncStatus,
     fsLastSyncAt,
     fsSyncError,
+    permissionRevoked,
     connect,
     disconnect,
     retry,
+    reconnect,
     syncNoteOnUpdate,
     syncNoteOnMove,
     syncNoteOnRename,
@@ -136,7 +140,7 @@ export default function App() {
     const nextName = newName.trim() || 'Untitled Folder';
     const nextFolders = folders.map((folder) => {
       if (folder.id === id) return { ...folder, name: nextName };
-      if (folder.name === previousName || folder.name.startsWith(`${previousName}/`)) {
+      if (isDescendantPath(folder.name, previousName)) {
         return { ...folder, name: nextName + folder.name.slice(previousName.length) };
       }
       return folder;
@@ -207,7 +211,7 @@ export default function App() {
     if (!saved) return;
     try {
       const ids: string[] = JSON.parse(saved);
-      const validIds = ids.filter(id => notes.some(n => n.id === id));
+      const validIds = ids.filter(id => notes.some(n => n.id === id)).slice(-MAX_OPEN_TABS);
       if (validIds.length > 0) setOpenTabIds(validIds);
     } catch { /* ignore */ }
   }, [isLoaded, notes]);
@@ -220,8 +224,19 @@ export default function App() {
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
-    setOpenTabIds(prev => prev.includes(activeNoteId) ? prev : [...prev, activeNoteId]);
+    setOpenTabIds((prev) => {
+      if (prev.includes(activeNoteId)) return prev;
+      if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
+      const dropIndex = prev.findIndex((id) => id !== activeNoteId);
+      if (dropIndex === -1) return [activeNoteId];
+      return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
+    });
   }, [activeNoteId]);
+
+  const primaryNoaFolderId = useMemo(
+    () => folders.find((f) => (f.source ?? 'noa') === 'noa')?.id ?? 'diary',
+    [folders]
+  );
 
   const handleTabChange = useCallback(async (id: string) => {
     await flushAllPendingSaves(notesForQuitRef.current);
@@ -233,8 +248,8 @@ export default function App() {
   }, [closeTabById]);
 
   const handleNewTab = useCallback(() => {
-    handleCreateNote(folders[0]?.id ?? 'diary');
-  }, [folders, handleCreateNote]);
+    handleCreateNote(primaryNoaFolderId);
+  }, [primaryNoaFolderId, handleCreateNote]);
 
   const openTabs = useMemo(
     () => openTabIds.map(id => notes.find(n => n.id === id)).filter(Boolean).map(n => ({ id: n!.id, title: n!.title })),
@@ -277,7 +292,7 @@ export default function App() {
 
   const commandPalette = useCommandPalette({
     notes,
-    onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+    onCreateNote: () => handleCreateNote(primaryNoaFolderId),
     onOpenDailyNote: () => handleOpenDailyNote(),
     onOpenSettings: () => setIsSettingsOpen(true),
     onOpenGraphView: () => openGraphView(),
@@ -302,7 +317,7 @@ export default function App() {
   useGlobalShortcuts({
     searchQuery,
     searchInputRef,
-    onCreateNote: () => handleCreateNote(folders[0]?.id ?? 'diary'),
+    onCreateNote: () => handleCreateNote(primaryNoaFolderId),
     onOpenDailyNote: () => handleOpenDailyNote(),
     onOpenCommandPalette: () => commandPalette.setIsOpen(true),
     onFocusSearch: () => {
@@ -316,11 +331,31 @@ export default function App() {
   if (!isLoaded) {
     return (
       <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] overflow-hidden">
-        <div className="h-10 border-b border-[#2D2D2D]/20 bg-[#DCD9CE] shrink-0" />
+        <div className="h-10 border-b border-[#2D2D2D]/20 bg-[#DCD9CE] shrink-0 px-3 flex items-center">
+          <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
+        </div>
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-[280px] border-r border-[#2D2D2D]/20 shrink-0" />
-          <div className="flex-1" />
-          <div className="w-[320px] border-l border-[#2D2D2D]/20 shrink-0" />
+          <div className="w-[280px] border-r border-[#2D2D2D]/20 shrink-0 px-3 py-3 space-y-2">
+            <div className="h-4 w-28 bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-7 w-full bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-7 w-[90%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-7 w-[82%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-7 w-[88%] bg-[#2D2D2D]/10 animate-pulse" />
+          </div>
+          <div className="flex-1 px-6 py-5 space-y-3">
+            <div className="h-7 w-48 bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-4 w-full bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-4 w-[97%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-4 w-[92%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-4 w-[95%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-4 w-[85%] bg-[#2D2D2D]/10 animate-pulse" />
+          </div>
+          <div className="w-[320px] border-l border-[#2D2D2D]/20 shrink-0 px-3 py-3 space-y-2">
+            <div className="h-6 w-full bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -493,12 +528,16 @@ export default function App() {
       {fsSyncError && fsHandle && (
         <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
           <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · Vault Sync</div>
-          <div className="text-[11px] text-red-700 leading-relaxed mb-3">{fsSyncError}</div>
+          <div className="text-[11px] text-red-700 leading-relaxed mb-3">
+            {permissionRevoked
+              ? 'File system access was lost. You can continue editing — your notes are saved locally.'
+              : fsSyncError}
+          </div>
           <button
-            onClick={retry}
-            className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors"
+            onClick={permissionRevoked ? reconnect : retry}
+            className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors active:opacity-70"
           >
-            Retry Sync
+            {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
           </button>
         </div>
       )}

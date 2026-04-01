@@ -5,7 +5,6 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
 
@@ -64,13 +63,6 @@ export function PreviewPane({
   const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
 
   const previewMarkdown = useMemo(() => {
-    const renderAttachmentTag = (attId: string, filename: string, mimeType: string) => {
-      const safeId = encodeURIComponent(attId);
-      const safeFilename = encodeURIComponent(filename);
-      const safeMimeType = encodeURIComponent(mimeType);
-      return `<attachment-embed data-attachment-id="${safeId}" data-filename="${safeFilename}" data-mime-type="${safeMimeType}"></attachment-embed>`;
-    };
-
     const findAttachment = (ref: string) => {
       const exact = (note.attachments ?? []).find((a) => a.filename === ref || a.vaultPath === ref);
       if (exact) return exact;
@@ -78,15 +70,17 @@ export function PreviewPane({
       return (note.attachments ?? []).find((a) => a.filename === basename || a.vaultPath === ref);
     };
 
-    // Step 1: rewrite ![[filename]] attachment embeds into explicit HTML tags
+    // Step 1: rewrite ![[filename]] attachment embeds into safe Markdown image syntax
+    // Uses note-attachment://id/<id> scheme — intercepted by the img component below.
+    // Missing attachments use note-attachment://missing to render a placeholder.
     const withAttachments = note.content.replace(/!\[\[(.*?)\]\]/g, (_, filename) => {
       const safeFilename = String(filename ?? '').trim();
       const att = findAttachment(safeFilename);
-      if (!att) return `<span data-attachment-missing="true">${safeFilename}</span>`;
-      return renderAttachmentTag(att.id, safeFilename, att.mimeType);
+      if (!att) return `![${safeFilename}](note-attachment://missing)`;
+      return `![${safeFilename}](note-attachment://id/${encodeURIComponent(att.id)})`;
     });
 
-    // Step 2: rewrite [[title]] wiki-links (skip already-rewritten attachment links)
+    // Step 2: rewrite [[title]] wiki-links
     return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, title) => {
       const safeTitle = String(title ?? '').trim();
       const ids = titleToIds.get(safeTitle);
@@ -95,7 +89,7 @@ export function PreviewPane({
       }
       const legacyAttachment = findAttachment(safeTitle);
       if (legacyAttachment) {
-        return renderAttachmentTag(legacyAttachment.id, safeTitle, legacyAttachment.mimeType);
+        return `![${safeTitle}](note-attachment://id/${encodeURIComponent(legacyAttachment.id)})`;
       }
       const encoded = encodeURIComponent(safeTitle);
       return `[${safeTitle}](note-internal://title/${encoded})`;
@@ -105,7 +99,7 @@ export function PreviewPane({
   const backlinks: BacklinkItem[] = useMemo(
     () => allNotes.filter((n) =>
       n.id !== note.id &&
-      ((n.linkRefs ?? []).includes(note.id) || (!(n.linkRefs?.length) && n.links && n.links.includes(note.title)))
+      ((n.linkRefs ?? []).includes(note.id) || (n.links ?? []).includes(note.title))
     ),
     [allNotes, note.id, note.title]
   );
@@ -119,26 +113,6 @@ export function PreviewPane({
         >
           {(() => {
             const markdownComponents: any = {
-              'attachment-embed': ({ ...props }: any) => {
-                const attachmentId = String(props['data-attachment-id'] ?? '');
-                const filename = decodeURIComponent(String(props['data-filename'] ?? 'document'));
-                const mimeType = decodeURIComponent(String(props['data-mime-type'] ?? ''));
-                const attachmentByName = (note.attachments ?? []).find((a) => a.filename === filename || a.vaultPath === filename || a.vaultPath?.endsWith(`/${filename}`));
-                const resolvedAttachmentId = attachmentId || attachmentByName?.id || '';
-                const resolvedMimeType = mimeType || attachmentByName?.mimeType || '';
-                const url = objectUrls?.get(resolvedAttachmentId) ?? '';
-                const displayFilename = cleanDisplayFilename(filename);
-
-                if (!resolvedAttachmentId) {
-                  return <span className="text-[#2D2D2D]/40 text-xs italic">[Attachment not found]</span>;
-                }
-
-                if (!url) {
-                  return <span className="text-[#2D2D2D]/40 text-xs italic">[Loading attachment...]</span>;
-                }
-
-                return <img src={url} alt={filename} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
-              },
               a: ({ href, children, ...props }: any) => {
                 if (href?.startsWith('note-internal://id/')) {
                   const noteId = href.replace('note-internal://id/', '');
@@ -169,13 +143,21 @@ export function PreviewPane({
                   </a>
                 );
               },
-              img: ({ src, alt, ...props }: any) => {
-                if (!src || src === '#attachment-not-found') {
+              img: ({ src, alt }: any) => {
+                if (!src || src === 'note-attachment://missing') {
                   return (
                     <span className="text-[#2D2D2D]/40 text-xs italic border border-dashed border-[#2D2D2D]/20 px-2 py-1">
-                      [{alt ?? 'Image not found'}]
+                      [{alt ?? 'Attachment not found'}]
                     </span>
                   );
+                }
+                if (src?.startsWith('note-attachment://id/')) {
+                  const attachmentId = decodeURIComponent(src.replace('note-attachment://id/', ''));
+                  const url = objectUrls?.get(attachmentId) ?? '';
+                  if (!url) {
+                    return <span className="text-[#2D2D2D]/40 text-xs italic">[Loading attachment...]</span>;
+                  }
+                  return <img src={url} alt={alt ?? ''} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
                 }
                 return (
                   <img
@@ -184,7 +166,6 @@ export function PreviewPane({
                     loading="lazy"
                     className="max-w-full"
                     style={{ display: 'block' }}
-                    {...props}
                   />
                 );
               },
@@ -193,7 +174,7 @@ export function PreviewPane({
             return (
           <Markdown
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeHighlight, rehypeKatex, rehypeRaw]}
+            rehypePlugins={[rehypeHighlight, rehypeKatex]}
             components={markdownComponents}
           >
             {previewMarkdown}
