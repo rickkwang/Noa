@@ -36,6 +36,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const [tabLimitWarning, setTabLimitWarning] = useState(false);
   const restoredOpenTabsRef = useRef(false);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
@@ -205,9 +206,9 @@ export default function App() {
 
   // Restore openTabIds from localStorage after notes load
   useEffect(() => {
-    if (!isLoaded || notes.length === 0 || restoredOpenTabsRef.current) return;
-    const saved = localStorage.getItem(OPEN_TABS_KEY);
+    if (!isLoaded || restoredOpenTabsRef.current) return;
     restoredOpenTabsRef.current = true;
+    const saved = localStorage.getItem(OPEN_TABS_KEY);
     if (!saved) return;
     try {
       const ids: string[] = JSON.parse(saved);
@@ -229,6 +230,8 @@ export default function App() {
       if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
       const dropIndex = prev.findIndex((id) => id !== activeNoteId);
       if (dropIndex === -1) return [activeNoteId];
+      setTabLimitWarning(true);
+      setTimeout(() => setTabLimitWarning(false), 3000);
       return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
     });
   }, [activeNoteId]);
@@ -303,7 +306,7 @@ export default function App() {
     onOpenNoteById: (id) => navigateById(id),
   });
 
-  // BUG-B: flush pending saves before Electron quits — register once, use ref for latest notes
+  // flush pending saves before Electron quits or web page unloads
   const notesForQuitRef = useRef(notes);
   useEffect(() => { notesForQuitRef.current = notes; }, [notes]);
   useEffect(() => {
@@ -312,6 +315,16 @@ export default function App() {
     return desktop.lifecycle.onBeforeQuit(() => {
       void flushAllPendingSaves(notesForQuitRef.current);
     });
+  }, [flushAllPendingSaves]);
+  useEffect(() => {
+    const flush = () => { void flushAllPendingSaves(notesForQuitRef.current); };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('beforeunload', flush);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [flushAllPendingSaves]);
 
   useGlobalShortcuts({
@@ -388,6 +401,8 @@ export default function App() {
         searchInputRef={searchInputRef}
         onOpenDailyNote={() => handleOpenDailyNote()}
         workspaceName={workspaceName}
+        fsLastSyncAt={fsLastSyncAt}
+        hasFsHandle={!!fsHandle}
       />
       <div className="flex-1 flex overflow-hidden relative">
         {isMobile && isSidebarOpen && (
@@ -446,23 +461,30 @@ export default function App() {
 
         <ErrorBoundary>
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading editor…</div>}>
-            <Editor
-              note={activeNote}
-              allNotes={notes}
-              onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
-              onNoteUpdate={handleSaveNote}
-              onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
-              onClose={() => handleTabClose(activeNoteId)}
-              onNavigateToNoteLegacy={navigateByTitle}
-              onNavigateToNoteById={navigateById}
-              viewMode={editorViewMode}
-              setViewMode={setEditorViewMode}
-              settings={settings}
-              tabs={openTabs}
-              onTabChange={handleTabChange}
-              onTabClose={handleTabClose}
-              onNewTab={handleNewTab}
-            />
+            {activeNoteId ? (
+              <Editor
+                note={activeNote}
+                allNotes={notes}
+                onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
+                onNoteUpdate={handleSaveNote}
+                onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
+                onClose={() => handleTabClose(activeNoteId)}
+                onNavigateToNoteLegacy={navigateByTitle}
+                onNavigateToNoteById={navigateById}
+                viewMode={editorViewMode}
+                setViewMode={setEditorViewMode}
+                settings={settings}
+                tabs={openTabs}
+                onTabChange={handleTabChange}
+                onTabClose={handleTabClose}
+                onNewTab={handleNewTab}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2D]/30 font-redaction select-none">
+                <p className="text-sm">No note selected</p>
+                <p className="text-xs mt-1">Open a note from the sidebar</p>
+              </div>
+            )}
           </Suspense>
         </ErrorBoundary>
 
@@ -530,15 +552,25 @@ export default function App() {
           <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · Vault Sync</div>
           <div className="text-[11px] text-red-700 leading-relaxed mb-3">
             {permissionRevoked
-              ? 'File system access was lost. You can continue editing — your notes are saved locally.'
+              ? 'Vault sync is paused — changes will NOT sync to your folder until reconnected. Notes are saved locally only.'
               : fsSyncError}
           </div>
-          <button
-            onClick={permissionRevoked ? reconnect : retry}
-            className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors active:opacity-70"
-          >
-            {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={permissionRevoked ? reconnect : retry}
+              className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors active:opacity-70"
+            >
+              {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
+            </button>
+            {permissionRevoked && (
+              <button
+                onClick={disconnect}
+                className="text-[10px] uppercase tracking-wider font-bold border border-red-300 px-2 py-0.5 text-red-500 hover:bg-red-50 transition-colors active:opacity-70"
+              >
+                Disconnect
+              </button>
+            )}
+          </div>
         </div>
       )}
       {showStorageNotice && (
@@ -709,6 +741,11 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {tabLimitWarning && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-white text-xs px-3 py-1.5 font-redaction pointer-events-none">
+          A tab was closed to make room (max 20 tabs)
         </div>
       )}
     </div>

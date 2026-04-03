@@ -293,9 +293,11 @@ Export regularly: use Settings → Data → Export Backup.`,
       const updated = prev.map(n => {
         if (n.id === id) return { ...n, title: newTitle, updatedAt: new Date().toISOString() };
         if (n.id !== id && n.content.includes(`[[${oldTitle}]]`)) {
+          // Sanitize newTitle so embedded "]]" cannot break the wiki-link syntax.
+          const safeNewTitle = newTitle.replace(/\]\]/g, '] ]');
           const updatedContent = n.content.replace(
             new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'),
-            `[[${newTitle}]]`
+            `[[${safeNewTitle}]]`
           );
           return {
             ...n,
@@ -307,10 +309,11 @@ Export regularly: use Settings → Data → Export Backup.`,
         return n;
       });
       const withRefs = syncLinkRefs(updated, prev);
+      // Only save notes that were actually modified: the renamed note itself,
+      // and notes whose content was updated to replace [[oldTitle]] links.
+      const modifiedIds = new Set([id, ...updated.filter(n => n.id !== id && n.updatedAt !== prev.find(p => p.id === n.id)?.updatedAt).map(n => n.id)]);
       withRefs.forEach(n => {
-        if (n.id === id || (n.links?.includes(newTitle) && n.id !== id)) {
-          debounceSave(n);
-        }
+        if (modifiedIds.has(n.id)) debounceSave(n);
       });
       return withRefs;
     });
@@ -502,6 +505,13 @@ Export regularly: use Settings → Data → Export Backup.`,
       setSaveError('Failed to delete note.');
       return false;
     }
+    // Cancel any pending debounce save for this note so it cannot be
+    // re-written to storage after deletion.
+    const pending = saveTimers.current.get(id);
+    if (pending) {
+      clearTimeout(pending);
+      saveTimers.current.delete(id);
+    }
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
@@ -550,7 +560,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const folderPrefix = target?.name ?? '';
     const folderIdsToDelete = new Set(
       folders
-        .filter((folder) => folder.id === id || folder.name === folderPrefix || folder.name.startsWith(`${folderPrefix}/`))
+        .filter((folder) => folder.id === id || folder.name.startsWith(`${folderPrefix}/`))
         .map((folder) => folder.id)
     );
     const toDelete = notes.filter(n => folderIdsToDelete.has(n.folder));
@@ -566,6 +576,14 @@ Export regularly: use Settings → Data → Export Backup.`,
     const deletedIds = results
       .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
       .map((result) => result.value);
+    // Cancel pending debounce saves for all deleted notes.
+    deletedIds.forEach((id) => {
+      const pending = saveTimers.current.get(id);
+      if (pending) {
+        clearTimeout(pending);
+        saveTimers.current.delete(id);
+      }
+    });
     const failedCount = results.length - deletedIds.length;
     if (failedCount > 0) {
       setSaveError('Failed to delete some notes in folder.');
@@ -583,6 +601,7 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [folders, notes, syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
+    notes,
     settings,
     setFolders,
     setNotes,

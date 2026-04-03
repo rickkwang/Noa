@@ -16,9 +16,11 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement>;
   onOpenDailyNote?: () => void;
   workspaceName?: string;
+  fsLastSyncAt?: string | null;
+  hasFsHandle?: boolean;
 }
 
-export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, onToggleGraphView, isGraphViewOpen, showGraphView = true, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName }: TopBarProps) {
+export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, onToggleGraphView, isGraphViewOpen, showGraphView = true, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName, fsLastSyncAt, hasFsHandle }: TopBarProps) {
   return (
     <div className="h-12 border-b border-[#2D2D2D] grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ WebkitAppRegion: 'drag' } as any}>
       {/* Left Section: Traffic lights space + icon + title */}
@@ -36,6 +38,15 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
             {workspaceName && (
               <span className="text-[10px] text-[#2D2D2D]/40 leading-tight truncate max-w-[120px]">{workspaceName}</span>
             )}
+            {hasFsHandle && fsLastSyncAt && (() => {
+              const mins = Math.floor((Date.now() - new Date(fsLastSyncAt).getTime()) / 60000);
+              const stale = mins > 30;
+              return (
+                <span className={`text-[10px] leading-tight ${stale ? 'text-amber-600' : 'text-[#2D2D2D]/40'}`}>
+                  {stale ? '⚠ ' : ''}Last synced: {mins < 1 ? 'just now' : `${mins}m ago`}
+                </span>
+              );
+            })()}
           </div>
         </div>
       </div>

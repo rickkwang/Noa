@@ -49,7 +49,11 @@ export function useSettings() {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch {
+      // localStorage quota exceeded — settings will not persist this session
+    }
   }, [settings]);
 
   const updateSettings = (updater: (prev: AppSettings) => AppSettings) => {

@@ -14,6 +14,11 @@ export async function deleteNoteWithLocalFirst({
   const deleted = await deleteLocal(id);
   if (!deleted) return false;
   closeTab(id);
-  syncDelete(id);
+  try {
+    syncDelete(id);
+  } catch {
+    // Vault delete failed — local delete already succeeded.
+    // The orphan file will be cleaned up on next full sync.
+  }
   return true;
 }

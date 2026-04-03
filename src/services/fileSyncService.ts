@@ -116,9 +116,14 @@ export async function syncFolderRename(
   const nextFolder = currentFolders.find((folder) => folder.id === folderId);
   if (!nextFolder) return;
 
+  // currentFolders already has the new names, so match against the new folder's
+  // id plus any child that was a descendant of previousName (now updated to
+  // the new prefix).  We derive the new prefix from nextFolder to avoid
+  // matching stale previousName in already-renamed currentFolders.
+  const newPrefix = nextFolder.name;
   const affectedFolderIds = new Set(
     currentFolders
-      .filter((folder) => folder.name === previousName || folder.name.startsWith(`${previousName}/`))
+      .filter((folder) => folder.id === folderId || folder.name.startsWith(`${newPrefix}/`))
       .map((folder) => folder.id)
   );
 

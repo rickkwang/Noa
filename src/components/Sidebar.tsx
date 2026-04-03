@@ -61,15 +61,25 @@ const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
 
 function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
   const sorted = [...folders].sort((a, b) => a.name.localeCompare(b.name));
+  // Deduplicate by name — keep first occurrence (earliest by sort order).
+  // Duplicate names can arise from imports; a second folder with the same
+  // path-name would silently overwrite the first in the map and lose its
+  // children, so we drop the duplicate here rather than corrupt the tree.
+  const seenNames = new Set<string>();
+  const unique = sorted.filter((f) => {
+    if (seenNames.has(f.name)) return false;
+    seenNames.add(f.name);
+    return true;
+  });
   const nodeByPath = new Map<string, FolderTreeNode>();
   const roots: FolderTreeNode[] = [];
 
-  for (const folder of sorted) {
+  for (const folder of unique) {
     const node: FolderTreeNode = { folder, children: [] };
     nodeByPath.set(folder.name, node);
   }
 
-  for (const folder of sorted) {
+  for (const folder of unique) {
     const node = nodeByPath.get(folder.name);
     if (!node) continue;
     const parentPath = getFolderParentPath(folder.name);
@@ -646,9 +656,27 @@ export default function Sidebar({
               ? (() => {
                   const target = folders.find((folder) => folder.id === pendingDelete.id);
                   const count = target ? getFolderSubtreeNoteCount(target.name) : notes.filter(n => n.folder === pendingDelete.id).length;
-                  return count > 0
-                    ? `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`
-                    : 'This cannot be undone.';
+                  if (count > 0) {
+                    const subtreeIds = new Set(
+                      folders
+                        .filter((f) => f.id === target?.id || f.name.startsWith((target?.name ?? '') + '/'))
+                        .map((f) => f.id)
+                    );
+                    const affectedNotes = notes.filter((n) => subtreeIds.has(n.folder));
+                    const preview = affectedNotes.slice(0, 5);
+                    return (
+                      <>
+                        <span>{`This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`}</span>
+                        <ul className="mt-1 list-disc list-inside">
+                          {preview.map((n) => (
+                            <li key={n.id} className="truncate">{n.title}</li>
+                          ))}
+                          {affectedNotes.length > 5 && <li>…and {affectedNotes.length - 5} more</li>}
+                        </ul>
+                      </>
+                    );
+                  }
+                  return 'This cannot be undone.';
                 })()
               : 'This cannot be undone.'}
           </p>

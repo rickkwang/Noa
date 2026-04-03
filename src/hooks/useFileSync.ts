@@ -272,11 +272,19 @@ export function useFileSync({
       const note = notesRef.current.find((n) => n.id === id);
       if (!note || !isObsidianImportedNote(note)) return;
       const nextFolder = foldersRef.current.find((folder) => folder.id === nextFolderId);
-      if ((nextFolder?.source ?? 'noa') !== 'obsidian-import') return;
-      const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       const previousNote = { ...note, folder: previousFolderId };
-
       setSyncStatus('syncing');
+      if ((nextFolder?.source ?? 'noa') !== 'obsidian-import') {
+        // Moving out of Vault: delete the old file, no new file to write.
+        void syncNoteDelete(fsHandle, previousNote, foldersRef.current)
+          .then(recordSuccess)
+          .catch((error) => {
+            recordFailure(error);
+            scheduleRetry();
+          });
+        return;
+      }
+      const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       void syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current)
         .then(recordSuccess)
         .catch((error) => {

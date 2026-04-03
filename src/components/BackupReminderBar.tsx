@@ -37,8 +37,8 @@ export default function BackupReminderBar({
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-40 font-redaction transition-all duration-300"
-      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
+      className="fixed bottom-16 right-4 z-40 font-redaction transition-all duration-300"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)', pointerEvents: visible ? 'auto' : 'none' }}
     >
       <div className="flex items-center gap-3 bg-[#EAE8E0] border border-[#2D2D2D]/30 shadow-[2px_2px_0px_0px_rgba(45,45,45,0.15)] px-3 py-2">
         <div className="flex flex-col">

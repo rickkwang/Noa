@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 const DAILY_FOLDER_KEY = STORAGE_KEYS.DAILY_FOLDER_ID;
 
 type UseDailyNotesOptions = {
+  notes: Note[];
   settings?: AppSettings;
   setFolders: Dispatch<SetStateAction<Folder[]>>;
   setNotes: Dispatch<SetStateAction<Note[]>>;
@@ -16,6 +17,7 @@ type UseDailyNotesOptions = {
 };
 
 export function useDailyNotes({
+  notes,
   settings,
   setFolders,
   setNotes,
@@ -38,6 +40,12 @@ export function useDailyNotes({
       const dailyFolder = existingFolder ?? { id: crypto.randomUUID(), name: 'Daily Notes' };
       if (isNew) localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id);
       const nextFolders = existingFolder ? prevFolders : [...prevFolders, dailyFolder];
+
+      const earlyExisting = notes.find((note) => note.title === today && note.folder === dailyFolder.id);
+      if (earlyExisting) {
+        setActiveNoteIdWithRecent(earlyExisting.id);
+        return nextFolders;
+      }
 
       setNotes((prevNotes) => {
         const existingNote = prevNotes.find((note) => note.title === today && note.folder === dailyFolder.id);
@@ -63,7 +71,7 @@ export function useDailyNotes({
 
       return nextFolders;
     });
-  }, [setActiveNoteIdWithRecent, setFolders, setNotes, settings?.dailyNotes?.dateFormat, settings?.dailyNotes?.template]);
+  }, [notes, setActiveNoteIdWithRecent, setFolders, setNotes, settings?.dailyNotes?.dateFormat, settings?.dailyNotes?.template]);
 
   return { handleOpenDailyNote };
 }

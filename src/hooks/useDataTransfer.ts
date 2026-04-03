@@ -1154,8 +1154,14 @@ export function useDataTransfer({
           for (const [path, zipFile] of attachmentFiles) {
             const parts = path.split('/');
             if (parts.length < 3) continue;
-            const attachmentId = parts[2].split('-')[0] || parts[1];
-            const filename = parts.slice(2).join('-').replace(`${attachmentId}-`, '') || parts[parts.length - 1];
+            // Attachment filename format: `${uuid}-${originalFilename}`
+            // A UUID has 5 dash-separated groups (8-4-4-4-12), so rejoin the
+            // first 5 segments to reconstruct the full ID.
+            const fileSegments = parts[2].split('-');
+            const attachmentId = fileSegments.length >= 5
+              ? fileSegments.slice(0, 5).join('-')
+              : fileSegments[0] || parts[1];
+            const filename = fileSegments.slice(5).join('-') || parts[parts.length - 1];
             try {
               const blob = await zipFile.async('blob');
               stagedAttachments.push({ attachmentId, blob });
