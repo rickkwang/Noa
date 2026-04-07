@@ -8,6 +8,7 @@ import { EditorToolbar } from './editor/EditorToolbar';
 import { TocPanel } from './editor/TocPanel';
 import { PreviewPane } from './editor/PreviewPane';
 import { MentionDropdown } from './editor/MentionDropdown';
+import { SlashCommandDropdown, SLASH_COMMANDS, type SlashCommand } from './editor/SlashCommandDropdown';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { useScrollingClass } from '../hooks/useScrollingClass';
 import { useAttachments } from '../hooks/useAttachments';
@@ -55,6 +56,7 @@ export default function Editor({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
   const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
+  const [slashQuery, setSlashQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(true);
@@ -104,13 +106,14 @@ export default function Editor({
 
   useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
 
-  const { insertFormatting, jumpToLine, insertMention } = useCodeMirror({
+  const { insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
     maxWidth: settings.appearance.maxWidth,
     note,
     isDark,
     onUpdate,
     onMentionTrigger: setMentionQuery,
+    onSlashTrigger: setSlashQuery,
     editPaneRef,
   });
 
@@ -141,6 +144,7 @@ export default function Editor({
       const t = setTimeout(() => setFadeIn(true), 60);
       setTitleInput(note.title || 'Untitled');
       setMentionQuery(null);
+      setSlashQuery(null);
       return () => clearTimeout(t);
     }
   }, [note?.id]);
@@ -379,6 +383,16 @@ export default function Editor({
                 insertMention(title, index);
                 setMentionQuery(null);
               }}
+            />
+          )}
+          {slashQuery && (
+            <SlashCommandDropdown
+              slashQuery={slashQuery}
+              onInsert={(cmd: SlashCommand, index: number) => {
+                insertSlashCommand(cmd.insert, index);
+                setSlashQuery(null);
+              }}
+              onDismiss={() => setSlashQuery(null)}
             />
           )}
         </div>

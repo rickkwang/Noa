@@ -1,5 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, ExternalLink, Check, Link, Network, Search, GitBranch, Circle } from 'lucide-react';
+import { CheckSquare, ExternalLink, Check, Link, Network, Search, GitBranch, Circle, X } from 'lucide-react';
 import { GlobalTask, Note } from '../types';
 import { AppSettings } from '../types';
 import GraphView from './GraphView';
@@ -47,8 +47,11 @@ export default function RightPanel({
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
   const [showGraphGuide, setShowGraphGuide] = useState(() => !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN));
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
   const graphContainerRef = useRef<HTMLDivElement>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [graphDimensions, setGraphDimensions] = useState({ width: 320, height: 400 });
+  const [fullscreenDimensions, setFullscreenDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
     if (activeTab !== 'graph' || !graphContainerRef.current) return;
@@ -73,6 +76,21 @@ export default function RightPanel({
       window.removeEventListener('resize', syncGraphSize);
     };
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!isGraphFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsGraphFullscreen(false); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isGraphFullscreen]);
+
+  useEffect(() => {
+    if (!isGraphFullscreen) return;
+    const syncSize = () => setFullscreenDimensions({ width: window.innerWidth, height: window.innerHeight });
+    syncSize();
+    window.addEventListener('resize', syncSize);
+    return () => window.removeEventListener('resize', syncSize);
+  }, [isGraphFullscreen]);
 
   const backlinks = useMemo(() => {
     if (!activeNote) return [];
@@ -113,7 +131,7 @@ export default function RightPanel({
   };
 
   return (
-    <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0">
+    <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
       <div className="h-8 border-b border-[#2D2D2D] flex items-center bg-[#DCD9CE] shrink-0 overflow-hidden">
         <button
           onClick={() => onTabChange('tasks')}
@@ -190,6 +208,7 @@ export default function RightPanel({
                 width={graphDimensions.width}
                 height={graphDimensions.height}
                 hideIsolated={hideIsolated}
+                onFullscreen={() => setIsGraphFullscreen(true)}
               />
             </div>
           </div>
@@ -330,6 +349,54 @@ export default function RightPanel({
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Fullscreen graph modal */}
+      {isGraphFullscreen && (
+        <div className="fixed inset-0 z-[70] bg-[#EAE8E0] flex flex-col">
+          {/* Toolbar */}
+          <div className="h-9 bg-[#DCD9CE] border-b border-[#2D2D2D] flex items-center px-3 gap-2 shrink-0">
+            <Network size={13} className="text-[#B89B5E] shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Graph</span>
+            <div className="flex items-center gap-1 border border-[#2D2D2D]/50 px-1.5 py-0.5 bg-[#EAE8E0]/60">
+              <Search size={10} className="text-[#2D2D2D]/50 shrink-0" />
+              <input
+                type="text"
+                value={graphSearch}
+                onChange={e => setGraphSearch(e.target.value)}
+                placeholder="filter..."
+                className="bg-transparent outline-none text-[11px] text-[#2D2D2D] placeholder-[#2D2D2D]/40 font-redaction w-24"
+              />
+            </div>
+            <button
+              onClick={() => setHideIsolated(v => !v)}
+              title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
+              className={`border px-1.5 py-0.5 text-[9px] font-bold font-redaction active:opacity-70 transition-colors ${hideIsolated ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}
+            >
+              <Network size={9} />
+            </button>
+            <button
+              onClick={() => setIsGraphFullscreen(false)}
+              className="ml-1 w-7 h-7 flex items-center justify-center text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors"
+              title="Close fullscreen (Esc)"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          {/* Graph canvas */}
+          <div ref={fullscreenContainerRef} className="flex-1 overflow-hidden">
+            <GraphView
+              notes={notes}
+              onNavigateToNoteById={(id) => { onNavigateToNoteById(id); setIsGraphFullscreen(false); }}
+              settings={settings}
+              searchQuery={deferredGraphSearch}
+              activeNoteId={activeNoteId}
+              width={fullscreenDimensions.width}
+              height={fullscreenDimensions.height - 36}
+              hideIsolated={hideIsolated}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -485,7 +552,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
             </div>
           </div>
         )}
-      </div>
+        </div>
     </div>
   );
 }

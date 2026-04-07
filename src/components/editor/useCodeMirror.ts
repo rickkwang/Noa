@@ -76,6 +76,7 @@ interface UseCodeMirrorOptions {
   isDark: boolean;
   onUpdate: (content: string) => void;
   onMentionTrigger: (query: { query: string; index: number; x: number; y: number } | null) => void;
+  onSlashTrigger: (query: { query: string; index: number; x: number; y: number } | null) => void;
   editPaneRef: React.RefObject<HTMLDivElement | null>;
   maxWidth: number;
 }
@@ -86,6 +87,7 @@ export function useCodeMirror({
   isDark,
   onUpdate,
   onMentionTrigger,
+  onSlashTrigger,
   editPaneRef,
   maxWidth,
 }: UseCodeMirrorOptions) {
@@ -95,8 +97,10 @@ export function useCodeMirror({
   // Keep callback refs stable so the CodeMirror instance never captures stale closures
   const onUpdateRef = useRef(onUpdate);
   const onMentionTriggerRef = useRef(onMentionTrigger);
+  const onSlashTriggerRef = useRef(onSlashTrigger);
   useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
   useEffect(() => { onMentionTriggerRef.current = onMentionTrigger; }, [onMentionTrigger]);
+  useEffect(() => { onSlashTriggerRef.current = onSlashTrigger; }, [onSlashTrigger]);
 
   // Build CodeMirror instance — recreate only when note id or dark mode changes
   useEffect(() => {
@@ -111,8 +115,9 @@ export function useCodeMirror({
 
           const cursor = update.state.selection.main.head;
           const textBefore = content.slice(0, cursor);
-          const match = textBefore.match(/\[\[([^\]]*)$/);
-          if (match) {
+          const mentionMatch = textBefore.match(/\[\[([^\]]*)$/);
+          const slashMatch = textBefore.match(/(^|\n)(\/\w*)$/);
+          if (mentionMatch) {
             const coords = update.view.coordsAtPos(cursor);
             const pane = editPaneRef.current;
             let x = 32, y = 32;
@@ -121,9 +126,23 @@ export function useCodeMirror({
               x = Math.max(0, Math.min(coords.left - rect.left, rect.width - 270));
               y = Math.min(coords.bottom - rect.top + 4, rect.height - 200);
             }
-            onMentionTriggerRef.current({ query: match[1].toLowerCase(), index: match.index!, x, y });
+            onMentionTriggerRef.current({ query: mentionMatch[1].toLowerCase(), index: mentionMatch.index!, x, y });
+            onSlashTriggerRef.current(null);
+          } else if (slashMatch) {
+            const slashStart = textBefore.lastIndexOf('/');
+            const coords = update.view.coordsAtPos(cursor);
+            const pane = editPaneRef.current;
+            let x = 32, y = 32;
+            if (coords && pane) {
+              const rect = pane.getBoundingClientRect();
+              x = Math.max(0, Math.min(coords.left - rect.left, rect.width - 270));
+              y = Math.min(coords.bottom - rect.top + 4, rect.height - 200);
+            }
+            onSlashTriggerRef.current({ query: slashMatch[2].slice(1).toLowerCase(), index: slashStart, x, y });
+            onMentionTriggerRef.current(null);
           } else {
             onMentionTriggerRef.current(null);
+            onSlashTriggerRef.current(null);
           }
         }
       }
@@ -222,5 +241,21 @@ export function useCodeMirror({
     view.focus();
   }, []);
 
-  return { editorViewRef, insertFormatting, jumpToLine, insertMention };
+  // Insert a slash command at slashIndex (the position of `/`)
+  const insertSlashCommand = useCallback((insertTemplate: string, slashIndex: number) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+    const { state } = view;
+    const cursor = state.selection.main.head;
+    const cursorOffset = insertTemplate.indexOf('{cursor}');
+    const text = insertTemplate.replace('{cursor}', '');
+    const anchor = cursorOffset >= 0 ? slashIndex + cursorOffset : slashIndex + text.length;
+    view.dispatch({
+      changes: { from: slashIndex, to: cursor, insert: text },
+      selection: { anchor },
+    });
+    view.focus();
+  }, []);
+
+  return { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand };
 }

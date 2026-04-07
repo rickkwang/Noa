@@ -173,7 +173,7 @@ export class SearchEngine {
   }
 
   private getSnippet(content: string, phrases: string[], caseSensitive: boolean = false): string {
-    if (phrases.length === 0) return content.slice(0, 60) + '...';
+    if (phrases.length === 0) return content.slice(0, 120) + '...';
 
     const normalizedContent = caseSensitive ? content : content.toLowerCase();
     let bestIndex = -1;
@@ -186,10 +186,10 @@ export class SearchEngine {
       }
     }
 
-    if (bestIndex === -1) return content.slice(0, 60) + '...';
+    if (bestIndex === -1) return content.slice(0, 120) + '...';
 
-    const start = Math.max(0, bestIndex - 30);
-    const end = Math.min(content.length, bestIndex + 30);
+    const start = Math.max(0, bestIndex - 40);
+    const end = Math.min(content.length, bestIndex + 80);
     const snippet = (start > 0 ? '...' : '') + content.slice(start, end) + (end < content.length ? '...' : '');
 
     return this.highlightExact(snippet, phrases, caseSensitive);
@@ -209,11 +209,11 @@ export class SearchEngine {
   }
 
   private getFuseSnippet(content: string, indices: readonly [number, number][]): string {
-    if (indices.length === 0) return content.slice(0, 60) + '...';
-    
+    if (indices.length === 0) return content.slice(0, 120) + '...';
+
     const [firstMatchStart] = indices[0];
-    const start = Math.max(0, firstMatchStart - 30);
-    const end = Math.min(content.length, firstMatchStart + 30);
+    const start = Math.max(0, firstMatchStart - 40);
+    const end = Math.min(content.length, firstMatchStart + 80);
     
     let snippet = content.slice(start, end);
     
