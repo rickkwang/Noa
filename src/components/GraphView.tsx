@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Expand } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide } from 'd3-force';
 import { Note } from '../types';
@@ -16,7 +16,6 @@ interface GraphViewProps {
   width: number;
   height: number;
   hideIsolated?: boolean;
-  onFullscreen?: () => void;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -77,7 +76,7 @@ function nodeRadius(degree: number): number {
   return 3.5 + Math.sqrt(degree) * 2.5;
 }
 
-export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false, onFullscreen }: GraphViewProps) {
+export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -396,15 +395,6 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
             {icon}
           </button>
         ))}
-        {onFullscreen && (
-          <button
-            onClick={onFullscreen}
-            title="Fullscreen"
-            className="w-7 h-6 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D] active:opacity-70 flex items-center justify-center transition-colors border-l border-[#2D2D2D]/20"
-          >
-            <Expand size={12} />
-          </button>
-        )}
       </div>
     </div>
   );
