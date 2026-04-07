@@ -418,9 +418,9 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
             { label: 'Links', value: stats.totalLinks },
             { label: 'Isolated', value: stats.isolated },
           ].map(({ label, value }) => (
-            <div key={label} className="border border-[#2D2D2D]/30 p-2 text-center">
-              <div className="text-base font-bold text-[#2D2D2D] leading-none">{value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mt-0.5">{label}</div>
+            <div key={label} className="border border-[#2D2D2D] p-2 text-center">
+              <div className="text-sm font-bold text-[#2D2D2D] leading-none tabular-nums">{value}</div>
+              <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mt-1">{label}</div>
             </div>
           ))}
         </div>
