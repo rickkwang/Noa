@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { useScrollingClass } from '../../hooks/useScrollingClass';
+import { useIsDark } from '../../hooks/useIsDark';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -59,6 +60,7 @@ export function PreviewPane({
 }: PreviewPaneProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useScrollingClass(scrollRef);
+  const isDark = useIsDark(settings.appearance.theme);
 
   const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
 
@@ -108,7 +110,11 @@ export function PreviewPane({
     <div ref={scrollRef} className="flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50" style={{ paddingRight: '2rem', ...style }}>
       <div className="flex-1">
         <div
-          className="w-full h-full text-[#2D2D2D] prose prose-sm max-w-none prose-headings:font-bold prose-a:text-[#B89B5E] prose-a:no-underline hover:prose-a:underline prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-code:px-1 prose-code:rounded-sm"
+          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm ${
+            isDark
+              ? 'text-[#E8E0D0] prose-headings:text-[#E8E0D0] prose-a:text-[#B89B5E] prose-pre:bg-[#252219] prose-pre:text-[#E8E0D0] prose-pre:border prose-pre:border-[#3D3828] prose-code:text-[#C9AA72] prose-code:bg-[#3D3828]/50'
+              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
+          }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           {(() => {
