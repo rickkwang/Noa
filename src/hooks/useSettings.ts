@@ -11,7 +11,7 @@ export const defaultSettings: AppSettings = {
     theme: 'system',
     accentColor: '#B89B5E',
     fontFamily: 'font-redaction',
-    maxWidth: 800,
+    maxWidth: 680,
   },
   dailyNotes: {
     template: '',

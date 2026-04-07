@@ -200,15 +200,28 @@ export const storage = {
       }
 
       if (lsFolders) {
-        await this.saveFolders(JSON.parse(lsFolders));
-        localStorage.removeItem('pixel-folders');
-        migrated = true;
+        const parsedFolders: unknown = JSON.parse(lsFolders);
+        if (Array.isArray(parsedFolders)) {
+          const validFolders: Folder[] = parsedFolders
+            .filter((f): f is Record<string, unknown> => f !== null && typeof f === 'object')
+            .filter((f) => typeof f.id === 'string' && typeof f.name === 'string')
+            .map((f) => ({
+              id: f.id as string,
+              name: f.name as string,
+              ...(typeof f.parentId === 'string' ? { parentId: f.parentId } : {}),
+            }));
+          await this.saveFolders(validFolders);
+          localStorage.removeItem('pixel-folders');
+          migrated = true;
+        }
       }
 
       if (lsWorkspace) {
-        await this.saveWorkspaceName(lsWorkspace);
-        localStorage.removeItem('pixel-workspace');
-        migrated = true;
+        if (typeof lsWorkspace === 'string' && lsWorkspace.length > 0) {
+          await this.saveWorkspaceName(lsWorkspace);
+          localStorage.removeItem('pixel-workspace');
+          migrated = true;
+        }
       }
 
       return migrated;

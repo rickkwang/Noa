@@ -25,7 +25,6 @@ interface BackupPayload {
   workspaceName: string;
 }
 
-interface ZipManifest extends BackupPayload {}
 
 const TEXT_IMPORT_EXTENSIONS = new Set([
   'md',
@@ -474,7 +473,7 @@ export function useDataTransfer({
 
     try {
       const zip = new JSZip();
-      const manifest: ZipManifest = {
+      const manifest: BackupPayload = {
         version: 2,
         notes: cloneNotesForBackup(notes),
         folders,
@@ -1058,7 +1057,7 @@ export function useDataTransfer({
 
         if (manifestFile) {
           try {
-            const manifest = JSON.parse(await manifestFile.async('string')) as Partial<ZipManifest>;
+            const manifest = JSON.parse(await manifestFile.async('string')) as Partial<BackupPayload>;
             const rawNotes = Array.isArray(manifest.notes) ? manifest.notes : [];
             const sourceById = new Map(
               rawNotes

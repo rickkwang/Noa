@@ -60,11 +60,11 @@ function sanitizeFolderPath(path: string): string {
     .join('/');
 }
 
-function parseFrontMatter(text: string): { meta: Record<string, any>; content: string } {
+function parseFrontMatter(text: string): { meta: Record<string, string | string[]>; content: string } {
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return { meta: {}, content: text };
 
-  const meta: Record<string, any> = {};
+  const meta: Record<string, string | string[]> = {};
   const yamlLines = match[1].split('\n');
   for (const line of yamlLines) {
     const colonIdx = line.indexOf(':');
@@ -80,11 +80,19 @@ function parseFrontMatter(text: string): { meta: Record<string, any>; content: s
   return { meta, content: match[2] };
 }
 
+function yamlScalar(value: string): string {
+  // Quote the value if it contains characters that would break simple YAML parsing
+  if (/[:#\n\r"']/.test(value) || value.startsWith(' ') || value.endsWith(' ')) {
+    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
+  }
+  return value;
+}
+
 function buildFrontMatter(note: Note): string {
-  const tags = note.tags?.length ? `[${note.tags.join(', ')}]` : '[]';
-  const links = note.links?.length ? `[${note.links.map(l => `"${l}"`).join(', ')}]` : '[]';
-  const linkRefs = note.linkRefs?.length ? `[${note.linkRefs.map(id => `"${id}"`).join(', ')}]` : '[]';
-  return `---\nid: ${note.id}\nfolder: ${note.folder || ''}\ntags: ${tags}\nlinks: ${links}\nlinkRefs: ${linkRefs}\ncreatedAt: ${note.createdAt}\n---\n`;
+  const tags = note.tags?.length ? `[${note.tags.map(yamlScalar).join(', ')}]` : '[]';
+  const links = note.links?.length ? `[${note.links.map(l => `"${l.replace(/"/g, '\\"')}"`).join(', ')}]` : '[]';
+  const linkRefs = note.linkRefs?.length ? `[${note.linkRefs.map(id => `"${id.replace(/"/g, '\\"')}"`).join(', ')}]` : '[]';
+  return `---\nid: ${yamlScalar(note.id)}\nfolder: ${yamlScalar(note.folder || '')}\ntags: ${tags}\nlinks: ${links}\nlinkRefs: ${linkRefs}\ncreatedAt: ${yamlScalar(note.createdAt)}\n---\n`;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -299,15 +307,20 @@ export async function scanDirectory(
         const file = await handle.getFile();
         const text = await file.text();
         const { meta, content } = parseFrontMatter(text);
+        const metaId = typeof meta.id === 'string' ? meta.id : undefined;
+        const metaTags = Array.isArray(meta.tags) ? meta.tags : [];
+        const metaLinks = Array.isArray(meta.links) ? meta.links : [];
+        const metaLinkRefs = Array.isArray(meta.linkRefs) ? meta.linkRefs : [];
+        const metaCreatedAt = typeof meta.createdAt === 'string' ? meta.createdAt : undefined;
         notes.push({
-          id: meta.id || crypto.randomUUID(),
+          id: metaId || crypto.randomUUID(),
           title: name.replace(/(_[0-9a-f]{8})?\.md$/, ''),
           content,
           folder: folderId,
-          tags: meta.tags || [],
-          links: meta.links || [],
-          linkRefs: meta.linkRefs || [],
-          createdAt: meta.createdAt || new Date(file.lastModified).toISOString(),
+          tags: metaTags,
+          links: metaLinks,
+          linkRefs: metaLinkRefs,
+          createdAt: metaCreatedAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
           source: 'obsidian-import',
         });

@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide } from 'd3-force';
 import { Note } from '../types';
@@ -19,10 +20,23 @@ interface GraphViewProps {
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
 
+// Tag palette — cycles through these for the first N unique tags
+const TAG_PALETTE = [
+  '#4A90E2', // blue
+  '#50C878', // green
+  '#E25C4A', // red-orange
+  '#9B59B6', // purple
+  '#E2A84A', // amber
+  '#4AE2C8', // teal
+  '#E24A8A', // pink
+  '#A8E24A', // lime
+];
+
 type GraphNodeData = {
   id: string;
   name: string;
   degree: number;
+  tags: string[];
 };
 
 type GraphLinkData = {
@@ -32,7 +46,7 @@ type GraphLinkData = {
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
 
-type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs'>;
+type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags'>;
 
 function readLinkEndpointId(endpoint: GraphLink['source'] | GraphLink['target']): string {
   if (typeof endpoint === 'string' || typeof endpoint === 'number') return String(endpoint);
@@ -57,28 +71,34 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
 
+// Node radius: more aggressive scaling so hub nodes stand out clearly
+function nodeRadius(degree: number): number {
+  return 3.5 + Math.sqrt(degree) * 2.5;
+}
+
 export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
   const topologyNotes = useMemo(
-    () => notes.map((note) => ({ id: note.id, title: note.title, links: note.links ?? [], linkRefs: note.linkRefs ?? [] })),
+    () => notes.map((note) => ({
+      id: note.id,
+      title: note.title,
+      links: note.links ?? [],
+      linkRefs: note.linkRefs ?? [],
+      tags: note.tags ?? [],
+    })),
     [notes]
   );
   const topologyKey = useMemo(
     () => computeTopologySignature(topologyNotes),
     [topologyNotes]
   );
-  const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[] }>({
-    key: '',
-    notes: [],
-  });
-  // Synchronously update ref during render so graphData useMemo always reads the latest topology
+  const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[] }>({ key: '', notes: [] });
   if (stableTopologyRef.current.key !== topologyKey) {
     stableTopologyRef.current = { key: topologyKey, notes: topologyNotes };
   }
-
-  // Obsidian 风格：节点小而精，degree 仅轻微放大
-  const nodeRadius = (degree: number) => 3 + Math.sqrt(degree) * 1.2;
 
   const bgColor   = isDark ? '#1C1A17' : '#EAE8E0';
   const linkColor = isDark ? '#8A8070' : '#9A9080';
@@ -89,16 +109,29 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   };
   const nodeColor = accentColors[settings.appearance.accentColor] ?? settings.appearance.accentColor ?? '#B89B5E';
 
+  // Build tag → color map (first tag per note wins; ordered by first appearance)
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const note of stableTopologyRef.current.notes) {
+      for (const tag of note.tags ?? []) {
+        if (!map.has(tag)) {
+          map.set(tag, TAG_PALETTE[map.size % TAG_PALETTE.length]);
+        }
+      }
+    }
+    return map;
+  }, [topologyKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const graphData = useMemo(() => {
     const nodes: GraphNode[] = [];
     const links: GraphLink[] = [];
     const nodeMap = new Map<string, GraphNode>();
     const degreeMap = new Map<string, number>();
-    const topologyNotes = stableTopologyRef.current.notes;
-    const titleToIds = buildTitleToIdsMap(topologyNotes);
+    const topNotes = stableTopologyRef.current.notes;
+    const titleToIds = buildTitleToIdsMap(topNotes);
 
-    topologyNotes.forEach(note => {
-      const node: GraphNode = { id: note.id, name: note.title, degree: 0 };
+    topNotes.forEach(note => {
+      const node: GraphNode = { id: note.id, name: note.title, degree: 0, tags: note.tags ?? [] };
       nodes.push(node);
       nodeMap.set(note.id, node);
       degreeMap.set(note.id, 0);
@@ -107,7 +140,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     const edgeSet = new Set<string>();
     const edgeMap = new Map<string, GraphLink>();
 
-    topologyNotes.forEach(note => {
+    topNotes.forEach(note => {
       const targetIds = new Set<string>();
       (note.linkRefs ?? []).forEach((id) => {
         if (nodeMap.has(id)) targetIds.add(id);
@@ -147,22 +180,36 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     return { nodes: filteredNodes, links: filteredLinks };
   }, [hideIsolated, topologyKey]);
 
-  // 力参数：紧凑布局，物理稳定后自动 zoomToFit
+  // Build neighbour set for hovered node
+  const hoveredNeighbours = useMemo(() => {
+    if (!hoveredNodeId) return null;
+    const neighbours = new Set<string>([hoveredNodeId]);
+    for (const link of graphData.links) {
+      const src = readLinkEndpointId(link.source);
+      const tgt = readLinkEndpointId(link.target);
+      if (src === hoveredNodeId) neighbours.add(tgt);
+      if (tgt === hoveredNodeId) neighbours.add(src);
+    }
+    return neighbours;
+  }, [hoveredNodeId, graphData.links]);
+
+  // Dynamic physics based on node count
   useEffect(() => {
     if (!fgRef.current) return;
+    const n = graphData.nodes.length;
     const chargeForce = fgRef.current.d3Force('charge');
     if (hasStrength(chargeForce)) {
-      chargeForce.strength(-40);
+      // More nodes → stronger repulsion to spread things out
+      chargeForce.strength(n > 100 ? -120 : n > 30 ? -80 : -50);
     }
     const linkForce = fgRef.current.d3Force('link');
     if (hasDistance(linkForce)) {
-      linkForce.distance(30);
+      linkForce.distance(n > 100 ? 60 : n > 30 ? 45 : 35);
     }
-    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 6);
+    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 4);
     fgRef.current.d3Force('collide', collide);
-  }, []);
+  }, [graphData.nodes.length]);
 
-  // graphData 变化后重新 zoomToFit，确保所有节点在视口内
   useEffect(() => {
     if (!fgRef.current) return;
     const timer = setTimeout(() => {
@@ -182,112 +229,173 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
                      settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
                      settings.appearance.fontFamily;
 
+  // Pick node fill color: tag color > accent (connected) > grey (isolated)
+  const getNodeColor = useCallback((node: GraphNode): string => {
+    const tags: string[] = node.tags ?? [];
+    for (const tag of tags) {
+      const c = tagColorMap.get(tag);
+      if (c) return c;
+    }
+    return (node.degree ?? 0) > 0 ? nodeColor : (isDark ? '#5A5648' : '#B0AA9E');
+  }, [tagColorMap, nodeColor, isDark]);
+
   const zoomControls = [
-    { label: '+', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
-    { label: '−', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
-    { label: '⊡', action: () => fgRef.current?.zoomToFit(300, 24) },
+    { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
+    { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
+    { icon: <Maximize2 size={12} />, title: 'Fit view', action: () => fgRef.current?.zoomToFit(300, 24) },
   ];
 
   return (
     <div className="relative w-full h-full">
-    {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
-      <div className="absolute top-2 left-2 right-2 z-10 border border-[#B89B5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-[11px] text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
-        <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
-      </div>
-    )}
-    <ForceGraph2D
-      ref={fgRef}
-      width={width}
-      height={height}
-      graphData={graphData}
-      nodeLabel="name"
-      backgroundColor={bgColor}
-      linkColor={(link: GraphLink) => {
-        if (lowerSearch) {
-          const srcMatch = readLinkEndpointTitle(link.source, idToTitle).toLowerCase().includes(lowerSearch);
-          const tgtMatch = readLinkEndpointTitle(link.target, idToTitle).toLowerCase().includes(lowerSearch);
-          if (!srcMatch && !tgtMatch) return `${linkColor}30`;
-        }
-        return link.bidirectional ? nodeColor : linkColor;
-      }}
-      linkWidth={(link: GraphLink) => link.bidirectional ? 2.5 : 1.5}
-      onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
-      enableNodeDrag={true}
-      onNodeDragEnd={(node: GraphNode) => {
-        // 拖拽结束后固定节点位置，不再被物理模拟拉回
-        node.fx = node.x;
-        node.fy = node.y;
-      }}
-      nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
-        const degree = node.degree ?? 0;
-        const radius = nodeRadius(degree);
-        const isActive = activeNoteId && String(node.id) === activeNoteId;
-        const matched = !lowerSearch || node.name.toLowerCase().includes(lowerSearch);
+      {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[#B89B5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-[11px] text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
+          <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
+        </div>
+      )}
+      <ForceGraph2D
+        ref={fgRef}
+        width={width}
+        height={height}
+        graphData={graphData}
+        nodeLabel="name"
+        backgroundColor={bgColor}
+        linkColor={(link: GraphLink) => {
+          const src = readLinkEndpointId(link.source);
+          const tgt = readLinkEndpointId(link.target);
+          if (hoveredNeighbours) {
+            if (!hoveredNeighbours.has(src) && !hoveredNeighbours.has(tgt)) return `${linkColor}20`;
+            return link.bidirectional ? nodeColor : linkColor;
+          }
+          if (lowerSearch) {
+            const srcMatch = readLinkEndpointTitle(link.source, idToTitle).toLowerCase().includes(lowerSearch);
+            const tgtMatch = readLinkEndpointTitle(link.target, idToTitle).toLowerCase().includes(lowerSearch);
+            if (!srcMatch && !tgtMatch) return `${linkColor}30`;
+          }
+          return link.bidirectional ? nodeColor : linkColor;
+        }}
+        linkWidth={(link: GraphLink) => {
+          if (hoveredNeighbours) {
+            const src = readLinkEndpointId(link.source);
+            const tgt = readLinkEndpointId(link.target);
+            if (hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt)) {
+              return link.bidirectional ? 3 : 2;
+            }
+            return 0.5;
+          }
+          return link.bidirectional ? 2.5 : 1.5;
+        }}
+        linkDirectionalArrowLength={(link: GraphLink) => link.bidirectional ? 0 : 4}
+        linkDirectionalArrowRelPos={1}
+        linkDirectionalArrowColor={(link: GraphLink) => {
+          const src = readLinkEndpointId(link.source);
+          const tgt = readLinkEndpointId(link.target);
+          if (hoveredNeighbours && !hoveredNeighbours.has(src) && !hoveredNeighbours.has(tgt)) {
+            return `${linkColor}20`;
+          }
+          return linkColor;
+        }}
+        onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
+        onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
+        enableNodeDrag={true}
+        onNodeDragEnd={(node: GraphNode) => {
+          node.fx = node.x;
+          node.fy = node.y;
+        }}
+        nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
+          if (node.x == null || node.y == null) return;
+          const degree = node.degree ?? 0;
+          const radius = nodeRadius(degree);
+          const isActive = activeNoteId && String(node.id) === activeNoteId;
+          const isHovered = hoveredNodeId === String(node.id);
+          const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
 
-        ctx.save();
-        ctx.globalAlpha = lowerSearch ? (matched ? 1 : 0.12) : 1;
+          const searchMatched = !lowerSearch || node.name.toLowerCase().includes(lowerSearch);
+          const dimBySearch = lowerSearch && !searchMatched;
+          const dimByHover = hoveredNeighbours && !inHoverNeighbour;
 
-        // 活跃节点外发光圈（Obsidian 风格）
-        if (isActive) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, radius + 3 / globalScale, 0, 2 * Math.PI);
-          ctx.fillStyle = nodeColor + '40';
-          ctx.fill();
-        }
+          const alpha = dimBySearch || dimByHover ? 0.08 : 1;
 
-        // Node fill
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = isActive ? nodeColor : (isDark ? '#8A8070' : '#9A9080');
-        ctx.fill();
+          ctx.save();
+          ctx.globalAlpha = alpha;
 
-        // 有连接的节点用 accent 色，孤立节点用灰色（Obsidian 风格）
-        if (degree > 0) {
-          ctx.fillStyle = nodeColor;
+          const fillColor = getNodeColor(node);
+
+          // Outer glow ring for active or hovered node
+          if ((isActive || isHovered) && node.x != null && node.y != null) {
+            const glowRadius = radius + 5 / globalScale;
+            try {
+              const gradient = ctx.createRadialGradient(node.x, node.y, radius * 0.5, node.x, node.y, glowRadius);
+              gradient.addColorStop(0, fillColor + '60');
+              gradient.addColorStop(1, fillColor + '00');
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, glowRadius, 0, 2 * Math.PI);
+              ctx.fillStyle = gradient;
+              ctx.fill();
+            } catch {
+              // skip glow if gradient params are invalid
+            }
+          }
+
+          // Node fill
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = fillColor;
           ctx.fill();
-        }
 
-        // 活跃节点加边框
-        if (isActive) {
-          ctx.strokeStyle = textColor;
-          ctx.lineWidth = 1.5 / globalScale;
-          ctx.stroke();
-        }
+          // Border for active node
+          if (isActive) {
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 1.5 / globalScale;
+            ctx.stroke();
+          }
 
-        // 标签：节点少时低缩放即显示，节点多时需更高缩放避免重叠
-        const labelThreshold = graphData.nodes.length > 50 ? 1.2 : 0.5;
-        if (globalScale >= labelThreshold) {
-          const fontSize = 10 / globalScale;
-          ctx.font = `${fontSize}px ${fontFamily}`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = isDark ? '#E8E0D0AA' : '#2D2D2DAA';
-          ctx.fillText(node.name, node.x, node.y + radius + 2 / globalScale);
-        }
+          // Label: smooth fade in based on globalScale, with text shadow for legibility
+          const labelFadeStart = 0.3;
+          const labelFadeEnd = 0.7;
+          const labelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
 
-        ctx.restore();
-      }}
-      nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
-        const radius = nodeRadius(node.degree ?? 0);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI);
-        ctx.fill();
-      }}
-    />
-    <div className="absolute bottom-2 right-2 flex flex-col gap-0.5">
-      {zoomControls.map(({ label, action }) => (
-        <button
-          key={label}
-          onClick={action}
-          className="w-5 h-5 border border-[#2D2D2D]/40 bg-[#DCD9CE]/80 text-[10px] font-bold text-[#2D2D2D]/60 hover:bg-[#DCD9CE] hover:text-[#2D2D2D] active:opacity-70 font-redaction flex items-center justify-center"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+          if (labelAlpha > 0) {
+            const fontSize = Math.max(8, 11 / globalScale);
+            ctx.font = `${fontSize}px ${fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            const label = node.name;
+            const labelX = node.x;
+            const labelY = node.y + radius + 2 / globalScale;
+
+            // Background halo for legibility
+            ctx.globalAlpha = alpha * labelAlpha * 0.85;
+            ctx.shadowColor = bgColor;
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = isDark ? '#E8E0D0' : '#2D2D2D';
+            ctx.fillText(label, labelX, labelY);
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.restore();
+        }}
+        nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+          if (node.x == null || node.y == null) return;
+          const radius = nodeRadius(node.degree ?? 0);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI);
+          ctx.fill();
+        }}
+      />
+      <div className="absolute bottom-2 right-2 flex flex-row gap-px bg-[#DCD9CE]/80 border border-[#2D2D2D]/30 backdrop-blur-sm">
+        {zoomControls.map(({ icon, title, action }) => (
+          <button
+            key={title}
+            onClick={action}
+            title={title}
+            className="w-7 h-6 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D] active:opacity-70 flex items-center justify-center transition-colors"
+          >
+            {icon}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

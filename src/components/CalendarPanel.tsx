@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from 'lucide-react';
 import { Note } from '../types';
 import { formatDate } from '../lib/templates';
 
@@ -13,6 +13,7 @@ interface CalendarPanelProps {
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateFormat = 'YYYY-MM-DD' }: CalendarPanelProps) {
+  const [isOpen, setIsOpen] = useState(true);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -49,77 +50,61 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   return (
     <div className="shrink-0 border-t border-[#2D2D2D]/20">
       {/* Section header */}
-      <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70 flex items-center">
-        <Calendar size={12} className="mr-1" />
+      <button
+        className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 flex items-center transition-colors cursor-pointer"
+        onClick={() => setIsOpen(v => !v)}
+      >
+        <Calendar size={12} className="mr-1 shrink-0" />
         Calendar
-      </div>
+        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+      </button>
 
-      {/* Month navigation */}
-      <div className="flex items-center justify-between px-3 pb-1">
-        <button
-          onClick={prevMonth}
-          className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer"
-        >
-          <ChevronLeft size={12} />
-        </button>
-        <span className="text-xs font-redaction text-[#2D2D2D]/80">{monthLabel}</span>
-        <button
-          onClick={nextMonth}
-          className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer"
-        >
-          <ChevronRight size={12} />
-        </button>
-      </div>
-
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 px-2 pb-0.5">
-        {WEEKDAYS.map(wd => (
-          <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
-            <span className="text-[#2D2D2D]/40">{wd}</span>
+      {isOpen && (
+        <div>
+          {/* Month navigation */}
+          <div className="flex items-center justify-between px-3 pb-1">
+            <button onClick={prevMonth} className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer">
+              <ChevronLeft size={12} />
+            </button>
+            <span className="text-xs font-redaction text-[#2D2D2D]/80">{monthLabel}</span>
+            <button onClick={nextMonth} className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer">
+              <ChevronRight size={12} />
+            </button>
           </div>
-        ))}
-      </div>
 
-      {/* Day grid */}
-      <div className="grid grid-cols-7 px-2 pb-3">
-        {cells.map((cell, i) => {
-          if (cell.day === null) {
-            return <div key={`empty-${i}`} className="w-7 h-7" />;
-          }
-          const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
-          const isToday = dateStr === today;
-          const isActive = formatDate(dateFormat, new Date(dateStr + 'T00:00:00')) === activeNoteTitle;
-          const hasNote = hasDailyNote(dateStr);
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 px-2 pb-0.5">
+            {WEEKDAYS.map(wd => (
+              <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
+                <span className="text-[#2D2D2D]/40">{wd}</span>
+              </div>
+            ))}
+          </div>
 
-          const isClickable = hasNote || isToday;
-
-          let cellClass =
-            `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
-
-          if (isActive) {
-            cellClass += 'bg-[#B89B5E] text-white';
-          } else if (isToday) {
-            cellClass += 'border border-[#B89B5E] text-[#B89B5E] hover:bg-[#DCD9CE]';
-          } else if (hasNote) {
-            cellClass += 'text-[#2D2D2D] hover:bg-[#DCD9CE]';
-          } else {
-            cellClass += 'text-[#2D2D2D] opacity-40';
-          }
-
-          return (
-            <div
-              key={dateStr}
-              className={cellClass}
-              onClick={() => isClickable && onSelectDate(dateStr)}
-            >
-              <span className="leading-none">{cell.day}</span>
-              {hasNote && !isActive && (
-                <span className="w-1 h-1 bg-[#B89B5E] mt-0.5" />
-              )}
-            </div>
-          );
-        })}
-      </div>
+          {/* Day grid */}
+          <div className="grid grid-cols-7 px-2 pb-3">
+            {cells.map((cell, i) => {
+              if (cell.day === null) return <div key={`empty-${i}`} className="w-7 h-7" />;
+              const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
+              const isToday = dateStr === today;
+              const isActive = formatDate(dateFormat, new Date(dateStr + 'T00:00:00')) === activeNoteTitle;
+              const hasNote = hasDailyNote(dateStr);
+              const isClickable = hasNote || isToday;
+              let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
+              if (isActive) cellClass += 'bg-[#B89B5E] text-white';
+              else if (isToday) cellClass += 'border border-[#B89B5E] text-[#B89B5E] hover:bg-[#DCD9CE]';
+              else if (hasNote) cellClass += 'text-[#2D2D2D] hover:bg-[#DCD9CE]';
+              else cellClass += 'text-[#2D2D2D] opacity-40';
+              return (
+                <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
+                  <span className="leading-none">{cell.day}</span>
+                  {hasNote && !isActive && <span className="w-1 h-1 bg-[#B89B5E] mt-0.5" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

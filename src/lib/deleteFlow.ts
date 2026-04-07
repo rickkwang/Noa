@@ -1,3 +1,5 @@
+import { recordErrorSnapshot } from './errorSnapshots';
+
 export interface DeleteFlowHandlers {
   id: string;
   deleteLocal: (id: string) => Promise<boolean>;
@@ -16,9 +18,16 @@ export async function deleteNoteWithLocalFirst({
   closeTab(id);
   try {
     syncDelete(id);
-  } catch {
+  } catch (err) {
     // Vault delete failed — local delete already succeeded.
-    // The orphan file will be cleaned up on next full sync.
+    // Record the failure so diagnostics can surface orphaned vault files.
+    recordErrorSnapshot({
+      at: new Date().toISOString(),
+      operation: `deleteNoteFile:${id}`,
+      code: 'unknown_error',
+      message: err instanceof Error ? err.message : String(err),
+      suggestedAction: 'retry',
+    });
   }
   return true;
 }

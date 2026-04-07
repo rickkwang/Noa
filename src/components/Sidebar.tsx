@@ -562,6 +562,7 @@ export default function Sidebar({
   }, [deferredSearchQuery, caseSensitive]);
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isTagsOpen, setIsTagsOpen] = useState(true);
   const { size: tagsHeight, setIsDragging } = useResizeDrag(
     250, 100, window.innerHeight * 0.8,
     (e: MouseEvent) => window.innerHeight - e.clientY,
@@ -819,7 +820,7 @@ export default function Sidebar({
               {recentNoteIds.length > 0 && (
                 <div className="border-b border-[#2D2D2D]/20 mb-1">
                   <button
-                    className="w-full flex items-center px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/60 hover:text-[#2D2D2D] transition-colors"
+                    className="w-full flex items-center px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 transition-colors"
                     onClick={() => setIsRecentOpen(v => !v)}
                   >
                     {isRecentOpen ? <ChevronDown size={12} className="mr-1.5 shrink-0" /> : <ChevronRight size={12} className="mr-1.5 shrink-0" />}
@@ -976,36 +977,44 @@ export default function Sidebar({
         />
       )}
 
-      {/* Tags Explorer Section replacing Activity Log */}
+      {/* Tags Explorer Section */}
       <div
         className="flex shrink-0 border-t border-[#2D2D2D] relative flex-col bg-[#DCD9CE]/30"
-        style={{ height: tagsHeight }}
+        style={{ height: isTagsOpen ? tagsHeight : 'auto' }}
       >
-        <div 
-          className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
-          onMouseDown={() => setIsDragging(true)}
-        />
-        <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70 border-b border-[#2D2D2D]/20 flex items-center shrink-0">
-          <Hash size={12} className="mr-1" />
+        {isTagsOpen && (
+          <div
+            className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
+            onMouseDown={() => setIsDragging(true)}
+          />
+        )}
+        <button
+          className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 border-b border-[#2D2D2D]/20 flex items-center shrink-0 transition-colors cursor-pointer"
+          onClick={() => setIsTagsOpen(v => !v)}
+        >
+          <Hash size={12} className="mr-1 shrink-0" />
           Tags Explorer
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-wrap gap-2 content-start">
-          {allTags.length === 0 ? (
-            <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
-          ) : (
-            allTags.map(([tag, count]) => (
-              <button
-                key={tag}
-                onClick={() => onSearchTag && onSearchTag(tag)}
-                className="text-xs font-redaction text-[#2D2D2D] bg-[#EAE8E0] border border-[#2D2D2D]/20 px-2 py-1 hover:border-[#B89B5E] hover:text-[#B89B5E] active:opacity-70 transition-colors flex items-center"
-              >
-                <span className="opacity-50 mr-0.5">#</span>
-                {tag}
-                <span className="ml-1.5 opacity-50 text-[10px] bg-[#2D2D2D]/5 px-1">{count}</span>
-              </button>
-            ))
-          )}
-        </div>
+          <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
+        </button>
+        {isTagsOpen && (
+          <div className="flex-1 overflow-y-auto p-3 flex flex-wrap gap-2 content-start">
+            {allTags.length === 0 ? (
+              <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
+            ) : (
+              allTags.map(([tag, count]) => (
+                <button
+                  key={tag}
+                  onClick={() => onSearchTag && onSearchTag(tag)}
+                  className="text-xs font-redaction text-[#2D2D2D] bg-[#EAE8E0] border border-[#2D2D2D]/20 px-2 py-1 hover:border-[#B89B5E] hover:text-[#B89B5E] active:opacity-70 transition-colors flex items-center"
+                >
+                  <span className="opacity-50 mr-0.5">#</span>
+                  {tag}
+                  <span className="ml-1.5 opacity-50 text-[10px] bg-[#2D2D2D]/5 px-1">{count}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

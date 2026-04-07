@@ -156,9 +156,9 @@ export default function RightPanel({
             </div>
           )}
           {/* Graph window with border */}
-          <div className="flex flex-col border-2 border-[#2D2D2D]" style={{ height: '55%', minHeight: 180 }}>
+          <div className="flex flex-col border border-[#2D2D2D]/90" style={{ height: '55%', minHeight: 180 }}>
             {/* Graph toolbar */}
-            <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D] flex items-center px-2 gap-1.5 shrink-0">
+            <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
               <Network size={11} className="text-[#B89B5E] shrink-0" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Graph</span>
               <div className="flex items-center gap-1 border border-[#2D2D2D]/50 px-1.5 py-0.5 bg-[#EAE8E0]/60">
@@ -402,9 +402,9 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
   }, [notes, activeNoteId, titleToIds]);
 
   return (
-    <div className="flex-1 overflow-y-auto border-2 border-[#2D2D2D] font-redaction min-h-0">
+    <div className="flex-1 overflow-y-auto border border-[#2D2D2D]/90 font-redaction min-h-0">
       {/* Header */}
-      <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D] flex items-center px-2 gap-1.5 shrink-0">
+      <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
         <GitBranch size={11} className="text-[#B89B5E] shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">Graph Stats</span>
       </div>

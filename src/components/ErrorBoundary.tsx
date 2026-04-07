@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
 
 interface Props {
   children?: ReactNode;
@@ -23,6 +24,13 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    recordErrorSnapshot({
+      at: new Date().toISOString(),
+      operation: 'render',
+      code: 'unknown_error',
+      message: `${error.message}\n${errorInfo.componentStack ?? ''}`.trim(),
+      suggestedAction: 'retry',
+    });
   }
 
   public render() {
