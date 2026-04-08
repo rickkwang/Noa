@@ -250,7 +250,7 @@ export function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm ${
             isDark
-              ? 'text-[#FAF9F5] prose-headings:text-[#FAF9F5] prose-p:text-[#FAF9F5] prose-li:text-[#FAF9F5] prose-strong:text-[#FAF9F5] prose-em:text-[#FAF9F5] prose-blockquote:text-[#FAF9F5] prose-ol:text-[#FAF9F5] prose-ul:text-[#FAF9F5] prose-a:text-[#D97757] prose-pre:bg-[#2A2A2D] prose-pre:text-[#FAF9F5] prose-code:text-[#D97757] prose-code:bg-[#3D3D40]/50 prose-hr:border-[#3D3D40] prose-th:text-[#FAF9F5] prose-td:text-[#FAF9F5]'
+              ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
               : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
@@ -266,9 +266,9 @@ export function PreviewPane({
       </div>
 
       {backlinks.length > 0 && (
-        <div className="mt-12 pt-6 border-dashed font-redaction" style={{ borderTop: `1px dashed ${isDark ? '#3D3D40' : '#2D2D2D'}` }}>
-          <h3 className="text-sm font-bold mb-4 uppercase tracking-wider flex items-center" style={{ color: isDark ? 'rgba(250,249,245,0.45)' : 'rgba(45,45,45,0.7)' }}>
-            <span className="px-2 py-1 mr-2" style={{ background: isDark ? '#2A2A2D' : '#DCD9CE' }}>{backlinks.length}</span>
+        <div className="mt-12 pt-6 border-dashed font-redaction" style={{ borderTop: `1px dashed ${isDark ? '#3A3A37' : '#2D2D2D'}` }}>
+          <h3 className="text-sm font-bold mb-4 uppercase tracking-wider flex items-center" style={{ color: isDark ? 'rgba(240,237,230,0.45)' : 'rgba(45,45,45,0.7)' }}>
+            <span className="px-2 py-1 mr-2" style={{ background: isDark ? '#1E1E1C' : '#DCD9CE' }}>{backlinks.length}</span>
             Linked Mentions
           </h3>
           <div className="space-y-3">
@@ -276,13 +276,13 @@ export function PreviewPane({
               <div
                 key={backlink.id}
                 className="p-3 cursor-pointer transition-colors group"
-                style={{ background: isDark ? 'rgba(250,249,245,0.04)' : 'rgba(220,217,206,0.3)', border: `1px solid ${isDark ? '#3D3D40' : 'rgba(45,45,45,0.2)'}` }}
+                style={{ background: isDark ? 'rgba(240,237,230,0.04)' : 'rgba(220,217,206,0.3)', border: `1px solid ${isDark ? '#3A3A37' : 'rgba(45,45,45,0.2)'}` }}
                 onClick={() => onNavigateToNoteById(backlink.id)}
               >
-                <div className="font-bold mb-2 transition-colors group-hover:text-[#B89B5E]" style={{ color: isDark ? '#FAF9F5' : '#2D2D2D' }}>
+                <div className="font-bold mb-2 transition-colors group-hover:text-[#B89B5E]" style={{ color: isDark ? '#F0EDE6' : '#2D2D2D' }}>
                   {backlink.title}
                 </div>
-                <div className="text-xs leading-relaxed break-words" style={{ color: isDark ? 'rgba(250,249,245,0.50)' : 'rgba(45,45,45,0.7)' }}>
+                <div className="text-xs leading-relaxed break-words" style={{ color: isDark ? 'rgba(240,237,230,0.50)' : 'rgba(45,45,45,0.7)' }}>
                   {getSnippet(backlink.content, note.title)}
                 </div>
               </div>

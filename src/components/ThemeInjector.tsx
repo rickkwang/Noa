@@ -13,12 +13,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     const root = document.documentElement;
 
     if (isDark) {
-      // Anthropic official dark palette (anthropic.com / claude.ai)
-      root.style.setProperty('--bg-primary', '#1C1C1E');   // Claude sidebar/panel bg
-      root.style.setProperty('--bg-secondary', '#2A2A2D'); // elevated surface
-      root.style.setProperty('--text-primary', '#FAF9F5'); // warm off-white (cream)
-      root.style.setProperty('--text-secondary', 'rgba(250,249,245,0.5)');
-      root.style.setProperty('--border-primary', '#3D3D40');
+      // Warm dark palette — primary bg #262624 (HSL 60°/3%/15%, user-specified)
+      root.style.setProperty('--bg-primary', '#262624');   // main editor / content bg
+      root.style.setProperty('--bg-secondary', '#1E1E1C'); // sidebar / panels (darker)
+      root.style.setProperty('--text-primary', '#F0EDE6'); // warm off-white
+      root.style.setProperty('--text-secondary', 'rgba(240,237,230,0.5)');
+      root.style.setProperty('--border-primary', '#3A3A37');
     } else {
       root.style.setProperty('--bg-primary', '#EAE8E0');
       root.style.setProperty('--bg-secondary', '#DCD9CE');
@@ -51,72 +51,72 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   // light equivalents. We cover every opacity variant used in the codebase.
   const darkOverrides = isDark ? `
     /* ── Text: #2D2D2D → #F5F0EB (all opacity variants) ── */
-    .text-\\[\\#2D2D2D\\]\\/10 { color: rgba(250,249,245,0.10) !important; }
-    .text-\\[\\#2D2D2D\\]\\/20 { color: rgba(250,249,245,0.20) !important; }
-    .text-\\[\\#2D2D2D\\]\\/30 { color: rgba(250,249,245,0.30) !important; }
-    .text-\\[\\#2D2D2D\\]\\/35 { color: rgba(250,249,245,0.35) !important; }
-    .text-\\[\\#2D2D2D\\]\\/40 { color: rgba(250,249,245,0.40) !important; }
-    .text-\\[\\#2D2D2D\\]\\/50 { color: rgba(250,249,245,0.50) !important; }
-    .text-\\[\\#2D2D2D\\]\\/60 { color: rgba(250,249,245,0.60) !important; }
-    .text-\\[\\#2D2D2D\\]\\/70 { color: rgba(250,249,245,0.70) !important; }
-    .text-\\[\\#2D2D2D\\]\\/80 { color: rgba(250,249,245,0.80) !important; }
-    .text-\\[\\#2D2D2D\\]\\/90 { color: rgba(250,249,245,0.90) !important; }
+    .text-\\[\\#2D2D2D\\]\\/10 { color: rgba(240,237,230,0.10) !important; }
+    .text-\\[\\#2D2D2D\\]\\/20 { color: rgba(240,237,230,0.20) !important; }
+    .text-\\[\\#2D2D2D\\]\\/30 { color: rgba(240,237,230,0.30) !important; }
+    .text-\\[\\#2D2D2D\\]\\/35 { color: rgba(240,237,230,0.35) !important; }
+    .text-\\[\\#2D2D2D\\]\\/40 { color: rgba(240,237,230,0.40) !important; }
+    .text-\\[\\#2D2D2D\\]\\/50 { color: rgba(240,237,230,0.50) !important; }
+    .text-\\[\\#2D2D2D\\]\\/60 { color: rgba(240,237,230,0.60) !important; }
+    .text-\\[\\#2D2D2D\\]\\/70 { color: rgba(240,237,230,0.70) !important; }
+    .text-\\[\\#2D2D2D\\]\\/80 { color: rgba(240,237,230,0.80) !important; }
+    .text-\\[\\#2D2D2D\\]\\/90 { color: rgba(240,237,230,0.90) !important; }
 
     /* ── Hover text ── */
     .hover\\:text-\\[\\#2D2D2D\\]:hover { color: var(--text-primary) !important; }
-    .hover\\:text-\\[\\#2D2D2D\\]\\/70:hover { color: rgba(250,249,245,0.70) !important; }
+    .hover\\:text-\\[\\#2D2D2D\\]\\/70:hover { color: rgba(240,237,230,0.70) !important; }
 
     /* ── Border: #2D2D2D → #F5F0EB (all opacity variants) ── */
-    .border-\\[\\#2D2D2D\\]\\/10 { border-color: rgba(250,249,245,0.10) !important; }
-    .border-\\[\\#2D2D2D\\]\\/15 { border-color: rgba(250,249,245,0.15) !important; }
-    .border-\\[\\#2D2D2D\\]\\/20 { border-color: rgba(250,249,245,0.20) !important; }
-    .border-\\[\\#2D2D2D\\]\\/30 { border-color: rgba(250,249,245,0.30) !important; }
-    .border-\\[\\#2D2D2D\\]\\/40 { border-color: rgba(250,249,245,0.40) !important; }
-    .border-\\[\\#2D2D2D\\]\\/90 { border-color: rgba(250,249,245,0.90) !important; }
+    .border-\\[\\#2D2D2D\\]\\/10 { border-color: rgba(240,237,230,0.10) !important; }
+    .border-\\[\\#2D2D2D\\]\\/15 { border-color: rgba(240,237,230,0.15) !important; }
+    .border-\\[\\#2D2D2D\\]\\/20 { border-color: rgba(240,237,230,0.20) !important; }
+    .border-\\[\\#2D2D2D\\]\\/30 { border-color: rgba(240,237,230,0.30) !important; }
+    .border-\\[\\#2D2D2D\\]\\/40 { border-color: rgba(240,237,230,0.40) !important; }
+    .border-\\[\\#2D2D2D\\]\\/90 { border-color: rgba(240,237,230,0.90) !important; }
 
     /* ── Background: #2D2D2D-based → light equivalent ── */
-    .bg-\\[\\#2D2D2D\\]\\/10 { background-color: rgba(250,249,245,0.08) !important; }
-    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(250,249,245,0.12) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/10 { background-color: rgba(240,237,230,0.08) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(240,237,230,0.12) !important; }
 
     /* ── Skeleton / pulse: remap from near-invisible to visible ── */
     .animate-pulse.bg-\\[\\#2D2D2D\\]\\/10,
-    .bg-\\[\\#2D2D2D\\]\\/10.animate-pulse { background-color: rgba(250,249,245,0.07) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/10.animate-pulse { background-color: rgba(240,237,230,0.07) !important; }
 
     /* ── Placeholder text ── */
-    .placeholder-\\[\\#2D2D2D\\]\\/40::placeholder { color: rgba(250,249,245,0.35) !important; }
-    .placeholder-\\[\\#2D2D2D\\]\\/50::placeholder { color: rgba(250,249,245,0.40) !important; }
+    .placeholder-\\[\\#2D2D2D\\]\\/40::placeholder { color: rgba(240,237,230,0.35) !important; }
+    .placeholder-\\[\\#2D2D2D\\]\\/50::placeholder { color: rgba(240,237,230,0.40) !important; }
 
     /* ── Divider lines (bg used as line) ── */
-    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(250,249,245,0.12) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(240,237,230,0.12) !important; }
 
     /* ── highlight.js code blocks ── */
     /* rehype-highlight adds .hljs; without a theme CSS imported the browser
        falls back to a light background. Override to match our dark palette. */
     .hljs {
-      background: #2A2A2D !important;
-      color: #FAF9F5 !important;
+      background: #1E1E1C !important;
+      color: #F0EDE6 !important;
       border: none !important;
       border-radius: 4px !important;
     }
     pre:has(.hljs) {
-      background: #2A2A2D !important;
+      background: #1E1E1C !important;
       border: none !important;
       border-radius: 4px !important;
     }
     /* token colours (subset — keyword, string, comment, number, built-in) */
     .hljs-keyword, .hljs-selector-tag, .hljs-type { color: #D97757 !important; }
     .hljs-string, .hljs-attr                      { color: #4CAF8A !important; }
-    .hljs-comment, .hljs-quote                    { color: rgba(250,249,245,0.40) !important; font-style: italic; }
+    .hljs-comment, .hljs-quote                    { color: rgba(240,237,230,0.40) !important; font-style: italic; }
     .hljs-number, .hljs-literal                   { color: #9B7FD4 !important; }
     .hljs-built_in, .hljs-title                   { color: #5B9BD5 !important; }
     .hljs-variable, .hljs-template-variable        { color: #FAF9F5 !important; }
     .hljs-name, .hljs-tag                         { color: #D97757 !important; }
-    .hljs-meta                                    { color: rgba(250,249,245,0.50) !important; }
+    .hljs-meta                                    { color: rgba(240,237,230,0.50) !important; }
 
     /* ── Scrollbar in dark mode ── */
-    ::-webkit-scrollbar-thumb { background: rgba(250,249,245,0) !important; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(250,249,245,0.20) !important; }
-    .is-scrolling::-webkit-scrollbar-thumb { background: rgba(250,249,245,0.15) !important; }
+    ::-webkit-scrollbar-thumb { background: rgba(240,237,230,0) !important; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(240,237,230,0.20) !important; }
+    .is-scrolling::-webkit-scrollbar-thumb { background: rgba(240,237,230,0.15) !important; }
   ` : '';
 
   return (
