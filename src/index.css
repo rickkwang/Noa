@@ -29,16 +29,136 @@ body {
   line-height: var(--app-line-height, 1.5);
 }
 
-/* Custom scrollbar for pixel theme */
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — triggered by data-theme="dark" on <html>
+   Uses [data-theme="dark"] for higher specificity than Tailwind
+   ═══════════════════════════════════════════════════════════ */
+
+/* Warm dark palette:
+   bg-primary   #262624  (main content bg)
+   bg-secondary #1E1E1C  (sidebar / panels / code blocks)
+   text-primary #F0EDE6  (warm off-white)
+   accent       #D97757  (Anthropic coral)
+   border       #3A3A37
+*/
+
+[data-theme="dark"] body {
+  background-color: #262624;
+  color: #F0EDE6;
+}
+
+/* ── Backgrounds ── */
+[data-theme="dark"] .bg-\[\#EAE8E0\]    { background-color: #262624 !important; }
+[data-theme="dark"] .bg-\[\#DCD9CE\]    { background-color: #1E1E1C !important; }
+[data-theme="dark"] .bg-\[\#EAE8E0\]\/50 { background-color: rgba(38,38,36,0.50) !important; }
+[data-theme="dark"] .bg-\[\#DCD9CE\]\/30 { background-color: rgba(30,30,28,0.50) !important; }
+[data-theme="dark"] .bg-\[\#DCD9CE\]\/50 { background-color: rgba(30,30,28,0.70) !important; }
+[data-theme="dark"] .bg-\[\#B89B5E\]    { background-color: #D97757 !important; }
+[data-theme="dark"] .bg-\[\#B89B5E\]\/10 { background-color: rgba(217,119,87,0.12) !important; }
+[data-theme="dark"] .bg-\[\#2D2D2D\]\/10 { background-color: rgba(240,237,230,0.06) !important; }
+[data-theme="dark"] .bg-\[\#2D2D2D\]\/20 { background-color: rgba(240,237,230,0.10) !important; }
+
+/* ── Text ── */
+[data-theme="dark"] .text-\[\#2D2D2D\]      { color: #F0EDE6 !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/10  { color: rgba(240,237,230,0.10) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/20  { color: rgba(240,237,230,0.20) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/30  { color: rgba(240,237,230,0.30) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/35  { color: rgba(240,237,230,0.35) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/40  { color: rgba(240,237,230,0.40) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/50  { color: rgba(240,237,230,0.50) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/60  { color: rgba(240,237,230,0.60) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/70  { color: rgba(240,237,230,0.70) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/80  { color: rgba(240,237,230,0.80) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/90  { color: rgba(240,237,230,0.90) !important; }
+[data-theme="dark"] .text-\[\#B89B5E\]      { color: #D97757 !important; }
+
+/* ── Hover text ── */
+[data-theme="dark"] .hover\:text-\[\#2D2D2D\]:hover     { color: #F0EDE6 !important; }
+[data-theme="dark"] .hover\:text-\[\#2D2D2D\]\/70:hover { color: rgba(240,237,230,0.70) !important; }
+[data-theme="dark"] .hover\:text-\[\#B89B5E\]:hover     { color: #D97757 !important; }
+[data-theme="dark"] .group:hover .group-hover\:text-\[\#B89B5E\] { color: #D97757 !important; }
+
+/* ── Hover backgrounds ── */
+[data-theme="dark"] .hover\:bg-\[\#DCD9CE\]\/50:hover { background-color: rgba(240,237,230,0.07) !important; }
+[data-theme="dark"] .hover\:bg-\[\#DCD9CE\]\/30:hover { background-color: rgba(240,237,230,0.05) !important; }
+
+/* ── Borders ── */
+[data-theme="dark"] .border-\[\#2D2D2D\]      { border-color: #3A3A37 !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/10  { border-color: rgba(240,237,230,0.10) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/15  { border-color: rgba(240,237,230,0.12) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/20  { border-color: rgba(240,237,230,0.15) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/30  { border-color: rgba(240,237,230,0.22) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/40  { border-color: rgba(240,237,230,0.30) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/90  { border-color: rgba(240,237,230,0.55) !important; }
+[data-theme="dark"] .border-\[\#B89B5E\]       { border-color: #D97757 !important; }
+[data-theme="dark"] .hover\:border-\[\#2D2D2D\]:hover { border-color: #3A3A37 !important; }
+[data-theme="dark"] .hover\:border-\[\#B89B5E\]:hover { border-color: #D97757 !important; }
+
+/* ── Shadows ── */
+[data-theme="dark"] .shadow-\[8px_8px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 8px 8px 0px 0px #1A1A18 !important; }
+[data-theme="dark"] .shadow-\[4px_4px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 4px 4px 0px 0px #1A1A18 !important; }
+[data-theme="dark"] .shadow-\[2px_2px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 2px 2px 0px 0px #1A1A18 !important; }
+[data-theme="dark"] .shadow-\[4px_4px_0_0_rgba\(45\,45\,45\,1\)\]     { box-shadow: 4px 4px 0px 0px #1A1A18 !important; }
+[data-theme="dark"] .shadow-\[inset_4px_0px_0px_0px_\#B89B5E\]        { box-shadow: inset 4px 0px 0px 0px #D97757 !important; }
+
+/* ── Placeholder ── */
+[data-theme="dark"] .placeholder-\[\#2D2D2D\]\/40::placeholder { color: rgba(240,237,230,0.32) !important; }
+[data-theme="dark"] .placeholder-\[\#2D2D2D\]\/50::placeholder { color: rgba(240,237,230,0.38) !important; }
+
+/* ── Selection ── */
+[data-theme="dark"] .selection\:bg-\[\#B89B5E\] *::selection { background-color: rgba(217,119,87,0.40) !important; }
+[data-theme="dark"] .selection\:bg-\[\#B89B5E\]::selection    { background-color: rgba(217,119,87,0.40) !important; }
+
+/* ── Prose (Markdown preview) ── */
+[data-theme="dark"] .prose-a\:text-\[\#B89B5E\] a            { color: #D97757 !important; }
+[data-theme="dark"] .prose-pre\:bg-\[\#DCD9CE\] pre          { background-color: #1E1E1C !important; }
+[data-theme="dark"] .prose-pre\:text-\[\#2D2D2D\] pre        { color: #F0EDE6 !important; }
+[data-theme="dark"] .prose-pre\:border-\[\#2D2D2D\] pre      { border-color: transparent !important; }
+[data-theme="dark"] .prose-code\:text-\[\#B89B5E\] code      { color: #D97757 !important; }
+[data-theme="dark"] .prose-code\:bg-\[\#DCD9CE\]\/50 code    { background-color: rgba(217,119,87,0.10) !important; }
+
+/* ── highlight.js code blocks ── */
+[data-theme="dark"] .hljs                   { background: #1E1E1C !important; color: #F0EDE6 !important; border: none !important; border-radius: 4px !important; }
+[data-theme="dark"] pre:has(.hljs)          { background: #1E1E1C !important; border: none !important; border-radius: 4px !important; }
+[data-theme="dark"] .hljs-keyword,
+[data-theme="dark"] .hljs-selector-tag,
+[data-theme="dark"] .hljs-type             { color: #D97757 !important; }
+[data-theme="dark"] .hljs-string,
+[data-theme="dark"] .hljs-attr             { color: #4CAF8A !important; }
+[data-theme="dark"] .hljs-comment,
+[data-theme="dark"] .hljs-quote            { color: rgba(240,237,230,0.38) !important; font-style: italic; }
+[data-theme="dark"] .hljs-number,
+[data-theme="dark"] .hljs-literal          { color: #9B7FD4 !important; }
+[data-theme="dark"] .hljs-built_in,
+[data-theme="dark"] .hljs-title            { color: #5B9BD5 !important; }
+[data-theme="dark"] .hljs-variable,
+[data-theme="dark"] .hljs-template-variable { color: #F0EDE6 !important; }
+[data-theme="dark"] .hljs-name,
+[data-theme="dark"] .hljs-tag              { color: #D97757 !important; }
+[data-theme="dark"] .hljs-meta             { color: rgba(240,237,230,0.45) !important; }
+
+/* ── Scrollbar ── */
+[data-theme="dark"] ::-webkit-scrollbar-thumb       { background: rgba(240,237,230,0) !important; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(240,237,230,0.20) !important; }
+[data-theme="dark"] .is-scrolling::-webkit-scrollbar-thumb { background: rgba(240,237,230,0.14) !important; }
+
+/* ── Skeleton pulse ── */
+[data-theme="dark"] .animate-pulse { --tw-bg-opacity: 1; }
+[data-theme="dark"] .bg-\[\#2D2D2D\]\/10.animate-pulse,
+[data-theme="dark"] .animate-pulse.bg-\[\#2D2D2D\]\/10 { background-color: rgba(240,237,230,0.06) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   Scrollbar (light mode)
+   ═══════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
   background: transparent;
 }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
 @keyframes scrollbar-fadeout {
   from { background: rgba(45, 45, 45, 0.25); }
   to   { background: rgba(45, 45, 45, 0); }
@@ -60,7 +180,4 @@ body {
 }
 .is-scrolling-out::-webkit-scrollbar-thumb {
   animation: scrollbar-fadeout 1.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-::-webkit-scrollbar-corner {
-  background: transparent;
 }
