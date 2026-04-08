@@ -290,7 +290,7 @@ export default function RightPanel({
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Graph</span>
               <div
                 className="flex items-center gap-1 px-1.5 py-0.5"
-                style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.5)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(234,232,224,0.6)' }}
+                style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)' }}
               >
                 <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
                 <input
