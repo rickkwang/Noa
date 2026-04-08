@@ -738,7 +738,8 @@ export function useDataTransfer({
         if (classification.kind === 'unsupported') continue;
 
         if (classification.kind === 'text') {
-          const content = await file.text();
+          let content = '';
+          try { content = await file.text(); } catch { continue; }
           newNotes.push({
             id: crypto.randomUUID(),
             title: file.name.replace(/\.[^/.]+$/, ''),

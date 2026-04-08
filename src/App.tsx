@@ -161,8 +161,12 @@ export default function App() {
     const next = openTabIds.filter(t => t !== id);
     setOpenTabIds(next);
     if (id === activeNoteId) {
-      const idx = openTabIds.indexOf(id);
-      setActiveNoteId(next[Math.min(idx, next.length - 1)] ?? '');
+      if (next.length === 0) {
+        setActiveNoteId('');
+      } else {
+        const idx = openTabIds.indexOf(id);
+        setActiveNoteId(next[Math.min(idx, next.length - 1)]);
+      }
     }
   }, [activeNoteId, openTabIds, setActiveNoteId]);
 
@@ -274,10 +278,13 @@ export default function App() {
     handleCreateNote(primaryNoaFolderId);
   }, [primaryNoaFolderId, handleCreateNote]);
 
-  const openTabs = useMemo(
-    () => openTabIds.map(id => notes.find(n => n.id === id)).filter(Boolean).map(n => ({ id: n!.id, title: n!.title })),
-    [openTabIds, notes]
-  );
+  const openTabs = useMemo(() => {
+    const noteById = new Map(notes.map(n => [n.id, n]));
+    return openTabIds.flatMap(id => {
+      const n = noteById.get(id);
+      return n ? [{ id: n.id, title: n.title }] : [];
+    });
+  }, [openTabIds, notes]);
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);

@@ -310,7 +310,7 @@ export async function scanDirectory(
         const file = await handle.getFile();
         const text = await file.text();
         const { meta, content } = parseFrontMatter(text);
-        const metaId = typeof meta.id === 'string' ? meta.id : undefined;
+        const metaId = typeof meta.id === 'string' && meta.id.length > 0 ? meta.id : undefined;
         const metaTags = Array.isArray(meta.tags) ? meta.tags : [];
         const metaLinks = Array.isArray(meta.links) ? meta.links : [];
         const metaLinkRefs = Array.isArray(meta.linkRefs) ? meta.linkRefs : [];

@@ -7,8 +7,12 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 const DISMISS_KEY = STORAGE_KEYS.BACKUP_REMINDER;
 
 function getDismissedUntil(): number {
-  const v = localStorage.getItem(DISMISS_KEY);
-  return v ? parseInt(v, 10) : 0;
+  try {
+    const v = localStorage.getItem(DISMISS_KEY);
+    return v ? parseInt(v, 10) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function useBackupReminder(noteCount: number): {
@@ -48,9 +52,8 @@ export function useBackupReminder(noteCount: number): {
   }
 
   const dismiss = () => {
-    // 关闭后 3 天内不再提醒
     const until = now + 3 * 24 * 60 * 60 * 1000;
-    localStorage.setItem(DISMISS_KEY, String(until));
+    try { localStorage.setItem(DISMISS_KEY, String(until)); } catch { /* quota exceeded */ }
     setDismissedUntil(until);
   };
 

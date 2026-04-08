@@ -100,7 +100,7 @@ function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
   return roots;
 }
 
-const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isSelected, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
+const FileNode = React.memo(({ name, isFolder, children, defaultOpen = false, isActive, isSelected, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name.replace('.md', ''));
@@ -255,7 +255,7 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
       )}
     </div>
   );
-};
+});
 
 interface SidebarProps {
   notes: Note[];

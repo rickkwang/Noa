@@ -68,24 +68,34 @@ export default function RightPanel({
     setAddingProp(false);
   }, [activeNote?.id, activeNote?.content]);
 
-  const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
-  const completedTasks = useMemo(() => tasks.filter(t => t.completed), [tasks]);
-
-  const filteredActiveTasks = useMemo(() => activeTasks.filter(task => {
-    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
-    if (dueDateFilter !== 'all') {
-      if (!task.dueDate) return false;
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
-      if (dueDateFilter === 'today' && due.getTime() !== today.getTime()) return false;
-      if (dueDateFilter === 'week') {
-        const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-        if (due < today || due > weekEnd) return false;
-      }
-      if (dueDateFilter === 'overdue' && due >= today) return false;
+  const { activeTasks, completedTasks } = useMemo(() => {
+    const activeTasks: typeof tasks = [];
+    const completedTasks: typeof tasks = [];
+    for (const t of tasks) {
+      if (t.completed) completedTasks.push(t);
+      else activeTasks.push(t);
     }
-    return true;
-  }), [activeTasks, priorityFilter, dueDateFilter]);
+    return { activeTasks, completedTasks };
+  }, [tasks]);
+
+  const filteredActiveTasks = useMemo(() => {
+    if (priorityFilter === 'all' && dueDateFilter === 'all') return activeTasks;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return activeTasks.filter(task => {
+      if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+      if (dueDateFilter !== 'all') {
+        if (!task.dueDate) return false;
+        const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
+        if (dueDateFilter === 'today' && due.getTime() !== today.getTime()) return false;
+        if (dueDateFilter === 'week') {
+          const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+          if (due < today || due > weekEnd) return false;
+        }
+        if (dueDateFilter === 'overdue' && due >= today) return false;
+      }
+      return true;
+    });
+  }, [activeTasks, priorityFilter, dueDateFilter]);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
   const [showGraphGuide, setShowGraphGuide] = useState(() => !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN));

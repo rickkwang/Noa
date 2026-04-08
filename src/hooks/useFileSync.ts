@@ -72,9 +72,11 @@ export function useFileSync({
   const notesRef = useRef(notes);
   const foldersRef = useRef(folders);
   const workspaceNameRef = useRef(workspaceName);
-  useEffect(() => { notesRef.current = notes; }, [notes]);
-  useEffect(() => { foldersRef.current = folders; }, [folders]);
-  useEffect(() => { workspaceNameRef.current = workspaceName; }, [workspaceName]);
+  useEffect(() => {
+    notesRef.current = notes;
+    foldersRef.current = folders;
+    workspaceNameRef.current = workspaceName;
+  }, [notes, folders, workspaceName]);
 
   const clearRetryTimer = useCallback(() => {
     if (!autoRetryTimer.current) return;
@@ -191,12 +193,11 @@ export function useFileSync({
     }
 
     void restorePersistedFsHandle().then(async (handle) => {
-        if (!handle) {
-          setSyncStatus('idle');
-          setPermissionRevoked(false);
-          return;
-        }
-
+      if (!handle) {
+        setSyncStatus('idle');
+        setPermissionRevoked(false);
+        return;
+      }
       try {
         setSyncStatus('syncing');
         setFsHandle(handle);
@@ -210,7 +211,7 @@ export function useFileSync({
       } catch (error) {
         recordFailure(error);
       }
-    });
+    }).catch(recordFailure);
   }, [
     activeNoteId,
     ensureInitialNote,

@@ -36,9 +36,9 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
           <X size={12} />
         </button>
       </div>
-      {headings.map((h, i) => (
+      {headings.map((h) => (
         <button
-          key={i}
+          key={`${h.lineIndex}-${h.text}`}
           onClick={() => onJumpToLine(h.lineIndex)}
           className="w-full text-left px-3 py-1 text-xs hover:bg-[#DCD9CE] text-[#2D2D2D] transition-colors truncate flex items-center"
           style={{ paddingLeft: `${(h.level - 1) * 10 + 12}px` }}

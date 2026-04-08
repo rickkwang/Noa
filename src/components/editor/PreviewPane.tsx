@@ -117,7 +117,7 @@ function getSnippet(content: string, title: string) {
   return content.slice(0, 80) + '...';
 }
 
-export function PreviewPane({
+export const PreviewPane = React.memo(function PreviewPane({
   note,
   allNotes,
   settings,
@@ -292,4 +292,4 @@ export function PreviewPane({
       )}
     </div>
   );
-}
+});

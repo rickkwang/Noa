@@ -158,7 +158,8 @@ export function useNotes(settings?: AppSettings) {
           }
           const sorted = sortNotesByRecent(withRefs);
           setNotes(sorted);
-          const lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY);
+          let lastActiveId: string | null = null;
+          try { lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY); } catch { /* quota exceeded */ }
           const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
             ? lastActiveId
             : sorted[0].id;
