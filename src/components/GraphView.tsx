@@ -384,13 +384,17 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           ctx.fill();
         }}
       />
-      <div className="absolute bottom-2 right-2 flex flex-row gap-px bg-[#DCD9CE]/80 border border-[#2D2D2D]/30 backdrop-blur-sm">
+      <div
+        className="absolute bottom-2 right-2 flex flex-row gap-px backdrop-blur-sm"
+        style={{ background: isDark ? 'rgba(240,237,230,0.07)' : 'rgba(220,217,206,0.8)', border: `1px solid ${isDark ? 'rgba(240,237,230,0.12)' : 'rgba(45,45,45,0.3)'}` }}
+      >
         {zoomControls.map(({ icon, title, action }) => (
           <button
             key={title}
             onClick={action}
             title={title}
-            className="w-7 h-6 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D] active:opacity-70 flex items-center justify-center transition-colors"
+            className="w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors"
+            style={{ color: isDark ? 'rgba(240,237,230,0.45)' : 'rgba(45,45,45,0.5)' }}
           >
             {icon}
           </button>

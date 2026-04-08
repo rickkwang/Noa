@@ -6,6 +6,7 @@ import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { parseFrontmatter, stringifyFrontmatter, hasFrontmatter } from '../lib/frontmatter';
+import { useIsDark } from '../hooks/useIsDark';
 
 export type RightPanelTab = 'tasks' | 'backlinks' | 'graph' | 'properties';
 
@@ -41,6 +42,7 @@ export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
   activeTab, onTabChange, notes, settings, activeNoteId, onUpdateNote,
 }: RightPanelProps) {
+  const isDark = useIsDark(settings.appearance.theme);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [dueDateFilter, setDueDateFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
   const [hideIsolated, setHideIsolated] = useState(false);
@@ -286,20 +288,28 @@ export default function RightPanel({
             <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
               <Network size={11} className="text-[#B89B5E] shrink-0" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Graph</span>
-              <div className="flex items-center gap-1 border border-[#2D2D2D]/50 px-1.5 py-0.5 bg-[#EAE8E0]/60">
-                <Search size={9} className="text-[#2D2D2D]/50 shrink-0" />
+              <div
+                className="flex items-center gap-1 px-1.5 py-0.5"
+                style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.5)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(234,232,224,0.6)' }}
+              >
+                <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
                 <input
                   type="text"
                   value={graphSearch}
                   onChange={e => setGraphSearch(e.target.value)}
                   placeholder="filter..."
-                  className="bg-transparent outline-none text-[10px] text-[#2D2D2D] placeholder-[#2D2D2D]/40 font-redaction w-16"
+                  className="bg-transparent outline-none text-[10px] font-redaction w-16"
+                  style={{ color: isDark ? '#F0EDE6' : '#2D2D2D' }}
                 />
               </div>
               <button
                 onClick={() => setHideIsolated(v => !v)}
                 title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
-                className={`border px-1.5 py-0.5 text-[9px] font-bold font-redaction active:opacity-70 transition-colors ${hideIsolated ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}
+                className="px-1.5 py-0.5 text-[9px] font-bold font-redaction active:opacity-70 transition-colors"
+                style={hideIsolated
+                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
+                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.4)'}`, color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                }
               >
                 <Network size={9} />
               </button>
