@@ -88,6 +88,35 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
 
     /* ── Divider lines (bg used as line) ── */
     .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(250,249,245,0.12) !important; }
+
+    /* ── highlight.js code blocks ── */
+    /* rehype-highlight adds .hljs; without a theme CSS imported the browser
+       falls back to a light background. Override to match our dark palette. */
+    .hljs {
+      background: #2A2A2D !important;
+      color: #FAF9F5 !important;
+      border: 1px solid #3D3D40 !important;
+      border-radius: 4px !important;
+    }
+    pre:has(.hljs) {
+      background: #2A2A2D !important;
+      border: 1px solid #3D3D40 !important;
+      border-radius: 4px !important;
+    }
+    /* token colours (subset — keyword, string, comment, number, built-in) */
+    .hljs-keyword, .hljs-selector-tag, .hljs-type { color: #D97757 !important; }
+    .hljs-string, .hljs-attr                      { color: #4CAF8A !important; }
+    .hljs-comment, .hljs-quote                    { color: rgba(250,249,245,0.40) !important; font-style: italic; }
+    .hljs-number, .hljs-literal                   { color: #9B7FD4 !important; }
+    .hljs-built_in, .hljs-title                   { color: #5B9BD5 !important; }
+    .hljs-variable, .hljs-template-variable        { color: #FAF9F5 !important; }
+    .hljs-name, .hljs-tag                         { color: #D97757 !important; }
+    .hljs-meta                                    { color: rgba(250,249,245,0.50) !important; }
+
+    /* ── Scrollbar in dark mode ── */
+    ::-webkit-scrollbar-thumb { background: rgba(250,249,245,0) !important; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(250,249,245,0.20) !important; }
+    .is-scrolling::-webkit-scrollbar-thumb { background: rgba(250,249,245,0.15) !important; }
   ` : '';
 
   return (
