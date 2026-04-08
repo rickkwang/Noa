@@ -494,8 +494,11 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
+  const notesRef = useRef(notes);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
-    const noteToDelete = notes.find(n => n.id === id);
+    const noteToDelete = notesRef.current.find(n => n.id === id);
     try {
       if (noteToDelete?.attachments?.length) {
         await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments);
@@ -515,7 +518,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
-  }, [notes, syncLinkRefs]);
+  }, [syncLinkRefs]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
@@ -556,14 +559,16 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, []);
 
   const handleDeleteFolder = useCallback(async (id: string): Promise<string[]> => {
-    const target = folders.find((folder) => folder.id === id);
+    const currentFolders = foldersRef.current;
+    const currentNotes = notesRef.current;
+    const target = currentFolders.find((folder) => folder.id === id);
     const folderPrefix = target?.name ?? '';
     const folderIdsToDelete = new Set(
-      folders
+      currentFolders
         .filter((folder) => folder.id === id || folder.name.startsWith(`${folderPrefix}/`))
         .map((folder) => folder.id)
     );
-    const toDelete = notes.filter(n => folderIdsToDelete.has(n.folder));
+    const toDelete = currentNotes.filter(n => folderIdsToDelete.has(n.folder));
     const results = await Promise.allSettled(
       toDelete.map(async (note) => {
         if (note.attachments?.length) {
@@ -598,7 +603,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     setRecentNoteIds(prev => prev.filter((noteId) => !deletedIds.includes(noteId)));
     setNotes(prev => syncLinkRefs(prev.filter(n => !folderIdsToDelete.has(n.folder)), prev));
     return deletedIds;
-  }, [folders, notes, syncLinkRefs]);
+  }, [syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
     notes,

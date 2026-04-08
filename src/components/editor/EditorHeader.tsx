@@ -73,16 +73,16 @@ export function EditorHeader({
   }, [tabs, note.id]);
 
   return (
-    <div className="h-8 border-b border-[#2D2D2D] flex items-end justify-between shrink-0 bg-[#DCD9CE] z-10 font-redaction overflow-hidden gap-2 pl-1 pr-2">
+    <div className="h-8 flex items-end justify-between shrink-0 bg-[#DCD9CE] z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-[#2D2D2D] after:z-0">
       {/* Tab strip */}
-      <div className="relative min-w-0 flex items-end">
+      <div className="relative min-w-0 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {hasOverflowLeft && (
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#DCD9CE] to-transparent z-10" />
         )}
         {hasOverflowRight && (
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#DCD9CE] to-transparent z-10" />
         )}
-        <div ref={tabStripRef} className="flex items-end overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-0.5 pt-1">
+        <div ref={tabStripRef} className="flex items-end gap-0.5 pt-1">
           {tabs && tabs.length > 0 ? (
             tabs.map((tab) => {
               const isActiveTab = tab.id === note.id;
@@ -90,12 +90,18 @@ export function EditorHeader({
                 <div
                   key={tab.id}
                   onClick={() => onTabChange?.(tab.id)}
-                  className={`group flex items-center gap-1.5 px-3 py-1 cursor-pointer rounded-t-lg border border-b-0 shrink-0 transition-colors ${
+                  className={`group flex items-center gap-1.5 px-3 cursor-pointer shrink-0 transition-colors relative ${
                     isActiveTab
-                      ? 'bg-[#EAE8E0] border-[#2D2D2D] text-[#2D2D2D] relative z-10'
-                      : 'bg-[#DCD9CE]/60 border-[#2D2D2D]/30 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] hover:text-[#2D2D2D]/80'
+                      ? 'bg-[#EAE8E0] text-[#2D2D2D] z-[1] pt-1 rounded-t-lg'
+                      : 'bg-transparent border-transparent text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80 pt-1 pb-1'
                   }`}
-                  style={isActiveTab ? { marginBottom: '-1px' } : {}}
+                  style={isActiveTab ? {
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: 'var(--border-primary, #2D2D2D)',
+                    borderBottomColor: 'transparent',
+                    paddingBottom: '6px',
+                  } : {}}
                 >
                   <FileText size={12} className={isActiveTab ? 'text-[#B89B5E] shrink-0' : 'shrink-0'} />
                   {isActiveTab && isEditingTitle ? (
@@ -129,8 +135,14 @@ export function EditorHeader({
           ) : (
             /* Fallback: single tab (legacy mode) */
             <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-t-lg border border-b-0 border-[#2D2D2D] bg-[#EAE8E0] relative z-10 shrink-0"
-              style={{ marginBottom: '-1px' }}
+              className="flex items-center gap-1.5 px-3 pt-1 rounded-t-lg bg-[#EAE8E0] relative z-[1] shrink-0"
+              style={{
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-primary, #2D2D2D)',
+                borderBottomColor: 'transparent',
+                paddingBottom: '6px',
+              }}
             >
               <FileText size={12} className="text-[#B89B5E] shrink-0" />
               {isEditingTitle ? (

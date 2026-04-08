@@ -59,7 +59,6 @@ export default function Editor({
   const [slashQuery, setSlashQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [fadeIn, setFadeIn] = useState(true);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -140,12 +139,9 @@ export default function Editor({
 
   useEffect(() => {
     if (note) {
-      setFadeIn(false);
-      const t = setTimeout(() => setFadeIn(true), 60);
       setTitleInput(note.title || 'Untitled');
       setMentionQuery(null);
       setSlashQuery(null);
-      return () => clearTimeout(t);
     }
   }, [note?.id]);
 
@@ -305,7 +301,6 @@ export default function Editor({
   return (
     <div
       className="flex-1 flex flex-col min-w-0 bg-[#EAE8E0] relative"
-      style={{ opacity: fadeIn ? 1 : 0, transition: 'opacity 120ms ease-in-out' }}
     >
       <EditorHeader
         note={note}

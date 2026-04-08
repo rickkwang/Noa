@@ -18,6 +18,21 @@ interface RightPanelProps {
   activeNoteId?: string;
 }
 
+const PRIORITY_STYLES: Record<string, string> = {
+  high: 'border-red-400 text-red-500',
+  medium: 'border-[#B89B5E] text-[#B89B5E]',
+  low: 'border-[#2D2D2D]/40 text-[#2D2D2D]/60',
+};
+
+function PriorityBadge({ priority }: { priority: string }) {
+  if (priority === 'none') return null;
+  return (
+    <span className={`text-[10px] uppercase tracking-wider border px-1 font-bold font-redaction ${PRIORITY_STYLES[priority] ?? ''}`}>
+      {priority}
+    </span>
+  );
+}
+
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
   activeTab, onTabChange, notes, settings, activeNoteId,
@@ -97,20 +112,6 @@ export default function RightPanel({
     });
     return map;
   }, [activeNote, backlinks]);
-
-  const PriorityBadge = ({ priority }: { priority: string }) => {
-    if (priority === 'none') return null;
-    const styles: Record<string, string> = {
-      high: 'border-red-400 text-red-500',
-      medium: 'border-[#B89B5E] text-[#B89B5E]',
-      low: 'border-[#2D2D2D]/40 text-[#2D2D2D]/60',
-    };
-    return (
-      <span className={`text-[10px] uppercase tracking-wider border px-1 font-bold font-redaction ${styles[priority] ?? ''}`}>
-        {priority}
-      </span>
-    );
-  };
 
   return (
     <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
