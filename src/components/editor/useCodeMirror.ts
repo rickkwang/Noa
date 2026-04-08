@@ -25,19 +25,20 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
   return true;
 }
 
+// Anthropic official dark palette: bg #1C1C1E, text #FAF9F5, accent #D97757
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#F5F0EB' },
-  '.cm-content': { caretColor: '#F5F0EB', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#FAF9F5' },
+  '.cm-content': { caretColor: '#FAF9F5', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
   '.cm-line': { padding: '0' },
-  '.cm-cursor': { borderLeftColor: '#F5F0EB' },
-  '.cm-selectionBackground': { backgroundColor: '#DA775630' },
-  '&.cm-focused .cm-selectionBackground': { backgroundColor: '#DA775650' },
+  '.cm-cursor': { borderLeftColor: '#FAF9F5' },
+  '.cm-selectionBackground': { backgroundColor: 'rgba(204,120,92,0.30)' },
+  '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,120,92,0.45)' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters': { display: 'none' },
-  '.cm-placeholder': { color: '#8A858050' },
+  '.cm-placeholder': { color: 'rgba(250,249,245,0.30)' },
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
@@ -47,11 +48,11 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#DA7756', background: '#DA775615' },
-  { tag: tags.link, color: '#DA7756', textDecoration: 'underline' },
+  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#D97757', background: 'rgba(217,119,87,0.12)' },
+  { tag: tags.link, color: '#D97757', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#8A858060', fontFamily: '"JetBrains Mono", monospace' },
-  { tag: tags.quote, fontStyle: 'italic', color: '#8A8580' },
+  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(250,249,245,0.35)', fontFamily: '"JetBrains Mono", monospace' },
+  { tag: tags.quote, fontStyle: 'italic', color: 'rgba(250,249,245,0.55)' },
 ]);
 
 const lightTheme = EditorView.theme({

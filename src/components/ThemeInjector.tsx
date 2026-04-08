@@ -13,12 +13,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     const root = document.documentElement;
 
     if (isDark) {
-      root.style.setProperty('--bg-primary', '#0F0F0F');
-      root.style.setProperty('--bg-secondary', '#1A1A1A');
-      root.style.setProperty('--text-primary', '#F5F0EB');
-      root.style.setProperty('--text-secondary', 'rgba(245,240,235,0.5)');
-      // Solid borders stay subtle; transparent-opacity variants are overridden separately in CSS
-      root.style.setProperty('--border-primary', '#3A3A3A');
+      // Anthropic official dark palette (anthropic.com / claude.ai)
+      root.style.setProperty('--bg-primary', '#1C1C1E');   // Claude sidebar/panel bg
+      root.style.setProperty('--bg-secondary', '#2A2A2D'); // elevated surface
+      root.style.setProperty('--text-primary', '#FAF9F5'); // warm off-white (cream)
+      root.style.setProperty('--text-secondary', 'rgba(250,249,245,0.5)');
+      root.style.setProperty('--border-primary', '#3D3D40');
     } else {
       root.style.setProperty('--bg-primary', '#EAE8E0');
       root.style.setProperty('--bg-secondary', '#DCD9CE');
@@ -28,7 +28,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     }
 
     const accentColors: Record<string, { light: string; dark: string }> = {
-      gold:   { light: '#B89B5E', dark: '#DA7756' },
+      gold:   { light: '#B89B5E', dark: '#D97757' }, // Anthropic official coral #d97757
       blue:   { light: '#4A90E2', dark: '#5B9BD5' },
       green:  { light: '#50E3C2', dark: '#4CAF8A' },
       purple: { light: '#9013FE', dark: '#9B7FD4' },
@@ -51,43 +51,43 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   // light equivalents. We cover every opacity variant used in the codebase.
   const darkOverrides = isDark ? `
     /* ── Text: #2D2D2D → #F5F0EB (all opacity variants) ── */
-    .text-\\[\\#2D2D2D\\]\\/10 { color: rgba(245,240,235,0.10) !important; }
-    .text-\\[\\#2D2D2D\\]\\/20 { color: rgba(245,240,235,0.20) !important; }
-    .text-\\[\\#2D2D2D\\]\\/30 { color: rgba(245,240,235,0.30) !important; }
-    .text-\\[\\#2D2D2D\\]\\/35 { color: rgba(245,240,235,0.35) !important; }
-    .text-\\[\\#2D2D2D\\]\\/40 { color: rgba(245,240,235,0.40) !important; }
-    .text-\\[\\#2D2D2D\\]\\/50 { color: rgba(245,240,235,0.50) !important; }
-    .text-\\[\\#2D2D2D\\]\\/60 { color: rgba(245,240,235,0.60) !important; }
-    .text-\\[\\#2D2D2D\\]\\/70 { color: rgba(245,240,235,0.70) !important; }
-    .text-\\[\\#2D2D2D\\]\\/80 { color: rgba(245,240,235,0.80) !important; }
-    .text-\\[\\#2D2D2D\\]\\/90 { color: rgba(245,240,235,0.90) !important; }
+    .text-\\[\\#2D2D2D\\]\\/10 { color: rgba(250,249,245,0.10) !important; }
+    .text-\\[\\#2D2D2D\\]\\/20 { color: rgba(250,249,245,0.20) !important; }
+    .text-\\[\\#2D2D2D\\]\\/30 { color: rgba(250,249,245,0.30) !important; }
+    .text-\\[\\#2D2D2D\\]\\/35 { color: rgba(250,249,245,0.35) !important; }
+    .text-\\[\\#2D2D2D\\]\\/40 { color: rgba(250,249,245,0.40) !important; }
+    .text-\\[\\#2D2D2D\\]\\/50 { color: rgba(250,249,245,0.50) !important; }
+    .text-\\[\\#2D2D2D\\]\\/60 { color: rgba(250,249,245,0.60) !important; }
+    .text-\\[\\#2D2D2D\\]\\/70 { color: rgba(250,249,245,0.70) !important; }
+    .text-\\[\\#2D2D2D\\]\\/80 { color: rgba(250,249,245,0.80) !important; }
+    .text-\\[\\#2D2D2D\\]\\/90 { color: rgba(250,249,245,0.90) !important; }
 
     /* ── Hover text ── */
     .hover\\:text-\\[\\#2D2D2D\\]:hover { color: var(--text-primary) !important; }
-    .hover\\:text-\\[\\#2D2D2D\\]\\/70:hover { color: rgba(245,240,235,0.70) !important; }
+    .hover\\:text-\\[\\#2D2D2D\\]\\/70:hover { color: rgba(250,249,245,0.70) !important; }
 
     /* ── Border: #2D2D2D → #F5F0EB (all opacity variants) ── */
-    .border-\\[\\#2D2D2D\\]\\/10 { border-color: rgba(245,240,235,0.10) !important; }
-    .border-\\[\\#2D2D2D\\]\\/15 { border-color: rgba(245,240,235,0.15) !important; }
-    .border-\\[\\#2D2D2D\\]\\/20 { border-color: rgba(245,240,235,0.20) !important; }
-    .border-\\[\\#2D2D2D\\]\\/30 { border-color: rgba(245,240,235,0.30) !important; }
-    .border-\\[\\#2D2D2D\\]\\/40 { border-color: rgba(245,240,235,0.40) !important; }
-    .border-\\[\\#2D2D2D\\]\\/90 { border-color: rgba(245,240,235,0.90) !important; }
+    .border-\\[\\#2D2D2D\\]\\/10 { border-color: rgba(250,249,245,0.10) !important; }
+    .border-\\[\\#2D2D2D\\]\\/15 { border-color: rgba(250,249,245,0.15) !important; }
+    .border-\\[\\#2D2D2D\\]\\/20 { border-color: rgba(250,249,245,0.20) !important; }
+    .border-\\[\\#2D2D2D\\]\\/30 { border-color: rgba(250,249,245,0.30) !important; }
+    .border-\\[\\#2D2D2D\\]\\/40 { border-color: rgba(250,249,245,0.40) !important; }
+    .border-\\[\\#2D2D2D\\]\\/90 { border-color: rgba(250,249,245,0.90) !important; }
 
     /* ── Background: #2D2D2D-based → light equivalent ── */
-    .bg-\\[\\#2D2D2D\\]\\/10 { background-color: rgba(245,240,235,0.08) !important; }
-    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(245,240,235,0.12) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/10 { background-color: rgba(250,249,245,0.08) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(250,249,245,0.12) !important; }
 
     /* ── Skeleton / pulse: remap from near-invisible to visible ── */
     .animate-pulse.bg-\\[\\#2D2D2D\\]\\/10,
-    .bg-\\[\\#2D2D2D\\]\\/10.animate-pulse { background-color: rgba(245,240,235,0.07) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/10.animate-pulse { background-color: rgba(250,249,245,0.07) !important; }
 
     /* ── Placeholder text ── */
-    .placeholder-\\[\\#2D2D2D\\]\\/40::placeholder { color: rgba(245,240,235,0.35) !important; }
-    .placeholder-\\[\\#2D2D2D\\]\\/50::placeholder { color: rgba(245,240,235,0.40) !important; }
+    .placeholder-\\[\\#2D2D2D\\]\\/40::placeholder { color: rgba(250,249,245,0.35) !important; }
+    .placeholder-\\[\\#2D2D2D\\]\\/50::placeholder { color: rgba(250,249,245,0.40) !important; }
 
     /* ── Divider lines (bg used as line) ── */
-    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(245,240,235,0.12) !important; }
+    .bg-\\[\\#2D2D2D\\]\\/20 { background-color: rgba(250,249,245,0.12) !important; }
   ` : '';
 
   return (
