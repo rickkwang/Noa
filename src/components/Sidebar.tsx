@@ -441,6 +441,20 @@ export default function Sidebar({
     setDropTargetId(targetId);
   }, [draggedItem]);
 
+  type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
+    (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
+  );
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder);
+  }, [noteSortOrder]);
+
+  const sortNotes = useCallback((arr: Note[]) => {
+    if (noteSortOrder === 'name') return [...arr].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    if (noteSortOrder === 'createdAt') return [...arr].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return [...arr].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [noteSortOrder]);
+
   const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, activeId: string, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
     const folderSource = resolveFolderSource(node.folder);
@@ -522,7 +536,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [dropPosition, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameNote, onSelectNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId]);
+  }, [dropPosition, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameNote, onSelectNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId, sortNotes]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -624,20 +638,6 @@ export default function Sidebar({
       console.warn(`[Noa] ${failCount} file(s) failed to import via drag-and-drop`);
     }
   };
-
-  type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
-  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
-    (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
-  );
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder);
-  }, [noteSortOrder]);
-
-  const sortNotes = useCallback((arr: Note[]) => {
-    if (noteSortOrder === 'name') return [...arr].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    if (noteSortOrder === 'createdAt') return [...arr].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return [...arr].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [noteSortOrder]);
 
   interface TagNode {
     name: string;
@@ -941,7 +941,7 @@ export default function Sidebar({
                     depth={1}
                   >
                     {noaFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
-                    {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa').map((note) => (
+                    {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa')).map((note) => (
                       <FileNode
                         key={note.id}
                         name={(note.title || 'Untitled') + '.md'}
@@ -993,7 +993,7 @@ export default function Sidebar({
                     depth={1}
                   >
                     {importedFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
-                    {(notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import').map((note) => (
+                    {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import')).map((note) => (
                       <FileNode
                         key={note.id}
                         name={(note.title || 'Untitled') + '.md'}
