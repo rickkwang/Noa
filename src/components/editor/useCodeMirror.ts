@@ -26,18 +26,18 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
 }
 
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#E8E0D0' },
-  '.cm-content': { caretColor: '#E8E0D0', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#F5F0EB' },
+  '.cm-content': { caretColor: '#F5F0EB', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
   '.cm-line': { padding: '0' },
-  '.cm-cursor': { borderLeftColor: '#E8E0D0' },
-  '.cm-selectionBackground': { backgroundColor: '#B89B5E40' },
-  '&.cm-focused .cm-selectionBackground': { backgroundColor: '#B89B5E60' },
+  '.cm-cursor': { borderLeftColor: '#F5F0EB' },
+  '.cm-selectionBackground': { backgroundColor: '#DA775630' },
+  '&.cm-focused .cm-selectionBackground': { backgroundColor: '#DA775650' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters': { display: 'none' },
-  '.cm-placeholder': { color: '#9A908050' },
+  '.cm-placeholder': { color: '#8A858050' },
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
@@ -47,11 +47,11 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#C9AA72', background: '#3D382820' },
-  { tag: tags.link, color: '#C9AA72', textDecoration: 'underline' },
+  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#DA7756', background: '#DA775615' },
+  { tag: tags.link, color: '#DA7756', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#9A908060', fontFamily: '"JetBrains Mono", monospace' },
-  { tag: tags.quote, fontStyle: 'italic', color: '#9A9080' },
+  { tag: [tags.processingInstruction, tags.meta], color: '#8A858060', fontFamily: '"JetBrains Mono", monospace' },
+  { tag: tags.quote, fontStyle: 'italic', color: '#8A8580' },
 ]);
 
 const lightTheme = EditorView.theme({

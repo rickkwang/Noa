@@ -29,11 +29,11 @@ interface PreviewPaneProps {
 
 // Callout type config
 const CALLOUT_TYPES: Record<string, { color: string; darkBg: string; lightBg: string; icon: string; label: string }> = {
-  NOTE:      { color: '#3B82F6', darkBg: '#1e3a5f', lightBg: '#EFF6FF', icon: 'ℹ', label: 'Note' },
-  TIP:       { color: '#10B981', darkBg: '#064e3b', lightBg: '#ECFDF5', icon: '💡', label: 'Tip' },
-  WARNING:   { color: '#F59E0B', darkBg: '#451a03', lightBg: '#FFFBEB', icon: '⚠', label: 'Warning' },
-  IMPORTANT: { color: '#8B5CF6', darkBg: '#2e1065', lightBg: '#F5F3FF', icon: '❗', label: 'Important' },
-  CAUTION:   { color: '#EF4444', darkBg: '#450a0a', lightBg: '#FEF2F2', icon: '🔥', label: 'Caution' },
+  NOTE:      { color: '#5B9BD5', darkBg: '#1A2535', lightBg: '#EFF6FF', icon: 'ℹ', label: 'Note' },
+  TIP:       { color: '#4CAF8A', darkBg: '#132820', lightBg: '#ECFDF5', icon: '💡', label: 'Tip' },
+  WARNING:   { color: '#DA7756', darkBg: '#2A1A12', lightBg: '#FFFBEB', icon: '⚠', label: 'Warning' },
+  IMPORTANT: { color: '#9B7FD4', darkBg: '#1E1630', lightBg: '#F5F3FF', icon: '❗', label: 'Important' },
+  CAUTION:   { color: '#D45555', darkBg: '#2A1212', lightBg: '#FEF2F2', icon: '🔥', label: 'Caution' },
 };
 
 function extractTextFromNode(node: React.ReactNode): string {
@@ -250,7 +250,7 @@ export function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm ${
             isDark
-              ? 'text-[#E8E0D0] prose-headings:text-[#E8E0D0] prose-a:text-[#B89B5E] prose-pre:bg-[#252219] prose-pre:text-[#E8E0D0] prose-pre:border prose-pre:border-[#3D3828] prose-code:text-[#C9AA72] prose-code:bg-[#3D3828]/50'
+              ? 'text-[#F5F0EB] prose-headings:text-[#F5F0EB] prose-a:text-[#DA7756] prose-pre:bg-[#1A1A1A] prose-pre:text-[#F5F0EB] prose-pre:border prose-pre:border-[#2E2E2E] prose-code:text-[#DA7756] prose-code:bg-[#2E2E2E]/50'
               : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}

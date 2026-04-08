@@ -13,11 +13,11 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     const root = document.documentElement;
 
     if (isDark) {
-      root.style.setProperty('--bg-primary', '#1C1A17');
-      root.style.setProperty('--bg-secondary', '#252219');
-      root.style.setProperty('--text-primary', '#E8E0D0');
-      root.style.setProperty('--text-secondary', '#9A9080');
-      root.style.setProperty('--border-primary', '#3D3828');
+      root.style.setProperty('--bg-primary', '#0F0F0F');
+      root.style.setProperty('--bg-secondary', '#1A1A1A');
+      root.style.setProperty('--text-primary', '#F5F0EB');
+      root.style.setProperty('--text-secondary', '#8A8580');
+      root.style.setProperty('--border-primary', '#2E2E2E');
     } else {
       root.style.setProperty('--bg-primary', '#EAE8E0');
       root.style.setProperty('--bg-secondary', '#DCD9CE');
@@ -26,15 +26,18 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--border-primary', '#2D2D2D');
     }
 
-    const accentColors: Record<string, string> = {
-      gold: '#B89B5E',
-      blue: '#4A90E2',
-      green: '#50E3C2',
-      purple: '#9013FE',
-      red: '#D0021B',
+    const accentColors: Record<string, { light: string; dark: string }> = {
+      gold:   { light: '#B89B5E', dark: '#DA7756' },
+      blue:   { light: '#4A90E2', dark: '#5B9BD5' },
+      green:  { light: '#50E3C2', dark: '#4CAF8A' },
+      purple: { light: '#9013FE', dark: '#9B7FD4' },
+      red:    { light: '#D0021B', dark: '#D45555' },
     };
 
-    const accentColor = accentColors[settings.appearance.accentColor] ?? settings.appearance.accentColor ?? '#B89B5E';
+    const palette = accentColors[settings.appearance.accentColor];
+    const accentColor = palette
+      ? (isDark ? palette.dark : palette.light)
+      : (settings.appearance.accentColor ?? '#B89B5E');
     root.style.setProperty('--accent-color', accentColor);
   }, [isDark, settings.appearance.accentColor]);
 
