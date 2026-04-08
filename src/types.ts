@@ -68,6 +68,13 @@ export interface GlobalTask {
   originalString: string;
 }
 
+export interface UserTemplate {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface AppSettings {
   editor: {
     fontSize: number;
@@ -90,6 +97,9 @@ export interface AppSettings {
   corePlugins: {
     graphView: boolean;
     dailyNotes: boolean;
+  };
+  templates: {
+    userTemplates: UserTemplate[];
   };
 }
 

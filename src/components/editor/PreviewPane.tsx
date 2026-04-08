@@ -82,19 +82,22 @@ export function PreviewPane({
       return `![${safeFilename}](note-attachment://id/${encodeURIComponent(att.id)})`;
     });
 
-    // Step 2: rewrite [[title]] wiki-links
-    return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, title) => {
-      const safeTitle = String(title ?? '').trim();
-      const ids = titleToIds.get(safeTitle);
+    // Step 2: rewrite [[title]] and [[title|alias]] wiki-links
+    return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
+      const safeRaw = String(raw ?? '').trim();
+      const pipeIdx = safeRaw.indexOf('|');
+      const realTitle = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
+      const displayText = pipeIdx >= 0 ? safeRaw.slice(pipeIdx + 1).trim() : safeRaw;
+      const ids = titleToIds.get(realTitle);
       if (ids && ids.length === 1) {
-        return `[${safeTitle}](note-internal://id/${ids[0]})`;
+        return `[${displayText}](note-internal://id/${ids[0]})`;
       }
-      const legacyAttachment = findAttachment(safeTitle);
+      const legacyAttachment = findAttachment(realTitle);
       if (legacyAttachment) {
-        return `![${safeTitle}](note-attachment://id/${encodeURIComponent(legacyAttachment.id)})`;
+        return `![${displayText}](note-attachment://id/${encodeURIComponent(legacyAttachment.id)})`;
       }
-      const encoded = encodeURIComponent(safeTitle);
-      return `[${safeTitle}](note-internal://title/${encoded})`;
+      const encoded = encodeURIComponent(realTitle);
+      return `[${displayText}](note-internal://title/${encoded})`;
     });
   }, [note.content, note.attachments, titleToIds]);
 

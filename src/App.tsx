@@ -22,6 +22,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
 import { isDescendantPath } from './lib/pathUtils';
+import { builtinTemplates, applyTemplate } from './lib/templates';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -46,6 +47,8 @@ export default function App() {
     }
   });
   const [navigationConflict, setNavigationConflict] = useState<{ title: string; noteIds: string[] } | null>(null);
+  const [pendingTemplateNoteId, setPendingTemplateNoteId] = useState<string | null>(null);
+  const waitingForTemplateRef = useRef(false);
   const { settings, updateSettings } = useSettings();
   const {
     notes,
@@ -119,6 +122,10 @@ export default function App() {
   const handleCreateNote = (folderId: string, initialContent?: string) => {
     _handleCreateNote(folderId, initialContent);
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
+    const userTemplates = settings.templates?.userTemplates ?? [];
+    if (userTemplates.length > 0 && !initialContent) {
+      waitingForTemplateRef.current = true;
+    }
   };
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
@@ -234,6 +241,14 @@ export default function App() {
       setTimeout(() => setTabLimitWarning(false), 3000);
       return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
     });
+  }, [activeNoteId]);
+
+  // When a note is created with waitingForTemplateRef set, pop the template picker
+  useEffect(() => {
+    if (waitingForTemplateRef.current && activeNoteId) {
+      waitingForTemplateRef.current = false;
+      setPendingTemplateNoteId(activeNoteId);
+    }
   }, [activeNoteId]);
 
   const primaryNoaFolderId = useMemo(
@@ -743,6 +758,45 @@ export default function App() {
           </div>
         </div>
       )}
+      {pendingTemplateNoteId && (() => {
+        const userTemplates = settings.templates?.userTemplates ?? [];
+        const allTemplates = [...builtinTemplates, ...userTemplates];
+        const pendingNote = notes.find(n => n.id === pendingTemplateNoteId);
+        const noteTitle = pendingNote?.title ?? 'New Note';
+        const dateFormat = settings.dailyNotes.dateFormat;
+        return (
+          <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
+            <div className="w-full max-w-sm border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]" onClick={(e) => e.stopPropagation()}>
+              <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE] flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Choose Template</div>
+                  <div className="text-sm text-[#2D2D2D] mt-0.5">Pick a template for this note</div>
+                </div>
+                <button onClick={() => setPendingTemplateNoteId(null)} className="text-[#2D2D2D]/50 hover:text-[#2D2D2D] text-lg leading-none active:opacity-70">×</button>
+              </div>
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
+                {allTemplates.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      if (t.id !== 'blank') {
+                        handleUpdateNote(pendingTemplateNoteId, applyTemplate(t, noteTitle, dateFormat));
+                      }
+                      setPendingTemplateNoteId(null);
+                    }}
+                    className="w-full text-left border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 px-3 py-2 bg-[#EAE8E0] hover:bg-[#DCD9CE]/40 active:opacity-70"
+                  >
+                    <div className="text-sm font-bold text-[#2D2D2D]">{t.name}</div>
+                    {t.content && (
+                      <div className="text-[11px] text-[#2D2D2D]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {tabLimitWarning && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-white text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)

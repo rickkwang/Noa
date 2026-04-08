@@ -25,6 +25,9 @@ export const defaultSettings: AppSettings = {
     graphView: true,
     dailyNotes: true,
   },
+  templates: {
+    userTemplates: [],
+  },
 };
 
 export function useSettings() {
@@ -40,6 +43,7 @@ export function useSettings() {
           dailyNotes: { ...defaultSettings.dailyNotes, ...parsed.dailyNotes },
           search: { ...defaultSettings.search, ...parsed.search },
           corePlugins: { ...defaultSettings.corePlugins, ...parsed.corePlugins },
+          templates: { userTemplates: parsed.templates?.userTemplates ?? [] },
         };
       } catch (e) {
         return defaultSettings;

@@ -23,7 +23,10 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { id: 'quote',  label: 'Quote',       description: 'Blockquote',             insert: '> '          },
   { id: 'code',   label: 'Code block',  description: 'Fenced code block',      insert: '```\n{cursor}\n```' },
   { id: 'task',   label: 'Task',        description: 'Checkbox task item',     insert: '- [ ] '      },
-  { id: 'link',   label: 'Link',        description: 'Hyperlink',              insert: '[{cursor}](url)' },
+  { id: 'link',    label: 'Link',    description: 'Hyperlink',         insert: '[{cursor}](url)' },
+  { id: 'table',   label: 'Table',   description: '3×3 Markdown table', insert: '| {cursor}Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n| Cell | Cell | Cell |\n' },
+  { id: 'divider', label: 'Divider', description: 'Horizontal rule',    insert: '\n---\n' },
+  { id: 'callout', label: 'Callout', description: 'Callout block',      insert: '> [!NOTE]\n> {cursor}' },
 ];
 
 interface SlashCommandDropdownProps {

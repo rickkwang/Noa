@@ -1,10 +1,13 @@
 import Fuse, { type FuseResult } from 'fuse.js';
-import { Note } from '../types';
+import { Folder, Note } from '../types';
 
 export interface ParsedQuery {
   tags: string[];
   exactPhrases: string[];
   keywords: string[];
+  folder?: string;
+  before?: Date;
+  after?: Date;
 }
 
 export const parseQuery = (queryString: string, caseSensitive: boolean = false): ParsedQuery => {
@@ -12,10 +15,29 @@ export const parseQuery = (queryString: string, caseSensitive: boolean = false):
   const exactPhrases: string[] = [];
   const keywords: string[] = [];
   const normalize = (s: string) => caseSensitive ? s : s.toLowerCase();
+  let folder: string | undefined;
+  let before: Date | undefined;
+  let after: Date | undefined;
 
   // Extract tags: tag:#xxx or tag:xxx
   let currentQuery = queryString.replace(/tag:(#?[\w\u4e00-\u9fa5]+)/gi, (_, tag) => {
     tags.push(normalize(tag.replace('#', '')));
+    return '';
+  });
+
+  // Extract in:folder operator
+  currentQuery = currentQuery.replace(/\bin:([\w\u4e00-\u9fa5/\-_.]+)/gi, (_, f) => {
+    folder = normalize(f);
+    return '';
+  });
+
+  // Extract before:/after: operators
+  currentQuery = currentQuery.replace(/\bbefore:(\d{4}-\d{2}-\d{2})\b/gi, (_, d) => {
+    before = new Date(d + 'T23:59:59');
+    return '';
+  });
+  currentQuery = currentQuery.replace(/\bafter:(\d{4}-\d{2}-\d{2})\b/gi, (_, d) => {
+    after = new Date(d + 'T00:00:00');
     return '';
   });
 
@@ -32,7 +54,7 @@ export const parseQuery = (queryString: string, caseSensitive: boolean = false):
     }
   });
 
-  return { tags, exactPhrases, keywords };
+  return { tags, exactPhrases, keywords, folder, before, after };
 };
 
 export interface SearchResult {
@@ -44,13 +66,15 @@ export interface SearchResult {
 export class SearchEngine {
   private fuse: Fuse<Note>;
   private notes: Note[];
+  private folders: Folder[];
   private caseSensitive: boolean;
   private fuzzySearch: boolean;
   private notesVersion: number;
   private cache: Map<string, SearchResult[]>;
 
-  constructor(notes: Note[], caseSensitive: boolean = false, fuzzySearch: boolean = true) {
+  constructor(notes: Note[], caseSensitive: boolean = false, fuzzySearch: boolean = true, folders: Folder[] = []) {
     this.notes = notes;
+    this.folders = folders;
     this.caseSensitive = caseSensitive;
     this.fuzzySearch = fuzzySearch;
     this.notesVersion = 1;
@@ -65,8 +89,9 @@ export class SearchEngine {
     });
   }
 
-  public updateNotes(notes: Note[], caseSensitive?: boolean, fuzzySearch?: boolean) {
+  public updateNotes(notes: Note[], caseSensitive?: boolean, fuzzySearch?: boolean, folders?: Folder[]) {
     this.notes = notes;
+    if (folders !== undefined) this.folders = folders;
     if (fuzzySearch !== undefined) this.fuzzySearch = fuzzySearch;
     if (caseSensitive !== undefined && caseSensitive !== this.caseSensitive) {
       this.caseSensitive = caseSensitive;
@@ -102,7 +127,7 @@ export class SearchEngine {
       return allResults;
     }
 
-    const { tags, exactPhrases, keywords } = parseQuery(queryString, isCaseSensitive);
+    const { tags, exactPhrases, keywords, folder, before, after } = parseQuery(queryString, isCaseSensitive);
 
     let results: FuseResult<Note>[] = [];
 
@@ -140,6 +165,22 @@ export class SearchEngine {
           normalize(item.content).includes(phrase)
         )
       );
+    }
+
+    // Filter by in:folder
+    if (folder && this.folders.length > 0) {
+      const matchedFolder = this.folders.find(f => normalize(f.name) === folder);
+      if (matchedFolder) {
+        results = results.filter(({ item }) => item.folder === matchedFolder.id);
+      }
+    }
+
+    // Filter by before:/after: (based on updatedAt)
+    if (before) {
+      results = results.filter(({ item }) => new Date(item.updatedAt) <= before!);
+    }
+    if (after) {
+      results = results.filter(({ item }) => new Date(item.updatedAt) >= after!);
     }
 
     const mappedResults = results.map(result => {

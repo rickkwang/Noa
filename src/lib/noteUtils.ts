@@ -2,7 +2,11 @@ import { Note } from '../types';
 
 export const extractLinks = (content: string): string[] => {
   const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
-  return Array.from(new Set(matches.map(m => m[1])));
+  return Array.from(new Set(matches.map(m => {
+    const raw = m[1];
+    const pipeIdx = raw.indexOf('|');
+    return (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
+  })));
 };
 
 export const extractTags = (content: string): string[] => {

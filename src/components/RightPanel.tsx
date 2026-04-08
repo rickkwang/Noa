@@ -99,7 +99,9 @@ export default function RightPanel({
 
   const getSnippet = (note: Note, targetTitle: string) => {
     const lines = note.content.split('\n');
-    const idx = lines.findIndex(l => l.includes(`[[${targetTitle}]]`));
+    const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\[\\[${escaped}(?:\\|[^\\]]+)?\\]\\]`);
+    const idx = lines.findIndex(l => re.test(l));
     if (idx === -1) return '';
     return lines.slice(Math.max(0, idx - 1), idx + 2).join('\n').trim();
   };

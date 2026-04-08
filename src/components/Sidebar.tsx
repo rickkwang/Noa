@@ -543,9 +543,9 @@ export default function Sidebar({
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
       if (!searchEngineRef.current) {
-        searchEngineRef.current = new SearchEngine(notes, caseSensitive, fuzzySearch);
+        searchEngineRef.current = new SearchEngine(notes, caseSensitive, fuzzySearch, folders);
       } else {
-        searchEngineRef.current.updateNotes(notes, caseSensitive, fuzzySearch);
+        searchEngineRef.current.updateNotes(notes, caseSensitive, fuzzySearch, folders);
       }
       // Re-run search after index rebuild so results reflect updated notes.
       if (searchEngineRef.current && deferredSearchQuery) {
@@ -553,7 +553,7 @@ export default function Sidebar({
       }
     }, 250);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [notes, caseSensitive, fuzzySearch]); // intentionally excludes deferredSearchQuery
+  }, [notes, folders, caseSensitive, fuzzySearch]); // intentionally excludes deferredSearchQuery
 
   // Query/search execution uses deferred input to keep typing responsive.
   useEffect(() => {
