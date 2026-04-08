@@ -8,6 +8,7 @@ import { classifyFolderImportFile } from '../hooks/useDataTransfer';
 import { getFolderLeafName, getFolderParentPath, isDescendantPath } from '../lib/pathUtils';
 import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const HIGHLIGHT_SANITIZE_CONFIG = {
   ALLOWED_TAGS: ['b', 'i', 'em', 'strong'],
@@ -444,7 +445,7 @@ export default function Sidebar({
     const leafName = getFolderLeafName(node.folder.name);
     const folderSource = resolveFolderSource(node.folder);
     const canCreateInsideFolder = folderSource === 'noa';
-    const childNotes = notesByFolderId.get(node.folder.id) || [];
+    const childNotes = sortNotes(notesByFolderId.get(node.folder.id) || []);
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
     return (
@@ -624,15 +625,71 @@ export default function Sidebar({
     }
   };
 
-  const allTags = useMemo(() => {
-    const tagCounts: Record<string, number> = {};
+  type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
+    (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
+  );
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder);
+  }, [noteSortOrder]);
+
+  const sortNotes = useCallback((arr: Note[]) => {
+    if (noteSortOrder === 'name') return [...arr].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    if (noteSortOrder === 'createdAt') return [...arr].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return [...arr].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [noteSortOrder]);
+
+  interface TagNode {
+    name: string;
+    fullPath: string;
+    count: number;
+    children: Map<string, TagNode>;
+  }
+
+  const tagTree = useMemo(() => {
+    const roots = new Map<string, TagNode>();
+
+    const getOrCreate = (map: Map<string, TagNode>, name: string, fullPath: string): TagNode => {
+      if (!map.has(name)) map.set(name, { name, fullPath, count: 0, children: new Map() });
+      return map.get(name)!;
+    };
+
     notes.forEach(note => {
       note.tags?.forEach(tag => {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        const parts = tag.split('/');
+        let currentMap = roots;
+        let path = '';
+        parts.forEach((part, i) => {
+          path = path ? `${path}/${part}` : part;
+          const node = getOrCreate(currentMap, part, path);
+          if (i === parts.length - 1) node.count += 1;
+          currentMap = node.children;
+        });
       });
     });
-    return Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+
+    // Propagate counts upward
+    const propagate = (node: TagNode): number => {
+      let total = node.count;
+      node.children.forEach(child => { total += propagate(child); });
+      node.count = total;
+      return total;
+    };
+    roots.forEach(propagate);
+
+    return roots;
   }, [notes]);
+
+  const [expandedTagNodes, setExpandedTagNodes] = useState<Set<string>>(new Set());
+
+  const toggleTagNode = useCallback((fullPath: string) => {
+    setExpandedTagNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(fullPath)) next.delete(fullPath);
+      else next.add(fullPath);
+      return next;
+    });
+  }, []);
 
   return (
     <div 
@@ -846,6 +903,19 @@ export default function Sidebar({
                   )}
                 </div>
               )}
+              <div className="flex items-center px-3 py-1 gap-1 border-b border-[#2D2D2D]/10">
+                <span className="text-[10px] text-[#2D2D2D]/40 uppercase tracking-wider mr-1">Sort</span>
+                {(['updatedAt', 'createdAt', 'name'] as const).map((order) => (
+                  <button
+                    key={order}
+                    onClick={() => setNoteSortOrder(order)}
+                    className="text-[10px] font-redaction px-1.5 py-0.5 active:opacity-70"
+                    style={{ color: noteSortOrder === order ? '#B89B5E' : '#2D2D2D80', fontWeight: noteSortOrder === order ? 'bold' : 'normal' }}
+                  >
+                    {order === 'updatedAt' ? 'Modified' : order === 'createdAt' ? 'Created' : 'Name'}
+                  </button>
+                ))}
+              </div>
               <div data-testid="sidebar-file-tree">
                 <FileNode
                   name="workspace"
@@ -997,21 +1067,50 @@ export default function Sidebar({
           <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
         </button>
         {isTagsOpen && (
-          <div className="flex-1 overflow-y-auto p-3 flex flex-wrap gap-2 content-start">
-            {allTags.length === 0 ? (
+          <div className="flex-1 overflow-y-auto p-2">
+            {tagTree.size === 0 ? (
               <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
             ) : (
-              allTags.map(([tag, count]) => (
-                <button
-                  key={tag}
-                  onClick={() => onSearchTag && onSearchTag(tag)}
-                  className="text-xs font-redaction text-[#2D2D2D] bg-[#EAE8E0] border border-[#2D2D2D]/20 px-2 py-1 hover:border-[#B89B5E] hover:text-[#B89B5E] active:opacity-70 transition-colors flex items-center"
-                >
-                  <span className="opacity-50 mr-0.5">#</span>
-                  {tag}
-                  <span className="ml-1.5 opacity-50 text-[10px] bg-[#2D2D2D]/5 px-1">{count}</span>
-                </button>
-              ))
+              (() => {
+                const renderTagNode = (node: TagNode, depth: number): React.ReactNode => {
+                  const hasChildren = node.children.size > 0;
+                  const isExpanded = expandedTagNodes.has(node.fullPath);
+                  return (
+                    <div key={node.fullPath}>
+                      <div
+                        className="flex items-center gap-1 px-1 py-0.5 hover:bg-[#DCD9CE]/50 group"
+                        style={{ paddingLeft: `${depth * 12 + 4}px` }}
+                      >
+                        {hasChildren ? (
+                          <button
+                            onClick={() => toggleTagNode(node.fullPath)}
+                            className="shrink-0 text-[#2D2D2D]/40 hover:text-[#2D2D2D] active:opacity-70"
+                          >
+                            {isExpanded
+                              ? <ChevronDown size={10} />
+                              : <ChevronRight size={10} />}
+                          </button>
+                        ) : (
+                          <span className="w-[10px] shrink-0" />
+                        )}
+                        <button
+                          onClick={() => onSearchTag && onSearchTag(node.fullPath)}
+                          className="flex-1 text-left text-xs font-redaction text-[#2D2D2D] hover:text-[#B89B5E] active:opacity-70 truncate flex items-center gap-0.5"
+                        >
+                          <span className="opacity-40">#</span>{node.name}
+                        </button>
+                        <span className="text-[10px] text-[#2D2D2D]/40 shrink-0">{node.count}</span>
+                      </div>
+                      {hasChildren && isExpanded && (
+                        <div>
+                          {Array.from(node.children.values()).map(child => renderTagNode(child, depth + 1))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+                return Array.from(tagTree.values()).map(node => renderTagNode(node, 0));
+              })()
             )}
           </div>
         )}

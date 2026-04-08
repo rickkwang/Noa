@@ -9,6 +9,9 @@ interface UseGlobalShortcutsOptions {
   onFocusSearch: () => void;
   onClearSearch: () => void;
   onForceSave?: () => void;
+  onToggleFocusMode?: () => void;
+  isFocusMode?: boolean;
+  onExitFocusMode?: () => void;
 }
 
 export function useGlobalShortcuts({
@@ -20,6 +23,9 @@ export function useGlobalShortcuts({
   onFocusSearch,
   onClearSearch,
   onForceSave,
+  onToggleFocusMode,
+  isFocusMode,
+  onExitFocusMode,
 }: UseGlobalShortcutsOptions): void {
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
@@ -48,22 +54,30 @@ export function useGlobalShortcuts({
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        onToggleFocusMode?.();
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'f') {
         e.preventDefault();
         onFocusSearch();
       }
 
-      if (
-        e.key === 'Escape' &&
-        searchQueryRef.current &&
-        document.activeElement === searchInputRef.current
-      ) {
-        onClearSearch();
-        searchInputRef.current?.blur();
+      if (e.key === 'Escape') {
+        if (isFocusMode) {
+          onExitFocusMode?.();
+          return;
+        }
+        if (searchQueryRef.current && document.activeElement === searchInputRef.current) {
+          onClearSearch();
+          searchInputRef.current?.blur();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, searchInputRef]);
+  }, [onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, isFocusMode, searchInputRef]);
 }

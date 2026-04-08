@@ -27,6 +27,76 @@ interface PreviewPaneProps {
   style?: React.CSSProperties;
 }
 
+// Callout type config
+const CALLOUT_TYPES: Record<string, { color: string; darkBg: string; lightBg: string; icon: string; label: string }> = {
+  NOTE:      { color: '#3B82F6', darkBg: '#1e3a5f', lightBg: '#EFF6FF', icon: 'ℹ', label: 'Note' },
+  TIP:       { color: '#10B981', darkBg: '#064e3b', lightBg: '#ECFDF5', icon: '💡', label: 'Tip' },
+  WARNING:   { color: '#F59E0B', darkBg: '#451a03', lightBg: '#FFFBEB', icon: '⚠', label: 'Warning' },
+  IMPORTANT: { color: '#8B5CF6', darkBg: '#2e1065', lightBg: '#F5F3FF', icon: '❗', label: 'Important' },
+  CAUTION:   { color: '#EF4444', darkBg: '#450a0a', lightBg: '#FEF2F2', icon: '🔥', label: 'Caution' },
+};
+
+function extractTextFromNode(node: React.ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(extractTextFromNode).join('');
+  if (React.isValidElement(node)) return extractTextFromNode((node.props as any).children);
+  return '';
+}
+
+function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+  const childArray = React.Children.toArray(children);
+  const firstChild = childArray[0];
+
+  // Extract text from the first <p> element to detect callout type
+  let calloutType: string | null = null;
+  let restOfFirst: React.ReactNode = firstChild;
+  const restChildren = childArray.slice(1);
+
+  if (React.isValidElement(firstChild) && (firstChild.type === 'p' || firstChild.props)) {
+    const firstText = extractTextFromNode((firstChild as React.ReactElement<{ children?: React.ReactNode }>).props.children);
+    const match = firstText.match(/^\[!([A-Z]+)\]\s*/i);
+    if (match) {
+      calloutType = match[1].toUpperCase();
+      // Strip the [!TYPE] prefix from the first child's text
+      const stripped = firstText.replace(/^\[![A-Z]+\]\s*/i, '');
+      if (stripped) {
+        restOfFirst = <p>{stripped}</p>;
+      } else {
+        restOfFirst = null;
+      }
+    }
+  }
+
+  const config = calloutType ? CALLOUT_TYPES[calloutType] : null;
+
+  if (!config) {
+    // Fallback: plain blockquote
+    return (
+      <blockquote style={{ borderLeft: '3px solid #2D2D2D40', paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
+        {children}
+      </blockquote>
+    );
+  }
+
+  return (
+    <div style={{
+      borderLeft: `3px solid ${config.color}`,
+      background: isDark ? config.darkBg : config.lightBg,
+      borderRadius: '0 4px 4px 0',
+      padding: '0.75rem 1rem',
+      margin: '0.75rem 0',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: restOfFirst || restChildren.length ? '0.4rem' : 0, fontWeight: 'bold', color: config.color, fontSize: '0.85em' }}>
+        <span>{config.icon}</span>
+        <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>{config.label}</span>
+      </div>
+      {restOfFirst && <div style={{ margin: 0 }}>{restOfFirst}</div>}
+      {restChildren}
+    </div>
+  );
+}
+
 function cleanDisplayFilename(filename: string): string {
   return filename.replace(/\s*\(\d+\)(?=\.[^.]+$)/, '');
 }
@@ -179,6 +249,10 @@ export function PreviewPane({
                 );
               },
             };
+
+            markdownComponents.blockquote = ({ children }: any) => (
+              <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
+            );
 
             return (
           <Markdown

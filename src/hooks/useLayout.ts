@@ -12,10 +12,10 @@ export function useLayout() {
     const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN);
     return saved ? saved === 'true' : true;
   });
-  const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph'>(() => {
+  const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph' | 'properties'>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
-    return (['tasks', 'backlinks', 'graph'] as const).includes(saved as 'tasks' | 'backlinks' | 'graph')
-      ? (saved as 'tasks' | 'backlinks' | 'graph')
+    return (['tasks', 'backlinks', 'graph', 'properties'] as const).includes(saved as any)
+      ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
       : 'tasks';
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
@@ -78,6 +78,10 @@ export function useLayout() {
     setActiveRightTab('graph');
   }, []);
 
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const toggleFocusMode = useCallback(() => setIsFocusMode(v => !v), []);
+  const exitFocusMode = useCallback(() => setIsFocusMode(false), []);
+
   return {
     isMobile,
     isSidebarOpen,
@@ -95,5 +99,8 @@ export function useLayout() {
     setIsDraggingRightPanel: handleSetIsDraggingRightPanel,
     editorViewMode,
     setEditorViewMode,
+    isFocusMode,
+    toggleFocusMode,
+    exitFocusMode,
   };
 }

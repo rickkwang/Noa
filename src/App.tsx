@@ -209,6 +209,9 @@ export default function App() {
     setIsDraggingRightPanel,
     editorViewMode,
     setEditorViewMode,
+    isFocusMode,
+    toggleFocusMode,
+    exitFocusMode,
   } = useLayout();
 
   // Restore openTabIds from localStorage after notes load
@@ -354,6 +357,9 @@ export default function App() {
     },
     onClearSearch: () => setSearchQuery(''),
     onForceSave: () => void flushAllPendingSaves(notesForQuitRef.current),
+    onToggleFocusMode: toggleFocusMode,
+    isFocusMode,
+    onExitFocusMode: exitFocusMode,
   });
 
   if (!isLoaded) {
@@ -401,7 +407,7 @@ export default function App() {
           onDismiss={dismissReminder}
         />
       )}
-      <TopBar
+      {!isFocusMode && <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
@@ -418,7 +424,7 @@ export default function App() {
         workspaceName={workspaceName}
         fsLastSyncAt={fsLastSyncAt}
         hasFsHandle={!!fsHandle}
-      />
+      />}
       <div className="flex-1 flex overflow-hidden relative">
         {isMobile && isSidebarOpen && (
           <div
@@ -431,7 +437,7 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
           style={{
-            width: isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0'),
+            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingSidebar ? 'none' : 'width 200ms ease-in-out',
             minWidth: 0,
@@ -514,7 +520,7 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
           style={{
-            width: isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0'),
+            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out',
             minWidth: 0,
@@ -543,6 +549,7 @@ export default function App() {
                   notes={notes}
                   settings={settings}
                   activeNoteId={activeNote?.id}
+                  onUpdateNote={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
                 />
               </Suspense>
               </ErrorBoundary>
@@ -797,6 +804,15 @@ export default function App() {
           </div>
         );
       })()}
+      {isFocusMode && (
+        <button
+          onClick={exitFocusMode}
+          className="fixed top-3 right-4 z-50 text-[#2D2D2D]/40 hover:text-[#2D2D2D] text-xs font-redaction px-2 py-1 border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 bg-[#EAE8E0]/80 backdrop-blur-sm active:opacity-70 transition-opacity"
+          title="Exit focus mode (Esc)"
+        >
+          Esc
+        </button>
+      )}
       {tabLimitWarning && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-white text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)

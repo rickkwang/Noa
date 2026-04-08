@@ -1,21 +1,25 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, ExternalLink, Check, Link, Network, Search, GitBranch, Circle } from 'lucide-react';
+import { CheckSquare, ExternalLink, Check, Link, Network, Search, GitBranch, Circle, SlidersHorizontal, Plus, X } from 'lucide-react';
 import { GlobalTask, Note } from '../types';
 import { AppSettings } from '../types';
 import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { parseFrontmatter, stringifyFrontmatter, hasFrontmatter } from '../lib/frontmatter';
+
+export type RightPanelTab = 'tasks' | 'backlinks' | 'graph' | 'properties';
 
 interface RightPanelProps {
   tasks: GlobalTask[];
   onToggleTask: (task: GlobalTask) => void;
   onNavigateToNoteById: (id: string) => void;
   activeNote?: Note;
-  activeTab: 'tasks' | 'backlinks' | 'graph';
-  onTabChange: (tab: 'tasks' | 'backlinks' | 'graph') => void;
+  activeTab: RightPanelTab;
+  onTabChange: (tab: RightPanelTab) => void;
   notes: Note[];
   settings: AppSettings;
   activeNoteId?: string;
+  onUpdateNote?: (content: string) => void;
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -35,11 +39,32 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
-  activeTab, onTabChange, notes, settings, activeNoteId,
+  activeTab, onTabChange, notes, settings, activeNoteId, onUpdateNote,
 }: RightPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [dueDateFilter, setDueDateFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
   const [hideIsolated, setHideIsolated] = useState(false);
+
+  // Properties panel state
+  const [editedMeta, setEditedMeta] = useState<Record<string, string>>({});
+  const [propBody, setPropBody] = useState('');
+  const [newPropKey, setNewPropKey] = useState('');
+  const [newPropValue, setNewPropValue] = useState('');
+  const [addingProp, setAddingProp] = useState(false);
+
+  const noteHasFrontmatter = activeNote ? hasFrontmatter(activeNote.content) : false;
+
+  useEffect(() => {
+    if (activeNote && noteHasFrontmatter) {
+      const { meta, body } = parseFrontmatter(activeNote.content);
+      setEditedMeta(meta);
+      setPropBody(body);
+    } else {
+      setEditedMeta({});
+      setPropBody('');
+    }
+    setAddingProp(false);
+  }, [activeNote?.id, activeNote?.content]);
 
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed), [tasks]);
@@ -134,14 +159,111 @@ export default function RightPanel({
         </button>
         <button
           onClick={() => onTabChange('graph')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction ${activeTab === 'graph' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'graph' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
         >
           <Network size={13} className="text-[#B89B5E] shrink-0" />
           <span>Graph</span>
         </button>
+        <button
+          onClick={() => onTabChange('properties')}
+          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction ${activeTab === 'properties' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+        >
+          <SlidersHorizontal size={13} className="text-[#B89B5E] shrink-0" />
+          <span>Props</span>
+        </button>
       </div>
 
-      {activeTab === 'graph' ? (
+      {activeTab === 'properties' ? (
+        <div className="flex-1 overflow-y-auto p-3">
+          {!activeNote ? (
+            <div className="text-xs text-[#2D2D2D]/50 font-redaction text-center py-8">No note selected</div>
+          ) : !noteHasFrontmatter ? (
+            <div className="space-y-3">
+              <div className="text-xs text-[#2D2D2D]/50 font-redaction text-center py-6">
+                This note has no properties.<br />Add a frontmatter block to get started.
+              </div>
+              <button
+                onClick={() => {
+                  if (onUpdateNote && activeNote) {
+                    onUpdateNote(`---\n\n---\n${activeNote.content}`);
+                  }
+                }}
+                className="w-full border border-[#2D2D2D]/30 px-3 py-1.5 text-xs font-redaction text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:border-[#2D2D2D]/60 active:opacity-70"
+              >
+                + Add frontmatter
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(editedMeta).map(([key, value]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <div className="text-xs text-[#2D2D2D]/60 font-redaction w-24 shrink-0 truncate" title={key}>{key}</div>
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => setEditedMeta(prev => ({ ...prev, [key]: e.target.value }))}
+                    onBlur={() => {
+                      if (onUpdateNote) onUpdateNote(stringifyFrontmatter(editedMeta, propBody));
+                    }}
+                    className="flex-1 bg-[#DCD9CE]/50 border border-[#2D2D2D]/20 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0"
+                  />
+                  <button
+                    onClick={() => {
+                      const next = { ...editedMeta };
+                      delete next[key];
+                      setEditedMeta(next);
+                      if (onUpdateNote) onUpdateNote(stringifyFrontmatter(next, propBody));
+                    }}
+                    className="text-[#2D2D2D]/30 hover:text-red-500 active:opacity-70 shrink-0"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+
+              {addingProp ? (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="key"
+                    value={newPropKey}
+                    onChange={(e) => setNewPropKey(e.target.value)}
+                    className="w-24 shrink-0 bg-[#DCD9CE]/50 border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E]"
+                    autoFocus
+                  />
+                  <input
+                    type="text"
+                    placeholder="value"
+                    value={newPropValue}
+                    onChange={(e) => setNewPropValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newPropKey.trim()) {
+                        const next = { ...editedMeta, [newPropKey.trim()]: newPropValue };
+                        setEditedMeta(next);
+                        if (onUpdateNote) onUpdateNote(stringifyFrontmatter(next, propBody));
+                        setNewPropKey('');
+                        setNewPropValue('');
+                        setAddingProp(false);
+                      }
+                      if (e.key === 'Escape') { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }
+                    }}
+                    className="flex-1 bg-[#DCD9CE]/50 border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0"
+                  />
+                  <button onClick={() => { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }} className="text-[#2D2D2D]/30 hover:text-[#2D2D2D] active:opacity-70 shrink-0"><X size={12} /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingProp(true)}
+                  className="flex items-center gap-1 text-xs text-[#2D2D2D]/40 hover:text-[#2D2D2D] active:opacity-70 pt-1"
+                >
+                  <Plus size={12} />
+                  <span className="font-redaction">Add property</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'graph' ? (
         <div className="flex-1 flex flex-col overflow-hidden p-3 gap-3">
           {showGraphGuide && (
             <div className="border border-[#2D2D2D]/30 bg-[#DCD9CE] px-3 py-2 text-[11px] text-[#2D2D2D]/80 leading-relaxed">

@@ -13,4 +13,5 @@ export const STORAGE_KEYS = {
   LAST_EXPORT_AT:   'redaction-last-export-at',
   ERROR_SNAPSHOTS:  'redaction-error-snapshots',
   LAST_ACTIVE_NOTE: 'redaction-last-active-note-id',
+  NOTE_SORT_ORDER: 'app-note-sort-order',
 } as const;

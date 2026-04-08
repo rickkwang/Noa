@@ -12,6 +12,19 @@ import { buildMinimalReplaceChange } from './contentSync';
 // into the user's local undo stack.
 const remoteSyncAnnotation = Annotation.define<boolean>();
 
+// Module-level pure function — no stale closure risk
+function applyInlineFormat(view: EditorView, before: string, after: string, placeholder: string): boolean {
+  const { from, to } = view.state.selection.main;
+  const selected = view.state.doc.sliceString(from, to);
+  const text = selected || placeholder;
+  view.dispatch({
+    changes: { from, to, insert: before + text + after },
+    selection: { anchor: from + before.length, head: from + before.length + text.length },
+  });
+  view.focus();
+  return true;
+}
+
 const darkTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#E8E0D0' },
   '.cm-content': { caretColor: '#E8E0D0', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
@@ -154,6 +167,18 @@ export function useCodeMirror({
         key: 'Tab',
         run: (view) => {
           view.dispatch(view.state.replaceSelection('  '));
+          return true;
+        },
+      },
+      { key: 'Mod-b', run: (view) => applyInlineFormat(view, '**', '**', 'bold text') },
+      { key: 'Mod-i', run: (view) => applyInlineFormat(view, '*', '*', 'italic text') },
+      { key: 'Mod-e', run: (view) => applyInlineFormat(view, '`', '`', 'code') },
+      {
+        key: 'Mod-Shift-x',
+        run: (view) => {
+          const line = view.state.doc.lineAt(view.state.selection.main.from);
+          view.dispatch({ changes: { from: line.from, insert: '- [ ] ' } });
+          view.focus();
           return true;
         },
       },
