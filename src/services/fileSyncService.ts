@@ -52,13 +52,13 @@ export async function mergeScannedNotes(
   handle: FileSystemDirectoryHandle,
   notes: Note[],
   folders: Folder[],
-): Promise<Note[]> {
-  const scanned = await scanDirectory(handle, folders);
+): Promise<{ notes: Note[]; newFolders: Folder[] }> {
+  const { notes: scanned, newFolders } = await scanDirectory(handle, folders);
   const merged = [...notes];
   for (const sn of scanned) {
     if (!merged.find((n) => n.id === sn.id)) merged.push(sn);
   }
-  return merged;
+  return { notes: merged, newFolders };
 }
 
 export async function syncNoteUpdate(

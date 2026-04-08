@@ -366,8 +366,9 @@ export default function App() {
 
   if (!isLoaded) {
     return (
-      <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] overflow-hidden">
-        <div className="h-10 border-b border-[#2D2D2D]/20 bg-[#DCD9CE] shrink-0 px-3 flex items-center">
+      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #EAE8E0)' }}>
+        <ThemeInjector settings={settings} />
+        <div className="h-10 border-b border-[#2D2D2D]/20 shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)' }}>
           <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
         </div>
         <div className="flex flex-1 overflow-hidden">

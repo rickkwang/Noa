@@ -288,9 +288,12 @@ export async function deleteFolderTree(
 export async function scanDirectory(
   rootHandle: FileSystemDirectoryHandle,
   folders: Folder[]
-): Promise<Note[]> {
+): Promise<{ notes: Note[]; newFolders: Folder[] }> {
   const notes: Note[] = [];
+  const newFolders: Folder[] = [];
   const attachmentsByNoteId = new Map<string, Attachment[]>();
+  // Combined folder lookup: existing + newly created during this scan
+  const allFolders = [...folders];
   const isFileHandle = (handle: FileSystemHandle): handle is FileSystemFileHandle =>
     handle.kind === 'file';
   const isDirectoryHandle = (handle: FileSystemHandle): handle is FileSystemDirectoryHandle =>
@@ -349,9 +352,15 @@ export async function scanDirectory(
             }
             if (noteAttachments.length > 0) attachmentsByNoteId.set(noteId, noteAttachments);
           }
-        } else {
-          const matchedFolder = folders.find((folder) => folderPathKey(folder.name) === currentPathKey);
-          await readDir(handle, matchedFolder?.id, currentPath);
+        } else if (name !== '.obsidian' && name !== '.DS_Store') {
+          let matchedFolder = allFolders.find((folder) => folderPathKey(folder.name) === currentPathKey);
+          if (!matchedFolder) {
+            // Directory exists in vault but not in Noa — create it on the fly
+            matchedFolder = { id: crypto.randomUUID(), name: currentPath.join('/'), source: 'obsidian-import' as const };
+            newFolders.push(matchedFolder);
+            allFolders.push(matchedFolder);
+          }
+          await readDir(handle, matchedFolder.id, currentPath);
         }
       }
     }
@@ -364,5 +373,5 @@ export async function scanDirectory(
       note.attachments = noteAttachments;
     }
   });
-  return notes;
+  return { notes, newFolders };
 }

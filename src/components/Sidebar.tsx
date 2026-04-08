@@ -245,12 +245,12 @@ const FileNode = ({ name, isFolder, children, defaultOpen = false, isActive, isS
       )}
       {isFolder && children && (
         <div
-          className={`border-l border-[#2D2D2D]/15 overflow-hidden transition-[max-height,opacity] duration-150 ease-in-out ${
-            isOpen ? 'max-h-[999px] opacity-100' : 'max-h-0 opacity-0'
-          }`}
-          style={{ marginLeft: `18px` }}
+          className="transition-[grid-template-rows] duration-200 ease-in-out"
+          style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', marginLeft: '18px' }}
         >
-          {children}
+          <div className="overflow-hidden border-l border-[#2D2D2D]/15">
+            {children}
+          </div>
         </div>
       )}
     </div>

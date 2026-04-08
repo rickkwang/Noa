@@ -202,9 +202,9 @@ export function useFileSync({
         setFsHandle(handle);
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const merged = await mergeScannedNotes(handle, currentNotes, currentFolders);
-        if (merged.length > currentNotes.length) {
-          await onImportData(merged, currentFolders, workspaceNameRef.current);
+        const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+        if (merged.length > currentNotes.length || newFolders.length > 0) {
+          await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
         }
         recordSuccess();
       } catch (error) {
@@ -228,10 +228,10 @@ export function useFileSync({
       const currentFolders = foldersRef.current;
       const managedNotes = currentNotes.filter(isObsidianImportedNote);
       const handle = await connectDirectoryAndSeed(managedNotes, currentFolders);
-      const merged = await mergeScannedNotes(handle, currentNotes, currentFolders);
+      const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
       setFsHandle(handle);
-      if (merged.length > currentNotes.length) {
-        await onImportData(merged, currentFolders, workspaceNameRef.current);
+      if (merged.length > currentNotes.length || newFolders.length > 0) {
+        await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
       }
       recordSuccess();
     } catch (error) {

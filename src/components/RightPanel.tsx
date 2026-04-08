@@ -147,30 +147,36 @@ export default function RightPanel({
       <div className="h-8 border-b border-[#2D2D2D] flex items-center bg-[#DCD9CE] shrink-0 overflow-hidden">
         <button
           onClick={() => onTabChange('tasks')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'tasks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+          title="Tasks"
+          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction relative ${activeTab === 'tasks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
         >
-          <CheckSquare size={13} className="text-[#B89B5E] shrink-0" />
-          <span>Tasks {activeTasks.length > 0 && `(${activeTasks.length})`}</span>
+          <CheckSquare size={12} className="text-[#B89B5E] shrink-0" />
+          <span>Tasks</span>
+          {activeTasks.length > 0 && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{activeTasks.length}</span>}
         </button>
         <button
           onClick={() => onTabChange('backlinks')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'backlinks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+          title="Backlinks"
+          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction relative ${activeTab === 'backlinks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
         >
-          <Link size={13} className="text-[#B89B5E] shrink-0" />
-          <span>Backlinks {backlinks.length > 0 && `(${backlinks.length})`}</span>
+          <Link size={12} className="text-[#B89B5E] shrink-0" />
+          <span>Links</span>
+          {backlinks.length > 0 && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{backlinks.length}</span>}
         </button>
         <button
           onClick={() => onTabChange('graph')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'graph' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+          title="Graph"
+          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'graph' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
         >
-          <Network size={13} className="text-[#B89B5E] shrink-0" />
+          <Network size={12} className="text-[#B89B5E] shrink-0" />
           <span>Graph</span>
         </button>
         <button
           onClick={() => onTabChange('properties')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction ${activeTab === 'properties' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
+          title="Properties"
+          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction ${activeTab === 'properties' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}
         >
-          <SlidersHorizontal size={13} className="text-[#B89B5E] shrink-0" />
+          <SlidersHorizontal size={12} className="text-[#B89B5E] shrink-0" />
           <span>Props</span>
         </button>
       </div>
