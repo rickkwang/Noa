@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
 import { useResizeDrag } from '../hooks/useResizeDrag';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X, SquarePen, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
@@ -786,6 +786,14 @@ export default function Sidebar({
         >
           <Calendar size={14} />
         </button>
+        <button
+          onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
+          className="p-1 transition-colors active:opacity-70 ml-auto"
+          style={{ color: noteSortOrder !== 'updatedAt' ? '#B89B5E' : undefined }}
+          title={`Sort: ${noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'} (click to cycle)`}
+        >
+          <ArrowUpDown size={14} />
+        </button>
       </div>
       
       {/* Bulk selection action bar */}
@@ -903,19 +911,6 @@ export default function Sidebar({
                   )}
                 </div>
               )}
-              <div className="flex items-center px-3 py-1 gap-1 border-b border-[#2D2D2D]/10">
-                <span className="text-[10px] text-[#2D2D2D]/40 uppercase tracking-wider mr-1">Sort</span>
-                {(['updatedAt', 'createdAt', 'name'] as const).map((order) => (
-                  <button
-                    key={order}
-                    onClick={() => setNoteSortOrder(order)}
-                    className="text-[10px] font-redaction px-1.5 py-0.5 active:opacity-70"
-                    style={{ color: noteSortOrder === order ? '#B89B5E' : '#2D2D2D80', fontWeight: noteSortOrder === order ? 'bold' : 'normal' }}
-                  >
-                    {order === 'updatedAt' ? 'Modified' : order === 'createdAt' ? 'Created' : 'Name'}
-                  </button>
-                ))}
-              </div>
               <div data-testid="sidebar-file-tree">
                 <FileNode
                   name="workspace"
