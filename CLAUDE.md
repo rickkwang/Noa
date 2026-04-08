@@ -5,161 +5,93 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm install             # Install dependencies
-npm run dev             # Start dev server at http://localhost:3000
-npm run build           # Production build
-npm run lint            # Type check (tsc --noEmit)
-npm run build:budget    # Production build + JS bundle budget guard
-npm run check:structure # Architecture boundary guard (App-layer import checks)
-npm run test:unit       # Vitest unit tests (dataIntegrity, taskParser, search, dataTransfer)
-npm run test:smoke      # Playwright smoke tests
+npm run dev             # Dev server at http://localhost:3000
+npm run lint            # Type check only (tsc --noEmit) — run this before every commit
+npm run test:unit       # Vitest unit tests (all 10 test files, ~91 tests)
+npm run test:unit:watch # Watch mode
+npm run build:budget    # Production build + JS bundle size guard (entry <400 KB, chunks <1.3 MB)
+npm run check:structure # Architecture boundary guard — prevents App layer importing FS modules
 npm run clean           # Remove dist/
+
+# Run a single test file
+npx vitest run tests/unit/search.test.ts
+
+# Desktop (Electron)
+npm run desktop:dev     # Dev with Electron
+BUILD_TARGET=desktop npx electron-builder --mac dmg zip --arm64  # Release build (set "publish": null in package.json first)
 ```
+
+CI gates: `lint` → `check:structure` → `build:budget` → `test:unit`
 
 ## Architecture
 
-**Noa** is a fully client-side Markdown note-taking app (React 19 + Vite + Tailwind CSS v4). All data is stored in the browser — no backend.
+**Noa** is a fully client-side Markdown note-taking app (React 19 + Vite + Tailwind CSS v4). No backend — all data lives in IndexedDB (via localforage) and optionally synced to the local filesystem via the File System Access API.
 
-### State & Data Flow
+### Layer Rules (enforced by `check:structure`)
 
-- `App.tsx` is an orchestration layer (UI composition only) and composes these hooks:
-  - `useNotes` (`src/hooks/useNotes.ts`) — note/folder/task domain state + persistence bridge
-  - `useSettings` (`src/hooks/useSettings.ts`) — app settings persisted to `localStorage`
-  - `useLayout` (`src/hooks/useLayout.ts`) — panel width/open state, mobile state, active right tab
-  - `useFileSync` (`src/hooks/useFileSync.ts`) — File System sync state machine + connect/disconnect/retry
-  - `useGlobalShortcuts` (`src/hooks/useGlobalShortcuts.ts`) — global keyboard behavior (`Cmd/Ctrl+N/F/S`, Escape)
-- `src/lib/storage.ts` wraps **localforage** (IndexedDB) for notes/folders/workspace.
-- `src/services/fileSyncService.ts` centralizes low-level FS sync primitives and error classification.
+```
+App.tsx (orchestration only)
+  └── Hooks (domain logic)
+        ├── useNotes       — note/folder CRUD, auto-save (500 ms debounce), link extraction
+        ├── useFileSync    — FS sync state machine: idle | syncing | ready | error
+        ├── useDataTransfer — import/export/backup workflows
+        ├── useSettings    — AppSettings persisted to localStorage
+        └── useLayout      — panel widths, open state, focus mode, tab state
+  └── Services (low-level FS only)
+        └── fileSyncService — all File System Access API primitives
+```
 
-### Sync State Machine
+`App.tsx` must not import from `src/lib/storage.ts` or `src/services/fileSyncService.ts` directly.
 
-- Type: `SyncStatus = 'idle' | 'syncing' | 'ready' | 'error'` (`src/types.ts`)
-- Owned by `useFileSync`; UI consumes status only.
-- Recovery contract: when status is `error`, retry action is always available and idempotent (`retryFullSync`).
+### Data Flow
 
-### Data Transfer (Import/Export)
+- `src/lib/storage.ts` — localforage (IndexedDB) wrapper; four stores: notes, folders, workspace, attachments
+- `src/lib/noteUtils.ts` — `extractLinks` / `extractTags` / `computeLinkRefs` — shared by `useNotes` and `useDataTransfer`; do not duplicate inline
+- `src/core/search.ts` — `SearchEngine` (Fuse.js); supports `tag:`, `in:folder`, `before:`, `after:`, `"exact phrase"` operators
+- `src/lib/taskParser.ts` — parses `- [ ]` / `- [x]` with priority emoji and due date from note content
+- `src/lib/frontmatter.ts` — `parseFrontmatter` / `stringifyFrontmatter` for YAML key:value blocks
 
-- `useDataTransfer` (`src/hooks/useDataTransfer.ts`) owns import/export/connect/disconnect workflows.
-- `exportJsonSnapshot(notes, folders, workspaceName)` is also exported as a **pure function** from the same file; `App.tsx` calls it directly for quick backup (no hook instantiation needed).
-- `markExported()` in `src/lib/exportTimestamp.ts` dispatches a `redaction-exported` custom event; `useBackupReminder` listens to it via `useState` + event handler (no per-render localStorage reads).
-- `DataSettings.tsx` is a thin shell for:
-  - feedback message bus
-  - inline confirm dialog state
-  - wiring transfer actions to section components
-- DataSettings split sections:
-  - `WorkspaceSection.tsx`
-  - `BackupSection.tsx`
-  - `ImportSection.tsx`
-- Integrity checks are centralized in `src/lib/dataIntegrity.ts` and enforced before import/export actions.
+### Editor Stack
 
-### Core Types (`src/types.ts`)
+- `Editor.tsx` — thin orchestrator; all logic delegated to `src/components/editor/`
+- `useCodeMirror.ts` — CodeMirror 6 instance; recreated only on `note.id` or `isDark` change; external content updates use `buildMinimalReplaceChange` to preserve undo history
+- `PreviewPane.tsx` — react-markdown with remark-gfm, remark-math, rehype-highlight, rehype-katex; custom `blockquote` component handles `[!NOTE]`/`[!WARNING]`/`[!TIP]`/`[!IMPORTANT]`/`[!CAUTION]` callouts
+- `SlashCommandDropdown.tsx` — `/` trigger; 12 built-in commands including table, divider, callout
 
-| Type | Purpose |
-|------|---------|
-| `Note` | id, title, content (Markdown), folder, tags, links |
-| `Folder` | id, name |
-| `GlobalTask` | parsed `[ ]`/`[x]` checkbox from note content |
-| `AppSettings` | editor, appearance, dailyNotes, search, corePlugins |
-| `SyncStatus` | `idle` / `syncing` / `ready` / `error` |
+### State Persistence
 
-### Key Components
+| What | Where |
+|------|-------|
+| Notes, folders, attachments | IndexedDB (`redaction-diary-*-db`) |
+| Settings | `localStorage` key `app-settings` |
+| Open tabs | `localStorage` key `redaction-diary-open-tabs` |
+| Panel widths, sidebar/right state | `localStorage` (see `STORAGE_KEYS` in `src/constants/storageKeys.ts`) |
+| Note sort order | `localStorage` key `app-note-sort-order` |
 
-- `Editor.tsx` — thin orchestrator; delegates to `src/components/editor/` sub-components:
-  - `useCodeMirror.ts` — CodeMirror 6 instance, dark/light themes, mention trigger, `insertFormatting` / `jumpToLine` / `insertMention`
-  - `EditorHeader.tsx` — tab bar, title input, view-mode switcher, export buttons
-  - `EditorToolbar.tsx` — bold/italic/list/code formatting shortcuts, TOC toggle
-  - `PreviewPane.tsx` — react-markdown preview with wiki-link rewriting
-  - `TocPanel.tsx` — heading outline with jump-to-line
-  - `MentionDropdown.tsx` — `[[` autocomplete dropdown
-- `Sidebar.tsx` — folder/note tree, search, recent notes, tag explorer; inline delete confirmation (no native dialogs)
-- `RightPanel.tsx` — tabs for Tasks / Backlinks / Graph; graph search uses deferred value to reduce render pressure
-- `GraphView.tsx` — force-directed knowledge graph with topology-only memoization key, degree-based node sizing, and auto `zoomToFit`
-- `ThemeInjector.tsx` — injects CSS variables from settings
+### Styling Constraints
 
-### Multi-Tab State
+- Tailwind CSS v4 — no `tailwind.config.js`; design tokens: bg `#EAE8E0`, accent `#B89B5E`, text `#2D2D2D`
+- `ThemeInjector` injects CSS with `!important` for `border-[#2D2D2D]` and similar classes — **bypass with inline `style={}` or pseudo-elements** whenever border color or background must differ
+- No `rounded-full`; all interactive elements need `active:opacity-70`
+- No `window.alert` / `confirm` / `prompt` — use inline UI patterns
+- No `rehypeRaw` in PreviewPane (security constraint)
 
-- `openTabIds: string[]` lives in `App.tsx`; persisted to `localStorage` key `redaction-diary-open-tabs` and restored after `isLoaded`.
-- `openTabs` (id + title) is derived with `useMemo` and passed to `Editor` as `tabs` prop.
-- Tab actions: `handleTabChange` (switch), `handleTabClose` (close + auto-focus adjacent), `handleNewTab` (create note).
-- `handleDeleteNote` in `App.tsx` removes the tab and computes fallback before delegating to `_handleDeleteNote`; `useNotes.handleDeleteNote` does **not** set `activeNoteId` (App layer owns tab-aware fallback).
-- `Editor` accepts optional `tabs`, `onTabChange`, `onTabClose`, `onNewTab` props; falls back to single-tab legacy mode when `tabs` is empty/undefined.
-- Active tab uses `rounded-t-lg border border-b-0` + `marginBottom: '-1px'` to fuse with the bottom border line.
-- Tab bar header is `h-8` to align with Sidebar and RightPanel headers.
+### Key Patterns
 
-### Styling Conventions
+**Avoiding stale closures in useCallback/useEffect:**
+Use `useRef` to hold the latest value rather than adding it to the dependency array (pattern used in `useNotes` for `handleDeleteNote`/`handleDeleteFolder`, and module-level pure functions in `useCodeMirror.ts` for keymaps).
 
-- Tailwind CSS v4 (via `@tailwindcss/vite`, no `tailwind.config.js`)
-- Design tokens: background `#EAE8E0`, accent `#B89B5E`, text `#2D2D2D`
-- Font: Redaction 50 default (`font-redaction`), Work Sans secondary
-- No `rounded-full` anywhere — all corners are square or `rounded-t-lg` (tabs only), consistent with retro aesthetic.
-- All interactive buttons must have `active:opacity-70` for press feedback.
-- No `window.alert`, `window.confirm`, `window.prompt` — use inline UI patterns.
+**Tab fusion (active tab bottom border):**
+Container uses `after:` pseudo-element for the bottom line; active tab uses `z-[1]` + `background` to cover it. `overflow-x: auto` collapses `overflow-y: visible` to `auto` — avoid `overflow-x: auto` on the tab strip container.
 
-### Wiki Links
-
-Notes use `[[Note Title]]` syntax.
-
-- Link graph extraction parses `[[...]]` in note content.
-- Preview rewrites `[[X]]` into a safe internal markdown link (`note-internal://...`) and handles navigation in custom `a` renderer.
-
-### Security Constraints
-
-- Do **not** use `rehypeRaw` for note preview rendering.
-- Export HTML is safe-by-default (escape + allowlisted URL protocols).
-
-### Storage Keys
-
-- IndexedDB names:
-  - `redaction-diary-notes-db`
-  - `redaction-diary-folders-db`
-  - `redaction-diary-workspace-db`
-  - `redaction-diary-fs-db`
-- localStorage keys:
-  - `app-sidebar-open`, `app-right-tab`, `app-editor-view-mode`
-  - `redaction-storage-notice-seen`
-  - `redaction-diary-recent-notes`
-  - `redaction-diary-open-tabs` — persisted tab IDs, restored on load
-  - `redaction-diary-daily-folder-id` — Daily Notes folder ID, survives folder rename
-
-### Layout Defaults
-
-- Left sidebar min width: **280px** (max 480px)
-- Right panel min width: **320px** (max 480px)
-- Resize logic via `useResizeDrag`; widths never drop below min constraints
-
-### Error Handling Contract
-
-- Write ops (`saveNote` etc.) throw — callers must `.catch()` and set `saveError`; `App.tsx` renders dismissible amber banner.
-- `handleCreateNote` / `handleImportNote` / `handleNavigateToNote`: optimistic UI + `saveNote().catch(setSaveError)`.
-- `handleDeleteFolder`: optimistic UI + `Promise.all(deleteNote[]).catch(setSaveError)`.
-- Read ops return null on failure — never crash the app.
-- `handleImportData` is `async`; `onImportData` prop is `Promise<void>` throughout.
-
-### Architecture Guardrails
-
-- `App.tsx` must not import low-level FS modules directly.
-- Use hook/service boundaries:
-  - App layer orchestrates
-  - Hooks coordinate domain behavior
-  - Service layer performs low-level FS operations
-- `useFileSync`: `notesRef`/`foldersRef`/`workspaceNameRef` keep latest values; `retry` and bootstrap effect use refs to avoid stale closures.
-- `src/lib/noteUtils.ts` owns `extractLinks` / `extractTags` — shared by `useNotes` and `useDataTransfer`. Do not duplicate inline.
-- CI checks:
-  - `lint`
-  - `check:structure`
-  - `build:budget`
-  - `test:unit`
-
-See `docs/architecture-boundaries.md` for boundary details.
+**Multi-tab state:**
+`openTabIds: string[]` lives in `App.tsx`, derived `openTabs` (id+title) via `useMemo`. `handleDeleteNote` in `App.tsx` removes the tab and computes fallback before delegating to `useNotes._handleDeleteNote` — `useNotes` does not own tab-aware fallback.
 
 ### Release
 
-- Build dmg: set `"publish": null` in `package.json` temporarily, run `BUILD_TARGET=desktop npx electron-builder --mac dmg zip --arm64`, then restore the publish config.
-- Upload: `gh release upload <tag> release/Noa-<version>-arm64.dmg release/Noa-<version>-arm64-mac.zip`
-
-### In-App Update
-
-- Checks `api.github.com/repos/rickkwang/Noa/releases` 10s after launch (prod only); compares `app.getVersion()` vs latest non-draft tag.
-- IPC: `app-updater:check` / `get-status` / `quit-and-install`. "Install" = `shell.openExternal(downloadUrl)`, not silent.
-- `useDesktopUpdater` subscribes to push events; UI in `AppUpdateSettings.tsx`.
-- **GitHub repo must be public** — private repo breaks unauthenticated API access.
+```bash
+# Set "publish": null in package.json, then:
+BUILD_TARGET=desktop npx electron-builder --mac dmg zip --arm64
+gh release upload <tag> release/Noa-<version>-arm64.dmg release/Noa-<version>-arm64-mac.zip
+# Restore publish config after
+```
