@@ -250,7 +250,7 @@ export function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm ${
             isDark
-              ? 'text-[#FAF9F5] prose-headings:text-[#FAF9F5] prose-p:text-[#FAF9F5] prose-li:text-[#FAF9F5] prose-strong:text-[#FAF9F5] prose-em:text-[#FAF9F5] prose-blockquote:text-[#FAF9F5] prose-ol:text-[#FAF9F5] prose-ul:text-[#FAF9F5] prose-a:text-[#D97757] prose-pre:bg-[#2A2A2D] prose-pre:text-[#FAF9F5] prose-pre:border prose-pre:border-[#3D3D40] prose-code:text-[#D97757] prose-code:bg-[#3D3D40]/50 prose-hr:border-[#3D3D40] prose-th:text-[#FAF9F5] prose-td:text-[#FAF9F5]'
+              ? 'text-[#FAF9F5] prose-headings:text-[#FAF9F5] prose-p:text-[#FAF9F5] prose-li:text-[#FAF9F5] prose-strong:text-[#FAF9F5] prose-em:text-[#FAF9F5] prose-blockquote:text-[#FAF9F5] prose-ol:text-[#FAF9F5] prose-ul:text-[#FAF9F5] prose-a:text-[#D97757] prose-pre:bg-[#2A2A2D] prose-pre:text-[#FAF9F5] prose-code:text-[#D97757] prose-code:bg-[#3D3D40]/50 prose-hr:border-[#3D3D40] prose-th:text-[#FAF9F5] prose-td:text-[#FAF9F5]'
               : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}

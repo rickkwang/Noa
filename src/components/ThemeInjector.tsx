@@ -95,12 +95,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     .hljs {
       background: #2A2A2D !important;
       color: #FAF9F5 !important;
-      border: 1px solid #3D3D40 !important;
+      border: none !important;
       border-radius: 4px !important;
     }
     pre:has(.hljs) {
       background: #2A2A2D !important;
-      border: 1px solid #3D3D40 !important;
+      border: none !important;
       border-radius: 4px !important;
     }
     /* token colours (subset — keyword, string, comment, number, built-in) */
