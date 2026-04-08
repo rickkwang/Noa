@@ -308,13 +308,14 @@ Export regularly: use Settings → Data → Export Backup.`,
         }
         return n;
       });
-      const withRefs = syncLinkRefs(updated, prev);
-      // Only save notes that were actually modified: the renamed note itself,
-      // and notes whose content was updated to replace [[oldTitle]] links.
-      const modifiedIds = new Set([id, ...updated.filter(n => n.id !== id && n.updatedAt !== prev.find(p => p.id === n.id)?.updatedAt).map(n => n.id)]);
-      withRefs.forEach(n => {
-        if (modifiedIds.has(n.id)) debounceSave(n);
+      // Save notes whose content changed (renamed note + notes with replaced [[links]]).
+      // syncLinkRefs will additionally save any notes whose linkRefs changed.
+      const prevById = new Map(prev.map(n => [n.id, n]));
+      updated.forEach(n => {
+        const p = prevById.get(n.id);
+        if (!p || n.updatedAt !== p.updatedAt) debounceSave(n);
       });
+      const withRefs = syncLinkRefs(updated, prev);
       return withRefs;
     });
   }, [debounceSave, syncLinkRefs]);

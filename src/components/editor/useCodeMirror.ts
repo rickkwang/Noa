@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { Annotation, EditorState } from '@codemirror/state';
+import { Annotation, Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, ViewUpdate, placeholder as cmPlaceholder } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap } from '@codemirror/commands';
@@ -106,6 +106,8 @@ export function useCodeMirror({
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
+  const widthCompartmentRef = useRef(new Compartment());
+  const maxWidthRef = useRef(maxWidth);
 
   // Keep callback refs stable so the CodeMirror instance never captures stale closures
   const onUpdateRef = useRef(onUpdate);
@@ -184,8 +186,8 @@ export function useCodeMirror({
       },
     ]);
 
-    const contentWidthTheme = EditorView.theme({
-      '.cm-content': { maxWidth: `${maxWidth}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
+    const buildWidthTheme = (w: number) => EditorView.theme({
+      '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
     });
 
     const extensions = [
@@ -197,7 +199,7 @@ export function useCodeMirror({
       cmPlaceholder('Start typing...'),
       EditorView.lineWrapping,
       isDark ? darkTheme : lightTheme,
-      contentWidthTheme,
+      widthCompartmentRef.current.of(buildWidthTheme(maxWidthRef.current)),
     ];
 
     const docContent = note?.content ?? '';
@@ -217,7 +219,18 @@ export function useCodeMirror({
       view.destroy();
       editorViewRef.current = null;
     };
-  }, [note?.id, isDark, maxWidth]);
+  }, [note?.id, isDark]);
+
+  // Dynamically update content max-width without rebuilding the editor
+  useEffect(() => {
+    maxWidthRef.current = maxWidth;
+    const view = editorViewRef.current;
+    if (!view) return;
+    const buildWidthTheme = (w: number) => EditorView.theme({
+      '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
+    });
+    view.dispatch({ effects: widthCompartmentRef.current.reconfigure(buildWidthTheme(maxWidth)) });
+  }, [maxWidth]);
 
   // Sync external content changes without destroying undo history
   useEffect(() => {

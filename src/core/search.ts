@@ -32,12 +32,15 @@ export const parseQuery = (queryString: string, caseSensitive: boolean = false):
   });
 
   // Extract before:/after: operators
+  // Parse as local time (not UTC) so the date boundary matches what the user typed.
   currentQuery = currentQuery.replace(/\bbefore:(\d{4}-\d{2}-\d{2})\b/gi, (_, d) => {
-    before = new Date(d + 'T23:59:59');
+    const [y, mo, day] = d.split('-').map(Number);
+    before = new Date(y, mo - 1, day, 23, 59, 59, 999);
     return '';
   });
   currentQuery = currentQuery.replace(/\bafter:(\d{4}-\d{2}-\d{2})\b/gi, (_, d) => {
-    after = new Date(d + 'T00:00:00');
+    const [y, mo, day] = d.split('-').map(Number);
+    after = new Date(y, mo - 1, day, 0, 0, 0, 0);
     return '';
   });
 

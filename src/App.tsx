@@ -235,15 +235,17 @@ export default function App() {
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
+    let warningTimer: ReturnType<typeof setTimeout> | null = null;
     setOpenTabIds((prev) => {
       if (prev.includes(activeNoteId)) return prev;
       if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
       const dropIndex = prev.findIndex((id) => id !== activeNoteId);
       if (dropIndex === -1) return [activeNoteId];
       setTabLimitWarning(true);
-      setTimeout(() => setTabLimitWarning(false), 3000);
+      warningTimer = setTimeout(() => setTabLimitWarning(false), 3000);
       return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
     });
+    return () => { if (warningTimer) clearTimeout(warningTimer); };
   }, [activeNoteId]);
 
   // When a note is created with waitingForTemplateRef set, pop the template picker
@@ -278,7 +280,7 @@ export default function App() {
   );
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
-  const activeNote = activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined;
+  const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
   const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
 
   const navigateById = useCallback((id: string) => {

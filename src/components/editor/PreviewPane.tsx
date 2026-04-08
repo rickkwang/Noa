@@ -171,6 +171,71 @@ export function PreviewPane({
     });
   }, [note.content, note.attachments, titleToIds]);
 
+  const markdownComponents = useMemo(() => {
+    const components: any = {
+      a: ({ href, children, ...props }: any) => {
+        if (href?.startsWith('note-internal://id/')) {
+          const noteId = href.replace('note-internal://id/', '');
+          return (
+            <span
+              className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
+              onClick={() => onNavigateToNoteById(noteId)}
+            >
+              {children}
+            </span>
+          );
+        }
+        if (href?.startsWith('note-internal://title/')) {
+          const encoded = href.replace('note-internal://title/', '');
+          const noteTitle = decodeURIComponent(encoded);
+          return (
+            <span
+              className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
+              onClick={() => onNavigateToNoteLegacy(noteTitle)}
+            >
+              {children}
+            </span>
+          );
+        }
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        );
+      },
+      img: ({ src, alt }: any) => {
+        if (!src || src === 'note-attachment://missing') {
+          return (
+            <span className="text-[#2D2D2D]/40 text-xs italic border border-dashed border-[#2D2D2D]/20 px-2 py-1">
+              [{alt ?? 'Attachment not found'}]
+            </span>
+          );
+        }
+        if (src?.startsWith('note-attachment://id/')) {
+          const attachmentId = decodeURIComponent(src.replace('note-attachment://id/', ''));
+          const url = objectUrls?.get(attachmentId) ?? '';
+          if (!url) {
+            return <span className="text-[#2D2D2D]/40 text-xs italic">[Loading attachment...]</span>;
+          }
+          return <img src={url} alt={alt ?? ''} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
+        }
+        return (
+          <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            className="max-w-full"
+            style={{ display: 'block' }}
+          />
+        );
+      },
+      blockquote: ({ children }: any) => (
+        <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
+      ),
+    };
+    return components;
+  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy]);
+
   const backlinks: BacklinkItem[] = useMemo(
     () => allNotes.filter((n) =>
       n.id !== note.id &&
@@ -190,71 +255,6 @@ export function PreviewPane({
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
-          {(() => {
-            const markdownComponents: any = {
-              a: ({ href, children, ...props }: any) => {
-                if (href?.startsWith('note-internal://id/')) {
-                  const noteId = href.replace('note-internal://id/', '');
-                  return (
-                    <span
-                      className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
-                      onClick={() => onNavigateToNoteById(noteId)}
-                    >
-                      {children}
-                    </span>
-                  );
-                }
-                if (href?.startsWith('note-internal://title/')) {
-                  const encoded = href.replace('note-internal://title/', '');
-                  const noteTitle = decodeURIComponent(encoded);
-                  return (
-                    <span
-                      className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
-                      onClick={() => onNavigateToNoteLegacy(noteTitle)}
-                    >
-                      {children}
-                    </span>
-                  );
-                }
-                return (
-                  <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
-                    {children}
-                  </a>
-                );
-              },
-              img: ({ src, alt }: any) => {
-                if (!src || src === 'note-attachment://missing') {
-                  return (
-                    <span className="text-[#2D2D2D]/40 text-xs italic border border-dashed border-[#2D2D2D]/20 px-2 py-1">
-                      [{alt ?? 'Attachment not found'}]
-                    </span>
-                  );
-                }
-                if (src?.startsWith('note-attachment://id/')) {
-                  const attachmentId = decodeURIComponent(src.replace('note-attachment://id/', ''));
-                  const url = objectUrls?.get(attachmentId) ?? '';
-                  if (!url) {
-                    return <span className="text-[#2D2D2D]/40 text-xs italic">[Loading attachment...]</span>;
-                  }
-                  return <img src={url} alt={alt ?? ''} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
-                }
-                return (
-                  <img
-                    src={src}
-                    alt={alt}
-                    loading="lazy"
-                    className="max-w-full"
-                    style={{ display: 'block' }}
-                  />
-                );
-              },
-            };
-
-            markdownComponents.blockquote = ({ children }: any) => (
-              <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
-            );
-
-            return (
           <Markdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeHighlight, rehypeKatex]}
@@ -262,8 +262,6 @@ export function PreviewPane({
           >
             {previewMarkdown}
           </Markdown>
-            );
-          })()}
         </div>
       </div>
 
