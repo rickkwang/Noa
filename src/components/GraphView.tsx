@@ -100,7 +100,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     stableTopologyRef.current = { key: topologyKey, notes: topologyNotes };
   }
 
-  const bgColor   = isDark ? '#1C1A17' : '#EAE8E0';
+  const bgColor   = isDark ? '#1E1E1C' : '#EAE8E0';
   const linkColor = isDark ? '#8A8070' : '#9A9080';
   const textColor = isDark ? '#E8E0D0' : '#2D2D2D';
 

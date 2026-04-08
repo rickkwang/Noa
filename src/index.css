@@ -89,7 +89,7 @@ body {
 [data-theme="dark"] .border-\[\#2D2D2D\]\/20  { border-color: rgba(240,237,230,0.15) !important; }
 [data-theme="dark"] .border-\[\#2D2D2D\]\/30  { border-color: rgba(240,237,230,0.22) !important; }
 [data-theme="dark"] .border-\[\#2D2D2D\]\/40  { border-color: rgba(240,237,230,0.30) !important; }
-[data-theme="dark"] .border-\[\#2D2D2D\]\/90  { border-color: rgba(240,237,230,0.55) !important; }
+[data-theme="dark"] .border-\[\#2D2D2D\]\/90  { border-color: rgba(240,237,230,0.12) !important; }
 [data-theme="dark"] .border-\[\#B89B5E\]       { border-color: #D97757 !important; }
 [data-theme="dark"] .hover\:border-\[\#2D2D2D\]:hover { border-color: #3A3A37 !important; }
 [data-theme="dark"] .hover\:border-\[\#B89B5E\]:hover { border-color: #D97757 !important; }
