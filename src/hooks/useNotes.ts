@@ -206,7 +206,7 @@ Export regularly: use Settings → Data → Export Backup.`,
           const dailyFolderId = crypto.randomUUID();
           const dateFormat = 'YYYY-MM-DD';
           const todayStr = formatDate(dateFormat);
-          const dailyTemplate = builtinTemplates.find(t => t.id === 'daily')!;
+          const dailyTemplate = builtinTemplates.find(t => t.id === 'daily') ?? builtinTemplates[0];
           const dailyNote: Note = {
             id: crypto.randomUUID(),
             title: todayStr,
@@ -336,7 +336,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       saveRecentNoteIds(next);
       return next;
     });
-  }, [LAST_ACTIVE_NOTE_KEY]);
+  }, []); // addRecentNoteId / saveRecentNoteIds are module-level pure functions, not reactive
 
   const handleCreateNote = useCallback((folderId: string, initialContent: string = '') => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
@@ -389,7 +389,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [folders, syncLinkRefs]);
 
-  const handleImportNote = useCallback((title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
+  const handleImportNote = useCallback(async (title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
     if (targetFolder && (targetFolder.source ?? 'noa') !== 'noa') {
       setSaveError('Cannot import files directly into imported vault area.');
@@ -409,14 +409,18 @@ Export regularly: use Settings → Data → Export Backup.`,
     };
 
     if (!attachmentFile) {
+      let created: Note = newNote;
       setNotes(prev => {
         const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
-        const created = next.find((n) => n.id === newNote.id) ?? newNote;
-        void storage.saveNote(created).catch(() => {
-          setSaveError('Failed to save note. Storage may be full.');
-        });
+        created = next.find((n) => n.id === newNote.id) ?? newNote;
         return next;
       });
+      try {
+        await storage.saveNote(created);
+      } catch {
+        setSaveError('Failed to save note. Storage may be full.');
+        return;
+      }
       setActiveNoteIdWithRecent(newNote.id);
       return;
     }
@@ -438,30 +442,15 @@ Export regularly: use Settings → Data → Export Backup.`,
         content: content || (mimeType.startsWith('image/') ? `![[attachments/${newNote.id}/${attachmentId}-${attachmentFile.name}]]` : `Attached file: ${attachmentFile.name}`),
         attachments: [attachment],
       };
-      let blobSaved = false;
       try {
+        // Complete all storage ops before updating state — prevents note appearing then disappearing on error
         await storage.saveAttachmentBlob(attachmentId, attachmentFile);
-        blobSaved = true;
-        setNotes(prev => {
-          const next = syncLinkRefs([...prev, noteWithAttachment], prev, new Set([noteWithAttachment.id]));
-          return next;
-        });
         await storage.saveNote(noteWithAttachment);
+        setNotes(prev => syncLinkRefs([...prev, noteWithAttachment], prev, new Set([noteWithAttachment.id])));
         setActiveNoteIdWithRecent(noteWithAttachment.id);
       } catch {
-        const pendingSave = saveTimers.current.get(noteWithAttachment.id);
-        if (pendingSave) {
-          clearTimeout(pendingSave);
-          saveTimers.current.delete(noteWithAttachment.id);
-        }
-        setNotes(prev => prev.filter((note) => note.id !== noteWithAttachment.id));
-        if (blobSaved) {
-          try {
-            await storage.deleteAttachmentBlob(attachmentId);
-          } catch {
-            // best effort rollback
-          }
-        }
+        // Rollback blob if it was saved before note save failed
+        try { await storage.deleteAttachmentBlob(attachmentId); } catch { /* best effort */ }
         setSaveError('Failed to save attachment. Storage may be full.');
       }
     })();
@@ -475,28 +464,29 @@ Export regularly: use Settings → Data → Export Backup.`,
   useEffect(() => { foldersRef.current = folders; }, [folders]);
 
   const handleNavigateToNote = useCallback((title: string) => {
+    const existing = notes.find(n => n.title === title);
+    if (existing) {
+      setActiveNoteIdWithRecent(existing.id);
+      return;
+    }
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+      title,
+      content: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      folder: foldersRef.current.find((folder) => (folder.source ?? 'noa') === 'noa')?.id ?? 'diary',
+      tags: [],
+      links: [],
+      linkRefs: [],
+      source: 'noa',
+    };
     setNotes(prev => {
-      const target = prev.find(n => n.title === title);
-      if (target) {
-        setActiveNoteIdWithRecent(target.id);
-        return prev;
-      }
-      const newNote: Note = {
-        id: crypto.randomUUID(),
-        title,
-        content: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        folder: foldersRef.current.find((folder) => (folder.source ?? 'noa') === 'noa')?.id ?? 'diary',
-        tags: [],
-        links: [],
-        linkRefs: [],
-        source: 'noa',
-      };
-      setActiveNoteIdWithRecent(newNote.id);
+      if (prev.some(n => n.title === title)) return prev;
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
+    setActiveNoteIdWithRecent(newNote.id);
+  }, [notes, setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
@@ -630,8 +620,8 @@ Export regularly: use Settings → Data → Export Backup.`,
           : n
       );
       const withRefs = syncLinkRefs(updated, prev, new Set([task.noteId]));
-      const updatedNote = withRefs.find(n => n.id === task.noteId)!;
-      debounceSave(updatedNote);
+      const updatedNote = withRefs.find(n => n.id === task.noteId);
+      if (updatedNote) debounceSave(updatedNote);
       return withRefs;
     });
   }, [debounceSave, syncLinkRefs]);
@@ -784,6 +774,13 @@ Export regularly: use Settings → Data → Export Backup.`,
       setActiveNoteId((prev) => (prev && deletedNoteIdsSet.has(prev) ? (nextNotesWithRefs[0]?.id ?? '') : prev));
       await storage.saveFolders(nextFolders);
     }
+
+    // Reset workspace name so Current Path no longer shows the vault name
+    // after disconnecting. Use a neutral default rather than the previous
+    // vault name which is now stale.
+    const DEFAULT_WORKSPACE = 'Default Workspace';
+    setWorkspaceName(DEFAULT_WORKSPACE);
+    await storage.saveWorkspaceName(DEFAULT_WORKSPACE);
 
     if (failedCount > 0) {
       setSaveError('Failed to remove some imported notes while disconnecting.');

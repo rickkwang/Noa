@@ -146,6 +146,10 @@ export function useCodeMirror({
             onSlashTriggerRef.current(null);
           } else if (slashMatch) {
             const slashStart = textBefore.lastIndexOf('/');
+            if (slashStart === -1) {
+              onMentionTriggerRef.current(null);
+              onSlashTriggerRef.current(null);
+            } else {
             const coords = update.view.coordsAtPos(cursor);
             const pane = editPaneRef.current;
             let x = 32, y = 32;
@@ -156,6 +160,7 @@ export function useCodeMirror({
             }
             onSlashTriggerRef.current({ query: slashMatch[2].slice(1).toLowerCase(), index: slashStart, x, y });
             onMentionTriggerRef.current(null);
+            }
           } else {
             onMentionTriggerRef.current(null);
             onSlashTriggerRef.current(null);

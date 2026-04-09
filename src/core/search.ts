@@ -263,7 +263,7 @@ export class SearchEngine {
     
     // Adjust indices for the snippet
     const adjustedIndices = indices
-      .filter(([s, e]) => s >= start && e < end)
+      .filter(([s, e]) => s >= start && e <= end)
       .map(([s, e]) => [s - start, e - start] as [number, number]);
 
     snippet = this.highlightFuseMatch(snippet, adjustedIndices);

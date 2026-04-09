@@ -72,11 +72,13 @@ export function useFileSync({
   const notesRef = useRef(notes);
   const foldersRef = useRef(folders);
   const workspaceNameRef = useRef(workspaceName);
+  const fsHandleRef = useRef(fsHandle);
   useEffect(() => {
     notesRef.current = notes;
     foldersRef.current = folders;
     workspaceNameRef.current = workspaceName;
   }, [notes, folders, workspaceName]);
+  useEffect(() => { fsHandleRef.current = fsHandle; }, [fsHandle]);
 
   const clearRetryTimer = useCallback(() => {
     if (!autoRetryTimer.current) return;
@@ -112,7 +114,7 @@ export function useFileSync({
   }, []);
 
   const scheduleRetry = useCallback(() => {
-    if (!fsHandle) return;
+    if (!fsHandleRef.current) return;
     if (autoRetryTimer.current) return;
     if (autoRetryAttempts.current >= AUTO_RETRY_MAX_ATTEMPTS) {
       setPermissionRevoked(true);
@@ -129,17 +131,18 @@ export function useFileSync({
 
     autoRetryTimer.current = setTimeout(() => {
       autoRetryTimer.current = null;
-      if (!fsHandle) return;
+      const handle = fsHandleRef.current;
+      if (!handle) return;
       setSyncStatus('syncing');
       const managedNotes = notesRef.current.filter(isObsidianImportedNote);
-      void retryFullSync(fsHandle, managedNotes, foldersRef.current)
+      void retryFullSync(handle, managedNotes, foldersRef.current)
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
           scheduleRetry();
         });
     }, delay);
-  }, [fsHandle, recordFailure, recordSuccess]);
+  }, [recordFailure, recordSuccess]); // fsHandleRef is a ref, not reactive — read inside callback
 
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
@@ -205,7 +208,12 @@ export function useFileSync({
         const currentFolders = foldersRef.current;
         const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
         if (merged.length > currentNotes.length || newFolders.length > 0) {
-          await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
+          try {
+            await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
+          } catch (importError) {
+            recordFailure(importError);
+            return;
+          }
         }
         recordSuccess();
       } catch (error) {
@@ -232,7 +240,12 @@ export function useFileSync({
       const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
       setFsHandle(handle);
       if (merged.length > currentNotes.length || newFolders.length > 0) {
-        await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
+        try {
+          await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
+        } catch (importError) {
+          recordFailure(importError);
+          throw importError;
+        }
       }
       recordSuccess();
     } catch (error) {

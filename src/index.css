@@ -137,6 +137,16 @@ body {
 [data-theme="dark"] .hljs-tag              { color: #D97757 !important; }
 [data-theme="dark"] .hljs-meta             { color: rgba(240,237,230,0.45) !important; }
 
+/* ── Footnotes ── */
+.prose .footnotes            { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(45,45,45,0.2); font-size: 0.8em; opacity: 0.75; }
+.prose .footnotes ol         { padding-left: 1.25rem; }
+.prose a[data-footnote-ref] { font-size: 0.75em; vertical-align: super; color: #B89B5E; font-weight: 600; text-decoration: none; }
+.prose a[data-footnote-ref]:hover { text-decoration: underline; }
+.prose a[data-footnote-backref]   { color: #B89B5E; text-decoration: none; }
+[data-theme="dark"] .prose .footnotes            { border-top-color: rgba(240,237,230,0.12) !important; }
+[data-theme="dark"] .prose a[data-footnote-ref]  { color: #D97757 !important; }
+[data-theme="dark"] .prose a[data-footnote-backref] { color: #D97757 !important; }
+
 /* ── Scrollbar ── */
 [data-theme="dark"] ::-webkit-scrollbar-thumb       { background: rgba(240,237,230,0) !important; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(240,237,230,0.20) !important; }
@@ -179,5 +189,23 @@ body {
   animation: scrollbar-fadein 0.15s ease;
 }
 .is-scrolling-out::-webkit-scrollbar-thumb {
-  animation: scrollbar-fadeout 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: scrollbar-fadeout 0.6s ease-out;
+}
+
+/* ── Tab content fade-in ── */
+@keyframes tab-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tab-fade-in {
+  animation: tab-fade-in 150ms ease-out both;
+}
+
+/* ── Slide-down reveal (delete confirm bar, banners) ── */
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-down {
+  animation: slide-down 150ms ease-out both;
 }

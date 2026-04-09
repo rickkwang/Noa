@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
-import { ChevronRight, ChevronDown, FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
@@ -26,7 +26,6 @@ function isInlinePreviewableAttachment(file: File): boolean {
     || /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp|ico|tif|tiff)$/i.test(file.name);
 }
 
-const ROOT_DROP_TARGET_ID = '__root__';
 const NOA_ROOT_DROP_TARGET_ID = '__root_noa__';
 const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
 
@@ -62,7 +61,6 @@ export default function Sidebar({
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
-  const [isRecentOpen, setIsRecentOpen] = useState(false);
   const [foldersExpandedByDefault, setFoldersExpandedByDefault] = useState(false);
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
@@ -127,7 +125,17 @@ export default function Sidebar({
     const raw = e.dataTransfer.getData('application/x-noa-tree-item') || e.dataTransfer.getData('text/plain');
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as { kind: 'note' | 'folder'; id: string; name: string };
+      const parsed = JSON.parse(raw);
+      if (
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        (parsed.kind === 'note' || parsed.kind === 'folder') &&
+        typeof parsed.id === 'string' &&
+        typeof parsed.name === 'string'
+      ) {
+        return parsed as { kind: 'note' | 'folder'; id: string; name: string };
+      }
+      return null;
     } catch {
       return null;
     }
@@ -422,7 +430,7 @@ export default function Sidebar({
         </div>
       )}
           {pendingDelete && (
-        <div className="border-b-2 border-[#B89B5E] bg-[#B89B5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
+        <div className="slide-down border-b-2 border-[#B89B5E] bg-[#B89B5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
           <p className="text-xs text-[#2D2D2D]">
             Delete "<span className="font-bold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
@@ -456,7 +464,7 @@ export default function Sidebar({
           <div className="flex gap-1.5">
             <button
               onClick={() => { pendingDelete.type === 'note' ? onDeleteNote(pendingDelete.id) : onDeleteFolder(pendingDelete.id); setPendingDelete(null); }}
-              className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90"
+              className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
             >
               Delete
             </button>
@@ -500,6 +508,17 @@ export default function Sidebar({
           title="Open today's daily note"
         >
           <Calendar size={14} />
+        </button>
+        <button
+          onClick={() => {
+            if (notes.length === 0) return;
+            const randomNote = notes[Math.floor(Math.random() * notes.length)];
+            onSelectNote(randomNote.id);
+          }}
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          title="Open random note"
+        >
+          <Dices size={14} />
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
@@ -597,150 +616,98 @@ export default function Sidebar({
               </div>
             ) : (
               <>
-              {recentNoteIds.length > 0 && (
-                <div className="border-b border-[#2D2D2D]/20 mb-1">
-                  <button
-                    className="w-full flex items-center px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 transition-colors"
-                    onClick={() => setIsRecentOpen(v => !v)}
-                  >
-                    {isRecentOpen ? <ChevronDown size={12} className="mr-1.5 shrink-0" /> : <ChevronRight size={12} className="mr-1.5 shrink-0" />}
-                    Recent Notes
-                  </button>
-                  {isRecentOpen && (
-                    <div className="pb-1">
-                      {recentNoteIds.slice(0, 5).map(id => {
-                        const note = notes.find(n => n.id === id);
-                        if (!note) return null;
-                        return (
-                          <div
-                            key={id}
-                            className={`flex items-center px-3 py-1 cursor-pointer text-sm truncate ${activeNoteId === id ? 'bg-[#EAE8E0] font-bold text-[#B89B5E]' : 'hover:bg-[#DCD9CE]/50 text-[#2D2D2D]'}`}
-                            onClick={() => onSelectNote(id)}
-                          >
-                            <FileText size={13} className={`mr-2 shrink-0 ${activeNoteId === id ? 'text-[#B89B5E]' : 'text-[#2D2D2D]/50'}`} />
-                            <span className="truncate font-redaction">{note.title || 'Untitled'}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
               <div data-testid="sidebar-file-tree">
-                <FileNode
-                  name="workspace"
-                  isFolder
-                  defaultOpen
-                  icon={Folder}
-                  onAdd={() => onCreateFolder()}
-                  onDragEnter={handleDragEnterTarget(ROOT_DROP_TARGET_ID)}
-                  onDragOver={handleDragOverTarget(ROOT_DROP_TARGET_ID)}
+                {/* Noa-native notes — flat root, no wrapper node */}
+                <div
+                  onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
+                  onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
                   onDrop={(e) => handleDropItem(null, e)}
-                  onDragEnd={handleDragEndItem}
-                  isDropTarget={dropTargetId === ROOT_DROP_TARGET_ID}
-                  dropPosition={dropTargetId === ROOT_DROP_TARGET_ID ? dropPosition : null}
-                  depth={0}
+                  onDragLeave={() => setDropTargetId(null)}
+                  className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'ring-1 ring-inset ring-[#B89B5E]/50' : ''}
                 >
-                  <FileNode
-                    name="Noa"
-                    isFolder
-                    defaultOpen
-                    icon={Folder}
-                    onAdd={() => onCreateFolder()}
-                    onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
-                    onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
-                    onDrop={(e) => handleDropItem(null, e)}
-                    onDragEnd={handleDragEndItem}
-                    isDropTarget={dropTargetId === NOA_ROOT_DROP_TARGET_ID}
-                    dropPosition={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? dropPosition : null}
-                    depth={1}
-                  >
-                    {noaFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
-                    {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa')).map((note) => (
-                      <FileNode
-                        key={note.id}
-                        name={(note.title || 'Untitled') + '.md'}
-                        isActive={activeNoteId === note.id}
-                        isSelected={selectedNoteIds.has(note.id)}
-                        onClick={(e) => {
-                          if (e.metaKey || e.ctrlKey) {
-                            setSelectedNoteIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(note.id)) next.delete(note.id);
-                              else next.add(note.id);
-                              return next;
-                            });
-                          } else {
-                            setSelectedNoteIds(new Set());
-                            onSelectNote(note.id);
-                          }
-                        }}
-                        onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
-                        onRename={(newName: string) => onRenameNote(note.id, newName)}
-                        iconColor="#B89B5E"
-                        draggable
-                        onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
-                        onDragEnd={handleDragEndItem}
-                        depth={2}
-                      />
-                    ))}
-                    {noaFolderTree.length === 0 && (notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa').length === 0 && (
-                      <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
-                    )}
-                  </FileNode>
-                  <FileNode
-                    name="Obsidian Vault"
-                    isFolder
-                    defaultOpen
-                    icon={Folder}
-                    onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}
-                    onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDraggedItem(null);
-                      setDropTargetId(null);
-                      setDropPosition(null);
-                    }}
-                    onDragEnd={handleDragEndItem}
-                    isDropTarget={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID}
-                    dropPosition={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID ? dropPosition : null}
-                    depth={1}
-                  >
-                    {importedFolderTree.map((node) => renderFolderNode(node, 2, activeNoteId))}
-                    {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import')).map((note) => (
-                      <FileNode
-                        key={note.id}
-                        name={(note.title || 'Untitled') + '.md'}
-                        isActive={activeNoteId === note.id}
-                        isSelected={selectedNoteIds.has(note.id)}
-                        onClick={(e) => {
-                          if (e.metaKey || e.ctrlKey) {
-                            setSelectedNoteIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(note.id)) next.delete(note.id);
-                              else next.add(note.id);
-                              return next;
-                            });
-                          } else {
-                            setSelectedNoteIds(new Set());
-                            onSelectNote(note.id);
-                          }
-                        }}
-                        onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
-                        onRename={(newName: string) => onRenameNote(note.id, newName)}
-                        iconColor="#B89B5E"
-                        draggable
-                        onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
-                        onDragEnd={handleDragEndItem}
-                        depth={2}
-                      />
-                    ))}
-                    {importedFolderTree.length === 0 && (notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import').length === 0 && (
-                      <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: '20px' }}>Empty</div>
-                    )}
-                  </FileNode>
-                </FileNode>
+                  {noaFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
+                  {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa')).map((note) => (
+                    <FileNode
+                      key={note.id}
+                      name={(note.title || 'Untitled') + '.md'}
+                      isActive={activeNoteId === note.id}
+                      isSelected={selectedNoteIds.has(note.id)}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey) {
+                          setSelectedNoteIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(note.id)) next.delete(note.id);
+                            else next.add(note.id);
+                            return next;
+                          });
+                        } else {
+                          setSelectedNoteIds(new Set());
+                          onSelectNote(note.id);
+                        }
+                      }}
+                      onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                      onRename={(newName: string) => onRenameNote(note.id, newName)}
+                      iconColor="#B89B5E"
+                      draggable
+                      onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                      onDragEnd={handleDragEndItem}
+                      depth={0}
+                    />
+                  ))}
+                </div>
+
+                {/* Obsidian Vault section — only shown when imported content exists */}
+                {(importedFolderTree.length > 0 || (notesByFolderId.get('') || []).some((note) => resolveNoteSource(note) === 'obsidian-import')) && (
+                  <>
+                    <div className="flex items-center gap-2 px-2 py-1.5 mt-1">
+                      <div className="flex-1 border-t border-[#2D2D2D]/20" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 font-redaction shrink-0">Obsidian Vault</span>
+                      <div className="flex-1 border-t border-[#2D2D2D]/20" />
+                    </div>
+                    <div
+                      onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}
+                      onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDraggedItem(null);
+                        setDropTargetId(null);
+                        setDropPosition(null);
+                      }}
+                      onDragEnd={handleDragEndItem}
+                    >
+                      {importedFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
+                      {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import')).map((note) => (
+                        <FileNode
+                          key={note.id}
+                          name={(note.title || 'Untitled') + '.md'}
+                          isActive={activeNoteId === note.id}
+                          isSelected={selectedNoteIds.has(note.id)}
+                          onClick={(e) => {
+                            if (e.metaKey || e.ctrlKey) {
+                              setSelectedNoteIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(note.id)) next.delete(note.id);
+                                else next.add(note.id);
+                                return next;
+                              });
+                            } else {
+                              setSelectedNoteIds(new Set());
+                              onSelectNote(note.id);
+                            }
+                          }}
+                          onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
+                          onRename={(newName: string) => onRenameNote(note.id, newName)}
+                          iconColor="#B89B5E"
+                          draggable
+                          onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
+                          onDragEnd={handleDragEndItem}
+                          depth={0}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               </>
             )}

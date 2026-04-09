@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 
@@ -9,7 +9,7 @@ interface ThemeInjectorProps {
 export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   const isDark = useIsDark(settings.appearance.theme);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
 
     if (isDark) {

@@ -52,7 +52,7 @@ export function useBackupReminder(noteCount: number): {
   }
 
   const dismiss = () => {
-    const until = now + 3 * 24 * 60 * 60 * 1000;
+    const until = Date.now() + 3 * 24 * 60 * 60 * 1000;
     try { localStorage.setItem(DISMISS_KEY, String(until)); } catch { /* quota exceeded */ }
     setDismissedUntil(until);
   };

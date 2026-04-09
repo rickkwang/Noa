@@ -73,7 +73,7 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
 
 // Node radius: more aggressive scaling so hub nodes stand out clearly
 function nodeRadius(degree: number): number {
-  return 3.5 + Math.sqrt(degree) * 2.5;
+  return 6 + Math.sqrt(degree) * 2.5;
 }
 
 export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
@@ -355,12 +355,12 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           }
 
           // Label: smooth fade in based on globalScale, with text shadow for legibility
-          const labelFadeStart = 0.3;
-          const labelFadeEnd = 0.7;
+          const labelFadeStart = 0.2;
+          const labelFadeEnd = 0.5;
           const labelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
 
           if (labelAlpha > 0) {
-            const fontSize = Math.max(8, 11 / globalScale);
+            const fontSize = Math.max(9, 13 / globalScale);
             ctx.font = `${fontSize}px ${fontFamily}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';

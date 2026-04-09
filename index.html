@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Noa</title>
+    <!-- Synchronously apply dark theme before first paint to prevent flash-of-wrong-theme -->
+    <!-- Synchronously apply dark theme before first paint to prevent flash-of-wrong-theme -->
+    <script>
+      (function() {
+        try {
+          var settings = JSON.parse(localStorage.getItem('app-settings') || '{}');
+          var theme = (settings.appearance && settings.appearance.theme) || 'system';
+          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          if (isDark) {
+            root.setAttribute('data-theme', 'dark');
+            root.style.setProperty('--bg-primary', '#262624');
+            root.style.setProperty('--bg-secondary', '#1E1E1C');
+          } else {
+            root.style.setProperty('--bg-primary', '#EAE8E0');
+            root.style.setProperty('--bg-secondary', '#DCD9CE');
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
-    <div id="root"><div style="height:100vh;width:100vw;background:#EAE8E0;display:flex;flex-direction:column;"><div style="height:40px;border-bottom:1px solid rgba(45,45,45,0.2);background:#DCD9CE;flex-shrink:0;"></div><div style="display:flex;flex:1;overflow:hidden;"><div style="width:280px;border-right:1px solid rgba(45,45,45,0.2);background:#EAE8E0;flex-shrink:0;"></div><div style="flex:1;background:#EAE8E0;"></div><div style="width:320px;border-left:1px solid rgba(45,45,45,0.2);background:#EAE8E0;flex-shrink:0;"></div></div></div></div>
+    <div id="root"><div style="height:100vh;width:100vw;background:var(--bg-primary,#EAE8E0);display:flex;flex-direction:column;"><div style="height:48px;border-bottom:1px solid rgba(45,45,45,0.2);background:var(--bg-secondary,#DCD9CE);flex-shrink:0;"></div><div style="display:flex;flex:1;overflow:hidden;"><div style="width:280px;border-right:1px solid rgba(45,45,45,0.2);background:var(--bg-primary,#EAE8E0);flex-shrink:0;"></div><div style="flex:1;background:var(--bg-primary,#EAE8E0);"></div><div style="width:320px;border-left:1px solid rgba(45,45,45,0.2);background:var(--bg-primary,#EAE8E0);flex-shrink:0;"></div></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

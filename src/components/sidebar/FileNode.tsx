@@ -152,7 +152,7 @@ export const FileNode = React.memo(({
       >
         <div className="flex items-center overflow-hidden flex-1">
           <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2D]/50">
-            {isFolder ? (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : null}
+            {isFolder ? <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} /> : null}
           </span>
           <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#B89B5E]' : (isActive ? 'text-[#B89B5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
             <Icon size={14} fill={isFolder ? "currentColor" : "none"} />

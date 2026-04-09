@@ -44,7 +44,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById }: Back
       ) : (
         <div className="space-y-3">
           {backlinks.map(note => (
-            <div key={note.id} className="border-2 border-[#2D2D2D] bg-[#EAE8E0] p-3">
+            <div key={note.id} className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-3">
               <button
                 onClick={() => onNavigateToNoteById(note.id)}
                 className="font-bold text-sm text-[#2D2D2D] hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left"
@@ -53,7 +53,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById }: Back
                 <span className="truncate">{note.title}</span>
               </button>
               {backlinkSnippets.get(note.id) && (
-                <p className="mt-1.5 text-xs text-[#2D2D2D]/60 leading-relaxed line-clamp-3 whitespace-pre-wrap">
+                <p className="mt-1.5 text-xs text-[#2D2D2D]/60 leading-relaxed line-clamp-3 whitespace-pre-wrap break-words">
                   {backlinkSnippets.get(note.id)}
                 </p>
               )}

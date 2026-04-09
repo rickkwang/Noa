@@ -269,6 +269,12 @@ async function syncAttachmentsForNote(
   rootHandle: FileSystemDirectoryHandle,
   note: Note
 ): Promise<void> {
+  // Obsidian-imported notes are never owned by Noa — their attachment folders
+  // exist in the vault and must not be modified. Only sync attachments for
+  // Noa-native notes.
+  if ((note.source ?? 'noa') !== 'noa') return;
+  if (!(note.attachments?.length)) return;
+
   const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(note.id)]);
   if (!dirHandle) return;
   const expected = new Set((note.attachments ?? []).map((att) => attachmentVaultFileName(note, att)));
@@ -447,19 +453,26 @@ export async function scanDirectory(
         });
       } else if (isDirectoryHandle(handle)) {
         if (name === 'attachments') {
+          // Attachment filename format written by Noa: `${uuid}-${originalFilename}`
+          // UUID has 5 dash-separated groups (8-4-4-4-12 chars = 36 chars total).
+          const UUID_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i;
+          // Noa uses a two-level structure: attachments/{noteId}/{uuid}-{filename}
+          // The noteId directory name must itself look like a UUID.
           for await (const [noteId, attachmentDir] of handle.entries()) {
+            // Skip non-UUID directory names — those are Obsidian-native attachment
+            // folders (e.g. a flat "attachments/image.png") and must not be touched.
             if (!isDirectoryHandle(attachmentDir)) continue;
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(noteId)) continue;
             const noteAttachments: Attachment[] = [];
             for await (const [attachmentName, attachmentHandle] of attachmentDir.entries()) {
               if (!isFileHandle(attachmentHandle)) continue;
+              // Only read files that match Noa's own naming convention.
+              const uuidMatch = attachmentName.match(UUID_RE);
+              if (!uuidMatch) continue;
+              const attachmentId = uuidMatch[1];
+              const originalFilename = uuidMatch[2];
               const file = await attachmentHandle.getFile();
               const base64 = await fileToBase64(file);
-              // Attachment filename format: `${uuid}-${originalFilename}`
-              // UUID has 5 dash-separated groups (8-4-4-4-12 chars = 36 chars total).
-              const UUID_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i;
-              const uuidMatch = attachmentName.match(UUID_RE);
-              const originalFilename = uuidMatch ? uuidMatch[2] : attachmentName;
-              const attachmentId = uuidMatch ? uuidMatch[1] : `${noteId}:${attachmentName}`;
               noteAttachments.push({
                 id: attachmentId,
                 noteId,

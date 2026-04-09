@@ -81,6 +81,7 @@ export default function App() {
     clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
     isLoaded,
+    setWorkspaceName,
   } = useNotes(settings);
 
   const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
@@ -108,6 +109,19 @@ export default function App() {
     ensureInitialNote,
     onImportData: handleImportData,
   });
+
+  // If the app loads with no vault connected but a stale workspace name
+  // (left over from a previous vault session), reset it to the default.
+  // We wait for syncStatus === 'idle' to confirm bootstrap has completed
+  // and there is genuinely no persisted vault handle.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (fsHandle !== null) return;
+    if (syncStatus !== 'idle') return;
+    if (workspaceName === 'Default Workspace') return;
+    setWorkspaceName('Default Workspace');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, fsHandle, syncStatus]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
     _handleUpdateNote(id, content);
@@ -241,17 +255,20 @@ export default function App() {
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
-    let warningTimer: ReturnType<typeof setTimeout> | null = null;
+    let hitLimit = false;
     setOpenTabIds((prev) => {
       if (prev.includes(activeNoteId)) return prev;
       if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
       const dropIndex = prev.findIndex((id) => id !== activeNoteId);
       if (dropIndex === -1) return [activeNoteId];
-      setTabLimitWarning(true);
-      warningTimer = setTimeout(() => setTabLimitWarning(false), 3000);
+      hitLimit = true;
       return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
     });
-    return () => { if (warningTimer) clearTimeout(warningTimer); };
+    if (hitLimit) {
+      setTabLimitWarning(true);
+      const t = setTimeout(() => setTabLimitWarning(false), 3000);
+      return () => clearTimeout(t);
+    }
   }, [activeNoteId]);
 
   // When a note is created with waitingForTemplateRef set, pop the template picker
@@ -268,9 +285,10 @@ export default function App() {
   );
 
   const handleTabChange = useCallback(async (id: string) => {
+    if (id === activeNoteId) return;
     await flushAllPendingSaves(notesForQuitRef.current);
     setActiveNoteId(id);
-  }, [setActiveNoteId, flushAllPendingSaves]);
+  }, [activeNoteId, setActiveNoteId, flushAllPendingSaves]);
 
   const handleTabClose = useCallback((id: string) => {
     closeTabById(id);
@@ -376,8 +394,7 @@ export default function App() {
   if (!isLoaded) {
     return (
       <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #EAE8E0)' }}>
-        <ThemeInjector settings={settings} />
-        <div className="h-10 border-b border-[#2D2D2D]/20 shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)' }}>
+        <div className="h-12 border-b border-[#2D2D2D]/20 shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)' }}>
           <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
         </div>
         <div className="flex flex-1 overflow-hidden">
@@ -455,7 +472,16 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          <div style={{ width: isMobile ? '80vw' : sidebarWidth, maxWidth: isMobile ? '320px' : undefined, transition: isDraggingSidebar ? 'none' : 'width 200ms ease-in-out' }} className="flex h-full shrink-0">
+          <div
+            style={{
+              width: isMobile ? '80vw' : sidebarWidth,
+              maxWidth: isMobile ? '320px' : undefined,
+              transform: (isFocusMode || !isSidebarOpen) ? 'translateX(-100%)' : 'translateX(0)',
+              transition: isDraggingSidebar ? 'none' : 'transform 200ms ease-in-out',
+              willChange: 'transform',
+            }}
+            className="flex h-full shrink-0"
+          >
             <div className="flex-1 overflow-hidden">
               <Sidebar
                 notes={notes}
@@ -529,8 +555,10 @@ export default function App() {
         )}
 
         {/* Right Panel — always rendered for slide animation */}
+        {/* Outer div: width 0↔rightPanelWidth controls layout space (no visible content, overflow-hidden) */}
+        {/* Inner div: translateX controls the visual slide — GPU composited, no layout reflow */}
         <div
-          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
+          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
             width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
@@ -538,7 +566,16 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          <div style={{ width: isMobile ? '80vw' : rightPanelWidth, maxWidth: isMobile ? '320px' : undefined, transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out' }} className="flex h-full shrink-0">
+          <div
+            style={{
+              width: isMobile ? '80vw' : rightPanelWidth,
+              maxWidth: isMobile ? '320px' : undefined,
+              transform: (isFocusMode || !isRightPanelOpen) ? 'translateX(100%)' : 'translateX(0)',
+              transition: isDraggingRightPanel ? 'none' : 'transform 200ms ease-in-out',
+              willChange: 'transform',
+            }}
+            className="flex h-full shrink-0"
+          >
             {!isMobile && (
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"

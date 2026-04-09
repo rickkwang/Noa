@@ -94,7 +94,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
       {filteredActiveTasks.length > 0 && (
         <div className="space-y-1">
           {filteredActiveTasks.map(task => (
-            <div key={task.id} className="group flex flex-col px-2 py-1.5 border border-[#2D2D2D]/15 hover:border-[#2D2D2D]/30 hover:bg-[#DCD9CE]/30 transition-colors">
+            <div key={task.id} className="group flex flex-col px-2 py-1.5 border-2 border-[#2D2D2D] hover:bg-[#DCD9CE]/30 transition-colors">
               <div className="flex items-start gap-2">
                 <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
                   <div className="w-3.5 h-3.5 border border-[#2D2D2D]/35 hover:border-[#B89B5E] transition-colors" />
@@ -124,7 +124,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
           </div>
           <div className="space-y-1">
             {completedTasks.map(task => (
-              <div key={task.id} className="group flex flex-col px-2 py-1.5 border border-[#2D2D2D]/10 opacity-45 hover:opacity-70 transition-opacity">
+              <div key={task.id} className="group flex flex-col px-2 py-1.5 border-2 border-[#2D2D2D] opacity-45 hover:opacity-70 transition-opacity">
                 <div className="flex items-start gap-2">
                   <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
                     <div className="w-3.5 h-3.5 border border-[#2D2D2D]/50 bg-[#2D2D2D]/20 flex items-center justify-center">

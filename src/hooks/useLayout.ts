@@ -13,7 +13,8 @@ export function useLayout() {
   const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph' | 'properties'>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
-      return (['tasks', 'backlinks', 'graph', 'properties'] as const).includes(saved as any)
+      const valid = ['tasks', 'backlinks', 'graph', 'properties'] as const;
+      return saved !== null && (valid as readonly string[]).includes(saved)
         ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
         : 'tasks';
     } catch { return 'tasks'; }
@@ -21,7 +22,8 @@ export function useLayout() {
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_VIEW_MODE);
-      return (['edit', 'preview', 'split'] as const).includes(saved as 'edit' | 'preview' | 'split')
+      const valid = ['edit', 'preview', 'split'] as const;
+      return saved !== null && (valid as readonly string[]).includes(saved)
         ? (saved as 'edit' | 'preview' | 'split')
         : 'split';
     } catch { return 'split'; }

@@ -90,18 +90,24 @@ export default function RightPanel({
         </button>
       </div>
 
-      {/* Tab content */}
+      {/* Tab content — key forces remount on tab change, triggering fade-in */}
       {activeTab === 'tasks' && (
-        <TasksPanel tasks={tasks} onToggleTask={onToggleTask} onNavigateToNoteById={onNavigateToNoteById} />
+        <div key="tasks" className="tab-fade-in flex flex-col flex-1 min-h-0">
+          <TasksPanel tasks={tasks} onToggleTask={onToggleTask} onNavigateToNoteById={onNavigateToNoteById} />
+        </div>
       )}
       {activeTab === 'backlinks' && (
-        <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} />
+        <div key="backlinks" className="tab-fade-in flex flex-col flex-1 min-h-0">
+          <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} />
+        </div>
       )}
       {activeTab === 'properties' && (
-        <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} />
+        <div key="properties" className="tab-fade-in flex flex-col flex-1 min-h-0">
+          <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} />
+        </div>
       )}
       {activeTab === 'graph' && (
-        <div className="flex-1 flex flex-col overflow-hidden p-3 gap-3">
+        <div className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
           {showGraphGuide && (
             <div className="border border-[#2D2D2D]/30 bg-[#DCD9CE] px-3 py-2 text-[11px] text-[#2D2D2D]/80 leading-relaxed">
               <div className="font-bold uppercase tracking-wider text-[10px] text-[#2D2D2D]/60 mb-1">Graph Guide</div>

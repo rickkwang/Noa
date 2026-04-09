@@ -12,18 +12,23 @@ import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
 
 // Remark plugin: ==text== → custom 'mark' mdast node
+// Uses a non-greedy split that avoids empty matches and handles consecutive == pairs correctly.
 function remarkMark() {
   return (tree: any) => {
     visit(tree, 'text', (node: any, index: number, parent: any) => {
       if (!node.value || !node.value.includes('==')) return;
-      const parts = node.value.split(/(==.+?==)/g);
+      // Match ==...== where content is at least 1 char and does not contain ==
+      const parts = node.value.split(/(==[^=]+(?:=[^=]+)*==)/g);
       if (parts.length === 1) return;
-      const children = parts.map((part: string) => {
-        if (part.startsWith('==') && part.endsWith('==') && part.length > 4) {
-          return { type: 'mark', value: part.slice(2, -2), data: { hName: 'mark', hChildren: [{ type: 'text', value: part.slice(2, -2) }] } };
-        }
-        return { type: 'text', value: part };
-      });
+      const children = parts
+        .filter((part: string) => part !== '')
+        .map((part: string) => {
+          if (part.startsWith('==') && part.endsWith('==') && part.length > 4) {
+            const inner = part.slice(2, -2);
+            return { type: 'mark', value: inner, data: { hName: 'mark', hChildren: [{ type: 'text', value: inner }] } };
+          }
+          return { type: 'text', value: part };
+        });
       parent.children.splice(index, 1, ...children);
     });
   };
@@ -74,17 +79,25 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
   const restChildren = childArray.slice(1);
 
   if (React.isValidElement(firstChild) && (firstChild.type === 'p' || firstChild.props)) {
-    const firstText = extractTextFromNode((firstChild as React.ReactElement<{ children?: React.ReactNode }>).props.children);
+    const firstChildProps = (firstChild as React.ReactElement<{ children?: React.ReactNode }>).props;
+    const firstText = extractTextFromNode(firstChildProps.children);
     const match = firstText.match(/^\[!([A-Z]+)\]\s*/i);
     if (match) {
       calloutType = match[1].toUpperCase();
-      // Strip the [!TYPE] prefix from the first child's text
-      const stripped = firstText.replace(/^\[![A-Z]+\]\s*/i, '');
-      if (stripped) {
-        restOfFirst = <p>{stripped}</p>;
-      } else {
-        restOfFirst = null;
-      }
+      // Strip the [!TYPE] prefix: walk children, drop the leading text node that contains it
+      const prefix = match[0]; // e.g. "[!NOTE] "
+      const childNodes = React.Children.toArray(firstChildProps.children);
+      // The prefix is always in the first text node
+      const stripped = childNodes
+        .map((c, i) => {
+          if (i === 0 && typeof c === 'string') {
+            const rest = c.slice(prefix.length);
+            return rest || null;
+          }
+          return c;
+        })
+        .filter(Boolean);
+      restOfFirst = stripped.length > 0 ? <p>{stripped}</p> : null;
     }
   }
 
@@ -177,7 +190,9 @@ export const PreviewPane = React.memo(function PreviewPane({
       const safeRaw = String(raw ?? '').trim();
       const pipeIdx = safeRaw.indexOf('|');
       const realTitle = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
-      const displayText = pipeIdx >= 0 ? safeRaw.slice(pipeIdx + 1).trim() : safeRaw;
+      const rawDisplay = pipeIdx >= 0 ? safeRaw.slice(pipeIdx + 1).trim() : safeRaw;
+      // Escape [ and ] so the display text doesn't break Markdown link syntax
+      const displayText = rawDisplay.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
       const ids = titleToIds.get(realTitle);
       if (ids && ids.length === 1) {
         return `[${displayText}](note-internal://id/${ids[0]})`;
@@ -246,6 +261,7 @@ export const PreviewPane = React.memo(function PreviewPane({
             loading="lazy"
             className="max-w-full"
             style={{ display: 'block' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />
         );
       },
@@ -259,6 +275,27 @@ export const PreviewPane = React.memo(function PreviewPane({
           borderRadius: '2px',
           padding: '0 2px',
         }}>{children}</mark>
+      ),
+      del: ({ children }: any) => (
+        <del style={{ textDecoration: 'line-through', opacity: 0.55 }}>{children}</del>
+      ),
+      table: ({ children }: any) => (
+        <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9em' }}>{children}</table>
+        </div>
+      ),
+      thead: ({ children }: any) => (
+        <thead style={{ background: isDark ? 'rgba(240,237,230,0.06)' : 'rgba(45,45,45,0.07)' }}>{children}</thead>
+      ),
+      tbody: ({ children }: any) => <tbody>{children}</tbody>,
+      tr: ({ children }: any) => (
+        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(240,237,230,0.1)' : 'rgba(45,45,45,0.15)'}` }}>{children}</tr>
+      ),
+      th: ({ children }: any) => (
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderBottom: `2px solid ${isDark ? 'rgba(240,237,230,0.18)' : 'rgba(45,45,45,0.25)'}`, color: isDark ? '#F0EDE6' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
+      ),
+      td: ({ children }: any) => (
+        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', color: isDark ? 'rgba(240,237,230,0.85)' : '#2D2D2D' }}>{children}</td>
       ),
       li: ({ children, className, ...props }: any) => {
         const isTask = className?.includes('task-list-item');
@@ -318,7 +355,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         >
           <Markdown
             remarkPlugins={[remarkGfm, remarkMath, remarkMark]}
-            rehypePlugins={[rehypeHighlight, rehypeKatex]}
+            rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#D97757' }]]}
             components={markdownComponents}
           >
             {previewMarkdown}
