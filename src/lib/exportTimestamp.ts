@@ -3,12 +3,12 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 const KEY = STORAGE_KEYS.LAST_EXPORT_AT;
 
 export function markExported(): void {
-  localStorage.setItem(KEY, new Date().toISOString());
+  try { localStorage.setItem(KEY, new Date().toISOString()); } catch { /* quota exceeded */ }
   window.dispatchEvent(new Event('redaction-exported'));
 }
 
 export function getLastExportAt(): string | null {
-  return localStorage.getItem(KEY);
+  try { return localStorage.getItem(KEY); } catch { return null; }
 }
 
 export function formatExportTimestamp(iso: string | null): string {

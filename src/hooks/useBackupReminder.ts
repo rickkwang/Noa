@@ -29,7 +29,7 @@ export function useBackupReminder(noteCount: number): {
     const handler = () => {
       setLastExportAt(getLastExportAt());
       // 导出后清除 dismiss，让下次到期时能再次提醒
-      localStorage.removeItem(DISMISS_KEY);
+      try { localStorage.removeItem(DISMISS_KEY); } catch { /* quota exceeded */ }
       setDismissedUntil(0);
     };
     window.addEventListener('redaction-exported', handler);

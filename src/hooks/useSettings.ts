@@ -32,7 +32,8 @@ export const defaultSettings: AppSettings = {
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(STORAGE_KEYS.SETTINGS); } catch { /* quota exceeded */ }
     if (saved) {
       try {
         const parsed = JSON.parse(saved);

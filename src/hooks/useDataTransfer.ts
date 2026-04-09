@@ -8,13 +8,35 @@ import { markExported } from '../lib/exportTimestamp';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { extractLinks, extractTags } from '../lib/noteUtils';
+import { extractObsidianCreatedAt, extractObsidianTags } from '../lib/frontmatter';
+
+/** For Obsidian imports: use frontmatter tags if present, fall back to body #hashtags. */
+function resolveImportTags(content: string): string[] {
+  const fm = extractObsidianTags(content);
+  return fm.length > 0 ? fm : extractTags(content);
+}
 import {
   inferAttachmentMimeType,
   canDecodeBase64,
-  findInvalidAttachmentPayload,
   mergeAttachmentPayloads,
   type ImportedNote,
 } from '../lib/attachmentUtils';
+import {
+  analyzeConflicts,
+  applyImportStrategy,
+  classifyFolderImportFile,
+  countImportedNotes,
+  getFolderImportPath,
+  mergeImportedWorkspaceData,
+  prepareImportedNotes,
+  sanitizeFilename,
+  sanitizeFolderPath,
+  validateAttachmentPayloads,
+  type ConflictSummary,
+} from '../lib/importUtils';
+
+export type { ConflictSummary };
+export { analyzeConflicts, applyImportStrategy, classifyFolderImportFile, countImportedNotes, getFolderImportPath, prepareImportedNotes, validateAttachmentPayloads };
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
@@ -23,123 +45,6 @@ interface BackupPayload {
   notes: ImportedNote[];
   folders: Folder[];
   workspaceName: string;
-}
-
-
-const TEXT_IMPORT_EXTENSIONS = new Set([
-  'md',
-  'markdown',
-  'mdown',
-  'txt',
-  'text',
-  'csv',
-  'tsv',
-  'json',
-  'xml',
-  'yaml',
-  'yml',
-  'html',
-  'htm',
-  'css',
-  'js',
-  'jsx',
-  'ts',
-  'tsx',
-  'mjs',
-  'cjs',
-  'ini',
-  'toml',
-  'log',
-]);
-
-const ATTACHMENT_IMPORT_EXTENSIONS = new Set([
-  'jpg',
-  'jpeg',
-  'png',
-  'gif',
-  'webp',
-  'svg',
-  'avif',
-  'bmp',
-  'ico',
-  'tif',
-  'tiff',
-]);
-
-export interface ConflictSummary {
-  sameIdCount: number;
-  dupeTitleCount: number;
-  newCount: number;
-}
-
-export function analyzeConflicts(incoming: Note[], existing: Note[]): ConflictSummary {
-  const existingIds = new Set(existing.map(n => n.id));
-  const existingTitles = new Set(existing.map(n => n.title));
-  let sameIdCount = 0;
-  let dupeTitleCount = 0;
-  let newCount = 0;
-  for (const note of incoming) {
-    if (existingIds.has(note.id)) {
-      sameIdCount++;
-    } else if (existingTitles.has(note.title)) {
-      dupeTitleCount++;
-    } else {
-      newCount++;
-    }
-  }
-  return { sameIdCount, dupeTitleCount, newCount };
-}
-
-export function prepareImportedNotes(notes: Note[]): Note[] {
-  return notes.map((note) => ({
-    ...note,
-    tags: extractTags(note.content),
-    links: extractLinks(note.content),
-  }));
-}
-
-export function validateAttachmentPayloads(notes: ImportedNote[]): string | null {
-  return findInvalidAttachmentPayload(notes);
-}
-
-export function applyImportStrategy(
-  incoming: Note[],
-  existing: Note[],
-  strategy: 'overwrite' | 'merge' | 'skip'
-): Note[] {
-  if (strategy === 'overwrite') return incoming;
-  const existingIds = new Set(existing.map(n => n.id));
-  const existingTitles = new Set(existing.map(n => n.title));
-  if (strategy === 'skip') {
-    const newNotes = incoming.filter(n => !existingIds.has(n.id) && !existingTitles.has(n.title));
-    return [...existing, ...newNotes];
-  }
-  // merge: conflicting notes (same ID) get " (imported)" suffix, new notes appended
-  const merged = [...existing];
-  const mergedIds = new Set(existing.map(n => n.id));
-  const mergedTitles = new Set(existing.map(n => n.title));
-  for (const note of incoming) {
-    if (mergedIds.has(note.id) || mergedTitles.has(note.title)) {
-      const renamed = { ...note, id: crypto.randomUUID(), title: note.title + ' (imported)' };
-      merged.push(renamed);
-      mergedIds.add(renamed.id);
-      mergedTitles.add(renamed.title);
-    } else {
-      merged.push(note);
-      mergedIds.add(note.id);
-      mergedTitles.add(note.title);
-    }
-  }
-  return merged;
-}
-
-export function countImportedNotes(
-  finalNotes: Note[],
-  existingNotes: Note[],
-  strategy: 'overwrite' | 'merge' | 'skip'
-): number {
-  if (strategy === 'overwrite') return finalNotes.length;
-  return Math.max(0, finalNotes.length - existingNotes.length);
 }
 
 export interface DataTransferMessage {
@@ -169,83 +74,8 @@ interface UseDataTransferOptions {
   requestConfirm: (request: ConfirmRequest) => void;
 }
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[\/\\:*?"<>|]/g, '_');
-}
-
-function sanitizeFolderPath(path: string): string {
-  return path.split('/').map((segment) => sanitizeFilename(segment)).filter(Boolean).join('/');
-}
-
-function mergeImportedWorkspaceData(
-  existingNotes: Note[],
-  existingFolders: Folder[],
-  incomingNotes: ImportedNote[],
-  incomingFolders: Folder[],
-): { notes: ImportedNote[]; folders: Folder[] } {
-  const incomingFolderPathById = new Map(incomingFolders.map((folder) => [folder.id, folder.name]));
-  const mergedFolders = [...existingFolders];
-  const folderKey = (folder: Pick<Folder, 'name' | 'source'>) => `${folder.source ?? 'noa'}::${folder.name}`;
-  const mergedFolderIdByPath = new Map(existingFolders.map((folder) => [folderKey(folder), folder.id]));
-
-  for (const folder of incomingFolders) {
-    const key = folderKey(folder);
-    if (mergedFolderIdByPath.has(key)) continue;
-    mergedFolders.push(folder);
-    mergedFolderIdByPath.set(key, folder.id);
-  }
-
-  const existingTitles = new Set(existingNotes.map((note) => note.title));
-  const remappedNotes = incomingNotes.map((note) => {
-    const sourcePath = incomingFolderPathById.get(note.folder);
-    const resolvedFolderId = sourcePath
-      ? (mergedFolderIdByPath.get(`${note.source ?? 'noa'}::${sourcePath}`) ?? note.folder)
-      : note.folder;
-    const title = existingTitles.has(note.title) ? `${note.title} (imported)` : note.title;
-    existingTitles.add(title);
-    return { ...note, folder: resolvedFolderId, title };
-  });
-
-  return { notes: remappedNotes, folders: mergedFolders };
-}
-
 function ensureZipFolder(zip: JSZip, folderPath: string): JSZip {
   return folderPath.split('/').filter(Boolean).reduce<JSZip>((current, segment) => current.folder(sanitizeFilename(segment)) ?? current, zip);
-}
-
-function getFileExtension(name: string): string {
-  const match = name.toLowerCase().match(/\.([^.]+)$/);
-  return match?.[1] ?? '';
-}
-
-export function getFolderImportPath(file: Pick<File, 'webkitRelativePath'>): string {
-  const relativePath = (file.webkitRelativePath || '').trim();
-  if (!relativePath) return '';
-  const parts = relativePath.split('/').filter(Boolean);
-  if (parts.length < 2) return '';
-  if (parts.length === 2) return parts[0];
-  return parts.slice(0, -1).join('/');
-}
-
-export function classifyFolderImportFile(file: Pick<File, 'name' | 'type'>): { kind: 'text' | 'attachment' | 'unsupported' } {
-  const extension = getFileExtension(file.name);
-  const mimeType = file.type || '';
-  if (
-    mimeType.startsWith('text/')
-    || mimeType === 'application/json'
-    || mimeType === 'application/xml'
-    || mimeType === 'application/xhtml+xml'
-    || TEXT_IMPORT_EXTENSIONS.has(extension)
-  ) {
-    return { kind: 'text' };
-  }
-  if (
-    mimeType.startsWith('image/')
-    || ATTACHMENT_IMPORT_EXTENSIONS.has(extension)
-  ) {
-    return { kind: 'attachment' };
-  }
-  return { kind: 'unsupported' };
 }
 
 function isInlinePreviewableMimeType(mimeType: string): boolean {
@@ -324,7 +154,7 @@ async function collectVaultDirectoryEntries(
   }
 
   for await (const [entryName, handle] of dirHandle.entries()) {
-    if (entryName === '.obsidian' || entryName === '.DS_Store') continue;
+    if (entryName === '.obsidian' || entryName === '.DS_Store' || entryName === 'manifest.json' || entryName === 'README.md') continue;
     if (handle.kind === 'directory') {
       await collectVaultDirectoryEntries(
         handle as FileSystemDirectoryHandle,
@@ -740,14 +570,15 @@ export function useDataTransfer({
         if (classification.kind === 'text') {
           let content = '';
           try { content = await file.text(); } catch { continue; }
+          const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
           newNotes.push({
             id: crypto.randomUUID(),
             title: file.name.replace(/\.[^/.]+$/, ''),
             content,
-            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
-            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
+            createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
+            updatedAt: fallbackTs,
             folder: folderId,
-            tags: extractTags(content),
+            tags: resolveImportTags(content),
             links: extractLinks(content),
             linkRefs: [],
             source: 'obsidian-import',
@@ -876,14 +707,15 @@ export function useDataTransfer({
 
         const addTextNote = async (file: File, folderId: string) => {
           const content = await file.text();
+          const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
           newNotes.push({
             id: crypto.randomUUID(),
             title: file.name.replace(/\.[^/.]+$/, ''),
             content,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date(file.lastModified).toISOString(),
+            createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
+            updatedAt: fallbackTs,
             folder: folderId,
-            tags: extractTags(content),
+            tags: resolveImportTags(content),
             links: extractLinks(content),
             linkRefs: [],
             source: 'obsidian-import',
@@ -1119,10 +951,10 @@ export function useDataTransfer({
             id: crypto.randomUUID(),
               title: filename.replace(/\.md$/, ''),
               content,
-            createdAt: new Date().toISOString(),
+            createdAt: extractObsidianCreatedAt(content) ?? new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               folder: folderId,
-              tags: extractTags(content),
+              tags: resolveImportTags(content),
               links: extractLinks(content),
               linkRefs: [],
               source: 'obsidian-import',

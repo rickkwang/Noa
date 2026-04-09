@@ -85,6 +85,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
   const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : [];
   const source = obj.source === 'obsidian-import' ? 'obsidian-import' : 'noa';
+  const rawFrontmatter = isString(obj.rawFrontmatter) ? obj.rawFrontmatter : undefined;
   const attachments = Array.isArray(obj.attachments)
     ? obj.attachments
         .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx, issues))
@@ -107,6 +108,7 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
       linkRefs,
       attachments,
       source,
+      ...(rawFrontmatter !== undefined ? { rawFrontmatter } : {}),
     },
     issues,
   };

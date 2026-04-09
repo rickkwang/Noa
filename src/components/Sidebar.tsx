@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
-import { useResizeDrag } from '../hooks/useResizeDrag';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus, Settings, Calendar, AlertCircle, ArrowUpRight, CheckSquare, Hash, X, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
-import { classifyFolderImportFile } from '../hooks/useDataTransfer';
+import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath, isDescendantPath } from '../lib/pathUtils';
 import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
+import { TagBrowser } from './sidebar/TagBrowser';
 
 const HIGHLIGHT_SANITIZE_CONFIG = {
   ALLOWED_TAGS: ['b', 'i', 'em', 'strong'],
@@ -25,237 +26,9 @@ function isInlinePreviewableAttachment(file: File): boolean {
     || /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp|ico|tif|tiff)$/i.test(file.name);
 }
 
-interface FileNodeProps {
-  name: string;
-  isFolder?: boolean;
-  children?: React.ReactNode;
-  defaultOpen?: boolean;
-  isActive?: boolean;
-  isSelected?: boolean;
-  onClick?: (e: React.MouseEvent) => void;
-  onDelete?: () => void;
-  onRename?: (newName: string) => string | void;
-  icon?: React.ElementType;
-  iconColor?: string;
-  onAdd?: () => void;
-  onAddFolder?: () => void;
-  draggable?: boolean;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnter?: (e: React.DragEvent) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent) => void;
-  onDragEnd?: () => void;
-  isDropTarget?: boolean;
-  dropPosition?: 'top' | 'bottom' | null;
-  addButtonProps?: Record<string, unknown>;
-  depth?: number;
-}
-
-interface FolderTreeNode {
-  folder: FolderType;
-  children: FolderTreeNode[];
-}
-
 const ROOT_DROP_TARGET_ID = '__root__';
 const NOA_ROOT_DROP_TARGET_ID = '__root_noa__';
 const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
-
-function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
-  const sorted = [...folders].sort((a, b) => a.name.localeCompare(b.name));
-  // Deduplicate by name — keep first occurrence (earliest by sort order).
-  // Duplicate names can arise from imports; a second folder with the same
-  // path-name would silently overwrite the first in the map and lose its
-  // children, so we drop the duplicate here rather than corrupt the tree.
-  const seenNames = new Set<string>();
-  const unique = sorted.filter((f) => {
-    if (seenNames.has(f.name)) return false;
-    seenNames.add(f.name);
-    return true;
-  });
-  const nodeByPath = new Map<string, FolderTreeNode>();
-  const roots: FolderTreeNode[] = [];
-
-  for (const folder of unique) {
-    const node: FolderTreeNode = { folder, children: [] };
-    nodeByPath.set(folder.name, node);
-  }
-
-  for (const folder of unique) {
-    const node = nodeByPath.get(folder.name);
-    if (!node) continue;
-    const parentPath = getFolderParentPath(folder.name);
-    const parent = parentPath ? nodeByPath.get(parentPath) : null;
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  const sortNodes = (nodes: FolderTreeNode[]) => {
-    nodes.sort((a, b) => a.folder.name.localeCompare(b.folder.name));
-    nodes.forEach((node) => sortNodes(node.children));
-  };
-  sortNodes(roots);
-  return roots;
-}
-
-const FileNode = React.memo(({ name, isFolder, children, defaultOpen = false, isActive, isSelected, onClick, onDelete, onRename, icon: Icon = FileText, iconColor, onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0 }: FileNodeProps) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(name.replace('.md', ''));
-  const [renameError, setRenameError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsOpen(defaultOpen);
-  }, [defaultOpen]);
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onRename) {
-      setIsEditing(true);
-      setEditName(name.replace('.md', ''));
-      setRenameError(null);
-    }
-  };
-
-  const handleRenameSubmit = () => {
-    const nextName = editName.trim();
-    if (!nextName) {
-      setRenameError('Name cannot be empty.');
-      return;
-    }
-    if (nextName !== name.replace('.md', '')) {
-      const error = onRename?.(nextName);
-      if (typeof error === 'string' && error.length > 0) {
-        setRenameError(error);
-        return;
-      }
-    }
-    setRenameError(null);
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleRenameSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditName(name.replace('.md', ''));
-      setRenameError(null);
-    }
-  };
-
-  return (
-    <div className="font-redaction">
-      {isDropTarget && dropPosition === 'top' && (
-        <div
-          className="h-1 bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
-        />
-      )}
-      <div
-        className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
-          isDropTarget
-            ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
-            : isSelected
-              ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
-              : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
-        }`}
-        style={{ paddingLeft: `${depth === 0 ? 4 : 2}px` }}
-        draggable={draggable}
-        onDragStart={onDragStart}
-        onDragEnter={onDragEnter}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        onClick={(e) => {
-          if (isFolder) setIsOpen(!isOpen);
-          if (onClick) onClick(e);
-        }}
-        onDoubleClick={handleDoubleClick}
-      >
-        <div className="flex items-center overflow-hidden flex-1">
-          <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2D]/50">
-            {isFolder ? (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : null}
-          </span>
-          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#B89B5E]' : (isActive ? 'text-[#B89B5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
-            <Icon size={14} fill={isFolder ? "currentColor" : "none"} />
-          </span>
-          {isEditing ? (
-            <input
-              autoFocus
-              value={editName}
-              onChange={(e) => {
-                setEditName(e.target.value);
-                if (renameError) setRenameError(null);
-              }}
-              onBlur={handleRenameSubmit}
-              onKeyDown={handleKeyDown}
-              className="bg-transparent border-b border-[#2D2D2D] outline-none w-full text-[#2D2D2D] font-redaction"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span className={`truncate ${isActive ? 'font-bold' : ''}`}>
-              {name}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center opacity-0 group-hover:opacity-100 shrink-0 ml-2">
-          {isFolder && onAddFolder && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onAddFolder(); }}
-              className="hover:text-[#B89B5E] p-1"
-              title="Add subfolder"
-            >
-              <FolderPlus size={14} />
-            </button>
-          )}
-          {isFolder && onAdd && (
-            <button
-              {...addButtonProps}
-              onClick={(e) => { e.stopPropagation(); onAdd(); }}
-              className="hover:text-[#B89B5E] p-1"
-              title="Add"
-            >
-              <Plus size={14} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="hover:text-red-500 p-1"
-              title="Delete"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-      {isDropTarget && dropPosition === 'bottom' && (
-        <div
-          className="h-1 bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
-        />
-      )}
-      {isEditing && renameError && (
-        <div className="px-2 pt-1 text-[10px] text-red-600 font-redaction leading-snug">
-          {renameError}
-        </div>
-      )}
-      {isFolder && children && (
-        <div
-          className="transition-[grid-template-rows] duration-200 ease-in-out"
-          style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', marginLeft: '18px' }}
-        >
-          <div className="overflow-hidden border-l border-[#2D2D2D]/15">
-            {children}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
 
 interface SidebarProps {
   notes: Note[];
@@ -442,11 +215,11 @@ export default function Sidebar({
   }, [draggedItem]);
 
   type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
-  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
-    (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
-  );
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() => {
+    try { return (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'; } catch { return 'updatedAt'; }
+  });
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder);
+    try { localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); } catch { /* quota exceeded */ }
   }, [noteSortOrder]);
 
   const sortNotes = useCallback((arr: Note[]) => {
@@ -577,12 +350,6 @@ export default function Sidebar({
   }, [deferredSearchQuery, caseSensitive]);
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isTagsOpen, setIsTagsOpen] = useState(true);
-  const { size: tagsHeight, setIsDragging } = useResizeDrag(
-    250, 100, window.innerHeight * 0.8,
-    (e: MouseEvent) => window.innerHeight - e.clientY,
-    'row-resize'
-  );
 
   const isFileImportDrag = (e: React.DragEvent) => e.dataTransfer.files.length > 0;
 
@@ -638,58 +405,6 @@ export default function Sidebar({
       console.warn(`[Noa] ${failCount} file(s) failed to import via drag-and-drop`);
     }
   };
-
-  interface TagNode {
-    name: string;
-    fullPath: string;
-    count: number;
-    children: Map<string, TagNode>;
-  }
-
-  const tagTree = useMemo(() => {
-    const roots = new Map<string, TagNode>();
-
-    const getOrCreate = (map: Map<string, TagNode>, name: string, fullPath: string): TagNode => {
-      if (!map.has(name)) map.set(name, { name, fullPath, count: 0, children: new Map() });
-      return map.get(name)!;
-    };
-
-    notes.forEach(note => {
-      note.tags?.forEach(tag => {
-        const parts = tag.split('/');
-        let currentMap = roots;
-        let path = '';
-        parts.forEach((part, i) => {
-          path = path ? `${path}/${part}` : part;
-          const node = getOrCreate(currentMap, part, path);
-          if (i === parts.length - 1) node.count += 1;
-          currentMap = node.children;
-        });
-      });
-    });
-
-    // Propagate counts upward
-    const propagate = (node: TagNode): number => {
-      let total = node.count;
-      node.children.forEach(child => { total += propagate(child); });
-      node.count = total;
-      return total;
-    };
-    roots.forEach(propagate);
-
-    return roots;
-  }, [notes]);
-
-  const [expandedTagNodes, setExpandedTagNodes] = useState<Set<string>>(new Set());
-
-  const toggleTagNode = useCallback((fullPath: string) => {
-    setExpandedTagNodes(prev => {
-      const next = new Set(prev);
-      if (next.has(fullPath)) next.delete(fullPath);
-      else next.add(fullPath);
-      return next;
-    });
-  }, []);
 
   return (
     <div 
@@ -1042,74 +757,7 @@ export default function Sidebar({
         />
       )}
 
-      {/* Tags Explorer Section */}
-      <div
-        className="flex shrink-0 border-t border-[#2D2D2D] relative flex-col bg-[#DCD9CE]/30"
-        style={{ height: isTagsOpen ? tagsHeight : 'auto' }}
-      >
-        {isTagsOpen && (
-          <div
-            className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
-            onMouseDown={() => setIsDragging(true)}
-          />
-        )}
-        <button
-          className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 border-b border-[#2D2D2D]/20 flex items-center shrink-0 transition-colors cursor-pointer"
-          onClick={() => setIsTagsOpen(v => !v)}
-        >
-          <Hash size={12} className="mr-1 shrink-0" />
-          Tags Explorer
-          <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
-        </button>
-        {isTagsOpen && (
-          <div className="flex-1 overflow-y-auto p-2">
-            {tagTree.size === 0 ? (
-              <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
-            ) : (
-              (() => {
-                const renderTagNode = (node: TagNode, depth: number): React.ReactNode => {
-                  const hasChildren = node.children.size > 0;
-                  const isExpanded = expandedTagNodes.has(node.fullPath);
-                  return (
-                    <div key={node.fullPath}>
-                      <div
-                        className="flex items-center gap-1 px-1 py-0.5 hover:bg-[#DCD9CE]/50 group"
-                        style={{ paddingLeft: `${depth * 12 + 4}px` }}
-                      >
-                        {hasChildren ? (
-                          <button
-                            onClick={() => toggleTagNode(node.fullPath)}
-                            className="shrink-0 text-[#2D2D2D]/40 hover:text-[#2D2D2D] active:opacity-70"
-                          >
-                            {isExpanded
-                              ? <ChevronDown size={10} />
-                              : <ChevronRight size={10} />}
-                          </button>
-                        ) : (
-                          <span className="w-[10px] shrink-0" />
-                        )}
-                        <button
-                          onClick={() => onSearchTag && onSearchTag(node.fullPath)}
-                          className="flex-1 text-left text-xs font-redaction text-[#2D2D2D] hover:text-[#B89B5E] active:opacity-70 truncate flex items-center gap-0.5"
-                        >
-                          <span className="opacity-40">#</span>{node.name}
-                        </button>
-                        <span className="text-[10px] text-[#2D2D2D]/40 shrink-0">{node.count}</span>
-                      </div>
-                      {hasChildren && isExpanded && (
-                        <div>
-                          {Array.from(node.children.values()).map(child => renderTagNode(child, depth + 1))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                };
-                return Array.from(tagTree.values()).map(node => renderTagNode(node, 0));
-              })()
-            )}
-          </div>
-        )}
-      </div>
+      <TagBrowser notes={notes} onSearchTag={onSearchTag} />
     </div>
   );
 }

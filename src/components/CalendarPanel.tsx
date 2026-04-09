@@ -13,7 +13,7 @@ interface CalendarPanelProps {
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateFormat = 'YYYY-MM-DD' }: CalendarPanelProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);

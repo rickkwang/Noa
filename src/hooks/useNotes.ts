@@ -267,7 +267,9 @@ Export regularly: use Settings → Data → Export Backup.`,
     setNotes(prev => {
       const updated = prev.map(n =>
         n.id === id
-          ? { ...n, content, updatedAt: new Date().toISOString(), links: extractLinks(content), tags: extractTags(content) }
+          ? { ...n, content, updatedAt: new Date().toISOString(),
+              // Obsidian notes own their tags via frontmatter; don't re-derive from body
+              ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(content), tags: extractTags(content) }) }
           : n
       );
       const withRefs = syncLinkRefs(updated, prev, new Set([id]));
@@ -623,7 +625,8 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (!didUpdate) return prev;
       const updated = prev.map(n =>
         n.id === task.noteId
-          ? { ...n, content: updatedContent, updatedAt: new Date().toISOString(), links: extractLinks(updatedContent), tags: extractTags(updatedContent) }
+          ? { ...n, content: updatedContent, updatedAt: new Date().toISOString(),
+              ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(updatedContent), tags: extractTags(updatedContent) }) }
           : n
       );
       const withRefs = syncLinkRefs(updated, prev, new Set([task.noteId]));
@@ -669,11 +672,16 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
 
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
-      const withRefs = syncLinkRefs(normalizedNotes.map((note) => ({
-        ...note,
-        tags: extractTags(note.content),
-        links: extractLinks(note.content),
-      })));
+      const withRefs = syncLinkRefs(normalizedNotes.map((note) => {
+        // Obsidian-imported notes carry their own tags/links from frontmatter;
+        // re-extracting from body content would overwrite them with wrong data.
+        if ((note.source ?? 'noa') === 'obsidian-import') return note;
+        return {
+          ...note,
+          tags: extractTags(note.content),
+          links: extractLinks(note.content),
+        };
+      }));
       await storage.saveNotes(withRefs);
       if (shouldPrune) {
         await storage.pruneOrphanedNotes(withRefs.map(n => n.id));

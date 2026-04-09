@@ -23,6 +23,10 @@ export interface Note {
   linkRefs: string[];
   attachments?: Attachment[];
   source?: NoteSource;
+  frontmatter?: Record<string, unknown>;
+  /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
+   *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
+  rawFrontmatter?: string;
 }
 
 export interface Link {

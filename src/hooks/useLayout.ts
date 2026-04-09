@@ -5,24 +5,26 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 export function useLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN);
-    return saved ? saved === 'true' : true;
+    try { const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN); return saved ? saved === 'true' : true; } catch { return true; }
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN);
-    return saved ? saved === 'true' : true;
+    try { const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN); return saved ? saved === 'true' : true; } catch { return true; }
   });
   const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph' | 'properties'>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
-    return (['tasks', 'backlinks', 'graph', 'properties'] as const).includes(saved as any)
-      ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
-      : 'tasks';
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
+      return (['tasks', 'backlinks', 'graph', 'properties'] as const).includes(saved as any)
+        ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
+        : 'tasks';
+    } catch { return 'tasks'; }
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_VIEW_MODE);
-    return (['edit', 'preview', 'split'] as const).includes(saved as 'edit' | 'preview' | 'split')
-      ? (saved as 'edit' | 'preview' | 'split')
-      : 'split';
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_VIEW_MODE);
+      return (['edit', 'preview', 'split'] as const).includes(saved as 'edit' | 'preview' | 'split')
+        ? (saved as 'edit' | 'preview' | 'split')
+        : 'split';
+    } catch { return 'split'; }
   });
 
   const getSidebarValue = useCallback((e: MouseEvent) => {
@@ -51,13 +53,24 @@ export function useLayout() {
   }, [_setIsDraggingRightPanel]);
 
   useEffect(() => {
+    let wasMobile = false;
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
+      if (mobile && !wasMobile) {
+        // Entering mobile: close panels
         setIsSidebarOpen(false);
         setIsRightPanelOpen(false);
+      } else if (!mobile && wasMobile) {
+        // Returning to desktop: restore from localStorage
+        try {
+          const sb = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN);
+          const rp = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN);
+          setIsSidebarOpen(sb ? sb === 'true' : true);
+          setIsRightPanelOpen(rp ? rp === 'true' : true);
+        } catch { /* ignore */ }
       }
+      wasMobile = mobile;
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);

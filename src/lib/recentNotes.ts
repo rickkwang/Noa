@@ -13,7 +13,9 @@ export function loadRecentNoteIds(): string[] {
 }
 
 export function saveRecentNoteIds(ids: string[]): void {
-  localStorage.setItem(RECENT_NOTES_KEY, JSON.stringify(ids));
+  try {
+    localStorage.setItem(RECENT_NOTES_KEY, JSON.stringify(ids));
+  } catch { /* quota exceeded */ }
 }
 
 export function addRecentNoteId(ids: string[], id: string): string[] {

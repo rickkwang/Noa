@@ -165,7 +165,9 @@ export default function App() {
         setActiveNoteId('');
       } else {
         const idx = openTabIds.indexOf(id);
-        setActiveNoteId(next[Math.min(idx, next.length - 1)]);
+        // Prefer the tab to the right; fall back to the one to the left
+        const nextActive = next[idx] ?? next[idx - 1];
+        setActiveNoteId(nextActive);
       }
     }
   }, [activeNoteId, openTabIds, setActiveNoteId]);
@@ -189,12 +191,9 @@ export default function App() {
 
   const handleDisconnectFolder = useCallback(async () => {
     await disconnect();
-    const removedNoteIds = await clearWorkspaceAfterDisconnect();
-    if (removedNoteIds.length > 0) {
-      const removedSet = new Set(removedNoteIds);
-      setOpenTabIds((prev) => prev.filter((id) => !removedSet.has(id)));
-    }
-  }, [clearWorkspaceAfterDisconnect, disconnect]);
+    const deletedNoteIds = await clearWorkspaceAfterDisconnect();
+    deletedNoteIds.forEach((id) => closeTabById(id));
+  }, [disconnect, clearWorkspaceAfterDisconnect, closeTabById]);
 
   const {
     isMobile,
@@ -222,7 +221,8 @@ export default function App() {
   useEffect(() => {
     if (!isLoaded || restoredOpenTabsRef.current) return;
     restoredOpenTabsRef.current = true;
-    const saved = localStorage.getItem(OPEN_TABS_KEY);
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(OPEN_TABS_KEY); } catch { /* quota exceeded */ }
     if (!saved) return;
     try {
       const ids: string[] = JSON.parse(saved);
@@ -233,7 +233,9 @@ export default function App() {
 
   // Persist openTabIds to localStorage
   useEffect(() => {
-    localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
+    try {
+      localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
+    } catch { /* quota exceeded — ignore */ }
   }, [openTabIds]);
 
   // Sync activeNoteId into openTabIds
@@ -614,7 +616,7 @@ export default function App() {
           <button
             onClick={() => {
               setShowStorageNotice(false);
-              localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1');
+              try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
             }}
             className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:border-[#2D2D2D]/60 transition-colors"
           >

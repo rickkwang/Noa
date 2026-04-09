@@ -35,12 +35,14 @@ export async function restorePersistedFsHandle(): Promise<FileSystemDirectoryHan
 }
 
 export async function connectDirectoryAndSeed(
-  notes: Note[],
-  folders: Folder[],
+  _notes: Note[],
+  _folders: Folder[],
 ): Promise<FileSystemDirectoryHandle> {
   const handle = await requestDirectoryAccess();
   await persistHandle(handle);
-  await Promise.all(notes.map((note) => writeNote(handle, note, folders)));
+  // Do NOT write notes on connect — the vault is the source of truth.
+  // mergeScannedNotes (called by the caller) will read the vault and
+  // bring Noa in sync without touching any existing files.
   return handle;
 }
 
@@ -54,7 +56,20 @@ export async function mergeScannedNotes(
   folders: Folder[],
 ): Promise<{ notes: Note[]; newFolders: Folder[] }> {
   const { notes: scanned, newFolders } = await scanDirectory(handle, folders);
-  const merged = [...notes];
+  const scannedById = new Map(scanned.map((n) => [n.id, n]));
+  // Update existing obsidian-import notes with fresh data from disk;
+  // keep Noa-native notes untouched.
+  const merged = notes.map((n) => {
+    const fresh = scannedById.get(n.id);
+    if (!fresh) return n;
+    // Preserve Noa fields that the vault file doesn't own (e.g. linkRefs computed
+    // by Noa's link engine), but take everything the vault file does own.
+    return {
+      ...fresh,
+      linkRefs: n.linkRefs,
+    };
+  });
+  // Add notes found in vault that don't exist in Noa yet.
   for (const sn of scanned) {
     if (!merged.find((n) => n.id === sn.id)) merged.push(sn);
   }

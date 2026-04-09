@@ -32,13 +32,16 @@ export function useDailyNotes({
       : builtinTemplates.find((template) => template.id === 'daily')!;
 
     setFolders((prevFolders) => {
-      const savedId = localStorage.getItem(DAILY_FOLDER_KEY);
+      let savedId: string | null = null;
+      try { savedId = localStorage.getItem(DAILY_FOLDER_KEY); } catch { /* quota exceeded */ }
       const existingFolder = savedId
         ? (prevFolders.find((folder) => folder.id === savedId) ?? prevFolders.find((folder) => folder.name === 'Daily Notes'))
         : prevFolders.find((folder) => folder.name === 'Daily Notes');
       const isNew = !existingFolder;
       const dailyFolder = existingFolder ?? { id: crypto.randomUUID(), name: 'Daily Notes' };
-      if (isNew) localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id);
+      if (isNew) {
+        try { localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id); } catch { /* quota exceeded */ }
+      }
       const nextFolders = existingFolder ? prevFolders : [...prevFolders, dailyFolder];
 
       const earlyExisting = notes.find((note) => note.title === today && note.folder === dailyFolder.id);
@@ -64,7 +67,7 @@ export function useDailyNotes({
           links: [],
           linkRefs: [],
         };
-        storage.saveNote(newNote);
+        void storage.saveNote(newNote).catch(() => {});
         setActiveNoteIdWithRecent(newNote.id);
         return recomputeLinkRefsForNotes([...prevNotes, newNote]);
       });
