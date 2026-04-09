@@ -6,8 +6,28 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { visit } from 'unist-util-visit';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
+
+// Remark plugin: ==text== → custom 'mark' mdast node
+function remarkMark() {
+  return (tree: any) => {
+    visit(tree, 'text', (node: any, index: number, parent: any) => {
+      if (!node.value || !node.value.includes('==')) return;
+      const parts = node.value.split(/(==.+?==)/g);
+      if (parts.length === 1) return;
+      const children = parts.map((part: string) => {
+        if (part.startsWith('==') && part.endsWith('==') && part.length > 4) {
+          return { type: 'mark', value: part.slice(2, -2), data: { hName: 'mark', hChildren: [{ type: 'text', value: part.slice(2, -2) }] } };
+        }
+        return { type: 'text', value: part };
+      });
+      parent.children.splice(index, 1, ...children);
+    });
+  };
+}
 
 interface BacklinkItem {
   id: string;
@@ -232,6 +252,47 @@ export const PreviewPane = React.memo(function PreviewPane({
       blockquote: ({ children }: any) => (
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
       ),
+      mark: ({ children }: any) => (
+        <mark style={{
+          backgroundColor: isDark ? 'rgba(217,119,87,0.25)' : 'rgba(184,155,94,0.25)',
+          color: 'inherit',
+          borderRadius: '2px',
+          padding: '0 2px',
+        }}>{children}</mark>
+      ),
+      li: ({ children, className, ...props }: any) => {
+        const isTask = className?.includes('task-list-item');
+        if (!isTask) return <li className={className} {...props}>{children}</li>;
+        // Extract checked state from the first child input element
+        const childArray = React.Children.toArray(children);
+        const inputEl = childArray.find((c: any) => c?.type === 'input');
+        const isChecked = (inputEl as any)?.props?.checked ?? false;
+        const rest = childArray.filter((c: any) => c?.type !== 'input');
+        return (
+          <li className={className} style={{ listStyle: 'none', display: 'flex', alignItems: 'flex-start', gap: '8px', marginLeft: '-1.25rem' }} {...props}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '14px',
+                height: '14px',
+                minWidth: '14px',
+                border: `1.5px solid ${isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.35)'}`,
+                marginTop: '3px',
+                backgroundColor: isChecked ? (isDark ? '#D97757' : '#B89B5E') : 'transparent',
+              }}
+            >
+              {isChecked && (
+                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#262624' : '#EAE8E0'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </span>
+            <span style={{ opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none' }}>{rest}</span>
+          </li>
+        );
+      },
     };
     return components;
   }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy]);
@@ -256,7 +317,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           <Markdown
-            remarkPlugins={[remarkGfm, remarkMath]}
+            remarkPlugins={[remarkGfm, remarkMath, remarkMark]}
             rehypePlugins={[rehypeHighlight, rehypeKatex]}
             components={markdownComponents}
           >

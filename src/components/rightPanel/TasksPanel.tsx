@@ -92,23 +92,23 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
       )}
 
       {filteredActiveTasks.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {filteredActiveTasks.map(task => (
-            <div key={task.id} className="group flex flex-col p-2 border-2 border-[#2D2D2D] bg-[#EAE8E0] transition-all duration-150">
-              <div className="flex items-start space-x-2">
-                <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 cursor-pointer">
-                  <div className="w-4 h-4 border-2 border-[#2D2D2D] bg-[#EAE8E0] hover:bg-[#DCD9CE] transition-all duration-150 active:bg-[#2D2D2D]/20" />
+            <div key={task.id} className="group flex flex-col px-2 py-1.5 border border-[#2D2D2D]/15 hover:border-[#2D2D2D]/30 hover:bg-[#DCD9CE]/30 transition-colors">
+              <div className="flex items-start gap-2">
+                <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
+                  <div className="w-3.5 h-3.5 border border-[#2D2D2D]/35 hover:border-[#B89B5E] transition-colors" />
                 </button>
-                <span className="flex-1 text-sm leading-tight">{task.content}</span>
+                <span className="flex-1 text-xs font-redaction leading-snug text-[#2D2D2D]">{task.content}</span>
               </div>
-              <div className="flex items-center justify-between mt-1.5 pl-6 text-xs text-[#2D2D2D]/60">
+              <div className="flex items-center justify-between mt-1 pl-5 text-[10px] text-[#2D2D2D]/50">
                 <div className="flex items-center gap-x-2">
                   <PriorityBadge priority={task.priority} />
-                  {task.dueDate && <span className="text-[10px] text-[#2D2D2D]/50 tabular-nums whitespace-nowrap">{task.dueDate}</span>}
+                  {task.dueDate && <span className="tabular-nums">{task.dueDate}</span>}
                 </div>
                 <button onClick={() => onNavigateToNoteById(task.noteId)}
-                  className="flex items-center space-x-1 hover:text-[#B89B5E] transition-colors cursor-pointer shrink-0">
-                  <ExternalLink size={10} />
+                  className="flex items-center gap-1 hover:text-[#B89B5E] transition-colors active:opacity-70 shrink-0">
+                  <ExternalLink size={9} />
                   <span>{task.noteTitle}</span>
                 </button>
               </div>
@@ -118,33 +118,35 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
       )}
 
       {completedTasks.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-[#2D2D2D]/20">
-          <div className="text-[#2D2D2D]/40 text-xs font-bold mb-2 uppercase tracking-wider">
+        <div className="pt-3 border-t border-[#2D2D2D]/15">
+          <div className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/30 font-redaction pb-1">
             Completed ({completedTasks.length})
           </div>
-          {completedTasks.map(task => (
-            <div key={task.id} className="group flex flex-col p-2 border border-[#2D2D2D]/20 opacity-50 transition-all duration-150">
-              <div className="flex items-start space-x-2">
-                <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 cursor-pointer">
-                  <div className="w-4 h-4 border-2 border-[#2D2D2D]/60 bg-[#2D2D2D]/60 flex items-center justify-center text-[#EAE8E0]">
-                    <Check size={12} strokeWidth={4} />
-                  </div>
-                </button>
-                <span className="flex-1 text-sm leading-tight line-through text-[#2D2D2D]/50">{task.content}</span>
-              </div>
-              <div className="flex items-center justify-between mt-1.5 pl-6 text-xs text-[#2D2D2D]/40">
-                <div className="flex items-center gap-x-2">
-                  <PriorityBadge priority={task.priority} />
-                  {task.dueDate && <span className="text-[10px] tabular-nums">{task.dueDate}</span>}
+          <div className="space-y-1">
+            {completedTasks.map(task => (
+              <div key={task.id} className="group flex flex-col px-2 py-1.5 border border-[#2D2D2D]/10 opacity-45 hover:opacity-70 transition-opacity">
+                <div className="flex items-start gap-2">
+                  <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
+                    <div className="w-3.5 h-3.5 border border-[#2D2D2D]/50 bg-[#2D2D2D]/20 flex items-center justify-center">
+                      <Check size={9} strokeWidth={2.5} className="text-[#2D2D2D]" />
+                    </div>
+                  </button>
+                  <span className="flex-1 text-xs font-redaction leading-snug line-through text-[#2D2D2D]">{task.content}</span>
                 </div>
-                <button onClick={() => onNavigateToNoteById(task.noteId)}
-                  className="flex items-center space-x-1 hover:text-[#B89B5E] transition-colors cursor-pointer shrink-0">
-                  <ExternalLink size={10} />
-                  <span>{task.noteTitle}</span>
-                </button>
+                <div className="flex items-center justify-between mt-1 pl-5 text-[10px] text-[#2D2D2D]/50">
+                  <div className="flex items-center gap-x-2">
+                    <PriorityBadge priority={task.priority} />
+                    {task.dueDate && <span className="tabular-nums">{task.dueDate}</span>}
+                  </div>
+                  <button onClick={() => onNavigateToNoteById(task.noteId)}
+                    className="flex items-center gap-1 hover:text-[#B89B5E] transition-colors active:opacity-70 shrink-0">
+                    <ExternalLink size={9} />
+                    <span>{task.noteTitle}</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -62,7 +62,7 @@ export default function Sidebar({
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
-  const [isRecentOpen, setIsRecentOpen] = useState(true);
+  const [isRecentOpen, setIsRecentOpen] = useState(false);
   const [foldersExpandedByDefault, setFoldersExpandedByDefault] = useState(false);
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());

@@ -582,9 +582,9 @@ export default function App() {
         </div>
       )}
       {fsSyncError && fsHandle && (
-        <div className="fixed bottom-4 left-4 z-50 border border-red-400 bg-red-50 px-4 py-3 max-w-sm shadow-lg">
-          <div className="text-xs font-bold text-red-800 uppercase tracking-wider mb-1">Error · Vault Sync</div>
-          <div className="text-[11px] text-red-700 leading-relaxed mb-3">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction">
+          <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
+          <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
             {permissionRevoked
               ? 'Vault sync is paused — changes will NOT sync to your folder until reconnected. Notes are saved locally only.'
               : fsSyncError}
@@ -592,14 +592,14 @@ export default function App() {
           <div className="flex gap-2">
             <button
               onClick={permissionRevoked ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-red-500 px-2 py-0.5 text-red-700 hover:bg-red-100 transition-colors active:opacity-70"
+              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/50 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
             >
               {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
             </button>
             {permissionRevoked && (
               <button
                 onClick={disconnect}
-                className="text-[10px] uppercase tracking-wider font-bold border border-red-300 px-2 py-0.5 text-red-500 hover:bg-red-50 transition-colors active:opacity-70"
+                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] transition-colors active:opacity-70"
               >
                 Disconnect
               </button>
