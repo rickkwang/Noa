@@ -214,6 +214,11 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     if (!fgRef.current) return;
     const timer = setTimeout(() => {
       fgRef.current?.zoomToFit(300, 24);
+      // Cap zoom for small graphs so a single node doesn't fill the canvas
+      setTimeout(() => {
+        const cur = fgRef.current?.zoom();
+        if (cur != null && cur > 2) fgRef.current?.zoom(2, 200);
+      }, 350);
     }, 600);
     return () => clearTimeout(timer);
   }, [graphData]);

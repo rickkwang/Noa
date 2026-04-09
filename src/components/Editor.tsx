@@ -272,26 +272,32 @@ export default function Editor({
 
   if (!note) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#EAE8E0] font-redaction select-none px-8">
-        <div className="border border-[#2D2D2D]/15 bg-[#DCD9CE]/40 p-8 max-w-md w-full">
-          <div className="text-2xl font-bold text-[#2D2D2D] tracking-wide mb-1">Noa</div>
-          <div className="text-xs text-[#2D2D2D]/40 uppercase tracking-widest mb-6">Your private writing space</div>
-          <div className="space-y-2 mb-8">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#EAE8E0] font-redaction select-none">
+        <div className="flex flex-col gap-8 w-56">
+          {/* Wordmark */}
+          <div className="flex flex-col gap-1">
+            <div className="text-4xl font-bold text-[#2D2D2D]/75 tracking-tight">Noa</div>
+            <div className="text-[10px] text-[#2D2D2D]/30 uppercase tracking-widest">your private writing space</div>
+          </div>
+
+          {/* Shortcuts */}
+          <div className="flex flex-col gap-2.5">
             {[
-              { key: '⌘ N', desc: 'New note' },
-              { key: '⌘ F', desc: 'Search notes' },
-              { key: '⌘ K', desc: 'Command palette' },
+              { key: '⌘N', desc: 'New note' },
+              { key: '⌘F', desc: 'Search notes' },
+              { key: '⌘K', desc: 'Command palette' },
             ].map(({ key, desc }) => (
-              <div key={key} className="flex items-center gap-3 text-sm text-[#2D2D2D]/60">
-                <span className="border border-[#2D2D2D]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#2D2D2D]/50 tracking-wider min-w-[48px] text-center">
-                  {key}
-                </span>
-                <span>{desc}</span>
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-[#B89B5E]/60 tracking-widest w-7">{key}</span>
+                <span className="text-[#2D2D2D]/15">·</span>
+                <span className="text-xs text-[#2D2D2D]/40">{desc}</span>
               </div>
             ))}
           </div>
-          <div className="border-t border-[#2D2D2D]/10 pt-4 text-[10px] text-[#2D2D2D]/35 leading-relaxed">
-            All notes are stored locally in your browser. Export regularly to avoid data loss.
+
+          {/* Footer */}
+          <div className="text-[10px] text-[#2D2D2D]/20 tracking-wide">
+            Notes stored locally · Export regularly
           </div>
         </div>
       </div>
