@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
-import { forceCollide } from 'd3-force';
+import { forceCollide, forceCenter } from 'd3-force';
 import { Note } from '../types';
 import { AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
@@ -71,9 +71,9 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
 
-// Node radius: more aggressive scaling so hub nodes stand out clearly
+// Node radius: matches Obsidian proportions
 function nodeRadius(degree: number): number {
-  return 6 + Math.sqrt(degree) * 2.5;
+  return 4 + Math.sqrt(degree) * 2;
 }
 
 export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
@@ -197,18 +197,29 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   useEffect(() => {
     if (!fgRef.current) return;
     const n = graphData.nodes.length;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Repulsion: light push to separate nodes without scattering
     const chargeForce = fgRef.current.d3Force('charge');
     if (hasStrength(chargeForce)) {
-      // More nodes → stronger repulsion to spread things out
-      chargeForce.strength(n > 100 ? -120 : n > 30 ? -80 : -50);
+      chargeForce.strength(n > 100 ? -45 : n > 30 ? -30 : -18);
     }
+    // Link distance: moderate — clusters feel connected, not cramped
     const linkForce = fgRef.current.d3Force('link');
     if (hasDistance(linkForce)) {
-      linkForce.distance(n > 100 ? 60 : n > 30 ? 45 : 35);
+      linkForce.distance(n > 100 ? 65 : n > 30 ? 55 : 45);
     }
-    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 4);
+    if (hasStrength(linkForce)) {
+      linkForce.strength(0.6);
+    }
+    // Collide: minimal padding, let link distance do the spacing
+    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 3).iterations(3);
     fgRef.current.d3Force('collide', collide);
-  }, [graphData.nodes.length]);
+    // Center force: balanced — holds the graph together without crushing it
+    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.25));
+    fgRef.current.d3Force('radial', null);
+  }, [graphData.nodes.length, width, height]);
 
   useEffect(() => {
     if (!fgRef.current) return;
@@ -355,8 +366,8 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           }
 
           // Label: smooth fade in based on globalScale, with text shadow for legibility
-          const labelFadeStart = 0.2;
-          const labelFadeEnd = 0.5;
+          const labelFadeStart = 0.5;
+          const labelFadeEnd = 0.9;
           const labelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
 
           if (labelAlpha > 0) {
