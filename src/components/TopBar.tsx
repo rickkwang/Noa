@@ -36,21 +36,25 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
           >
             <PanelLeft size={16} />
           </button>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold leading-tight">Noa</span>
-            {workspaceName && (
-              <span className="text-[10px] text-[#2D2D2D]/40 leading-tight truncate max-w-[120px]">{workspaceName}</span>
-            )}
-            {hasFsHandle && fsLastSyncAt && (() => {
-              const mins = Math.floor((Date.now() - new Date(fsLastSyncAt).getTime()) / 60000);
-              const stale = mins > 30;
-              return (
-                <span className={`text-[10px] leading-tight ${stale ? 'text-amber-600' : 'text-[#2D2D2D]/40'}`}>
-                  {stale ? '⚠ ' : ''}Last synced: {mins < 1 ? 'just now' : `${mins}m ago`}
-                </span>
-              );
-            })()}
-          </div>
+          {(() => {
+            const mins = hasFsHandle && fsLastSyncAt
+              ? Math.floor((Date.now() - new Date(fsLastSyncAt).getTime()) / 60000)
+              : null;
+            const stale = mins != null && mins > 30;
+            const tooltip = [
+              workspaceName,
+              mins != null ? `${stale ? '⚠ ' : ''}Last synced: ${mins < 1 ? 'just now' : `${mins}m ago`}` : null,
+            ].filter(Boolean).join('\n');
+            return (
+              <span
+                className="text-sm font-bold leading-tight cursor-default"
+                title={tooltip || undefined}
+                style={stale ? { color: '#d97706' } : undefined}
+              >
+                Noa{stale ? ' ⚠' : ''}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
