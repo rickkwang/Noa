@@ -125,7 +125,7 @@ export default function RightPanel({
           <div className="flex flex-col border border-[#2D2D2D]/90" style={{ height: '55%', minHeight: 180 }}>
             <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
               <Network size={11} className="text-[#B89B5E] shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Graph</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Matrix</span>
               <div className="flex items-center gap-1 px-1.5 py-0.5"
                 style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)' }}>
                 <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
@@ -214,7 +214,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
     <div className="flex-1 overflow-y-auto border border-[#2D2D2D]/90 font-redaction min-h-0">
       <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
         <GitBranch size={11} className="text-[#B89B5E] shrink-0" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">Graph Stats</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">Knowledge Matrix Stats</span>
       </div>
       <div className="p-3 space-y-3">
         <div className="grid grid-cols-3 gap-2">

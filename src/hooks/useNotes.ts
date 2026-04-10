@@ -188,7 +188,7 @@ Your private, local-first writing space.
 - **Wiki links** — Type \`[[Note Title]]\` to link notes
 - **Tasks** — Use \`- [ ] task\` syntax, track in right panel
 - **Tags** — Use \`#tag\` in notes, browse in sidebar
-- **Knowledge Graph** — Visualize note connections
+- **Knowledge Matrix** — Visualize note connections
 - **Vault Folder** — Connect a local folder to mirror notes as \`.md\` files
 - **Daily Notes** — One note per day, auto-dated
 
