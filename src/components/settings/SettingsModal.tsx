@@ -202,42 +202,41 @@ export default function SettingsModal({
                   )}
                 </div>
                 <div className="border-2 border-[#2D2D2D] overflow-hidden">
-                  <div className="bg-[#DCD9CE] px-4 py-2 border-b border-[#2D2D2D]">
+                  <div className="bg-[#DCD9CE] px-4 py-1.5 border-b border-[#2D2D2D]">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70">Keyboard Shortcuts</span>
                   </div>
-                  <table className="w-full text-sm font-redaction">
+                  <table className="w-full text-xs font-redaction">
                     <tbody>
                       {[
                         ['Cmd/Ctrl + N', 'New note'],
                         ['Cmd/Ctrl + F', 'Focus search'],
                         ['Cmd/Ctrl + K', 'Open command palette'],
-                        ['Cmd/Ctrl + Shift + K', 'Open today\'s daily note'],
+                        ['Cmd/Ctrl + Shift + K', "Open today's daily note"],
                         ['Cmd/Ctrl + S', 'Force save pending edits'],
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
-                        <tr key={key} className="border-b border-[#2D2D2D]/10 last:border-0">
-                          <td className="px-4 py-2 font-bold text-[#B89B5E] whitespace-nowrap w-48">{key}</td>
-                          <td className="px-4 py-2 text-[#2D2D2D]/70">{desc}</td>
+                        <tr key={key} className="border-b border-[#2D2D2D]/15 last:border-0">
+                          <td className="px-4 py-1.5 font-bold text-[#B89B5E] whitespace-nowrap w-48">{key}</td>
+                          <td className="px-4 py-1.5 text-[#2D2D2D]/60">{desc}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="p-6 border-2 border-[#2D2D2D] bg-[#DCD9CE] flex flex-col items-center justify-center space-y-4 text-center">
-                  <div className="w-16 h-16 bg-[#B89B5E] border-2 border-[#2D2D2D] flex items-center justify-center">
-                    <Book size={32} className="text-white" />
+                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] px-4 py-3 flex items-center gap-4">
+                  <div className="w-10 h-10 bg-[#B89B5E] border-2 border-[#2D2D2D] flex items-center justify-center shrink-0">
+                    <Book size={20} className="text-white" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-xl tracking-widest uppercase">Noa</h3>
-                    <p className="text-sm text-[#2D2D2D]/70 mt-1">Version {import.meta.env.PACKAGE_VERSION}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold tracking-widest uppercase text-sm">Noa</span>
+                      <span className="text-xs text-[#2D2D2D]/50">v{import.meta.env.PACKAGE_VERSION}</span>
+                    </div>
+                    <p className="text-xs text-[#2D2D2D]/50 mt-0.5">Local-first Markdown knowledge base · React · Tailwind</p>
                   </div>
-                  <p className="text-sm max-w-sm mt-4">
-                    A retro-styled, local-first Markdown knowledge base. Built with React, Tailwind CSS, and a lot of redaction.
-                  </p>
-                  <div className="pt-4 flex space-x-4 text-xs font-bold text-[#B89B5E]">
+                  <div className="flex gap-2 text-[10px] font-bold text-[#B89B5E] shrink-0">
                     <span>#local-first</span>
-                    <span>#markdown</span>
                     <span>#redaction</span>
                   </div>
                 </div>
