@@ -1,7 +1,7 @@
 {
   "name": "noa",
   "private": true,
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "A fully client-side Markdown note-taking app",
   "type": "module",
   "main": "electron/main.cjs",
