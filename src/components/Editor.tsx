@@ -10,8 +10,10 @@ import { PreviewPane } from './editor/PreviewPane';
 import { MentionDropdown } from './editor/MentionDropdown';
 import { SlashCommandDropdown, SLASH_COMMANDS, type SlashCommand } from './editor/SlashCommandDropdown';
 import { AttachmentPanel } from './editor/AttachmentPanel';
+import { HistoryPanel } from './editor/HistoryPanel';
 import { useScrollingClass } from '../hooks/useScrollingClass';
 import { useAttachments } from '../hooks/useAttachments';
+import { NoteSnapshot } from '../types';
 
 const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -29,6 +31,7 @@ interface EditorProps {
   onClose?: () => void;
   onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
+  onRestoreSnapshot?: (snapshot: NoteSnapshot) => Promise<void>;
   viewMode: 'edit' | 'preview' | 'split';
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   settings: AppSettings;
@@ -54,7 +57,9 @@ export default function Editor({
   onTabChange,
   onTabClose,
   onNewTab,
+  onRestoreSnapshot,
 }: EditorProps) {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
   const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
@@ -144,6 +149,7 @@ export default function Editor({
       setTitleInput(note.title || 'Untitled');
       setMentionQuery(null);
       setSlashQuery(null);
+      setIsHistoryOpen(false);
     }
   }, [note?.id]);
 
@@ -326,6 +332,8 @@ export default function Editor({
         onExportMd={() => exportNoteAsMd(note)}
         onExportHtml={() => exportNoteAsHtml(note)}
         titleInputRef={titleInputRef}
+        onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
+        isHistoryOpen={isHistoryOpen}
       />
 
       {viewMode !== 'preview' && (
@@ -356,6 +364,17 @@ export default function Editor({
         ref={splitContainerRef}
         className="flex-1 flex overflow-hidden z-10 relative"
       >
+        {isHistoryOpen && onRestoreSnapshot && (
+          <HistoryPanel
+            noteId={note.id}
+            isDark={isDark}
+            onRestore={async (snapshot) => {
+              await onRestoreSnapshot(snapshot);
+              setIsHistoryOpen(false);
+            }}
+            onClose={() => setIsHistoryOpen(false)}
+          />
+        )}
         {/* Edit Pane — always mounted to preserve undo history */}
         <div
           ref={editPaneRef}

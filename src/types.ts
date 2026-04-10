@@ -108,3 +108,10 @@ export interface AppSettings {
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'ready' | 'error';
+
+export interface NoteSnapshot {
+  noteId: string;
+  content: string;
+  title: string;
+  savedAt: string; // ISO string
+}

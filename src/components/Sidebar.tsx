@@ -529,11 +529,14 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          className="p-1 transition-colors active:opacity-70 ml-auto"
+          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2D]/50 hover:text-[#B89B5E]"
           style={{ color: noteSortOrder !== 'updatedAt' ? '#B89B5E' : undefined }}
-          title={`Sort: ${noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'} (click to cycle)`}
+          title="Click to cycle sort order"
         >
           <ArrowUpDown size={14} />
+          <span className="text-[10px] uppercase tracking-wide leading-none">
+            {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
+          </span>
         </button>
       </div>
       

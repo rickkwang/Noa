@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css';
 import { visit } from 'unist-util-visit';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
+import { MermaidBlock } from './MermaidBlock';
 
 // Remark plugin: ==text== → custom 'mark' mdast node
 // Uses a non-greedy split that avoids empty matches and handles consecutive == pairs correctly.
@@ -276,6 +277,19 @@ export const PreviewPane = React.memo(function PreviewPane({
           padding: '0 2px',
         }}>{children}</mark>
       ),
+      hr: () => (
+        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.2)'}`, margin: '1.5rem 0' }} />
+      ),
+      code: ({ className, children }: any) => {
+        const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? '';
+        const codeText = String(children ?? '').replace(/\n$/, '');
+        if (language === 'mermaid') {
+          return <MermaidBlock code={codeText} isDark={isDark} />;
+        }
+        return (
+          <code className={className}>{children}</code>
+        );
+      },
       del: ({ children }: any) => (
         <del style={{ textDecoration: 'line-through', opacity: 0.55 }}>{children}</del>
       ),

@@ -1,5 +1,7 @@
 import localforage from 'localforage';
-import { Note, Folder, Attachment } from '../types';
+import { Note, Folder, Attachment, NoteSnapshot } from '../types';
+
+const MAX_SNAPSHOTS_PER_NOTE = 20;
 
 // Initialize localforage instances
 const notesStore = localforage.createInstance({
@@ -20,6 +22,11 @@ const workspaceStore = localforage.createInstance({
 const attachmentsStore = localforage.createInstance({
   name: 'redaction-diary-attachments-db',
   storeName: 'attachments'
+});
+
+const historyStore = localforage.createInstance({
+  name: 'redaction-diary-history-db',
+  storeName: 'history'
 });
 
 export const storage = {
@@ -131,6 +138,7 @@ export const storage = {
       foldersStore.clear(),
       workspaceStore.clear(),
       attachmentsStore.clear(),
+      historyStore.clear(),
     ]);
   },
 
@@ -169,6 +177,45 @@ export const storage = {
       return !validAttachmentIds.has(id);
     });
     await Promise.all(toDelete.map((k) => attachmentsStore.removeItem(k)));
+  },
+
+  // Version history
+  async saveSnapshot(snapshot: NoteSnapshot): Promise<void> {
+    const key = `history:${snapshot.noteId}:${snapshot.savedAt}`;
+    await historyStore.setItem(key, snapshot);
+  },
+
+  async getSnapshots(noteId: string): Promise<NoteSnapshot[]> {
+    const snapshots: NoteSnapshot[] = [];
+    await historyStore.iterate<NoteSnapshot, void>((value, key) => {
+      if (key.startsWith(`history:${noteId}:`)) {
+        snapshots.push(value);
+      }
+    });
+    snapshots.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+    return snapshots;
+  },
+
+  async deleteSnapshot(noteId: string, savedAt: string): Promise<void> {
+    await historyStore.removeItem(`history:${noteId}:${savedAt}`);
+  },
+
+  // Keep only the newest MAX_SNAPSHOTS_PER_NOTE snapshots, delete the rest.
+  async pruneSnapshots(noteId: string): Promise<void> {
+    const snapshots = await this.getSnapshots(noteId);
+    if (snapshots.length <= MAX_SNAPSHOTS_PER_NOTE) return;
+    const toDelete = snapshots.slice(MAX_SNAPSHOTS_PER_NOTE);
+    await Promise.allSettled(
+      toDelete.map(s => historyStore.removeItem(`history:${s.noteId}:${s.savedAt}`))
+    );
+  },
+
+  async deleteSnapshotsForNote(noteId: string): Promise<void> {
+    const keys: string[] = [];
+    await historyStore.iterate<NoteSnapshot, void>((_value, key) => {
+      if (key.startsWith(`history:${noteId}:`)) keys.push(key);
+    });
+    await Promise.allSettled(keys.map(k => historyStore.removeItem(k)));
   },
 
   async getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {

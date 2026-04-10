@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppErrorCode, AppSettings, Attachment, Folder, GlobalTask, Note } from '../types';
+import { AppErrorCode, AppSettings, Attachment, Folder, GlobalTask, Note, NoteSnapshot } from '../types';
 import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
@@ -25,6 +25,7 @@ import {
 } from '../lib/attachmentUtils';
 
 const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
+const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
 
 export function useNotes(settings?: AppSettings) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -39,11 +40,50 @@ export function useNotes(settings?: AppSettings) {
 
   // Per-note debounce timers
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Per-note snapshot timers (30s idle after last save, max 5min forced)
+  const snapshotTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Tracks when the first pending snapshot was scheduled per note (for max-interval enforcement)
+  const snapshotFirstScheduled = useRef<Map<string, number>>(new Map());
 
   // Always holds the latest notes array so debounceSave can access the most
   // recent version of a note without a stale closure.
   const notesRef = useRef<Note[]>([]);
   useEffect(() => { notesRef.current = notes; }, [notes]);
+
+  const scheduleSnapshot = useCallback((note: Note) => {
+    const noteId = note.id;
+    const existing = snapshotTimers.current.get(noteId);
+
+    // Record when we first started tracking this note's pending snapshot
+    if (!snapshotFirstScheduled.current.has(noteId)) {
+      snapshotFirstScheduled.current.set(noteId, Date.now());
+    }
+
+    const firstScheduledAt = snapshotFirstScheduled.current.get(noteId)!;
+    const elapsed = Date.now() - firstScheduledAt;
+    // If we've been deferring for longer than the max interval, fire immediately
+    const delay = elapsed >= MAX_SNAPSHOT_INTERVAL_MS ? 0 : 30_000;
+
+    if (existing) clearTimeout(existing);
+    const t = setTimeout(async () => {
+      const latest = notesRef.current.find(n => n.id === noteId) ?? note;
+      const snapshot: NoteSnapshot = {
+        noteId: latest.id,
+        content: latest.content,
+        title: latest.title,
+        savedAt: new Date().toISOString(),
+      };
+      try {
+        await storage.saveSnapshot(snapshot);
+        await storage.pruneSnapshots(latest.id);
+      } catch {
+        // Snapshot failure is non-fatal, ignore silently
+      }
+      snapshotTimers.current.delete(noteId);
+      snapshotFirstScheduled.current.delete(noteId);
+    }, delay);
+    snapshotTimers.current.set(noteId, t);
+  }, []);
 
   const debounceSave = useCallback((note: Note) => {
     const noteId = note.id;
@@ -57,13 +97,14 @@ export function useNotes(settings?: AppSettings) {
       const latest = notesRef.current.find(n => n.id === noteId) ?? note;
       try {
         await storage.saveNote(latest);
+        scheduleSnapshot(latest);
       } catch {
         setSaveError('Failed to save note. Storage may be full.');
       }
       saveTimers.current.delete(noteId);
     }, 500);
     saveTimers.current.set(noteId, t);
-  }, []);
+  }, [scheduleSnapshot]);
 
   const sameStringArray = useCallback((a: string[] = [], b: string[] = []) => {
     if (a.length !== b.length) return false;
@@ -94,11 +135,14 @@ export function useNotes(settings?: AppSettings) {
     return withRefs;
   }, [debounceSave, sameStringArray]);
 
-  // Cleanup all pending save timers on unmount
+  // Cleanup all pending save/snapshot timers on unmount
   useEffect(() => {
     return () => {
       saveTimers.current.forEach(t => clearTimeout(t));
       saveTimers.current.clear();
+      snapshotTimers.current.forEach(t => clearTimeout(t));
+      snapshotTimers.current.clear();
+      snapshotFirstScheduled.current.clear();
     };
   }, []);
 
@@ -512,13 +556,21 @@ Export regularly: use Settings → Data → Export Backup.`,
       setSaveError('Failed to delete note.');
       return false;
     }
-    // Cancel any pending debounce save for this note so it cannot be
+    // Cancel any pending debounce save/snapshot for this note so it cannot be
     // re-written to storage after deletion.
     const pending = saveTimers.current.get(id);
     if (pending) {
       clearTimeout(pending);
       saveTimers.current.delete(id);
     }
+    const pendingSnap = snapshotTimers.current.get(id);
+    if (pendingSnap) {
+      clearTimeout(pendingSnap);
+      snapshotTimers.current.delete(id);
+      snapshotFirstScheduled.current.delete(id);
+    }
+    // Clean up history snapshots for the deleted note (best-effort, non-fatal)
+    storage.deleteSnapshotsForNote(id).catch(() => {});
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
@@ -859,6 +911,42 @@ Export regularly: use Settings → Data → Export Backup.`,
     }
   }, [handleImportData]);
 
+  const restoreSnapshot = useCallback(async (snapshot: NoteSnapshot): Promise<void> => {
+    const currentNote = notesRef.current.find(n => n.id === snapshot.noteId);
+    if (!currentNote) return;
+
+    // Save the current state as a "before restore" snapshot so the user can undo
+    const beforeSnapshot: NoteSnapshot = {
+      noteId: currentNote.id,
+      content: currentNote.content,
+      title: currentNote.title,
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      await storage.saveSnapshot(beforeSnapshot);
+      await storage.pruneSnapshots(currentNote.id);
+    } catch { /* non-fatal */ }
+
+    // Apply the restored content, re-deriving links/tags so graph and search stay consistent
+    const restoredBase: Note = {
+      ...currentNote,
+      content: snapshot.content,
+      updatedAt: new Date().toISOString(),
+      ...(currentNote.source === 'obsidian-import'
+        ? {}
+        : { links: extractLinks(snapshot.content), tags: extractTags(snapshot.content) }),
+    };
+    setNotes(prev => {
+      const updated = prev.map(n => n.id === restoredBase.id ? restoredBase : n);
+      return syncLinkRefs(updated, prev, new Set([restoredBase.id]));
+    });
+    try {
+      await storage.saveNote(restoredBase);
+    } catch {
+      setSaveError('Failed to save restored note. Storage may be full.');
+    }
+  }, [syncLinkRefs]);
+
   return {
     isLoaded,
     loadError,
@@ -891,5 +979,6 @@ Export regularly: use Settings → Data → Export Backup.`,
     resetWorkspaceFromRecovery,
     clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
+    restoreSnapshot,
   };
 }

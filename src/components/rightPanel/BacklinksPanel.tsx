@@ -46,7 +46,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById }: Back
           {backlinks.map(note => {
             const snippet = backlinkSnippets.get(note.id);
             return (
-              <div key={note.id} className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-3">
+              <div key={note.id} className="border border-[#2D2D2D] bg-[#DCD9CE]/40 p-3 hover:bg-[#DCD9CE]/70 transition-colors cursor-pointer">
                 <button
                   onClick={() => onNavigateToNoteById(note.id)}
                   className="font-bold text-sm text-[#2D2D2D] hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left"

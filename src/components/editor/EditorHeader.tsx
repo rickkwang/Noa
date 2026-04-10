@@ -1,6 +1,49 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, X, Eye, Edit2, Columns, Plus } from 'lucide-react';
+import { FileText, X, Eye, Edit2, Columns, Plus, Clock, Download } from 'lucide-react';
 import { Note } from '../../types';
+
+function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-1 p-1 text-xs active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+        title="Export"
+      >
+        <Download size={13} />
+        <span>Export</span>
+      </button>
+      {open && (
+        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#262624] border border-[#F0EDE6]/10' : 'bg-[#EAE8E0] border border-[#2D2D2D]/15'}`}>
+          <button
+            onClick={() => { onExportMd(); setOpen(false); }}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F0EDE6]/08 text-[#F0EDE6]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+          >
+            Markdown (.md)
+          </button>
+          <button
+            onClick={() => { onExportHtml(); setOpen(false); }}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F0EDE6]/08 text-[#F0EDE6]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+          >
+            HTML (.html)
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function useIsDarkLocal(): boolean {
   const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark');
@@ -35,6 +78,8 @@ interface EditorHeaderProps {
   onExportMd: () => void;
   onExportHtml: () => void;
   titleInputRef: React.RefObject<HTMLInputElement | null>;
+  onToggleHistory?: () => void;
+  isHistoryOpen?: boolean;
 }
 
 export function EditorHeader({
@@ -55,6 +100,8 @@ export function EditorHeader({
   onExportMd,
   onExportHtml,
   titleInputRef,
+  onToggleHistory,
+  isHistoryOpen,
 }: EditorHeaderProps) {
   const isDark = useIsDarkLocal();
   const tabStripRef = useRef<HTMLDivElement>(null);
@@ -115,7 +162,7 @@ export function EditorHeader({
                     style={isActiveTab ? {
                       borderWidth: '1px',
                       borderStyle: 'solid',
-                      borderColor: isDark ? 'rgba(240,237,230,0.2)' : '#2D2D2D',
+                      borderColor: 'var(--border-primary)',
                       borderBottomColor: 'transparent',
                       paddingBottom: '6px',
                     } : {
@@ -162,7 +209,7 @@ export function EditorHeader({
               style={{
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                borderColor: isDark ? 'rgba(240,237,230,0.2)' : '#2D2D2D',
+                borderColor: 'var(--border-primary)',
                 borderBottomColor: 'transparent',
                 paddingBottom: '6px',
               }}
@@ -197,7 +244,7 @@ export function EditorHeader({
           {onNewTab && (
             <button
               onClick={onNewTab}
-              className="flex items-center justify-center w-6 h-6 text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70 rounded transition-colors shrink-0 self-end"
+              className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#F0EDE6]/30 hover:text-[#F0EDE6]/70 hover:bg-[#262624]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE]'}`}
               title="New tab"
             >
               <Plus size={14} />
@@ -237,22 +284,17 @@ export function EditorHeader({
             {new Date(note.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <div className={`flex items-center space-x-1 border-l pl-2 shrink-0 ${isDark ? 'border-[#F0EDE6]/10' : 'border-[#2D2D2D]/20'}`}>
+        <div className={`self-stretch w-px shrink-0 ${isDark ? 'bg-[#F0EDE6]/10' : 'bg-[#2D2D2D]/20'}`} />
+        <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} />
+        {onToggleHistory && (
           <button
-            onClick={onExportMd}
-            className={`p-1 active:opacity-70 transition-colors text-xs ${isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]'}`}
-            title="Export as Markdown"
+            onClick={onToggleHistory}
+            className={`p-1 active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            title="Version History"
           >
-            .md
+            <Clock size={14} />
           </button>
-          <button
-            onClick={onExportHtml}
-            className={`p-1 active:opacity-70 transition-colors text-xs ${isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]'}`}
-            title="Export as HTML"
-          >
-            .html
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

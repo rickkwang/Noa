@@ -61,6 +61,9 @@ export function useAttachments(
       } else {
         revokeUrls(pendingUrls);
       }
+    }).catch((err) => {
+      console.error('[Noa] Failed to load attachment URLs:', err);
+      revokeUrls(pendingUrls);
     });
 
     return () => {
@@ -126,7 +129,11 @@ export function useAttachments(
     async (attachmentId: string) => {
       if (!note) return;
 
-      await storage.deleteAttachmentBlob(attachmentId);
+      try {
+        await storage.deleteAttachmentBlob(attachmentId);
+      } catch (err) {
+        console.error('[Noa] Failed to delete attachment blob:', err);
+      }
 
       const url = objectUrls.get(attachmentId);
       if (url) {

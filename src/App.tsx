@@ -72,6 +72,7 @@ export default function App() {
     handleOpenDailyNote,
     handleToggleTask,
     handleImportData,
+    restoreSnapshot,
     loadError,
     saveError,
     clearSaveError,
@@ -286,7 +287,11 @@ export default function App() {
 
   const handleTabChange = useCallback(async (id: string) => {
     if (id === activeNoteId) return;
-    await flushAllPendingSaves(notesForQuitRef.current);
+    try {
+      await flushAllPendingSaves(notesForQuitRef.current);
+    } catch (err) {
+      console.error('[Noa] Failed to flush saves on tab change:', err);
+    }
     setActiveNoteId(id);
   }, [activeNoteId, setActiveNoteId, flushAllPendingSaves]);
 
@@ -537,6 +542,7 @@ export default function App() {
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}
                 onNewTab={handleNewTab}
+                onRestoreSnapshot={restoreSnapshot}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2D]/30 font-redaction select-none">

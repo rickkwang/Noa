@@ -111,7 +111,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   // Build tag → color map (first tag per note wins; ordered by first appearance)
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const note of stableTopologyRef.current.notes) {
+    for (const note of topologyNotes) {
       for (const tag of note.tags ?? []) {
         if (!map.has(tag)) {
           map.set(tag, TAG_PALETTE[map.size % TAG_PALETTE.length]);
@@ -119,7 +119,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
       }
     }
     return map;
-  }, [topologyKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [topologyNotes]);
 
   const graphData = useMemo(() => {
     const nodes: GraphNode[] = [];
@@ -222,15 +222,19 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
 
   useEffect(() => {
     if (!fgRef.current) return;
+    let innerTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       fgRef.current?.zoomToFit(300, 24);
       // Cap zoom for small graphs so a single node doesn't fill the canvas
-      setTimeout(() => {
+      innerTimer = setTimeout(() => {
         const cur = fgRef.current?.zoom();
         if (cur != null && cur > 2) fgRef.current?.zoom(2, 200);
       }, 350);
     }, 600);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(innerTimer);
+    };
   }, [graphData]);
 
   const lowerSearch = searchQuery.toLowerCase().trim();
@@ -317,11 +321,9 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         d3AlphaDecay={0.04}
         d3VelocityDecay={0.7}
         onNodeDragEnd={(node: GraphNode) => {
-          // Release the pin so the simulation can re-settle naturally.
-          // Keeping fx/fy fixed causes other nodes to scatter when the
-          // simulation reheats on subsequent drags.
-          node.fx = undefined;
-          node.fy = undefined;
+          // Pin the node at the dropped position so it stays put.
+          node.fx = node.x;
+          node.fy = node.y;
         }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
@@ -387,7 +389,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
             const labelY = node.y + radius + 5 / globalScale;
 
             // Background halo for legibility
-            ctx.globalAlpha = alpha * labelAlpha * 0.85;
+            ctx.globalAlpha = alpha * labelAlpha;
             ctx.shadowColor = bgColor;
             ctx.shadowBlur = 4;
             ctx.fillStyle = isDark ? '#E8E0D0' : '#2D2D2D';
