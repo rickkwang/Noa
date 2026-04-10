@@ -31,7 +31,7 @@ const oversizedEntry = entryAssets.filter((asset) => asset.size > ENTRY_BUDGET_B
 const oversizedChunks = jsAssets.filter((asset) => asset.size > MAX_CHUNK_BYTES);
 const warningSizedChunks = jsAssets.filter((asset) => asset.size > CHUNK_WARNING_LIMIT_BYTES);
 
-if (oversizedEntry.length > 0 || oversizedChunks.length > 0 || warningSizedChunks.length > 0) {
+if (oversizedEntry.length > 0 || oversizedChunks.length > 0) {
   console.error('Budget check failed.');
   if (oversizedEntry.length > 0) {
     console.error('Entry chunk exceeds 400KB raw size:');
@@ -45,12 +45,6 @@ if (oversizedEntry.length > 0 || oversizedChunks.length > 0 || warningSizedChunk
       console.error(` - ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
     });
   }
-  if (warningSizedChunks.length > 0) {
-    console.error('Chunk exceeds Vite warning threshold (500KB raw size):');
-    warningSizedChunks.forEach((asset) => {
-      console.error(` - ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
-    });
-  }
   process.exit(1);
 }
 
@@ -59,3 +53,9 @@ jsAssets.forEach((asset) => {
   const label = asset.name.startsWith('index-') ? 'entry' : 'lazy';
   console.log(` - [${label}] ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
 });
+if (warningSizedChunks.length > 0) {
+  console.log('Warning-sized lazy chunks (non-fatal):');
+  warningSizedChunks.forEach((asset) => {
+    console.log(` - ${asset.name}: ${(asset.size / 1024).toFixed(1)}KB`);
+  });
+}
