@@ -268,6 +268,50 @@ test('wiki-link preview mode is reachable', async ({ page }) => {
   await expect(page.getByTitle('Preview Only')).toBeVisible();
 });
 
+test('preview renders headings, table, math, callout, footnote, and task list', async ({ page }) => {
+  const marker = `render-${Date.now()}`;
+  await page.goto('/');
+  await page.keyboard.press('Control+n');
+  await page.locator('.cm-content').first().click();
+  await page.keyboard.type(`# ${marker}
+
+Inline code: \`@anthropic-ai/sandbox-runtime\`
+
+| Col A | Col B |
+| --- | --- |
+| 1 | 2 |
+
+Inline math: $a^2 + b^2 = c^2$
+
+$$
+E = mc^2
+$$
+
+> [!NOTE]
+> callout body
+
+- [ ] unchecked task
+- [x] checked task
+
+Footnote ref[^1]
+
+[^1]: footnote body
+`);
+
+  await waitForMarkerPersisted(page, marker);
+  await page.getByTitle('Preview Only').click();
+
+  const preview = page.locator('.prose').last();
+  await expect(preview.getByRole('heading', { name: marker })).toBeVisible();
+  await expect(preview.getByText('@anthropic-ai/sandbox-runtime', { exact: true })).toBeVisible();
+  await expect(preview.getByRole('columnheader', { name: 'Col A' })).toBeVisible();
+  await expect(preview.getByRole('columnheader', { name: 'Col B' })).toBeVisible();
+  await expect(preview.locator('.katex').first()).toBeVisible();
+  await expect(preview.getByText('callout body')).toBeVisible();
+  await expect(preview.getByText('footnote body')).toBeVisible();
+  await expect(preview.locator('li.task-list-item')).toHaveCount(2);
+});
+
 test('invalid JSON import is blocked with readable error', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
@@ -305,7 +349,7 @@ test('graph tab opens in right panel', async ({ page }) => {
   await page.getByTitle('Toggle Panel').click();
   await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Backlinks' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Links' })).toBeVisible();
 });
 
 test('vault import entry is labeled as migration', async ({ page }) => {
@@ -351,7 +395,7 @@ test('vault import preserves nested folder structure', async ({ page }) => {
   ]);
 
   const fileTree = page.getByTestId('sidebar-file-tree');
-  await expect(fileTree.getByText(`Projects-${vaultSuffix}`, { exact: true })).toBeVisible();
+  await expect(fileTree.getByText(`Projects-${vaultSuffix}`, { exact: true }).first()).toBeVisible();
 });
 
 test('multi-tab content persists after closing and reopening tabs', async ({ page }) => {

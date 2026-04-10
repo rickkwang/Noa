@@ -346,7 +346,7 @@ export const PreviewPane = React.memo(function PreviewPane({
     <div ref={scrollRef} className="flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50" style={{ paddingRight: '2rem', ...style }}>
       <div className="flex-1">
         <div
-          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm ${
+          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-code:before:content-none prose-code:after:content-none ${
             isDark
               ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
               : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
