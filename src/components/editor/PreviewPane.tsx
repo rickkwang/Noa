@@ -285,17 +285,17 @@ export const PreviewPane = React.memo(function PreviewPane({
         </div>
       ),
       thead: ({ children }: any) => (
-        <thead style={{ background: isDark ? 'rgba(240,237,230,0.06)' : 'rgba(45,45,45,0.07)' }}>{children}</thead>
+        <thead>{children}</thead>
       ),
       tbody: ({ children }: any) => <tbody>{children}</tbody>,
       tr: ({ children }: any) => (
-        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(240,237,230,0.1)' : 'rgba(45,45,45,0.15)'}` }}>{children}</tr>
+        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}` }}>{children}</tr>
       ),
       th: ({ children }: any) => (
-        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderBottom: `2px solid ${isDark ? 'rgba(240,237,230,0.18)' : 'rgba(45,45,45,0.25)'}`, color: isDark ? '#F0EDE6' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, color: isDark ? '#F0EDE6' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
       ),
       td: ({ children }: any) => (
-        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', color: isDark ? 'rgba(240,237,230,0.85)' : '#2D2D2D' }}>{children}</td>
+        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(45,45,45,0.12)'}`, color: isDark ? 'rgba(240,237,230,0.85)' : '#2D2D2D' }}>{children}</td>
       ),
       li: ({ children, className, ...props }: any) => {
         const isTask = className?.includes('task-list-item');
