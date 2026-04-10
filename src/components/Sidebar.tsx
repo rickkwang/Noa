@@ -5,20 +5,27 @@ import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath, isDescendantPath } from '../lib/pathUtils';
-import DOMPurify from 'dompurify';
 import CalendarPanel from './CalendarPanel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
 
-const HIGHLIGHT_SANITIZE_CONFIG = {
-  ALLOWED_TAGS: ['b', 'i', 'em', 'strong'],
-  ALLOWED_ATTR: [],
-};
-
-function sanitizeHighlightHtml(input: string | null | undefined): string {
-  if (!input) return '';
-  return DOMPurify.sanitize(input, HIGHLIGHT_SANITIZE_CONFIG);
+// Renders a search-highlight snippet safely without dangerouslySetInnerHTML.
+// The search engine wraps matched characters in <b>…</b>; we parse those tags
+// out and reconstruct the content as React nodes — no raw HTML ever reaches the DOM.
+function HighlightedText({ text }: { text: string | null | undefined }) {
+  if (!text) return null;
+  const parts = text.split(/(<b>|<\/b>)/);
+  const nodes: React.ReactNode[] = [];
+  let inBold = false;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === '<b>') { inBold = true; continue; }
+    if (part === '</b>') { inBold = false; continue; }
+    if (part === '') continue;
+    nodes.push(inBold ? <b key={i}>{part}</b> : <React.Fragment key={i}>{part}</React.Fragment>);
+  }
+  return <>{nodes}</>;
 }
 
 function isInlinePreviewableAttachment(file: File): boolean {
@@ -591,12 +598,13 @@ export default function Sidebar({
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2D] mb-1 flex items-center">
                       <FileText size={12} className="mr-1.5 text-[#B89B5E] shrink-0" />
-                      <span dangerouslySetInnerHTML={{ __html: sanitizeHighlightHtml(result.titleSnippet) || 'Untitled' }} className="truncate" />
+                      <span className="truncate">
+                        {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
+                      </span>
                     </div>
-                    <div 
-                      className="text-xs text-[#2D2D2D]/70 font-redaction leading-relaxed break-words line-clamp-2"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHighlightHtml(result.contentSnippet) }}
-                    />
+                    <div className="text-xs text-[#2D2D2D]/70 font-redaction leading-relaxed break-words line-clamp-2">
+                      <HighlightedText text={result.contentSnippet} />
+                    </div>
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {result.note.tags.map(tag => (

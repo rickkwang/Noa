@@ -16,6 +16,7 @@ function resolveImportTags(content: string): string[] {
   return fm.length > 0 ? fm : extractTags(content);
 }
 import {
+  blobToBase64,
   inferAttachmentMimeType,
   canDecodeBase64,
   mergeAttachmentPayloads,
@@ -102,27 +103,6 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read attachment blob.'));
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      resolve(result.split(',')[1] ?? '');
-    };
-    reader.readAsDataURL(blob);
-  });
-}
-
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
-}
-
 interface VaultScanFile {
   pathSegments: string[];
   file: File;
@@ -142,12 +122,20 @@ function expandFolderHierarchy(paths: Iterable<string>): string[] {
   return Array.from(allPaths);
 }
 
+const MAX_VAULT_SCAN_DEPTH = 50;
+
 async function collectVaultDirectoryEntries(
   dirHandle: FileSystemDirectoryHandle,
   relativeSegments: string[] = [],
   folderPaths = new Set<string>(),
   files: VaultScanFile[] = [],
+  depth = 0,
 ): Promise<{ folderPaths: Set<string>; files: VaultScanFile[] }> {
+  if (depth > MAX_VAULT_SCAN_DEPTH) {
+    console.warn(`[Noa] Vault folder nesting exceeded ${MAX_VAULT_SCAN_DEPTH} levels at "${relativeSegments.join('/')}", skipping subtree.`);
+    return { folderPaths, files };
+  }
+
   const folderPath = sanitizeFolderPath(relativeSegments.join('/'));
   if (folderPath) {
     folderPaths.add(folderPath);
@@ -161,6 +149,7 @@ async function collectVaultDirectoryEntries(
         [...relativeSegments, entryName],
         folderPaths,
         files,
+        depth + 1,
       );
       continue;
     }

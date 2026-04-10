@@ -3,6 +3,18 @@ import { Attachment, Note } from '../types';
 export type ImportedAttachment = Attachment & { dataBase64?: string };
 export type ImportedNote = Note & { attachments?: ImportedAttachment[] };
 
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read attachment blob.'));
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      resolve(result.split(',')[1] ?? '');
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function inferAttachmentMimeType(file: Pick<File, 'name' | 'type'>): string {
   if (file.type) return file.type;
   const match = file.name.toLowerCase().match(/\.([^.]+)$/);

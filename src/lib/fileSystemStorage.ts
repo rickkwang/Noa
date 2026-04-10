@@ -3,6 +3,7 @@ import { Note, Folder, Attachment } from '../types';
 import { storage } from './storage';
 import { extractObsidianCreatedAt, extractObsidianTags } from './frontmatter';
 import { extractLinks } from './noteUtils';
+import { blobToBase64 } from './attachmentUtils';
 
 const fsHandleStore = localforage.createInstance({
   name: 'redaction-diary-fs-db',
@@ -196,18 +197,6 @@ function relativeNotePath(folderName: string | undefined, filename: string): str
 
 function manifestEntryForId(manifest: VaultManifest, noteId: string): [string, VaultManifestNoteEntry] | undefined {
   return Object.entries(manifest.notes).find(([, entry]) => entry.id === noteId);
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read attachment.'));
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      resolve(result.split(',')[1] ?? '');
-    };
-    reader.readAsDataURL(blob);
-  });
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -415,7 +404,12 @@ export async function scanDirectory(
   const isDirectoryHandle = (handle: FileSystemHandle): handle is FileSystemDirectoryHandle =>
     handle.kind === 'directory';
 
-  async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string, pathSegments: string[] = []) {
+  const MAX_DIR_DEPTH = 50;
+  async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string, pathSegments: string[] = [], depth = 0) {
+    if (depth > MAX_DIR_DEPTH) {
+      console.warn(`[Noa] Vault folder nesting exceeded ${MAX_DIR_DEPTH} levels at "${pathSegments.join('/')}", skipping subtree.`);
+      return;
+    }
     for await (const [name, handle] of dirHandle.entries()) {
       const currentPath = [...pathSegments, name];
       const currentPathKey = currentPath.join('/');
@@ -490,7 +484,7 @@ export async function scanDirectory(
             newFolders.push(matchedFolder);
             allFolders.push(matchedFolder);
           }
-          await readDir(handle, matchedFolder.id, currentPath);
+          await readDir(handle, matchedFolder.id, currentPath, depth + 1);
         }
       }
     }

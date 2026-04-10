@@ -273,7 +273,14 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('app-updater:open-download-url', async (_event, url) => {
-    if (!url) return false;
+    if (!url || typeof url !== 'string') return false;
+    // Only allow HTTPS URLs from trusted GitHub domains to prevent a
+    // compromised renderer from opening arbitrary local or remote resources.
+    let parsed;
+    try { parsed = new URL(url); } catch { return false; }
+    if (parsed.protocol !== 'https:') return false;
+    const trustedHosts = ['github.com', 'objects.githubusercontent.com', 'releases.githubusercontent.com'];
+    if (!trustedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) return false;
     await shell.openExternal(url);
     return true;
   });

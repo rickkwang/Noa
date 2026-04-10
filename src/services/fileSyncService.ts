@@ -76,16 +76,26 @@ export async function mergeScannedNotes(
   return { notes: merged, newFolders };
 }
 
+// Serialises all vault write operations so concurrent saves never produce a
+// torn manifest. Each call enqueues behind the previous one.
+let _vaultWriteQueue: Promise<void> = Promise.resolve();
+
+function withVaultLock<T>(fn: () => Promise<T>): Promise<T> {
+  const result = _vaultWriteQueue.then(fn);
+  // The outer queue only tracks completion (not the return value) so a
+  // rejected inner promise doesn't stall subsequent operations.
+  _vaultWriteQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 export async function syncNoteUpdate(
   handle: FileSystemDirectoryHandle,
   note: Note,
   content: string,
   folders: Folder[],
 ): Promise<void> {
-  await writeNote(
-    handle,
-    { ...note, content, updatedAt: new Date().toISOString() },
-    folders,
+  await withVaultLock(() =>
+    writeNote(handle, { ...note, content, updatedAt: new Date().toISOString() }, folders)
   );
 }
 
@@ -95,12 +105,10 @@ export async function syncNoteRename(
   newTitle: string,
   folders: Folder[],
 ): Promise<void> {
-  await deleteNoteFile(handle, note, folders);
-  await writeNote(
-    handle,
-    { ...note, title: newTitle, updatedAt: new Date().toISOString() },
-    folders,
-  );
+  await withVaultLock(async () => {
+    await deleteNoteFile(handle, note, folders);
+    await writeNote(handle, { ...note, title: newTitle, updatedAt: new Date().toISOString() }, folders);
+  });
 }
 
 export async function syncNoteDelete(
@@ -108,7 +116,7 @@ export async function syncNoteDelete(
   note: Note,
   folders: Folder[],
 ): Promise<void> {
-  await deleteNoteFile(handle, note, folders);
+  await withVaultLock(() => deleteNoteFile(handle, note, folders));
 }
 
 export async function syncNoteMove(
@@ -117,8 +125,10 @@ export async function syncNoteMove(
   nextNote: Note,
   folders: Folder[],
 ): Promise<void> {
-  await deleteNoteFile(handle, previousNote, folders);
-  await writeNote(handle, nextNote, folders);
+  await withVaultLock(async () => {
+    await deleteNoteFile(handle, previousNote, folders);
+    await writeNote(handle, nextNote, folders);
+  });
 }
 
 export async function syncFolderRename(
@@ -128,26 +138,26 @@ export async function syncFolderRename(
   currentFolders: Folder[],
   notes: Note[],
 ): Promise<void> {
-  const nextFolder = currentFolders.find((folder) => folder.id === folderId);
-  if (!nextFolder) return;
+  await withVaultLock(async () => {
+    const nextFolder = currentFolders.find((folder) => folder.id === folderId);
+    if (!nextFolder) return;
 
-  // currentFolders already has the new names, so match against the new folder's
-  // id plus any child that was a descendant of previousName (now updated to
-  // the new prefix).  We derive the new prefix from nextFolder to avoid
-  // matching stale previousName in already-renamed currentFolders.
-  const newPrefix = nextFolder.name;
-  const affectedFolderIds = new Set(
-    currentFolders
-      .filter((folder) => folder.id === folderId || folder.name.startsWith(`${newPrefix}/`))
-      .map((folder) => folder.id)
-  );
+    // currentFolders already has the new names, so match against the new folder's
+    // id plus any child that was a descendant of previousName (now updated to
+    // the new prefix).  We derive the new prefix from nextFolder to avoid
+    // matching stale previousName in already-renamed currentFolders.
+    const newPrefix = nextFolder.name;
+    const affectedFolderIds = new Set(
+      currentFolders
+        .filter((folder) => folder.id === folderId || folder.name.startsWith(`${newPrefix}/`))
+        .map((folder) => folder.id)
+    );
 
-  await deleteFolderTree(handle, previousName);
-  await Promise.all(
-    notes
-      .filter((note) => affectedFolderIds.has(note.folder))
-      .map((note) => writeNote(handle, note, currentFolders))
-  );
+    await deleteFolderTree(handle, previousName);
+    for (const note of notes.filter((n) => affectedFolderIds.has(n.folder))) {
+      await writeNote(handle, note, currentFolders);
+    }
+  });
 }
 
 export async function retryFullSync(
@@ -155,7 +165,11 @@ export async function retryFullSync(
   notes: Note[],
   folders: Folder[],
 ): Promise<void> {
-  await Promise.all(notes.map((note) => writeNote(handle, note, folders)));
+  await withVaultLock(async () => {
+    for (const note of notes) {
+      await writeNote(handle, note, folders);
+    }
+  });
 }
 
 export function classifySyncError(error: unknown): FileSyncError {

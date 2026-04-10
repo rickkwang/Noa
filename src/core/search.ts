@@ -66,6 +66,8 @@ export interface SearchResult {
   contentSnippet: string;
 }
 
+const CACHE_MAX_SIZE = 100;
+
 export class SearchEngine {
   private fuse: Fuse<Note>;
   private notes: Note[];
@@ -196,28 +198,60 @@ export class SearchEngine {
         contentSnippet: contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
       };
     });
+    // Evict oldest entry when cache exceeds limit to bound memory usage.
+    if (this.cache.size >= CACHE_MAX_SIZE) {
+      this.cache.delete(this.cache.keys().next().value!);
+    }
     this.cache.set(cacheKey, mappedResults);
     return mappedResults;
   }
 
+  private createBoldMarkers(source: string): { open: string; close: string } {
+    let open = '[[__NOA_B_OPEN__]]';
+    let close = '[[__NOA_B_CLOSE__]]';
+    while (source.includes(open) || source.includes(close)) {
+      open = `${open}_`;
+      close = `${close}_`;
+    }
+    return { open, close };
+  }
+
+  // Snippets use plain <b>…</b> markers only. The Sidebar renders them via
+  // HighlightedText which reconstructs React nodes — no raw HTML hits the DOM.
+  private wrapBold(text: string, marker: { open: string; close: string }): string {
+    return `${marker.open}${text}${marker.close}`;
+  }
+
   private escapeHtml(text: string): string {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  private finalizeSnippet(text: string, marker: { open: string; close: string }): string {
+    return this.escapeHtml(text)
+      .replaceAll(marker.open, '<b>')
+      .replaceAll(marker.close, '</b>');
   }
 
   private highlightExact(text: string, phrases: string[], caseSensitive: boolean = false): string {
-    if (phrases.length === 0) return this.escapeHtml(text);
-    let highlighted = this.escapeHtml(text);
+    const marker = this.createBoldMarkers(text);
+    if (phrases.length === 0) return this.finalizeSnippet(text, marker);
+    let highlighted = text;
     phrases.forEach(phrase => {
       const flags = caseSensitive ? 'g' : 'gi';
-      const escapedPhrase = this.escapeHtml(phrase);
-      const regex = new RegExp(`(${escapedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags);
-      highlighted = highlighted.replace(regex, '<mark class="bg-[#B89B5E]/30 text-[#B89B5E] font-bold rounded-sm px-0.5">$1</mark>');
+      const regex = new RegExp(`(${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, flags);
+      highlighted = highlighted.replace(regex, (match) => this.wrapBold(match, marker));
     });
-    return highlighted;
+    return this.finalizeSnippet(highlighted, marker);
   }
 
   private getSnippet(content: string, phrases: string[], caseSensitive: boolean = false): string {
-    if (phrases.length === 0) return content.slice(0, 120) + '...';
+    if (phrases.length === 0) {
+      const plainSnippet = content.slice(0, 120) + '...';
+      return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
+    }
 
     const normalizedContent = caseSensitive ? content : content.toLowerCase();
     let bestIndex = -1;
@@ -230,7 +264,10 @@ export class SearchEngine {
       }
     }
 
-    if (bestIndex === -1) return content.slice(0, 120) + '...';
+    if (bestIndex === -1) {
+      const plainSnippet = content.slice(0, 120) + '...';
+      return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
+    }
 
     const start = Math.max(0, bestIndex - 40);
     const end = Math.min(content.length, bestIndex + 80);
@@ -240,34 +277,35 @@ export class SearchEngine {
   }
 
   private highlightFuseMatch(text: string, indices: readonly [number, number][]): string {
+    const marker = this.createBoldMarkers(text);
     let result = '';
     let lastIndex = 0;
 
     indices.forEach(([start, end]) => {
-      result += this.escapeHtml(text.slice(lastIndex, start));
-      result += `<mark class="bg-[#B89B5E]/30 text-[#B89B5E] font-bold rounded-sm px-0.5">${this.escapeHtml(text.slice(start, end + 1))}</mark>`;
+      result += text.slice(lastIndex, start);
+      result += this.wrapBold(text.slice(start, end + 1), marker);
       lastIndex = end + 1;
     });
-    result += this.escapeHtml(text.slice(lastIndex));
-    return result;
+    result += text.slice(lastIndex);
+    return this.finalizeSnippet(result, marker);
   }
 
   private getFuseSnippet(content: string, indices: readonly [number, number][]): string {
-    if (indices.length === 0) return content.slice(0, 120) + '...';
+    if (indices.length === 0) {
+      const plainSnippet = content.slice(0, 120) + '...';
+      return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
+    }
 
     const [firstMatchStart] = indices[0];
     const start = Math.max(0, firstMatchStart - 40);
     const end = Math.min(content.length, firstMatchStart + 80);
-    
-    let snippet = content.slice(start, end);
-    
-    // Adjust indices for the snippet
+
     const adjustedIndices = indices
       .filter(([s, e]) => s >= start && e <= end)
       .map(([s, e]) => [s - start, e - start] as [number, number]);
 
-    snippet = this.highlightFuseMatch(snippet, adjustedIndices);
-    
+    const snippet = this.highlightFuseMatch(content.slice(start, end), adjustedIndices);
+
     return (start > 0 ? '...' : '') + snippet + (end < content.length ? '...' : '');
   }
 }

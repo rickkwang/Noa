@@ -40,19 +40,29 @@ export function useNotes(settings?: AppSettings) {
   // Per-note debounce timers
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+  // Always holds the latest notes array so debounceSave can access the most
+  // recent version of a note without a stale closure.
+  const notesRef = useRef<Note[]>([]);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+
   const debounceSave = useCallback((note: Note) => {
-    const snapshot = { ...note };
-    const existing = saveTimers.current.get(note.id);
+    const noteId = note.id;
+    const existing = saveTimers.current.get(noteId);
     if (existing) clearTimeout(existing);
     const t = setTimeout(async () => {
+      // Prefer the latest version from the ref so that rapid edits don't
+      // cause an older closure snapshot to overwrite newer content.
+      // Fall back to the passed-in note if the ref hasn't synced yet
+      // (e.g. during initial mount or in test environments).
+      const latest = notesRef.current.find(n => n.id === noteId) ?? note;
       try {
-        await storage.saveNote(snapshot);
+        await storage.saveNote(latest);
       } catch {
         setSaveError('Failed to save note. Storage may be full.');
       }
-      saveTimers.current.delete(snapshot.id);
+      saveTimers.current.delete(noteId);
     }, 500);
-    saveTimers.current.set(note.id, t);
+    saveTimers.current.set(noteId, t);
   }, []);
 
   const sameStringArray = useCallback((a: string[] = [], b: string[] = []) => {
@@ -118,7 +128,8 @@ export function useNotes(settings?: AppSettings) {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
+    const controller = new AbortController();
+    const { signal } = controller;
     const loadData = async () => {
       try {
         await storage.verifyAccess();
@@ -131,7 +142,7 @@ export function useNotes(settings?: AppSettings) {
           storage.getNotes(),
         ]);
 
-        if (!mounted) return;
+        if (signal.aborted) return;
 
         if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
@@ -234,7 +245,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         }
         setLoadError(null);
       } catch (error) {
-        if (!mounted) return;
+        if (signal.aborted) return;
         const appError = fromStorageError(error);
         setLoadError({ code: appError.code, message: appError.userMessage });
         recordErrorSnapshot({
@@ -245,11 +256,11 @@ Export regularly: use Settings → Data → Export Backup.`,
           suggestedAction: appError.suggestedAction,
         });
       } finally {
-        if (mounted) setIsLoaded(true);
+        if (!signal.aborted) setIsLoaded(true);
       }
     };
     loadData();
-    return () => { mounted = false; };
+    return () => { controller.abort(); };
   }, [collectNotesWithChangedLinkRefs, loadAttempt, syncLinkRefs]);
 
   useEffect(() => {
@@ -489,14 +500,12 @@ Export regularly: use Settings → Data → Export Backup.`,
     setActiveNoteIdWithRecent(newNote.id);
   }, [notes, setActiveNoteIdWithRecent, syncLinkRefs]);
 
-  const notesRef = useRef(notes);
-  useEffect(() => { notesRef.current = notes; }, [notes]);
 
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
     const noteToDelete = notesRef.current.find(n => n.id === id);
     try {
       if (noteToDelete?.attachments?.length) {
-        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments);
+        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments, notesRef.current);
       }
       await storage.deleteNote(id);
     } catch {
@@ -567,7 +576,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const results = await Promise.allSettled(
       toDelete.map(async (note) => {
         if (note.attachments?.length) {
-          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments);
+          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, currentNotes);
         }
         await storage.deleteNote(note.id);
         return note.id;
@@ -584,18 +593,17 @@ Export regularly: use Settings → Data → Export Backup.`,
         saveTimers.current.delete(id);
       }
     });
+    if (deletedIds.length > 0) {
+      const deletedSet = new Set(deletedIds);
+      setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
+      setNotes(prev => syncLinkRefs(prev.filter((note) => !deletedSet.has(note.id)), prev));
+    }
     const failedCount = results.length - deletedIds.length;
     if (failedCount > 0) {
-      setSaveError('Failed to delete some notes in folder.');
-      if (deletedIds.length > 0) {
-        const deletedSet = new Set(deletedIds);
-        setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
-        setNotes(prev => syncLinkRefs(prev.filter((note) => !deletedSet.has(note.id)), prev));
-      }
+      setSaveError(`Failed to delete ${failedCount} note(s) in folder. Please try again.`);
       return deletedIds;
     }
     setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
-    setRecentNoteIds(prev => prev.filter((noteId) => !deletedIds.includes(noteId)));
     setNotes(prev => syncLinkRefs(prev.filter(n => !folderIdsToDelete.has(n.folder)), prev));
     return deletedIds;
   }, [syncLinkRefs]);
@@ -645,21 +653,22 @@ Export regularly: use Settings → Data → Export Backup.`,
           }))
       );
 
-      const ATTACHMENT_BATCH_SIZE = 20;
+      // Smaller batch size reduces peak memory usage for large attachments.
+      const ATTACHMENT_BATCH_SIZE = 5;
       for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
         const batch = importAttachments.slice(i, i + ATTACHMENT_BATCH_SIZE);
-        await Promise.all(
+        const batchResults = await Promise.allSettled(
           batch.map(async (attachment) => {
-            const binary = atob(attachment.dataBase64);
-            const bytes = new Uint8Array(binary.length);
-            for (let j = 0; j < binary.length; j += 1) {
-              bytes[j] = binary.charCodeAt(j);
-            }
-            const blob = new Blob([bytes], { type: attachment.mimeType || 'application/octet-stream' });
+            // Decode base64 via fetch/blob to avoid holding a giant Uint8Array.
+            const blob = await fetch(`data:${attachment.mimeType || 'application/octet-stream'};base64,${attachment.dataBase64}`)
+              .then(r => r.blob());
             await storage.saveAttachmentBlob(attachment.id, blob);
-            savedAttachmentIds.push(attachment.id);
+            return attachment.id;
           })
         );
+        for (const r of batchResults) {
+          if (r.status === 'fulfilled') savedAttachmentIds.push(r.value);
+        }
       }
 
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
@@ -727,7 +736,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const results = await Promise.allSettled(
       importedNotes.map(async (note) => {
         if (note.attachments?.length) {
-          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments);
+          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, notes);
         }
         await storage.deleteNote(note.id);
         return note.id;

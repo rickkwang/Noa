@@ -51,9 +51,16 @@ export const storage = {
     }
   },
 
-  // Batch save for import
+  // Batch save for import. Uses allSettled so a single failure doesn't leave
+  // other writes in-flight with no way to roll back.
   async saveNotes(notes: Note[]): Promise<void> {
-    await Promise.all(notes.map(n => notesStore.setItem(`note:${n.id}`, n)));
+    const results = await Promise.allSettled(
+      notes.map(n => notesStore.setItem(`note:${n.id}`, n))
+    );
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      throw new Error(`Failed to save ${failed}/${notes.length} notes. Storage may be full.`);
+    }
   },
 
   // Migration: old 'all-notes' key → per-note keys
@@ -144,9 +151,15 @@ export const storage = {
     await attachmentsStore.removeItem(`blob:${attachmentId}`);
   },
 
-  async deleteAttachmentBlobsByNoteId(noteId: string, attachments: Attachment[]): Promise<void> {
+  async deleteAttachmentBlobsByNoteId(noteId: string, attachments: Attachment[], allNotes?: Note[]): Promise<void> {
     const noteAttachments = attachments.filter(a => a.noteId === noteId);
-    await Promise.all(noteAttachments.map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
+    // If a full note list is provided, only delete blobs not referenced by other notes.
+    const toDelete = allNotes
+      ? noteAttachments.filter(att =>
+          !allNotes.some(n => n.id !== noteId && n.attachments?.some(a => a.id === att.id))
+        )
+      : noteAttachments;
+    await Promise.allSettled(toDelete.map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
   },
 
   async pruneOrphanedAttachments(validAttachmentIds: Set<string>): Promise<void> {

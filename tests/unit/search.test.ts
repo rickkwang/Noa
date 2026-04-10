@@ -123,16 +123,18 @@ describe('SearchEngine', () => {
     expect(second.some(r => r.note.id === '4')).toBe(true);
   });
 
-  it('escapes HTML in highlight output (XSS guard)', () => {
+  it('XSS guard: snippet does not inject executable script markers', () => {
     const xssNote = makeNote('x', 'Safe', '<script>alert(1)</script> note content');
     const engine = new SearchEngine([xssNote], false, false);
     const results = engine.search('"script"');
     const snippet = results[0]?.contentSnippet ?? '';
-    // Raw <script> tag must not appear — ensures the browser cannot execute it
+    // The only complete HTML tags in snippets must be <b> or </b> markers.
+    // HighlightedText parses these as React nodes, so text like '<' and '>'
+    // are automatically escaped by React — <script> never executes in the DOM.
     expect(snippet).not.toContain('<script>');
     expect(snippet).not.toContain('</script>');
-    // The text is escaped into entities
-    expect(snippet).toContain('&lt;');
-    expect(snippet).toContain('&gt;');
+    // No complete HTML tags other than the bold markers should appear.
+    const unexpectedTags = snippet.match(/<(?!b>|\/b>)[^>]+>/g);
+    expect(unexpectedTags).toBeNull();
   });
 });
