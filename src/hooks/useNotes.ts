@@ -4,6 +4,7 @@ import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
+import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { fromImportError, fromStorageError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { sortNotesByRecent } from '../lib/noteSort';
@@ -146,12 +147,14 @@ export function useNotes(settings?: AppSettings) {
     };
   }, []);
 
-  const flushAllPendingSaves = useCallback(async (currentNotes: Note[]) => {
+  const flushAllPendingSaves = useCallback(async (_currentNotes?: Note[]) => {
     const pending = Array.from(saveTimers.current.keys());
     for (const id of pending) {
       clearTimeout(saveTimers.current.get(id));
       saveTimers.current.delete(id);
-      const note = currentNotes.find(n => n.id === id);
+      // Always use notesRef.current — it's updated synchronously in the same
+      // render cycle and is guaranteed more recent than any passed-in snapshot.
+      const note = notesRef.current.find(n => n.id === id);
       if (note) {
         try { await storage.saveNote(note); } catch { /* best effort on quit */ }
       }
@@ -214,8 +217,7 @@ export function useNotes(settings?: AppSettings) {
           }
           const sorted = sortNotesByRecent(withRefs);
           setNotes(sorted);
-          let lastActiveId: string | null = null;
-          try { lastActiveId = localStorage.getItem(LAST_ACTIVE_NOTE_KEY); } catch { /* quota exceeded */ }
+          const lastActiveId = lsGet(LAST_ACTIVE_NOTE_KEY);
           const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
             ? lastActiveId
             : sorted[0].id;
@@ -382,11 +384,7 @@ Export regularly: use Settings → Data → Export Backup.`,
   const setActiveNoteIdWithRecent = useCallback((id: string) => {
     setActiveNoteId(id);
     if (!id) return;
-    try {
-      localStorage.setItem(LAST_ACTIVE_NOTE_KEY, id);
-    } catch {
-      // ignore storage write issues
-    }
+    lsSet(LAST_ACTIVE_NOTE_KEY, id);
     setRecentNoteIds(prev => {
       const next = addRecentNoteId(prev, id);
       saveRecentNoteIds(next);

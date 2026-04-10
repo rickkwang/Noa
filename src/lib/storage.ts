@@ -58,19 +58,28 @@ export const storage = {
     }
   },
 
-  // Batch save for import. Uses allSettled so a single failure doesn't leave
-  // other writes in-flight with no way to roll back.
+  // Batch save for import. Writes sequentially so we can roll back on failure
+  // without leaving the store in a partially-imported state.
   async saveNotes(notes: Note[]): Promise<void> {
-    const results = await Promise.allSettled(
-      notes.map(n => notesStore.setItem(`note:${n.id}`, n))
-    );
-    const failed = results.filter(r => r.status === 'rejected').length;
-    if (failed > 0) {
-      throw new Error(`Failed to save ${failed}/${notes.length} notes. Storage may be full.`);
+    const written: string[] = [];
+    try {
+      for (const n of notes) {
+        await notesStore.setItem(`note:${n.id}`, n);
+        written.push(n.id);
+      }
+    } catch (err) {
+      // Roll back all keys written so far so the store stays consistent.
+      await Promise.allSettled(written.map(id => notesStore.removeItem(`note:${id}`)));
+      throw new Error(
+        `Import failed after writing ${written.length}/${notes.length} notes (rolled back). Storage may be full.`
+      );
     }
   },
 
   // Migration: old 'all-notes' key → per-note keys
+  // Safe: writes all new keys first, only removes the legacy key after
+  // all writes succeed. If the process dies mid-flight the migration flag
+  // is never set, so we will retry (idempotent because setItem overwrites).
   async migrateToPerNoteStorage(): Promise<void> {
     try {
       const done = await notesStore.getItem<boolean>('migration:per-note-done');
@@ -80,11 +89,22 @@ export const storage = {
         await notesStore.setItem('migration:per-note-done', true);
         return;
       }
-      await Promise.all(legacy.map(n => notesStore.setItem(`note:${n.id}`, n)));
+      // Write all per-note keys first. If any fail we abort and leave the
+      // legacy key intact so the next startup can retry.
+      const results = await Promise.allSettled(
+        legacy.map(n => notesStore.setItem(`note:${n.id}`, n))
+      );
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        console.error(`Migration: ${failed.length}/${legacy.length} writes failed — will retry next startup.`);
+        return; // Do NOT remove legacy key or set done flag
+      }
+      // All writes succeeded — safe to remove legacy blob and mark done.
       await notesStore.removeItem('all-notes');
       await notesStore.setItem('migration:per-note-done', true);
     } catch (err) {
       console.error('Error migrating to per-note storage:', err);
+      // Do not set migration:per-note-done so we retry next time.
     }
   },
 

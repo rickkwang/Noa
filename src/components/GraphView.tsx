@@ -316,10 +316,10 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
-        cooldownTicks={30}
-        cooldownTime={1500}
-        d3AlphaDecay={0.04}
-        d3VelocityDecay={0.7}
+        cooldownTicks={graphData.nodes.length > 200 ? 15 : graphData.nodes.length > 100 ? 20 : 30}
+        cooldownTime={graphData.nodes.length > 200 ? 800 : 1500}
+        d3AlphaDecay={graphData.nodes.length > 200 ? 0.08 : 0.04}
+        d3VelocityDecay={graphData.nodes.length > 200 ? 0.8 : 0.7}
         onNodeDragEnd={(node: GraphNode) => {
           // Pin the node at the dropped position so it stays put.
           node.fx = node.x;

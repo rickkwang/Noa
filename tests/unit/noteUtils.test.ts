@@ -28,7 +28,10 @@ describe('buildTitleToIdsMap', () => {
 });
 
 describe('recomputeLinkRefsForNotes', () => {
-  it('resolves only uniquely matched wiki links', () => {
+  it('resolves wiki links including all notes with duplicate titles', () => {
+    // Previously only uniquely-matched titles were linked; duplicate-title
+    // notes were silently dropped from linkRefs and the knowledge graph.
+    // Now all matching IDs are included so the graph stays connected.
     const notes = [
       note({ id: 'a', title: 'A', links: ['B', 'Dup'] }),
       note({ id: 'b', title: 'B', links: [] }),
@@ -37,7 +40,7 @@ describe('recomputeLinkRefsForNotes', () => {
     ];
     const withRefs = recomputeLinkRefsForNotes(notes);
     const a = withRefs.find((n) => n.id === 'a');
-    expect(a?.linkRefs).toEqual(['b']);
+    expect(a?.linkRefs).toEqual(['b', 'd1', 'd2']);
   });
 });
 

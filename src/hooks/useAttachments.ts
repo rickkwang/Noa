@@ -16,6 +16,7 @@ export function useAttachments(
 ) {
   // objectUrl cache: attachmentId -> blobURL
   const [objectUrls, setObjectUrls] = useState<Map<string, string>>(new Map());
+  const [attachmentLoadError, setAttachmentLoadError] = useState<string | null>(null);
   const objectUrlsRef = useRef<Map<string, string>>(new Map());
 
   const revokeUrls = useCallback((urls: string[]) => {
@@ -52,12 +53,20 @@ export function useAttachments(
           if (!cancelled) {
             newUrls.set(att.id, url);
           }
+        } else {
+          throw new Error(`Attachment blob missing: ${att.filename}`);
         }
       })
-    ).then(() => {
+    ).then((results) => {
       if (!cancelled) {
         revokeUrls(previousUrls);
         setObjectUrls(new Map(newUrls));
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+          setAttachmentLoadError(`${failures.length} attachment(s) could not be loaded.`);
+        } else {
+          setAttachmentLoadError(null);
+        }
       } else {
         revokeUrls(pendingUrls);
       }
@@ -154,5 +163,5 @@ export function useAttachments(
     [note, objectUrls, onNoteUpdate]
   );
 
-  return { objectUrls, uploadFile, deleteAttachment };
+  return { objectUrls, uploadFile, deleteAttachment, attachmentLoadError };
 }

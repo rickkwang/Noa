@@ -249,7 +249,8 @@ export class SearchEngine {
 
   private getSnippet(content: string, phrases: string[], caseSensitive: boolean = false): string {
     if (phrases.length === 0) {
-      const plainSnippet = content.slice(0, 120) + '...';
+      if (!content.trim()) return '';
+      const plainSnippet = content.slice(0, 120) + (content.length > 120 ? '...' : '');
       return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
     }
 
@@ -265,7 +266,8 @@ export class SearchEngine {
     }
 
     if (bestIndex === -1) {
-      const plainSnippet = content.slice(0, 120) + '...';
+      if (!content.trim()) return '';
+      const plainSnippet = content.slice(0, 120) + (content.length > 120 ? '...' : '');
       return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
     }
 
@@ -292,7 +294,8 @@ export class SearchEngine {
 
   private getFuseSnippet(content: string, indices: readonly [number, number][]): string {
     if (indices.length === 0) {
-      const plainSnippet = content.slice(0, 120) + '...';
+      if (!content.trim()) return '';
+      const plainSnippet = content.slice(0, 120) + (content.length > 120 ? '...' : '');
       return this.finalizeSnippet(plainSnippet, this.createBoldMarkers(plainSnippet));
     }
 

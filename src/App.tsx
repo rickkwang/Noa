@@ -246,11 +246,14 @@ export default function App() {
     } catch { /* ignore */ }
   }, [isLoaded, notes]);
 
-  // Persist openTabIds to localStorage
+  // Persist openTabIds to localStorage (debounced — tabs open/close rapidly)
   useEffect(() => {
-    try {
-      localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
-    } catch { /* quota exceeded — ignore */ }
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
+      } catch { /* quota exceeded — ignore */ }
+    }, 300);
+    return () => clearTimeout(t);
   }, [openTabIds]);
 
   // Sync activeNoteId into openTabIds
@@ -288,7 +291,7 @@ export default function App() {
   const handleTabChange = useCallback(async (id: string) => {
     if (id === activeNoteId) return;
     try {
-      await flushAllPendingSaves(notesForQuitRef.current);
+      await flushAllPendingSaves();
     } catch (err) {
       console.error('[Noa] Failed to flush saves on tab change:', err);
     }
@@ -359,17 +362,15 @@ export default function App() {
   });
 
   // flush pending saves before Electron quits or web page unloads
-  const notesForQuitRef = useRef(notes);
-  useEffect(() => { notesForQuitRef.current = notes; }, [notes]);
   useEffect(() => {
     const desktop = window.noaDesktop;
     if (!desktop?.lifecycle?.onBeforeQuit) return;
     return desktop.lifecycle.onBeforeQuit(() => {
-      void flushAllPendingSaves(notesForQuitRef.current);
+      void flushAllPendingSaves();
     });
   }, [flushAllPendingSaves]);
   useEffect(() => {
-    const flush = () => { void flushAllPendingSaves(notesForQuitRef.current); };
+    const flush = () => { void flushAllPendingSaves(); };
     const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
     window.addEventListener('beforeunload', flush);
     document.addEventListener('visibilitychange', onVisibility);
@@ -390,7 +391,7 @@ export default function App() {
       searchInputRef.current?.select();
     },
     onClearSearch: () => setSearchQuery(''),
-    onForceSave: () => void flushAllPendingSaves(notesForQuitRef.current),
+    onForceSave: () => void flushAllPendingSaves(),
     onToggleFocusMode: toggleFocusMode,
     isFocusMode,
     onExitFocusMode: exitFocusMode,

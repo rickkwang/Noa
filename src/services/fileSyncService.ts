@@ -50,12 +50,31 @@ export async function disconnectDirectory(): Promise<void> {
   await clearPersistedHandle();
 }
 
+const SCAN_TIMEOUT_MS = 30_000; // 30 s — large vaults can be slow
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms / 1000}s`)),
+      ms
+    );
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 export async function mergeScannedNotes(
   handle: FileSystemDirectoryHandle,
   notes: Note[],
   folders: Folder[],
 ): Promise<{ notes: Note[]; newFolders: Folder[] }> {
-  const { notes: scanned, newFolders } = await scanDirectory(handle, folders);
+  const { notes: scanned, newFolders } = await withTimeout(
+    scanDirectory(handle, folders),
+    SCAN_TIMEOUT_MS,
+    'Vault directory scan'
+  );
   const scannedById = new Map(scanned.map((n) => [n.id, n]));
   // Update existing obsidian-import notes with fresh data from disk;
   // keep Noa-native notes untouched.
@@ -76,15 +95,81 @@ export async function mergeScannedNotes(
   return { notes: merged, newFolders };
 }
 
-// Serialises all vault write operations so concurrent saves never produce a
-// torn manifest. Each call enqueues behind the previous one.
+// ---------------------------------------------------------------------------
+// Vault write serialisation
+//
+// Two-level concurrency control:
+//
+//  1. Per-note debounce: rapid successive updates to the same note collapse
+//     into a single write — only the latest payload is flushed. This prevents
+//     torn files when the user types quickly while sync is enabled.
+//
+//  2. Global queue: all actual writes are serialised through a single promise
+//     chain so no two file operations ever run concurrently (avoids partial
+//     manifest corruption on rename/move that touch two files atomically).
+// ---------------------------------------------------------------------------
+
 let _vaultWriteQueue: Promise<void> = Promise.resolve();
 
+// Per-note pending timers: noteId → { timer, resolve }
+const _noteDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const _notePendingResolvers = new Map<string, Array<() => void>>();
+
+/** Flush a note write immediately, skipping the debounce. */
+function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> {
+  // Cancel any pending debounce for this note.
+  const t = _noteDebounceTimers.get(noteId);
+  if (t !== undefined) {
+    clearTimeout(t);
+    _noteDebounceTimers.delete(noteId);
+  }
+
+  const result = _vaultWriteQueue.then(fn);
+  _vaultWriteQueue = result.then(
+    () => undefined,
+    (err: unknown) => { console.error('[fileSyncService] vault write failed:', err); }
+  );
+
+  // Resolve any callers that were waiting on this note's debounce.
+  const resolvers = _notePendingResolvers.get(noteId);
+  if (resolvers) {
+    result.finally(() => { resolvers.forEach(r => r()); });
+    _notePendingResolvers.delete(noteId);
+  }
+
+  return result;
+}
+
+/**
+ * Debounced note write: collapses rapid successive calls into one write.
+ * Structural operations (rename, move, delete) bypass this via flushNoteWrite.
+ */
+function debouncedNoteWrite(noteId: string, fn: () => Promise<void>, delayMs = 300): Promise<void> {
+  return new Promise<void>((resolve) => {
+    // Register this caller so it gets resolved when the write eventually fires.
+    const resolvers = _notePendingResolvers.get(noteId) ?? [];
+    resolvers.push(resolve);
+    _notePendingResolvers.set(noteId, resolvers);
+
+    // Reset the debounce timer — only the last fn wins.
+    const existing = _noteDebounceTimers.get(noteId);
+    if (existing !== undefined) clearTimeout(existing);
+
+    const t = setTimeout(() => {
+      _noteDebounceTimers.delete(noteId);
+      flushNoteWrite(noteId, fn);
+    }, delayMs);
+    _noteDebounceTimers.set(noteId, t);
+  });
+}
+
+/** For structural operations (rename, delete, move, folder ops) that must run immediately. */
 function withVaultLock<T>(fn: () => Promise<T>): Promise<T> {
   const result = _vaultWriteQueue.then(fn);
-  // The outer queue only tracks completion (not the return value) so a
-  // rejected inner promise doesn't stall subsequent operations.
-  _vaultWriteQueue = result.then(() => undefined, () => undefined);
+  _vaultWriteQueue = result.then(
+    () => undefined,
+    (err: unknown) => { console.error('[fileSyncService] vault write failed:', err); }
+  );
   return result;
 }
 
@@ -94,7 +179,8 @@ export async function syncNoteUpdate(
   content: string,
   folders: Folder[],
 ): Promise<void> {
-  await withVaultLock(() =>
+  // Use per-note debounce: rapid typing collapses into one write.
+  await debouncedNoteWrite(note.id, () =>
     writeNote(handle, { ...note, content, updatedAt: new Date().toISOString() }, folders)
   );
 }

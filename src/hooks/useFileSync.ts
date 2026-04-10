@@ -104,6 +104,9 @@ export function useFileSync({
     const appError = fromSyncError(error);
     setSyncStatus('error');
     setFsSyncError(appError.userMessage || normalized.message);
+    if (normalized.code === 'permission_denied') {
+      setPermissionRevoked(true);
+    }
     recordErrorSnapshot({
       at: new Date().toISOString(),
       operation: 'file_sync',

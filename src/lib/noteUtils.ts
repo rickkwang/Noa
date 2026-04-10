@@ -28,7 +28,10 @@ export const computeLinkRefs = (note: Note, titleToIds: Map<string, string[]>): 
   const refs: string[] = [];
   (note.links ?? []).forEach((title) => {
     const ids = titleToIds.get(title);
-    if (ids && ids.length === 1) refs.push(ids[0]);
+    // Include all matching notes — even when there are duplicates.
+    // Previously ids.length === 1 was required, silently dropping links
+    // whenever two notes shared a title.
+    if (ids) ids.forEach(id => refs.push(id));
   });
   return Array.from(new Set(refs));
 };

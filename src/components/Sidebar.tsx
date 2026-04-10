@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ChevronRight, ChevronDown, FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
-import { SearchEngine, SearchResult } from '../core/search';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { classifyFolderImportFile } from '../lib/importUtils';
-import { getFolderLeafName, getFolderParentPath, isDescendantPath } from '../lib/pathUtils';
+import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import CalendarPanel from './CalendarPanel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
+import { useSidebarDrag } from '../hooks/useSidebarDrag';
+import { useSidebarSearch } from '../hooks/useSidebarSearch';
+import { lsGet, lsSet } from '../lib/safeLocalStorage';
 
 // Renders a search-highlight snippet safely without dangerouslySetInnerHTML.
 // The search engine wraps matched characters in <b>…</b>; we parse those tags
@@ -72,15 +74,21 @@ export default function Sidebar({
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
-  const searchEngineRef = useRef<SearchEngine | null>(null);
   const [templateMenuFolderId, setTemplateMenuFolderId] = useState<string | null>(null);
-  const [draggedItem, setDraggedItem] = useState<{ kind: 'note' | 'folder'; id: string; name: string } | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
-  const resolveNoteSource = useCallback((note: Note) => note.source ?? 'noa', []);
   const resolveFolderSource = useCallback((folder: FolderType) => folder.source ?? 'noa', []);
+
+  const searchResults = useSidebarSearch({ notes, folders, searchQuery, caseSensitive, fuzzySearch });
+
+  const {
+    draggedItem,
+    dropTargetId,
+    dropPosition,
+    handleDropItem,
+    handleDragStartItem,
+    handleDragEndItem,
+    handleDragOverTarget,
+    handleDragEnterTarget,
+  } = useSidebarDrag({ notes, folders, onMoveNote, onRenameFolder });
   const noaFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'noa'), [folders, resolveFolderSource]);
   const importedFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'obsidian-import'), [folders, resolveFolderSource]);
   const noaFolderTree = useMemo(() => buildFolderTree(noaFolders), [noaFolders]);
@@ -113,129 +121,24 @@ export default function Sidebar({
       if (getFolderParentPath(folder.name) !== nextParentPath) return false;
       return getFolderLeafName(folder.name).toLocaleLowerCase() === nextLeafName;
     });
-    if (conflict) {
-      return 'A folder with this name already exists in this location.';
-    }
+    if (conflict) return 'A folder with this name already exists in this location.';
     onRenameFolder(id, normalizedNextPath);
   }, [folders, onRenameFolder, resolveFolderSource]);
 
   const getFolderSubtreeNoteCount = useCallback((folderPath: string) => {
     const targetIds = new Set(
       folders
-        .filter((folder) => isDescendantPath(folder.name, folderPath))
+        .filter((folder) => folder.name === folderPath || folder.name.startsWith(`${folderPath}/`))
         .map((folder) => folder.id)
     );
     return notes.filter((note) => targetIds.has(note.folder)).length;
   }, [folders, notes]);
 
-  const parseDraggedItem = useCallback((e: React.DragEvent) => {
-    const raw = e.dataTransfer.getData('application/x-noa-tree-item') || e.dataTransfer.getData('text/plain');
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      if (
-        parsed !== null &&
-        typeof parsed === 'object' &&
-        (parsed.kind === 'note' || parsed.kind === 'folder') &&
-        typeof parsed.id === 'string' &&
-        typeof parsed.name === 'string'
-      ) {
-        return parsed as { kind: 'note' | 'folder'; id: string; name: string };
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const moveFolderToTarget = useCallback((folderId: string, targetFolderId: string | null) => {
-    const source = folders.find((folder) => folder.id === folderId);
-    if (!source) return;
-    const sourceType = resolveFolderSource(source);
-    if (targetFolderId) {
-      const target = folders.find((folder) => folder.id === targetFolderId);
-      if (!target) return;
-      if (resolveFolderSource(target) !== sourceType) return;
-    } else if (sourceType !== 'noa') {
-      // Root drops are only valid in Noa workspace to avoid cross-source mixing.
-      return;
-    }
-    const sourcePath = source.name;
-    const sourceLeaf = getFolderLeafName(sourcePath);
-    const targetPath = targetFolderId ? folders.find((folder) => folder.id === targetFolderId)?.name ?? '' : '';
-    if (isDescendantPath(targetPath, sourcePath)) return;
-    const nextPath = targetPath ? `${targetPath}/${sourceLeaf}` : sourceLeaf;
-    onRenameFolder(folderId, nextPath);
-  }, [folders, onRenameFolder, resolveFolderSource]);
-
-  const handleDropItem = useCallback((targetFolderId: string | null, e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const item = parseDraggedItem(e);
-    setDraggedItem(null);
-    setDropTargetId(null);
-    setDropPosition(null);
-    if (!item) return;
-
-    if (item.kind === 'note') {
-      const note = notes.find((n) => n.id === item.id);
-      if (!note) return;
-      const noteSource = resolveNoteSource(note);
-      if (targetFolderId) {
-        const target = folders.find((folder) => folder.id === targetFolderId);
-        if (!target) return;
-        if (resolveFolderSource(target) !== noteSource) return;
-      } else if (noteSource !== 'noa') {
-        return;
-      }
-      onMoveNote(item.id, targetFolderId ?? '');
-      return;
-    }
-
-    if (item.kind === 'folder') {
-      moveFolderToTarget(item.id, targetFolderId);
-    }
-  }, [folders, moveFolderToTarget, notes, onMoveNote, parseDraggedItem, resolveFolderSource, resolveNoteSource]);
-
-  const handleDragStartItem = useCallback((kind: 'note' | 'folder', id: string, name: string) => (e: React.DragEvent) => {
-    const payload = { kind, id, name };
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('application/x-noa-tree-item', JSON.stringify(payload));
-    e.dataTransfer.setData('text/plain', JSON.stringify(payload));
-    setDraggedItem(payload);
-  }, []);
-
-  const handleDragEndItem = useCallback(() => {
-    setDraggedItem(null);
-    setDropTargetId(null);
-    setDropPosition(null);
-  }, []);
-
-  const handleDragOverTarget = useCallback((targetId: string | null) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!draggedItem) return;
-    setDropTargetId(targetId);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const isUpperHalf = e.clientY < rect.top + rect.height / 2;
-    setDropPosition(isUpperHalf ? 'top' : 'bottom');
-    e.dataTransfer.dropEffect = 'move';
-  }, [draggedItem]);
-
-  const handleDragEnterTarget = useCallback((targetId: string | null) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!draggedItem) return;
-    setDropTargetId(targetId);
-  }, [draggedItem]);
-
   type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
-  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() => {
-    try { return (localStorage.getItem(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'; } catch { return 'updatedAt'; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); } catch { /* quota exceeded */ }
-  }, [noteSortOrder]);
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
+    (lsGet(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
+  );
+  useEffect(() => { lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); }, [noteSortOrder]);
 
   const sortNotes = useCallback((arr: Note[]) => {
     if (noteSortOrder === 'name') return [...arr].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
@@ -337,32 +240,6 @@ export default function Sidebar({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [templateMenuFolderId]);
-
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Rebuild index when notes/settings change (debounced). Does not execute search —
-  // the query effect below handles that after each index rebuild too.
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      if (!searchEngineRef.current) {
-        searchEngineRef.current = new SearchEngine(notes, caseSensitive, fuzzySearch, folders);
-      } else {
-        searchEngineRef.current.updateNotes(notes, caseSensitive, fuzzySearch, folders);
-      }
-      // Re-run search after index rebuild so results reflect updated notes.
-      if (searchEngineRef.current && deferredSearchQuery) {
-        setSearchResults(searchEngineRef.current.search(deferredSearchQuery, caseSensitive));
-      }
-    }, 250);
-    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [notes, folders, caseSensitive, fuzzySearch]); // intentionally excludes deferredSearchQuery
-
-  // Query/search execution uses deferred input to keep typing responsive.
-  useEffect(() => {
-    if (!searchEngineRef.current) return;
-    setSearchResults(searchEngineRef.current.search(deferredSearchQuery, caseSensitive));
-  }, [deferredSearchQuery, caseSensitive]);
 
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -633,11 +510,11 @@ export default function Sidebar({
                   onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
                   onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
                   onDrop={(e) => handleDropItem(null, e)}
-                  onDragLeave={() => setDropTargetId(null)}
+                  onDragLeave={() => handleDragEndItem()}
                   className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'ring-1 ring-inset ring-[#B89B5E]/50' : ''}
                 >
                   {noaFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
-                  {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'noa')).map((note) => (
+                  {sortNotes((notesByFolderId.get('') || []).filter((note) => (note.source ?? 'noa') === 'noa')).map((note) => (
                     <FileNode
                       key={note.id}
                       name={(note.title || 'Untitled') + '.md'}
@@ -668,7 +545,7 @@ export default function Sidebar({
                 </div>
 
                 {/* Obsidian Vault section — only shown when imported content exists */}
-                {(importedFolderTree.length > 0 || (notesByFolderId.get('') || []).some((note) => resolveNoteSource(note) === 'obsidian-import')) && (
+                {(importedFolderTree.length > 0 || (notesByFolderId.get('') || []).some((note) => (note.source ?? 'noa') === 'obsidian-import')) && (
                   <>
                     <div className="flex items-center gap-2 px-2 py-1.5 mt-1">
                       <div className="flex-1 border-t border-[#2D2D2D]/20" />
@@ -681,14 +558,12 @@ export default function Sidebar({
                       onDrop={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setDraggedItem(null);
-                        setDropTargetId(null);
-                        setDropPosition(null);
+                        handleDragEndItem();
                       }}
                       onDragEnd={handleDragEndItem}
                     >
                       {importedFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
-                      {sortNotes((notesByFolderId.get('') || []).filter((note) => resolveNoteSource(note) === 'obsidian-import')).map((note) => (
+                      {sortNotes((notesByFolderId.get('') || []).filter((note) => (note.source ?? 'noa') === 'obsidian-import')).map((note) => (
                         <FileNode
                           key={note.id}
                           name={(note.title || 'Untitled') + '.md'}

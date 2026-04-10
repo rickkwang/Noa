@@ -11,6 +11,7 @@ import { MentionDropdown } from './editor/MentionDropdown';
 import { SlashCommandDropdown, SLASH_COMMANDS, type SlashCommand } from './editor/SlashCommandDropdown';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { HistoryPanel } from './editor/HistoryPanel';
+import { FindReplacePanel } from './editor/FindReplacePanel';
 import { useScrollingClass } from '../hooks/useScrollingClass';
 import { useAttachments } from '../hooks/useAttachments';
 import { NoteSnapshot } from '../types';
@@ -60,6 +61,7 @@ export default function Editor({
   onRestoreSnapshot,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
   const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
@@ -105,14 +107,14 @@ export default function Editor({
     onNoteUpdate?.(updated);
   }, [onNoteUpdate]);
 
-  const { objectUrls, uploadFile, deleteAttachment } = useAttachments(
+  const { objectUrls, uploadFile, deleteAttachment, attachmentLoadError } = useAttachments(
     note ?? null,
     handleNoteUpdate
   );
 
   useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
 
-  const { insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
+  const { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
     maxWidth: settings.appearance.maxWidth,
     note,
@@ -122,6 +124,20 @@ export default function Editor({
     onSlashTrigger: setSlashQuery,
     editPaneRef,
   });
+
+  // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container || viewMode === 'preview') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey) {
+        e.preventDefault();
+        setIsFindReplaceOpen(true);
+      }
+    };
+    container.addEventListener('keydown', handleKeyDown, true);
+    return () => container.removeEventListener('keydown', handleKeyDown, true);
+  }, [viewMode]);
 
   // Inject highlight.js theme
   useEffect(() => {
@@ -353,9 +369,17 @@ export default function Editor({
         />
       )}
 
-      {imageError && (
+      {isFindReplaceOpen && viewMode !== 'preview' && (
+        <FindReplacePanel
+          editorViewRef={editorViewRef}
+          isDark={isDark}
+          onClose={() => setIsFindReplaceOpen(false)}
+        />
+      )}
+
+      {(imageError || attachmentLoadError) && (
         <div className="px-4 py-1.5 bg-red-50 border-b border-red-400 text-red-700 text-xs font-redaction flex items-center justify-between shrink-0 z-20">
-          <span>{imageError}</span>
+          <span>{imageError || attachmentLoadError}</span>
           <button onClick={() => setImageError(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
         </div>
       )}

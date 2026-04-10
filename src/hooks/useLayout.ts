@@ -1,32 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useResizeDrag } from './useResizeDrag';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { lsGet, lsSet } from '../lib/safeLocalStorage';
 
 export function useLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    try { const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN); return saved ? saved === 'true' : true; } catch { return true; }
+    const saved = lsGet(STORAGE_KEYS.SIDEBAR_OPEN);
+    return saved !== null ? saved === 'true' : true;
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(() => {
-    try { const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN); return saved ? saved === 'true' : true; } catch { return true; }
+    const saved = lsGet(STORAGE_KEYS.RIGHT_PANEL_OPEN);
+    return saved !== null ? saved === 'true' : true;
   });
   const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph' | 'properties'>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.RIGHT_TAB);
-      const valid = ['tasks', 'backlinks', 'graph', 'properties'] as const;
-      return saved !== null && (valid as readonly string[]).includes(saved)
-        ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
-        : 'tasks';
-    } catch { return 'tasks'; }
+    const saved = lsGet(STORAGE_KEYS.RIGHT_TAB);
+    const valid = ['tasks', 'backlinks', 'graph', 'properties'] as const;
+    return saved !== null && (valid as readonly string[]).includes(saved)
+      ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
+      : 'tasks';
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_VIEW_MODE);
-      const valid = ['edit', 'preview', 'split'] as const;
-      return saved !== null && (valid as readonly string[]).includes(saved)
-        ? (saved as 'edit' | 'preview' | 'split')
-        : 'split';
-    } catch { return 'split'; }
+    const saved = lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE);
+    const valid = ['edit', 'preview', 'split'] as const;
+    return saved !== null && (valid as readonly string[]).includes(saved)
+      ? (saved as 'edit' | 'preview' | 'split')
+      : 'split';
   });
 
   const getSidebarValue = useCallback((e: MouseEvent) => {
@@ -54,25 +53,23 @@ export function useLayout() {
     _setIsDraggingRightPanel(v);
   }, [_setIsDraggingRightPanel]);
 
+  const wasMobileRef = useRef(false);
   useEffect(() => {
-    let wasMobile = false;
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile && !wasMobile) {
+      if (mobile && !wasMobileRef.current) {
         // Entering mobile: close panels
         setIsSidebarOpen(false);
         setIsRightPanelOpen(false);
-      } else if (!mobile && wasMobile) {
+      } else if (!mobile && wasMobileRef.current) {
         // Returning to desktop: restore from localStorage
-        try {
-          const sb = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN);
-          const rp = localStorage.getItem(STORAGE_KEYS.RIGHT_PANEL_OPEN);
-          setIsSidebarOpen(sb ? sb === 'true' : true);
-          setIsRightPanelOpen(rp ? rp === 'true' : true);
-        } catch { /* ignore */ }
+        const sb = lsGet(STORAGE_KEYS.SIDEBAR_OPEN);
+        const rp = lsGet(STORAGE_KEYS.RIGHT_PANEL_OPEN);
+        setIsSidebarOpen(sb !== null ? sb === 'true' : true);
+        setIsRightPanelOpen(rp !== null ? rp === 'true' : true);
       }
-      wasMobile = mobile;
+      wasMobileRef.current = mobile;
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -80,12 +77,10 @@ export function useLayout() {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, String(isSidebarOpen));
-      localStorage.setItem(STORAGE_KEYS.RIGHT_PANEL_OPEN, String(isRightPanelOpen));
-      localStorage.setItem(STORAGE_KEYS.RIGHT_TAB, activeRightTab);
-      localStorage.setItem(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
-    } catch { /* storage full, ignore */ }
+    lsSet(STORAGE_KEYS.SIDEBAR_OPEN, String(isSidebarOpen));
+    lsSet(STORAGE_KEYS.RIGHT_PANEL_OPEN, String(isRightPanelOpen));
+    lsSet(STORAGE_KEYS.RIGHT_TAB, activeRightTab);
+    lsSet(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
   }, [isSidebarOpen, isRightPanelOpen, activeRightTab, editorViewMode]);
 
   const openGraphView = useCallback(() => {

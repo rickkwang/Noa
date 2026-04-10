@@ -9,6 +9,7 @@ interface BacklinksPanelProps {
 }
 
 function getSnippet(note: Note, targetTitle: string): string {
+  if (!targetTitle) return '';
   const lines = note.content.split('\n');
   const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`\\[\\[${escaped}(?:\\|[^\\]]+)?\\]\\]`);

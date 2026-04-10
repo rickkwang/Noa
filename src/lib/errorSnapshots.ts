@@ -1,4 +1,5 @@
 import { AppErrorCode, RecoveryAction } from '../types';
+import { lsGetJson, lsSetJson } from './safeLocalStorage';
 
 const KEY = 'redaction-error-snapshots';
 const MAX = 20;
@@ -12,12 +13,7 @@ export interface ErrorSnapshot {
 }
 
 export function recordErrorSnapshot(snapshot: ErrorSnapshot): void {
-  try {
-    const raw = localStorage.getItem(KEY);
-    const current: ErrorSnapshot[] = raw ? JSON.parse(raw) : [];
-    const next = [snapshot, ...current].slice(0, MAX);
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // Best-effort only; never block user flow.
-  }
+  const current = lsGetJson<ErrorSnapshot[]>(KEY) ?? [];
+  const next = [snapshot, ...current].slice(0, MAX);
+  lsSetJson(KEY, next);
 }
