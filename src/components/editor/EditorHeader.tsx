@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FileText, X, Eye, Edit2, Columns, Plus } from 'lucide-react';
 import { Note } from '../../types';
-import { useState as _useState, useEffect as _useEffect } from 'react';
 
 function useIsDarkLocal(): boolean {
-  const [isDark, setIsDark] = _useState(() => document.documentElement.dataset.theme === 'dark');
-  _useEffect(() => {
+  const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark');
+  useEffect(() => {
     const obs = new MutationObserver(() => setIsDark(document.documentElement.dataset.theme === 'dark'));
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => obs.disconnect();
@@ -111,7 +110,7 @@ export function EditorHeader({
                     className={`group flex items-center gap-1.5 px-3 cursor-pointer shrink-0 transition-colors relative ${
                       isActiveTab
                         ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#F0EDE6]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
-                        : `bg-transparent border-transparent pt-1 pb-1 ${isDark ? 'text-[#F0EDE6]/40 hover:text-[#F0EDE6]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
+                        : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F0EDE6]/40 hover:text-[#F0EDE6]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
                     }`}
                     style={isActiveTab ? {
                       borderWidth: '1px',
@@ -119,7 +118,12 @@ export function EditorHeader({
                       borderColor: isDark ? 'rgba(240,237,230,0.2)' : '#2D2D2D',
                       borderBottomColor: 'transparent',
                       paddingBottom: '6px',
-                    } : {}}
+                    } : {
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                      borderColor: 'transparent',
+                      paddingBottom: '6px',
+                    }}
                   >
                     <FileText size={12} className={isActiveTab ? (isDark ? 'text-[#D97757] shrink-0' : 'text-[#B89B5E] shrink-0') : 'shrink-0'} />
                     {isActiveTab && isEditingTitle ? (

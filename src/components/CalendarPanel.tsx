@@ -23,7 +23,14 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   const month = viewMonth.getMonth();
 
   const today = formatDate('YYYY-MM-DD');
+  // Find the title of the active note to highlight the corresponding calendar day.
+  // Daily note titles are the formatted date string (per dateFormat), so we compare
+  // the formatted dateStr against the active note's title directly.
   const activeNoteTitle = notes.find(n => n.id === activeNoteId)?.title ?? '';
+
+  // Returns true only if the active note is a daily note for this dateStr
+  const isActiveDate = (dateStr: string) =>
+    activeNoteTitle !== '' && formatDate(dateFormat, new Date(dateStr + 'T00:00:00')) === activeNoteTitle;
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   // getDay() returns 0=Sun..6=Sat; convert to Mon-based (0=Mon..6=Sun)
@@ -48,7 +55,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   while (cells.length % 7 !== 0) cells.push({ day: null });
 
   return (
-    <div className="shrink-0 border-t border-[#2D2D2D]/20">
+    <div className="shrink-0 border-t border-[#2D2D2D]">
       {/* Section header */}
       <button
         className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 flex items-center transition-colors cursor-pointer"
@@ -87,7 +94,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
               if (cell.day === null) return <div key={`empty-${i}`} className="w-7 h-7" />;
               const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
               const isToday = dateStr === today;
-              const isActive = formatDate(dateFormat, new Date(dateStr + 'T00:00:00')) === activeNoteTitle;
+              const isActive = isActiveDate(dateStr);
               const hasNote = hasDailyNote(dateStr);
               const isClickable = hasNote || isToday;
               let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;

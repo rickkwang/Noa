@@ -1,7 +1,6 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckSquare, Link, Network, Search, GitBranch, Circle, SlidersHorizontal } from 'lucide-react';
-import { GlobalTask, Note } from '../types';
-import { AppSettings } from '../types';
+import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -90,7 +89,7 @@ export default function RightPanel({
         </button>
       </div>
 
-      {/* Tab content — key forces remount on tab change, triggering fade-in */}
+      {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
       {activeTab === 'tasks' && (
         <div key="tasks" className="tab-fade-in flex flex-col flex-1 min-h-0">
           <TasksPanel tasks={tasks} onToggleTask={onToggleTask} onNavigateToNoteById={onNavigateToNoteById} />
@@ -107,7 +106,7 @@ export default function RightPanel({
         </div>
       )}
       {activeTab === 'graph' && (
-        <div className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
+        <div key="graph" className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
           {showGraphGuide && (
             <div className="border border-[#2D2D2D]/30 bg-[#DCD9CE] px-3 py-2 text-[11px] text-[#2D2D2D]/80 leading-relaxed">
               <div className="font-bold uppercase tracking-wider text-[10px] text-[#2D2D2D]/60 mb-1">Graph Guide</div>

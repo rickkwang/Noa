@@ -24,8 +24,9 @@ import {
   type ImportedNote,
 } from '../lib/attachmentUtils';
 
+const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
+
 export function useNotes(settings?: AppSettings) {
-  const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -682,7 +683,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       const validIds = new Set(
         importedNotes.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
       );
-      storage.pruneOrphanedAttachments(validIds).catch(() => {});
+      storage.pruneOrphanedAttachments(validIds).catch((err) => {
+        console.error('[Noa] Failed to prune orphaned attachments:', err);
+      });
       // 所有 storage 写入成功后，更新 React state
       setNotes(withRefs);
       if (importedFolders) setFolders(importedFolders);

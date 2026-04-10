@@ -163,7 +163,7 @@ function yamlScalar(value: string): string {
 function buildFrontMatter(note: Note): string {
   const sanitized = sanitizeRawFrontmatter(note.rawFrontmatter ?? '');
   if (sanitized) return `---\n${sanitized}\n---\n`;
-  if (!(note.tags?.length > 0)) return '';
+  if (!note.tags?.length) return '';
   const lines = ['tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`)];
   return `---\n${lines.join('\n')}\n---\n`;
 }
@@ -305,10 +305,6 @@ function rewriteAttachmentEmbedsForVault(note: Note): string {
     if (!attachment) return `![[${name}]]`;
     return `![[${attachmentVaultPath(note, attachment)}]]`;
   });
-}
-
-function folderPathKey(folderName: string): string {
-  return sanitizeFolderPath(folderName);
 }
 
 export async function writeNote(
@@ -487,7 +483,7 @@ export async function scanDirectory(
             if (noteAttachments.length > 0) attachmentsByNoteId.set(noteId, noteAttachments);
           }
         } else if (name !== '.obsidian' && name !== '.DS_Store') {
-          let matchedFolder = allFolders.find((folder) => folderPathKey(folder.name) === currentPathKey);
+          let matchedFolder = allFolders.find((folder) => sanitizeFolderPath(folder.name) === currentPathKey);
           if (!matchedFolder) {
             // Directory exists in vault but not in Noa — create it on the fly
             matchedFolder = { id: crypto.randomUUID(), name: currentPath.join('/'), source: 'obsidian-import' as const };

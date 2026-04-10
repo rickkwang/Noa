@@ -2,8 +2,7 @@ import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide, forceCenter } from 'd3-force';
-import { Note } from '../types';
-import { AppSettings } from '../types';
+import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 import { buildTitleToIdsMap, computeTopologySignature } from '../lib/noteUtils';
 
@@ -72,8 +71,8 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
 }
 
 // Node radius: matches Obsidian proportions
-function nodeRadius(degree: number): number {
-  return 4 + Math.sqrt(degree) * 2;
+function nodeRadius(_degree: number): number {
+  return 5;
 }
 
 export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
@@ -200,24 +199,24 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     const cx = width / 2;
     const cy = height / 2;
 
-    // Repulsion: light push to separate nodes without scattering
+    // Repulsion: breathing room without scattering
     const chargeForce = fgRef.current.d3Force('charge');
     if (hasStrength(chargeForce)) {
-      chargeForce.strength(n > 100 ? -45 : n > 30 ? -30 : -18);
+      chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
     }
-    // Link distance: moderate — clusters feel connected, not cramped
+    // Link distance: short lines, tight graph
     const linkForce = fgRef.current.d3Force('link');
     if (hasDistance(linkForce)) {
-      linkForce.distance(n > 100 ? 65 : n > 30 ? 55 : 45);
+      linkForce.distance(n > 100 ? 40 : n > 30 ? 30 : 22);
     }
     if (hasStrength(linkForce)) {
-      linkForce.strength(0.6);
+      linkForce.strength(0.7);
     }
     // Collide: minimal padding, let link distance do the spacing
     const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 3).iterations(3);
     fgRef.current.d3Force('collide', collide);
-    // Center force: balanced — holds the graph together without crushing it
-    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.25));
+    // Center force: holds the graph together without crushing it
+    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.3));
     fgRef.current.d3Force('radial', null);
   }, [graphData.nodes.length, width, height]);
 
@@ -313,9 +312,16 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
+        cooldownTicks={30}
+        cooldownTime={1500}
+        d3AlphaDecay={0.04}
+        d3VelocityDecay={0.7}
         onNodeDragEnd={(node: GraphNode) => {
-          node.fx = node.x;
-          node.fy = node.y;
+          // Release the pin so the simulation can re-settle naturally.
+          // Keeping fx/fy fixed causes other nodes to scatter when the
+          // simulation reheats on subsequent drags.
+          node.fx = undefined;
+          node.fy = undefined;
         }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
@@ -371,14 +377,14 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           const labelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
 
           if (labelAlpha > 0) {
-            const fontSize = Math.max(9, 13 / globalScale);
+            const fontSize = Math.max(6, 8 / globalScale);
             ctx.font = `${fontSize}px ${fontFamily}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
             const label = node.name;
             const labelX = node.x;
-            const labelY = node.y + radius + 2 / globalScale;
+            const labelY = node.y + radius + 5 / globalScale;
 
             // Background halo for legibility
             ctx.globalAlpha = alpha * labelAlpha * 0.85;

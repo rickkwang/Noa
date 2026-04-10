@@ -92,7 +92,7 @@ export function extractObsidianTags(content: string): string[] {
   }
 
   // YAML list: tags:\n  - a\n  - b
-  if (afterColon === '' || afterColon === null) {
+  if (afterColon === '') {
     const tags: string[] = [];
     for (let i = tagsLineIdx + 1; i < lines.length; i++) {
       const m = lines[i].match(/^\s+-\s+(.+)$/);

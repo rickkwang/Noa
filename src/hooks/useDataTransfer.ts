@@ -740,7 +740,7 @@ export function useDataTransfer({
             title: file.name.replace(/\.[^/.]+$/, ''),
             content: isInlinePreviewableMimeType(mimeType) ? `![[attachments/${noteId}/${attachmentId}-${file.name}]]` : `Attached file: ${file.name}`,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date(file.lastModified).toISOString(),
+            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
             folder: folderId,
             tags: [],
             links: [],

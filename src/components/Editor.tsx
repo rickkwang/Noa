@@ -13,6 +13,8 @@ import { AttachmentPanel } from './editor/AttachmentPanel';
 import { useScrollingClass } from '../hooks/useScrollingClass';
 import { useAttachments } from '../hooks/useAttachments';
 
+const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
 interface EditorTab {
   id: string;
   title: string;
@@ -157,11 +159,9 @@ export default function Editor({
     const container = editorContainerRef.current;
     if (!container || viewMode === 'preview') return;
 
-    const ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-
     const handleFiles = async (files: File[]) => {
       for (const file of files) {
-        if (!ATTACHMENT_TYPES.has(file.type)) continue;
+        if (!ATTACHMENT_PASTE_TYPES.has(file.type)) continue;
         if (onNoteUpdate) {
           // Use attachment system
           const err = await uploadFile(file);
@@ -203,7 +203,7 @@ export default function Editor({
       if (!items) return;
       const files: File[] = [];
       for (const item of Array.from(items)) {
-        if (ATTACHMENT_TYPES.has(item.type)) {
+        if (ATTACHMENT_PASTE_TYPES.has(item.type)) {
           const file = item.getAsFile();
           if (file) files.push(file);
         }
@@ -214,7 +214,7 @@ export default function Editor({
     const handleDrop = (e: DragEvent) => {
       const files = e.dataTransfer?.files;
       if (!files) return;
-      const filtered = Array.from(files).filter(f => ATTACHMENT_TYPES.has(f.type));
+      const filtered = Array.from(files).filter(f => ATTACHMENT_PASTE_TYPES.has(f.type));
       if (filtered.length) { e.preventDefault(); handleFiles(filtered); }
     };
 

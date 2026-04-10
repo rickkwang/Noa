@@ -43,7 +43,7 @@ export function useAttachments(
       return;
     }
 
-    Promise.all(
+    Promise.allSettled(
       (note.attachments ?? []).map(async (att) => {
         const blob = await storage.getAttachmentBlob(att.id);
         if (blob) {
@@ -61,8 +61,6 @@ export function useAttachments(
       } else {
         revokeUrls(pendingUrls);
       }
-    }).catch(() => {
-      revokeUrls(pendingUrls);
     });
 
     return () => {

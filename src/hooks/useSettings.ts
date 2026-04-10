@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AppSettings } from '../types';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 
@@ -61,9 +61,9 @@ export function useSettings() {
     }
   }, [settings]);
 
-  const updateSettings = (updater: (prev: AppSettings) => AppSettings) => {
+  const updateSettings = useCallback((updater: (prev: AppSettings) => AppSettings) => {
     setSettings(updater);
-  };
+  }, []);
 
   return { settings, updateSettings };
 }

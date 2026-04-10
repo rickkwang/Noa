@@ -313,7 +313,7 @@ export default function Sidebar({
               depth={depth + 1}
             />
           ))}
-          {!hasChildren && <div className="text-[#2D2D2D]/50 px-6 py-1 font-redaction text-sm" style={{ paddingLeft: `2px` }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction text-sm" style={{ paddingLeft: `${(depth + 2) * 12}px` }}>Empty</div>}
         </FileNode>
       </div>
     );

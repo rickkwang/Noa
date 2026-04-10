@@ -54,6 +54,10 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
   const selectedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
+
+  useEffect(() => {
     if (filtered.length === 0) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {

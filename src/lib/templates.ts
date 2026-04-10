@@ -72,9 +72,10 @@ export const builtinTemplates: Template[] = [
   },
 ];
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
 export function formatDate(dateFormat: string, date?: Date): string {
   const d = date ?? new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
   return dateFormat
     .replace('YYYY', String(d.getFullYear()))
     .replace('YY', String(d.getFullYear()).slice(-2))
@@ -87,7 +88,6 @@ export function formatDate(dateFormat: string, date?: Date): string {
 export function applyTemplate(template: Template, title: string, dateFormat: string = 'YYYY-MM-DD'): string {
   const now = new Date();
   const date = formatDate(dateFormat, now);
-  const pad = (n: number) => String(n).padStart(2, '0');
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const week = dayNames[now.getDay()];

@@ -67,9 +67,38 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
     }
   };
 
+  // No attachments: show a minimal drag target, no visible bar
+  if (attachments.length === 0 && !isDragOver) {
+    return (
+      <div
+        className="group bg-[#EAE8E0] shrink-0"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity h-0 group-hover:h-auto overflow-hidden">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#B89B5E] transition-colors active:opacity-70"
+            title="Add Attachment"
+          >
+            + Attachments
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileInput} />
+        </div>
+        {error && (
+          <div className="mx-4 mb-2 px-3 py-1.5 bg-red-50 border border-red-300 text-red-700 text-xs font-redaction flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`border-t border-[#2D2D2D]/10 bg-[#EAE8E0] shrink-0 transition-colors ${isDragOver ? 'bg-[#B89B5E]/10' : ''}`}
+      className={`bg-[#EAE8E0] shrink-0 transition-colors ${isDragOver ? 'bg-[#B89B5E]/10' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -83,9 +112,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
         >
           <span>{isOpen ? '▾' : '▸'}</span>
           <span>Attachments</span>
-          {attachments.length > 0 && (
-            <span className="ml-0.5 text-[#B89B5E]">({attachments.length})</span>
-          )}
+          <span className="ml-0.5 text-[#B89B5E]">({attachments.length})</span>
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}

@@ -67,7 +67,9 @@ export function useDailyNotes({
           links: [],
           linkRefs: [],
         };
-        void storage.saveNote(newNote).catch(() => {});
+        void storage.saveNote(newNote).catch((err) => {
+          console.error('[Noa] Failed to save daily note:', err);
+        });
         setActiveNoteIdWithRecent(newNote.id);
         return recomputeLinkRefsForNotes([...prevNotes, newNote]);
       });

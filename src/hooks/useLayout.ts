@@ -81,8 +81,8 @@ export function useLayout() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, JSON.stringify(isSidebarOpen));
-      localStorage.setItem(STORAGE_KEYS.RIGHT_PANEL_OPEN, JSON.stringify(isRightPanelOpen));
+      localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, String(isSidebarOpen));
+      localStorage.setItem(STORAGE_KEYS.RIGHT_PANEL_OPEN, String(isRightPanelOpen));
       localStorage.setItem(STORAGE_KEYS.RIGHT_TAB, activeRightTab);
       localStorage.setItem(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
     } catch { /* storage full, ignore */ }

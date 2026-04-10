@@ -50,6 +50,11 @@ export function useCommandPalette({
     ];
 
     const normalizedQuery = query.trim().toLowerCase();
+
+    const filteredBase = normalizedQuery
+      ? base.filter((item) => item.label.toLowerCase().includes(normalizedQuery))
+      : base;
+
     const noteCommands: CommandItem[] = notes
       .filter((note) => !normalizedQuery || note.title.toLowerCase().includes(normalizedQuery))
       .slice(0, 8)
@@ -59,9 +64,7 @@ export function useCommandPalette({
         action: () => onOpenNoteById(note.id),
       }));
 
-    return [...base, ...noteCommands].filter(
-      (item) => !normalizedQuery || item.label.toLowerCase().includes(normalizedQuery),
-    );
+    return [...filteredBase, ...noteCommands];
   }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenGraphView, onOpenNoteById, onOpenSettings, query]);
 
   useEffect(() => {

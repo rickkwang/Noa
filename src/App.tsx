@@ -133,14 +133,14 @@ export default function App() {
     syncNoteOnRename(id, newTitle);
   }, [_handleRenameNote, syncNoteOnRename]);
 
-  const handleCreateNote = (folderId: string, initialContent?: string) => {
+  const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
     _handleCreateNote(folderId, initialContent);
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
     const userTemplates = settings.templates?.userTemplates ?? [];
     if (userTemplates.length > 0 && !initialContent) {
       waitingForTemplateRef.current = true;
     }
-  };
+  }, [_handleCreateNote, settings.templates?.userTemplates]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
     const note = notes.find((item) => item.id === id);
@@ -393,6 +393,8 @@ export default function App() {
 
   if (!isLoaded) {
     return (
+      <>
+      <ThemeInjector settings={settings} />
       <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #EAE8E0)' }}>
         <div className="h-12 border-b border-[#2D2D2D]/20 shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)' }}>
           <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
@@ -421,6 +423,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
@@ -468,7 +471,7 @@ export default function App() {
           style={{
             width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingSidebar ? 'none' : 'width 200ms ease-in-out',
+            transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
             minWidth: 0,
           }}
         >
@@ -476,9 +479,6 @@ export default function App() {
             style={{
               width: isMobile ? '80vw' : sidebarWidth,
               maxWidth: isMobile ? '320px' : undefined,
-              transform: (isFocusMode || !isSidebarOpen) ? 'translateX(-100%)' : 'translateX(0)',
-              transition: isDraggingSidebar ? 'none' : 'transform 200ms ease-in-out',
-              willChange: 'transform',
             }}
             className="flex h-full shrink-0"
           >
@@ -555,14 +555,12 @@ export default function App() {
         )}
 
         {/* Right Panel — always rendered for slide animation */}
-        {/* Outer div: width 0↔rightPanelWidth controls layout space (no visible content, overflow-hidden) */}
-        {/* Inner div: translateX controls the visual slide — GPU composited, no layout reflow */}
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
             width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingRightPanel ? 'none' : 'width 200ms ease-in-out',
+            transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
             minWidth: 0,
           }}
         >
@@ -570,9 +568,6 @@ export default function App() {
             style={{
               width: isMobile ? '80vw' : rightPanelWidth,
               maxWidth: isMobile ? '320px' : undefined,
-              transform: (isFocusMode || !isRightPanelOpen) ? 'translateX(100%)' : 'translateX(0)',
-              transition: isDraggingRightPanel ? 'none' : 'transform 200ms ease-in-out',
-              willChange: 'transform',
             }}
             className="flex h-full shrink-0"
           >
