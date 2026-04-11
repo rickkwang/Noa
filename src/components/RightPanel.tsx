@@ -92,12 +92,12 @@ export default function RightPanel({
       {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
       {activeTab === 'tasks' && (
         <div key="tasks" className="tab-fade-in flex flex-col flex-1 min-h-0">
-          <TasksPanel tasks={tasks} onToggleTask={onToggleTask} onNavigateToNoteById={onNavigateToNoteById} />
+          <TasksPanel tasks={tasks} onToggleTask={onToggleTask} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
       {activeTab === 'backlinks' && (
         <div key="backlinks" className="tab-fade-in flex flex-col flex-1 min-h-0">
-          <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} />
+          <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
       {activeTab === 'properties' && (

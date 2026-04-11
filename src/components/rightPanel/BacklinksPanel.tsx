@@ -6,6 +6,7 @@ interface BacklinksPanelProps {
   activeNote?: Note;
   notes: Note[];
   onNavigateToNoteById: (id: string) => void;
+  isDark?: boolean;
 }
 
 function getSnippet(note: Note, targetTitle: string): string {
@@ -18,7 +19,7 @@ function getSnippet(note: Note, targetTitle: string): string {
   return lines.slice(Math.max(0, idx - 1), idx + 2).join('\n').trim();
 }
 
-export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById }: BacklinksPanelProps) {
+export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark = false }: BacklinksPanelProps) {
   const backlinks = useMemo(() => {
     if (!activeNote) return [];
     return notes.filter(n =>
@@ -34,29 +35,35 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById }: Back
     return map;
   }, [activeNote, backlinks]);
 
+  const txtMuted = isDark ? 'text-[rgba(240,237,230,0.4)]' : 'text-[#2D2D2D]/50';
+  const cardBorder = isDark ? 'border-[rgba(240,237,230,0.2)]' : 'border-[#2D2D2D]';
+  const cardBg = isDark ? 'bg-[rgba(240,237,230,0.05)] hover:bg-[rgba(240,237,230,0.09)]' : 'bg-[#DCD9CE]/40 hover:bg-[#DCD9CE]/70';
+  const titleColor = isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]';
+  const snippetColor = isDark ? 'text-[rgba(240,237,230,0.4)]' : 'text-[#2D2D2D]/60';
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 font-redaction">
       {!activeNote ? (
-        <div className="text-center text-[#2D2D2D]/50 mt-10 text-sm">Open a note to see backlinks.</div>
+        <div className={`text-center mt-10 text-sm ${txtMuted}`}>Open a note to see backlinks.</div>
       ) : backlinks.length === 0 ? (
-        <div className="text-center text-[#2D2D2D]/50 mt-10 text-sm">
-          No backlinks found for<br /><span className="font-bold text-[#2D2D2D]/70">"{activeNote.title}"</span>
+        <div className={`text-center mt-10 text-sm ${txtMuted}`}>
+          No backlinks found for<br /><span className={`font-bold ${isDark ? 'text-[rgba(240,237,230,0.6)]' : 'text-[#2D2D2D]/70'}`}>"{activeNote.title}"</span>
         </div>
       ) : (
         <div className="space-y-3">
           {backlinks.map(note => {
             const snippet = backlinkSnippets.get(note.id);
             return (
-              <div key={note.id} className="border border-[#2D2D2D] bg-[#DCD9CE]/40 p-3 hover:bg-[#DCD9CE]/70 transition-colors cursor-pointer">
+              <div key={note.id} className={`border p-3 transition-colors cursor-pointer ${cardBorder} ${cardBg}`}>
                 <button
                   onClick={() => onNavigateToNoteById(note.id)}
-                  className="font-bold text-sm text-[#2D2D2D] hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left"
+                  className={`font-bold text-sm hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left ${titleColor}`}
                 >
                   <ExternalLink size={12} className="shrink-0" />
                   <span className="truncate">{note.title}</span>
                 </button>
                 {snippet && (
-                  <p className="mt-1.5 text-xs text-[#2D2D2D]/60 leading-relaxed line-clamp-3 whitespace-pre-wrap break-words">
+                  <p className={`mt-1.5 text-xs leading-relaxed line-clamp-3 whitespace-pre-wrap break-words ${snippetColor}`}>
                     {snippet}
                   </p>
                 )}

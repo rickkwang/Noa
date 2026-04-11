@@ -34,11 +34,12 @@ interface TasksPanelProps {
   tasks: GlobalTask[];
   onToggleTask: (task: GlobalTask) => void;
   onNavigateToNoteById: (id: string) => void;
+  isDark?: boolean;
 }
 
 const TASKS_PAGE_SIZE = 100;
 
-export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksPanelProps) {
+export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark = false }: TasksPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [dueDateFilter, setDueDateFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
   const [activePageSize, setActivePageSize] = useState(TASKS_PAGE_SIZE);
@@ -84,43 +85,44 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
   const total = activeTasks.length + completedTasks.length;
   const completionPct = total > 0 ? Math.round((completedTasks.length / total) * 100) : 0;
 
+  const txt = isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]';
+  const txtMuted = isDark ? 'text-[rgba(240,237,230,0.45)]' : 'text-[#2D2D2D]/50';
+  const border = isDark ? 'border-[rgba(240,237,230,0.2)]' : 'border-[#2D2D2D]';
+  const cardBg = isDark ? 'bg-[rgba(240,237,230,0.05)]' : 'bg-[#DCD9CE]/40';
+  const cardHover = isDark ? 'hover:bg-[rgba(240,237,230,0.09)]' : 'hover:bg-[#DCD9CE]/70';
+  const filterActive = isDark ? 'bg-[#F0EDE6] text-[#262624]' : 'bg-[#2D2D2D] text-[#EAE8E0]';
+  const filterInactive = isDark ? 'border-[rgba(240,237,230,0.2)] text-[rgba(240,237,230,0.4)] hover:border-[rgba(240,237,230,0.6)]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]';
+  const progressTrack = isDark ? 'bg-[rgba(240,237,230,0.1)]' : 'bg-[#2D2D2D]/10';
+  const progressFill = isDark ? 'bg-[#F0EDE6]' : 'bg-[#2D2D2D]';
+
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 font-redaction">
+    <div className={`flex-1 overflow-y-auto p-4 space-y-4 font-redaction ${txt}`}>
       {tasks.length === 0 && (
-        <div className="text-center text-[#2D2D2D]/50 mt-10 text-sm">
+        <div className={`text-center mt-10 text-sm ${txtMuted}`}>
           No tasks found.<br />Add "- [ ] task" in any note!
         </div>
       )}
 
       {tasks.length > 0 && (
         <>
-          {/* 完成进度条 */}
           <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-[#2D2D2D]/50 uppercase tracking-wider">
+            <div className={`flex justify-between text-[10px] uppercase tracking-wider ${txtMuted}`}>
               <span>{completedTasks.length}/{total} done</span>
               <div className="flex items-center gap-2">
-                {overdueCount > 0 && (
-                  <span className="text-red-500 font-bold">{overdueCount} overdue</span>
-                )}
-                {todayCount > 0 && (
-                  <span className="text-[#B89B5E] font-bold">{todayCount} due today</span>
-                )}
+                {overdueCount > 0 && <span className="text-red-500 font-bold">{overdueCount} overdue</span>}
+                {todayCount > 0 && <span className="text-[#B89B5E] font-bold">{todayCount} due today</span>}
               </div>
             </div>
-            <div className="h-1 bg-[#2D2D2D]/10 w-full">
-              <div
-                className="h-1 bg-[#2D2D2D] transition-all duration-300"
-                style={{ width: `${completionPct}%` }}
-              />
+            <div className={`h-1 w-full ${progressTrack}`}>
+              <div className={`h-1 transition-all duration-300 ${progressFill}`} style={{ width: `${completionPct}%` }} />
             </div>
           </div>
 
-          {/* 过滤器 */}
-          <div className="flex flex-col gap-1.5 pb-3 border-b border-[#2D2D2D]/20">
+          <div className={`flex flex-col gap-1.5 pb-3 border-b ${isDark ? 'border-[rgba(240,237,230,0.12)]' : 'border-[#2D2D2D]/20'}`}>
             <div className="flex gap-1">
               {(['all', 'high', 'medium', 'low'] as const).map(p => (
                 <button key={p} onClick={() => { setPriorityFilter(p); setActivePageSize(TASKS_PAGE_SIZE); }}
-                  className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${priorityFilter === p ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}>
+                  className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${priorityFilter === p ? filterActive : filterInactive}`}>
                   {p === 'all' ? 'All' : p}
                 </button>
               ))}
@@ -128,7 +130,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
             <div className="flex gap-1">
               {(['all', 'today', 'week', 'overdue'] as const).map(d => (
                 <button key={d} onClick={() => { setDueDateFilter(d); setActivePageSize(TASKS_PAGE_SIZE); }}
-                  className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${dueDateFilter === d ? 'bg-[#2D2D2D] text-[#EAE8E0] border-[#2D2D2D]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]'}`}>
+                  className={`flex-1 text-[10px] uppercase tracking-wider border px-1 py-0.5 font-bold font-redaction active:opacity-70 transition-colors ${dueDateFilter === d ? filterActive : filterInactive}`}>
                   {d === 'all' ? 'All' : d === 'today' ? 'Today' : d === 'week' ? 'Week' : 'Late'}
                 </button>
               ))}
@@ -138,7 +140,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
       )}
 
       {filteredActiveTasks.length === 0 && activeTasks.length > 0 && (
-        <div className="text-center text-[#2D2D2D]/50 mt-6 text-sm">No tasks match the current filter.</div>
+        <div className={`text-center mt-6 text-sm ${txtMuted}`}>No tasks match the current filter.</div>
       )}
 
       {filteredActiveTasks.length > 0 && (
@@ -149,14 +151,14 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
             const isToday = dueDateStatus === 'today';
             const isSoon = dueDateStatus === 'soon';
             return (
-              <div key={task.id} className={`group flex flex-col px-2 py-1.5 border hover:bg-[#DCD9CE]/70 transition-colors ${isOverdue ? 'border-red-400 bg-red-50/30' : 'border-[#2D2D2D] bg-[#DCD9CE]/40'}`}>
+              <div key={task.id} className={`group flex flex-col px-2 py-1.5 border transition-colors ${cardHover} ${isOverdue ? 'border-red-400 bg-red-500/10' : `${border} ${cardBg}`}`}>
                 <div className="flex items-start gap-2">
                   <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
-                    <div className="w-3.5 h-3.5 border border-[#2D2D2D]/35 hover:border-[#B89B5E] transition-colors" />
+                    <div className={`w-3.5 h-3.5 border transition-colors hover:border-[#B89B5E] ${isDark ? 'border-[rgba(240,237,230,0.3)]' : 'border-[#2D2D2D]/35'}`} />
                   </button>
-                  <span className="flex-1 text-xs font-redaction leading-snug text-[#2D2D2D]">{task.content}</span>
+                  <span className={`flex-1 text-xs font-redaction leading-snug ${txt}`}>{task.content}</span>
                 </div>
-                <div className="flex items-center justify-between mt-1 pl-5 text-[10px] text-[#2D2D2D]/50">
+                <div className={`flex items-center justify-between mt-1 pl-5 text-[10px] ${txtMuted}`}>
                   <div className="flex items-center gap-x-2">
                     <PriorityBadge priority={task.priority} />
                     {task.dueDate && (
@@ -175,10 +177,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
             );
           })}
           {filteredActiveTasks.length > activePageSize && (
-            <button
-              onClick={() => setActivePageSize(s => s + TASKS_PAGE_SIZE)}
-              className="w-full text-[10px] uppercase tracking-wider text-[#2D2D2D]/40 hover:text-[#2D2D2D] py-1 border border-dashed border-[#2D2D2D]/20 hover:border-[#2D2D2D]/40 transition-colors font-redaction"
-            >
+            <button onClick={() => setActivePageSize(s => s + TASKS_PAGE_SIZE)}
+              className={`w-full text-[10px] uppercase tracking-wider py-1 border border-dashed transition-colors font-redaction ${isDark ? 'border-[rgba(240,237,230,0.15)] text-[rgba(240,237,230,0.3)] hover:border-[rgba(240,237,230,0.4)] hover:text-[rgba(240,237,230,0.6)]' : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]'}`}>
               Show more ({filteredActiveTasks.length - activePageSize} remaining)
             </button>
           )}
@@ -186,22 +186,22 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
       )}
 
       {completedTasks.length > 0 && (
-        <div className="pt-3 border-t border-[#2D2D2D]/15">
-          <div className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/30 font-redaction pb-1">
+        <div className={`pt-3 border-t ${isDark ? 'border-[rgba(240,237,230,0.1)]' : 'border-[#2D2D2D]/15'}`}>
+          <div className={`text-[10px] uppercase tracking-widest font-redaction pb-1 ${isDark ? 'text-[rgba(240,237,230,0.25)]' : 'text-[#2D2D2D]/30'}`}>
             Completed ({completedTasks.length})
           </div>
           <div className="space-y-1">
             {completedTasks.slice(0, completedPageSize).map(task => (
-              <div key={task.id} className="group flex flex-col px-2 py-1.5 border border-[#2D2D2D]/25 bg-[#DCD9CE]/40 opacity-45 hover:opacity-70 transition-opacity">
+              <div key={task.id} className={`group flex flex-col px-2 py-1.5 border opacity-45 hover:opacity-70 transition-opacity ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[rgba(240,237,230,0.04)]' : 'border-[#2D2D2D]/25 bg-[#DCD9CE]/40'}`}>
                 <div className="flex items-start gap-2">
                   <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
-                    <div className="w-3.5 h-3.5 border border-[#2D2D2D]/50 bg-[#2D2D2D]/20 flex items-center justify-center">
-                      <Check size={9} strokeWidth={2.5} className="text-[#2D2D2D]" />
+                    <div className={`w-3.5 h-3.5 border flex items-center justify-center ${isDark ? 'border-[rgba(240,237,230,0.4)] bg-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]/50 bg-[#2D2D2D]/20'}`}>
+                      <Check size={9} strokeWidth={2.5} className={isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]'} />
                     </div>
                   </button>
-                  <span className="flex-1 text-xs font-redaction leading-snug line-through text-[#2D2D2D]">{task.content}</span>
+                  <span className={`flex-1 text-xs font-redaction leading-snug line-through ${txt}`}>{task.content}</span>
                 </div>
-                <div className="flex items-center justify-between mt-1 pl-5 text-[10px] text-[#2D2D2D]/50">
+                <div className={`flex items-center justify-between mt-1 pl-5 text-[10px] ${txtMuted}`}>
                   <div className="flex items-center gap-x-2">
                     <PriorityBadge priority={task.priority} />
                     {task.dueDate && <span className="tabular-nums">{task.dueDate}</span>}
@@ -215,10 +215,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById }: TasksP
               </div>
             ))}
             {completedTasks.length > completedPageSize && (
-              <button
-                onClick={() => setCompletedPageSize(s => s + TASKS_PAGE_SIZE)}
-                className="w-full text-[10px] uppercase tracking-wider text-[#2D2D2D]/40 hover:text-[#2D2D2D] py-1 border border-dashed border-[#2D2D2D]/20 hover:border-[#2D2D2D]/40 transition-colors font-redaction"
-              >
+              <button onClick={() => setCompletedPageSize(s => s + TASKS_PAGE_SIZE)}
+                className={`w-full text-[10px] uppercase tracking-wider py-1 border border-dashed transition-colors font-redaction ${isDark ? 'border-[rgba(240,237,230,0.15)] text-[rgba(240,237,230,0.3)] hover:border-[rgba(240,237,230,0.4)] hover:text-[rgba(240,237,230,0.6)]' : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]'}`}>
                 Show more ({completedTasks.length - completedPageSize} remaining)
               </button>
             )}
