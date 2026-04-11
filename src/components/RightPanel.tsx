@@ -62,31 +62,26 @@ export default function RightPanel({
   }, [activeTab]);
 
   return (
-    <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
+    <div className={`w-full h-full border-l border-[#2D2D2D] flex flex-col shrink-0 relative ${isDark ? 'bg-[#1A1A18]' : 'bg-[#EAE8E0]'}`}>
       {/* Tab bar */}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center bg-[#DCD9CE] shrink-0 overflow-hidden">
-        <button onClick={() => onTabChange('tasks')} title="Tasks"
-          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction relative ${activeTab === 'tasks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}>
-          <CheckSquare size={12} className="text-[#B89B5E] shrink-0" />
-          <span>Tasks</span>
-          {activeTasks.length > 0 && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{activeTasks.length}</span>}
-        </button>
-        <button onClick={() => onTabChange('backlinks')} title="Backlinks"
-          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction relative ${activeTab === 'backlinks' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}>
-          <Link size={12} className="text-[#B89B5E] shrink-0" />
-          <span>Links</span>
-          {backlinksCount > 0 && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{backlinksCount}</span>}
-        </button>
-        <button onClick={() => onTabChange('graph')} title="Graph"
-          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider border-r border-[#2D2D2D]/30 transition-colors active:opacity-70 font-redaction ${activeTab === 'graph' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}>
-          <Network size={12} className="text-[#B89B5E] shrink-0" />
-          <span>Graph</span>
-        </button>
-        <button onClick={() => onTabChange('properties')} title="Properties"
-          className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction ${activeTab === 'properties' ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}>
-          <SlidersHorizontal size={12} className="text-[#B89B5E] shrink-0" />
-          <span>Props</span>
-        </button>
+      <div className={`h-8 border-b border-[#2D2D2D] flex items-center shrink-0 overflow-hidden ${isDark ? 'bg-[#222220]' : 'bg-[#DCD9CE]'}`}>
+        {([
+          { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
+          { id: 'backlinks', label: 'Links', icon: Link, badge: backlinksCount > 0 ? backlinksCount : null },
+          { id: 'graph', label: 'Graph', icon: Network, badge: null },
+          { id: 'properties', label: 'Props', icon: SlidersHorizontal, badge: null },
+        ] as const).map((tab, i, arr) => (
+          <button key={tab.id} onClick={() => onTabChange(tab.id)} title={tab.label}
+            className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction relative ${i < arr.length - 1 ? `border-r ${isDark ? 'border-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]/30'}` : ''} ${
+              activeTab === tab.id
+                ? isDark ? 'bg-[#1A1A18] text-[#F0EDE6]' : 'bg-[#EAE8E0] text-[#2D2D2D]'
+                : isDark ? 'text-[rgba(240,237,230,0.35)] hover:text-[rgba(240,237,230,0.7)]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'
+            }`}>
+            <tab.icon size={12} className="text-[#B89B5E] shrink-0" />
+            <span>{tab.label}</span>
+            {tab.badge !== null && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{tab.badge}</span>}
+          </button>
+        ))}
       </div>
 
       {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
