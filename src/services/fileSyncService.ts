@@ -78,15 +78,18 @@ export async function mergeScannedNotes(
   const scannedById = new Map(scanned.map((n) => [n.id, n]));
   // Update existing obsidian-import notes with fresh data from disk;
   // keep Noa-native notes untouched.
-  const merged = notes.map((n) => {
+  // Drop obsidian-import notes that no longer exist on disk — they were deleted
+  // externally (e.g. in Obsidian) and should not be resurrected.
+  const merged = notes.flatMap((n) => {
     const fresh = scannedById.get(n.id);
-    if (!fresh) return n;
+    if (!fresh) {
+      // Noa-native notes always kept; obsidian-import notes missing from disk are removed.
+      if ((n.source ?? 'noa') === 'obsidian-import') return [];
+      return [n];
+    }
     // Preserve Noa fields that the vault file doesn't own (e.g. linkRefs computed
     // by Noa's link engine), but take everything the vault file does own.
-    return {
-      ...fresh,
-      linkRefs: n.linkRefs,
-    };
+    return [{ ...fresh, linkRefs: n.linkRefs }];
   });
   // Add notes found in vault that don't exist in Noa yet.
   for (const sn of scanned) {

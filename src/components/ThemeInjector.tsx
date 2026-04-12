@@ -72,6 +72,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .border-\\[\\#B89B5E\\]      { border-color: var(--accent-color) !important; }
       .border-\\[\\#2D2D2D\\]\\/10 { border-color: color-mix(in srgb, var(--border-primary) 10%, transparent) !important; }
       .border-\\[\\#2D2D2D\\]\\/20 { border-color: color-mix(in srgb, var(--border-primary) 20%, transparent) !important; }
+      .border-\\[\\#2D2D2D\\]\\/30 { border-color: color-mix(in srgb, var(--border-primary) 30%, transparent) !important; }
+      .border-\\[\\#2D2D2D\\]\\/40 { border-color: color-mix(in srgb, var(--border-primary) 40%, transparent) !important; }
+      .border-\\[\\#2D2D2D\\]\\/50 { border-color: color-mix(in srgb, var(--border-primary) 50%, transparent) !important; }
       .hover\\:border-\\[\\#2D2D2D\\]:hover { border-color: var(--border-primary) !important; }
       .hover\\:border-\\[\\#B89B5E\\]:hover  { border-color: var(--accent-color) !important; }
 

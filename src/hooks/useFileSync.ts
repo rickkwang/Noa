@@ -171,15 +171,20 @@ export function useFileSync({
           throw new Error('File system permission denied.');
         }
       }
-      const managedNotes = notesRef.current.filter(isObsidianImportedNote);
-      await retryFullSync(fsHandle, managedNotes, foldersRef.current);
+      const currentNotes = notesRef.current;
+      const currentFolders = foldersRef.current;
+      const { notes: merged, newFolders } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
+      const mergedFolders = [...currentFolders, ...newFolders];
+      // Always prune so vault deletions are removed from storage.
+      await onImportData(merged, mergedFolders, workspaceNameRef.current, true);
+      // Use post-merge managed notes so deleted vault files are not resurrected.
+      const managedNotes = merged.filter(isObsidianImportedNote);
+      await retryFullSync(fsHandle, managedNotes, mergedFolders);
       recordSuccess();
     } catch (error) {
-      setPermissionRevoked(true);
       recordFailure(error);
-      throw error;
     }
-  }, [fsHandle, syncStatus, resetRetryState, recordFailure, recordSuccess]);
+  }, [fsHandle, syncStatus, resetRetryState, recordFailure, recordSuccess, onImportData]);
 
   useEffect(() => () => {
     clearRetryTimer();
@@ -210,14 +215,18 @@ export function useFileSync({
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
         const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
-        if (merged.length > currentNotes.length || newFolders.length > 0) {
-          try {
-            await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
-          } catch (importError) {
-            recordFailure(importError);
-            return;
-          }
+        const mergedFolders = [...currentFolders, ...newFolders];
+        try {
+          // Always prune so vault deletions are removed from storage.
+          await onImportData(merged, mergedFolders, workspaceNameRef.current, true);
+        } catch (importError) {
+          recordFailure(importError);
+          return;
         }
+        // Write back any Noa edits made while the app was closed (e.g. offline edits
+        // from a previous session that never flushed to disk).
+        const managedNotes = merged.filter(isObsidianImportedNote);
+        await retryFullSync(handle, managedNotes, mergedFolders);
         recordSuccess();
       } catch (error) {
         recordFailure(error);
@@ -242,13 +251,11 @@ export function useFileSync({
       const handle = await connectDirectoryAndSeed(managedNotes, currentFolders);
       const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
       setFsHandle(handle);
-      if (merged.length > currentNotes.length || newFolders.length > 0) {
-        try {
-          await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current);
-        } catch (importError) {
-          recordFailure(importError);
-          throw importError;
-        }
+      try {
+        await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current, true);
+      } catch (importError) {
+        recordFailure(importError);
+        throw importError;
       }
       recordSuccess();
     } catch (error) {

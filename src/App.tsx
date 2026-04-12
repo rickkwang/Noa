@@ -631,14 +631,14 @@ export default function App() {
           <div className="flex gap-2">
             <button
               onClick={permissionRevoked ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/50 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
+              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
             >
               {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
             </button>
             {permissionRevoked && (
               <button
-                onClick={disconnect}
-                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/50 hover:bg-[#DCD9CE] transition-colors active:opacity-70"
+                onClick={handleDisconnectFolder}
+                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
               >
                 Disconnect
               </button>
