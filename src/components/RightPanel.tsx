@@ -93,30 +93,30 @@ export default function RightPanel({
       )}
       {activeTab === 'properties' && (
         <div key="properties" className="tab-fade-in flex flex-col flex-1 min-h-0">
-          <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} />
+          <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} isDark={isDark} />
         </div>
       )}
       {activeTab === 'graph' && (
         <div key="graph" className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
           {showGraphGuide && (
-            <div className="border border-[#2D2D2D]/30 bg-[#DCD9CE] px-3 py-2 text-[11px] text-[#2D2D2D]/80 leading-relaxed">
-              <div className="font-bold uppercase tracking-wider text-[10px] text-[#2D2D2D]/60 mb-1">Graph Guide</div>
+            <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#242420] text-[rgba(240,237,230,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
+              <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/60'}`}>Graph Guide</div>
               <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
               <button
                 onClick={() => {
                   setShowGraphGuide(false);
                   try { localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1'); } catch { /* quota exceeded */ }
                 }}
-                className="mt-2 text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 hover:border-[#2D2D2D]"
+                className={`mt-2 text-[10px] uppercase tracking-wider font-bold border px-2 py-0.5 ${isDark ? 'border-[rgba(240,237,230,0.25)] hover:border-[rgba(240,237,230,0.6)] text-[rgba(240,237,230,0.5)]' : 'border-[#2D2D2D]/40 hover:border-[#2D2D2D]'}`}
               >
                 Got It
               </button>
             </div>
           )}
-          <div className="flex flex-col border border-[#2D2D2D]/90" style={{ height: '55%', minHeight: 180 }}>
-            <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
+          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.56)' }}>
+            <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
               <Network size={11} className="text-[#B89B5E] shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70 font-redaction mr-auto">Knowledge Matrix</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
               <div className="flex items-center gap-1 px-1.5 py-0.5"
                 style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)' }}>
                 <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
@@ -139,7 +139,7 @@ export default function RightPanel({
                 width={graphDimensions.width} height={graphDimensions.height} hideIsolated={hideIsolated} />
             </div>
           </div>
-          <GraphInfoPanel notes={notes} activeNoteId={activeNoteId} onNavigateToNoteById={onNavigateToNoteById} />
+          <GraphInfoPanel notes={notes} activeNoteId={activeNoteId} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
     </div>
@@ -152,9 +152,10 @@ interface GraphInfoPanelProps {
   notes: Note[];
   activeNoteId?: string;
   onNavigateToNoteById: (id: string) => void;
+  isDark?: boolean;
 }
 
-function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfoPanelProps) {
+function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = false }: GraphInfoPanelProps) {
   const titleToIds = useMemo(() => buildTitleToIdsMap(notes), [notes]);
 
   const stats = useMemo(() => {
@@ -202,27 +203,27 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
   }, [notes, activeNoteId, titleToIds]);
 
   return (
-    <div className="flex-1 overflow-y-auto border border-[#2D2D2D]/90 font-redaction min-h-0">
-      <div className="h-7 bg-[#DCD9CE] border-b border-[#2D2D2D]/50 flex items-center px-2 gap-1.5 shrink-0">
+    <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
+      <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
         <GitBranch size={11} className="text-[#B89B5E] shrink-0" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">Knowledge Matrix Stats</span>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix Stats</span>
       </div>
       <div className="p-3 space-y-3">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
-            <div key={label} className="border border-[#2D2D2D] p-2 text-center">
-              <div className="text-sm font-bold text-[#2D2D2D] leading-none tabular-nums">{value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mt-1">{label}</div>
+            <div key={label} className={`border p-2 text-center ${isDark ? 'border-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]'}`}>
+              <div className={`text-sm font-bold leading-none tabular-nums ${isDark ? 'text-[#E8E0D0]' : 'text-[#2D2D2D]'}`}>{value}</div>
+              <div className={`text-[9px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>{label}</div>
             </div>
           ))}
         </div>
         {activeNoteId && (
           <div>
-            <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mb-1.5 font-bold">
+            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>
               Active · {notes.find(n => n.id === activeNoteId)?.title ?? 'Unknown'}
             </div>
             {activeConnections.length === 0 ? (
-              <div className="text-[10px] text-[#2D2D2D]/40 italic">No connections</div>
+              <div className={`text-[10px] italic ${isDark ? 'text-[rgba(240,237,230,0.25)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
             ) : (
               <div className="space-y-1">
                 {activeConnections.slice(0, 6).map(id => {
@@ -230,15 +231,15 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
                   if (!target) return null;
                   return (
                     <button key={id} onClick={() => onNavigateToNoteById(id)}
-                      className="flex items-center gap-1.5 w-full text-left text-[11px] text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors">
+                      className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                       <Circle size={5} className="shrink-0 fill-[#B89B5E] text-[#B89B5E]" />
                       <span className="truncate">{target.title}</span>
-                      <span className="ml-auto text-[9px] text-[#2D2D2D]/30 tabular-nums shrink-0">{stats.degreeMap.get(id) ?? 0}</span>
+                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.2)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
                     </button>
                   );
                 })}
                 {activeConnections.length > 6 && (
-                  <div className="text-[9px] text-[#2D2D2D]/40 pl-3">+{activeConnections.length - 6} more</div>
+                  <div className={`text-[9px] pl-3 ${isDark ? 'text-[rgba(240,237,230,0.25)]' : 'text-[#2D2D2D]/40'}`}>+{activeConnections.length - 6} more</div>
                 )}
               </div>
             )}
@@ -246,17 +247,17 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById }: GraphInfo
         )}
         {stats.ranked.length > 0 && (
           <div>
-            <div className="text-[9px] uppercase tracking-wider text-[#2D2D2D]/50 mb-1.5 font-bold">Most Connected</div>
+            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>Most Connected</div>
             <div className="space-y-1">
               {stats.ranked.map(([id, degree]) => {
                 const target = notes.find(n => n.id === id);
                 if (!target) return null;
                 return (
                   <button key={id} onClick={() => onNavigateToNoteById(id)}
-                    className="flex items-center gap-1.5 w-full text-left text-[11px] text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors">
+                    className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                     <div className="shrink-0 bg-[#B89B5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                     <span className="truncate">{target.title}</span>
-                    <span className="ml-auto text-[9px] text-[#2D2D2D]/40 tabular-nums shrink-0">{degree}</span>
+                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.2)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
                   </button>
                 );
               })}
