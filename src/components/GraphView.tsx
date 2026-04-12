@@ -79,6 +79,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -222,7 +223,9 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
 
   useEffect(() => {
     if (!fgRef.current) return;
+    initialPositions.current = new Map();
     let innerTimer: ReturnType<typeof setTimeout> | undefined;
+    let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       fgRef.current?.zoomToFit(300, 24);
       // Cap zoom for small graphs so a single node doesn't fill the canvas
@@ -230,10 +233,19 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         const cur = fgRef.current?.zoom();
         if (cur != null && cur > 2) fgRef.current?.zoom(2, 200);
       }, 350);
+      // Save initial positions after layout has settled
+      snapshotTimer = setTimeout(() => {
+        const snapshot = new Map<string, { x: number; y: number }>();
+        graphData.nodes.forEach((node) => {
+          if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
+        });
+        initialPositions.current = snapshot;
+      }, 1000);
     }, 600);
     return () => {
       clearTimeout(timer);
       clearTimeout(innerTimer);
+      clearTimeout(snapshotTimer);
     };
   }, [graphData]);
 
@@ -261,7 +273,16 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   const zoomControls = [
     { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
     { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
-    { icon: <Maximize2 size={12} />, title: 'Fit view', action: () => fgRef.current?.zoomToFit(300, 24) },
+    { icon: <Maximize2 size={12} />, title: 'Reset view', action: () => {
+      const snapshot = initialPositions.current;
+      if (snapshot.size > 0) {
+        graphData.nodes.forEach((node) => {
+          const pos = snapshot.get(String(node.id));
+          if (pos) { node.x = pos.x; node.y = pos.y; node.fx = undefined; node.fy = undefined; node.vx = 0; node.vy = 0; }
+        });
+      }
+      fgRef.current?.zoomToFit(300, 24);
+    }},
   ];
 
   return (
