@@ -275,13 +275,40 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
     { icon: <Maximize2 size={12} />, title: 'Reset view', action: () => {
       const snapshot = initialPositions.current;
-      if (snapshot.size > 0) {
+      if (snapshot.size === 0) { fgRef.current?.zoomToFit(300, 24); return; }
+      const duration = 500;
+      const start = performance.now();
+      const from = new Map(graphData.nodes.map((n) => [String(n.id), { x: n.x ?? 0, y: n.y ?? 0 }]));
+      // Silence forces so they don't fight the animation.
+      const chargeForce = fgRef.current?.d3Force('charge');
+      const linkForce = fgRef.current?.d3Force('link');
+      if (hasStrength(chargeForce)) chargeForce.strength(0);
+      if (hasStrength(linkForce)) linkForce.strength(0);
+      // Pin all nodes and reheat so simulation keeps rendering each frame.
+      graphData.nodes.forEach((n) => { n.fx = n.x; n.fy = n.y; });
+      fgRef.current?.d3ReheatSimulation();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        const ease = 1 - Math.pow(1 - t, 3);
         graphData.nodes.forEach((node) => {
-          const pos = snapshot.get(String(node.id));
-          if (pos) { node.x = pos.x; node.y = pos.y; node.fx = undefined; node.fy = undefined; node.vx = 0; node.vy = 0; }
+          const f = from.get(String(node.id));
+          const target = snapshot.get(String(node.id));
+          if (!f || !target) return;
+          node.fx = f.x + (target.x - f.x) * ease;
+          node.fy = f.y + (target.y - f.y) * ease;
         });
-      }
-      fgRef.current?.zoomToFit(300, 24);
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // Restore forces, unpin nodes, done.
+          const n = graphData.nodes.length;
+          if (hasStrength(chargeForce)) chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
+          if (hasStrength(linkForce)) linkForce.strength(0.7);
+          graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; node.vx = 0; node.vy = 0; });
+          fgRef.current?.zoomToFit(300, 24);
+        }
+      };
+      requestAnimationFrame(tick);
     }},
   ];
 

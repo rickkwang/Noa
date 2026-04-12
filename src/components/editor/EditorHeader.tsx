@@ -154,7 +154,7 @@ export function EditorHeader({
                   )}
                   <div
                     onClick={() => onTabChange?.(tab.id)}
-                    className={`group flex items-center gap-1.5 px-3 cursor-pointer shrink-0 transition-colors relative ${
+                    className={`group flex items-center gap-1.5 px-3 cursor-pointer shrink-0 transition-colors relative w-36 ${
                       isActiveTab
                         ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#F0EDE6]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
                         : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F0EDE6]/40 hover:text-[#F0EDE6]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
@@ -185,7 +185,7 @@ export function EditorHeader({
                       />
                     ) : (
                       <span
-                        className="text-xs font-bold truncate max-w-[120px]"
+                        className="text-xs font-bold truncate min-w-0 flex-1"
                         onDoubleClick={isActiveTab ? () => onSetEditingTitle(true) : undefined}
                         title={isActiveTab ? 'Double-click to rename' : tab.title}
                       >
