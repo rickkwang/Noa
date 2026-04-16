@@ -52,7 +52,16 @@ export default function RightPanel({
     const syncGraphSize = () => {
       if (!graphContainerRef.current) return;
       const rect = graphContainerRef.current.getBoundingClientRect();
-      setGraphDimensions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
+      const nextW = Math.max(1, Math.floor(rect.width));
+      const nextH = Math.max(1, Math.floor(rect.height));
+      // Ignore sub-pixel jitter from layout passes — otherwise every tiny
+      // resize fires GraphView's physics-init effect which re-seats the
+      // center/collide forces mid-drag and scatters the nodes.
+      setGraphDimensions((prev) =>
+        Math.abs(prev.width - nextW) < 2 && Math.abs(prev.height - nextH) < 2
+          ? prev
+          : { width: nextW, height: nextH }
+      );
     };
     syncGraphSize();
     const observer = new ResizeObserver(syncGraphSize);

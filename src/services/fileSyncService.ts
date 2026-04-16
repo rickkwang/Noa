@@ -47,7 +47,23 @@ export async function connectDirectoryAndSeed(
 }
 
 export async function disconnectDirectory(): Promise<void> {
+  // Cancel any pending debounced writes so they don't fire against the
+  // stale handle after disconnect (silent failures, lost edits from the
+  // user's perspective).
+  cancelPendingVaultWrites();
   await clearPersistedHandle();
+}
+
+/** Clear all pending per-note debounces. Exposed for disconnect cleanup. */
+export function cancelPendingVaultWrites(): void {
+  for (const timer of _noteDebounceTimers.values()) clearTimeout(timer);
+  _noteDebounceTimers.clear();
+  // Resolve (don't reject) any waiters so awaiters don't hang — the write
+  // was never flushed but we shouldn't leak pending promises either.
+  for (const resolvers of _notePendingResolvers.values()) {
+    resolvers.forEach((r) => r());
+  }
+  _notePendingResolvers.clear();
 }
 
 const SCAN_TIMEOUT_MS = 30_000; // 30 s — large vaults can be slow
@@ -76,6 +92,20 @@ export async function mergeScannedNotes(
     'Vault directory scan'
   );
   const scannedById = new Map(scanned.map((n) => [n.id, n]));
+
+  // Safety guard: if Noa previously tracked obsidian-import notes but the scan
+  // returned zero results, treat this as a suspicious scan (permission hiccup,
+  // mount race, user pointed at wrong directory) rather than a legitimate
+  // "user deleted everything" event. Abort the merge so we don't wipe local
+  // edits — the caller will surface the error and the next retry can recover.
+  const previousObsidianCount = notes.filter((n) => (n.source ?? 'noa') === 'obsidian-import').length;
+  if (previousObsidianCount > 0 && scanned.length === 0) {
+    throw new Error(
+      'Vault scan returned no files but Noa has existing imported notes — refusing to prune. ' +
+      'Check that the folder is still accessible and try reconnecting.'
+    );
+  }
+
   // Update existing obsidian-import notes with fresh data from disk;
   // keep Noa-native notes untouched.
   // Drop obsidian-import notes that no longer exist on disk — they were deleted

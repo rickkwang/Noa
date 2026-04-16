@@ -80,6 +80,14 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const isDraggingRef = useRef(false);
+  const resetAnimationRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (resetAnimationRef.current != null) {
+      cancelAnimationFrame(resetAnimationRef.current);
+      resetAnimationRef.current = null;
+    }
+  }, []);
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -195,6 +203,11 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
 
   // Dynamic physics based on node count
   useEffect(() => {
+    // Never re-seat forces during an active drag — that would overwrite the
+    // null/empty forces we installed in onNodeDrag and let the center/collide
+    // forces scatter every node on the next tick. A size jitter caused by a
+    // parent ResizeObserver is enough to trigger this effect mid-drag.
+    if (isDraggingRef.current) return;
     if (!fgRef.current) return;
     const n = graphData.nodes.length;
     const cx = width / 2;
@@ -216,8 +229,13 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     // Collide: minimal padding, let link distance do the spacing
     const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 3).iterations(3);
     fgRef.current.d3Force('collide', collide);
-    // Center force: holds the graph together without crushing it
-    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.3));
+    // Center force: d3-force applies this to EVERY node each tick by
+    // subtracting the weighted mean of all node positions. When alpha is
+    // high (as it is during/after a drag), a high strength yanks every
+    // node toward the centroid on every frame — this is what causes the
+    // whole graph to appear to "explode" when a node is dragged. D3's
+    // own recommendation is 0.05 for interactive graphs.
+    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.05));
     fgRef.current.d3Force('radial', null);
   }, [graphData.nodes.length, width, height]);
 
@@ -250,6 +268,18 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   }, [graphData]);
 
   const lowerSearch = searchQuery.toLowerCase().trim();
+
+  // Bucket node count into size tiers so ForceGraph2D prop values stay
+  // constant across small membership fluctuations. Otherwise crossing 100
+  // or 200 nodes would re-apply cooldownTicks/alphaDecay and restart the
+  // simulation, causing a visible re-layout.
+  const sizeTier: 'small' | 'medium' | 'large' = graphData.nodes.length > 200
+    ? 'large'
+    : graphData.nodes.length > 100 ? 'medium' : 'small';
+  const cooldownTicks = sizeTier === 'large' ? 15 : sizeTier === 'medium' ? 20 : 30;
+  const cooldownTime = sizeTier === 'large' ? 800 : 1500;
+  const alphaDecay = sizeTier === 'large' ? 0.08 : 0.04;
+  const velocityDecay = sizeTier === 'large' ? 0.85 : 0.8;
   const idToTitle = useMemo(
     () => new Map(graphData.nodes.map((node) => [String(node.id), node.name])),
     [graphData.nodes]
@@ -276,15 +306,23 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     { icon: <Maximize2 size={12} />, title: 'Reset view', action: () => {
       const snapshot = initialPositions.current;
       if (snapshot.size === 0) { fgRef.current?.zoomToFit(300, 24); return; }
+      // Cancel any in-flight reset animation so back-to-back clicks don't
+      // spawn parallel RAF loops fighting over fx/fy.
+      if (resetAnimationRef.current != null) {
+        cancelAnimationFrame(resetAnimationRef.current);
+        resetAnimationRef.current = null;
+      }
       const duration = 500;
       const start = performance.now();
       const from = new Map(graphData.nodes.map((n) => [String(n.id), { x: n.x ?? 0, y: n.y ?? 0 }]));
-      // Silence forces so they don't fight the animation.
-      const chargeForce = fgRef.current?.d3Force('charge');
-      const linkForce = fgRef.current?.d3Force('link');
-      if (hasStrength(chargeForce)) chargeForce.strength(0);
-      if (hasStrength(linkForce)) linkForce.strength(0);
-      // Pin all nodes and reheat so simulation keeps rendering each frame.
+      // Silence forces so they don't fight the animation. We read fresh
+      // force instances again inside the completion branch rather than
+      // closing over them — the physics-init effect may have re-seated
+      // these instances between start and end of the animation.
+      const c0 = fgRef.current?.d3Force('charge');
+      const l0 = fgRef.current?.d3Force('link');
+      if (hasStrength(c0)) c0.strength(0);
+      if (hasStrength(l0)) l0.strength(0);
       graphData.nodes.forEach((n) => { n.fx = n.x; n.fy = n.y; });
       fgRef.current?.d3ReheatSimulation();
       const tick = (now: number) => {
@@ -298,17 +336,19 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           node.fy = f.y + (target.y - f.y) * ease;
         });
         if (t < 1) {
-          requestAnimationFrame(tick);
+          resetAnimationRef.current = requestAnimationFrame(tick);
         } else {
-          // Restore forces, unpin nodes, done.
+          resetAnimationRef.current = null;
           const n = graphData.nodes.length;
-          if (hasStrength(chargeForce)) chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
-          if (hasStrength(linkForce)) linkForce.strength(0.7);
+          const cNow = fgRef.current?.d3Force('charge');
+          const lNow = fgRef.current?.d3Force('link');
+          if (hasStrength(cNow)) cNow.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
+          if (hasStrength(lNow)) lNow.strength(0.7);
           graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; node.vx = 0; node.vy = 0; });
           fgRef.current?.zoomToFit(300, 24);
         }
       };
-      requestAnimationFrame(tick);
+      resetAnimationRef.current = requestAnimationFrame(tick);
     }},
   ];
 
@@ -364,14 +404,21 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
-        cooldownTicks={graphData.nodes.length > 200 ? 15 : graphData.nodes.length > 100 ? 20 : 30}
-        cooldownTime={graphData.nodes.length > 200 ? 800 : 1500}
-        d3AlphaDecay={graphData.nodes.length > 200 ? 0.08 : 0.04}
-        d3VelocityDecay={graphData.nodes.length > 200 ? 0.8 : 0.7}
+        cooldownTicks={cooldownTicks}
+        cooldownTime={cooldownTime}
+        d3AlphaDecay={alphaDecay}
+        d3VelocityDecay={velocityDecay}
+        onNodeDrag={() => {
+          isDraggingRef.current = true;
+        }}
         onNodeDragEnd={(node: GraphNode) => {
-          // Pin the node at the dropped position so it stays put.
+          // Standard d3-force drag pattern (Bostock's Force Dragging III):
+          // let the simulation handle the drag naturally via force-graph's
+          // internal d3AlphaTarget(0.3) while dragging, and just pin the
+          // released node so it stays where the user dropped it.
           node.fx = node.x;
           node.fy = node.y;
+          isDraggingRef.current = false;
         }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;

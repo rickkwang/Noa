@@ -168,7 +168,9 @@ export function useFileSync({
       if (typeof fsHandle.requestPermission === 'function') {
         const permission = await fsHandle.requestPermission({ mode: 'readwrite' });
         if (permission !== 'granted') {
-          throw new Error('File system permission denied.');
+          const denied = new Error('File system permission denied.');
+          (denied as Error & { name: string }).name = 'NotAllowedError';
+          throw denied;
         }
       }
       const currentNotes = notesRef.current;
@@ -203,7 +205,13 @@ export function useFileSync({
       ensureInitialNote();
     }
 
+    // Guard against the user unmounting / disconnecting between the async
+    // steps below. Without this the effect would resurrect a handle that
+    // was just cleared and overwrite syncStatus='idle' with 'ready'.
+    let aborted = false;
+
     void restorePersistedFsHandle().then(async (handle) => {
+      if (aborted) return;
       if (!handle) {
         setSyncStatus('idle');
         setPermissionRevoked(false);
@@ -215,23 +223,30 @@ export function useFileSync({
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
         const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+        if (aborted) return;
         const mergedFolders = [...currentFolders, ...newFolders];
         try {
           // Always prune so vault deletions are removed from storage.
           await onImportData(merged, mergedFolders, workspaceNameRef.current, true);
         } catch (importError) {
+          if (aborted) return;
           recordFailure(importError);
           return;
         }
+        if (aborted) return;
         // Write back any Noa edits made while the app was closed (e.g. offline edits
         // from a previous session that never flushed to disk).
         const managedNotes = merged.filter(isObsidianImportedNote);
         await retryFullSync(handle, managedNotes, mergedFolders);
+        if (aborted) return;
         recordSuccess();
       } catch (error) {
+        if (aborted) return;
         recordFailure(error);
       }
-    }).catch(recordFailure);
+    }).catch((err) => { if (!aborted) recordFailure(err); });
+
+    return () => { aborted = true; };
   }, [
     activeNoteId,
     ensureInitialNote,
