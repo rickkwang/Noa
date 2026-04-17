@@ -79,6 +79,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const topologyNotes = useMemo(
@@ -371,15 +372,23 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
+        // Read from ref inside interaction predicates to avoid drag-frame re-renders.
+        enablePanInteraction={() => !isDraggingNodeRef.current}
+        enableZoomInteraction={() => !isDraggingNodeRef.current}
         cooldownTicks={graphData.nodes.length > 200 ? 15 : graphData.nodes.length > 100 ? 20 : 30}
         cooldownTime={graphData.nodes.length > 200 ? 800 : 1500}
         d3AlphaDecay={graphData.nodes.length > 200 ? 0.08 : 0.04}
         d3VelocityDecay={graphData.nodes.length > 200 ? 0.8 : 0.7}
+        onNodeDrag={() => {
+          isDraggingNodeRef.current = true;
+        }}
         onNodeDragEnd={(node: GraphNode) => {
-          // Pin the node at the dropped position so it stays put.
+          // Match the recommended force-graph pattern: pin the dragged node at its drop point.
           node.fx = node.x;
           node.fy = node.y;
+          isDraggingNodeRef.current = false;
         }}
+        onBackgroundClick={() => { isDraggingNodeRef.current = false; }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
           const degree = node.degree ?? 0;
@@ -459,7 +468,8 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           const radius = nodeRadius(node.degree ?? 0);
           ctx.fillStyle = color;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI);
+          // Slightly larger hit area makes node drags less likely to start a canvas pan.
+          ctx.arc(node.x, node.y, radius + 8, 0, 2 * Math.PI);
           ctx.fill();
         }}
       />
