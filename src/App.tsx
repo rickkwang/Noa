@@ -39,6 +39,7 @@ export default function App() {
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const [tabLimitWarning, setTabLimitWarning] = useState(false);
   const restoredOpenTabsRef = useRef(false);
+  const openTabIdsRef = useRef<string[]>([]);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
       return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
@@ -146,12 +147,15 @@ export default function App() {
     }
   }, [_handleCreateNote, settings.templates?.userTemplates]);
 
+  const notesRef = useRef(notes);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+
   const handleMoveNote = useCallback((id: string, folderId: string) => {
-    const note = notes.find((item) => item.id === id);
+    const note = notesRef.current.find((item) => item.id === id);
     if (!note || note.folder === folderId) return;
     _handleMoveNote(id, folderId);
     syncNoteOnMove(id, note.folder, folderId);
-  }, [_handleMoveNote, notes, syncNoteOnMove]);
+  }, [_handleMoveNote, syncNoteOnMove]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     _handleCreateFolder(parentFolderId);
@@ -201,9 +205,13 @@ export default function App() {
 
   const handleDeleteFolder = useCallback((id: string) => {
     void (async () => {
-      const deletedNoteIds = await _handleDeleteFolder(id);
-      deletedNoteIds.forEach((noteId) => closeTabById(noteId));
-      deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
+      try {
+        const deletedNoteIds = await _handleDeleteFolder(id);
+        deletedNoteIds.forEach((noteId) => closeTabById(noteId));
+        deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
+      } catch (err) {
+        console.error('[App] handleDeleteFolder failed:', err);
+      }
     })();
   }, [_handleDeleteFolder, closeTabById, syncNoteOnDelete]);
 
@@ -259,20 +267,29 @@ export default function App() {
     return () => clearTimeout(t);
   }, [openTabIds]);
 
+  // Keep openTabIdsRef in sync for use in other effects
+  useEffect(() => {
+    openTabIdsRef.current = openTabIds;
+  }, [openTabIds]);
+
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
-    let hitLimit = false;
+    // Detect if we are about to exceed the tab limit (before state update).
+    // Use a ref to avoid stale closure issues with openTabIds.
+    const willExceedLimit = openTabIdsRef.current.length >= MAX_OPEN_TABS &&
+      !openTabIdsRef.current.includes(activeNoteId);
+    if (willExceedLimit) {
+      setTabLimitWarning(true);
+    }
     setOpenTabIds((prev) => {
       if (prev.includes(activeNoteId)) return prev;
       if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
       const dropIndex = prev.findIndex((id) => id !== activeNoteId);
       if (dropIndex === -1) return [activeNoteId];
-      hitLimit = true;
       return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
     });
-    if (hitLimit) {
-      setTabLimitWarning(true);
+    if (willExceedLimit) {
       const t = setTimeout(() => setTabLimitWarning(false), 3000);
       return () => clearTimeout(t);
     }
