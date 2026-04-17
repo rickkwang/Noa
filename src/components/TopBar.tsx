@@ -1,4 +1,4 @@
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -24,6 +24,13 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, onToggleGraphView, isGraphViewOpen, showGraphView = true, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName, fsLastSyncAt, hasFsHandle }: TopBarProps) {
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div className="h-12 border-b border-[#2D2D2D] grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={dragRegion}>
       {/* Left Section: Traffic lights space + icon + title */}
@@ -38,7 +45,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
           </button>
           {(() => {
             const mins = hasFsHandle && fsLastSyncAt
-              ? Math.floor((Date.now() - new Date(fsLastSyncAt).getTime()) / 60000)
+              ? Math.floor((nowTick - new Date(fsLastSyncAt).getTime()) / 60000)
               : null;
             const stale = mins != null && mins > 30;
             const tooltip = [

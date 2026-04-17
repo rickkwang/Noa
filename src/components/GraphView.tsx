@@ -146,8 +146,10 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         if (nodeMap.has(id)) targetIds.add(id);
       });
       (note.links ?? []).forEach((linkTitle) => {
-        const ids = titleToIds.get(linkTitle);
-        if (ids && ids.length === 1 && nodeMap.has(ids[0])) targetIds.add(ids[0]);
+        const ids = titleToIds.get(linkTitle) ?? [];
+        ids.forEach((id) => {
+          if (nodeMap.has(id)) targetIds.add(id);
+        });
       });
       targetIds.forEach((targetId) => {
         if (nodeMap.has(targetId)) {
@@ -226,15 +228,19 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     initialPositions.current = new Map();
     let innerTimer: ReturnType<typeof setTimeout> | undefined;
     let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
+    let isActive = true;
     const timer = setTimeout(() => {
+      if (!isActive) return;
       fgRef.current?.zoomToFit(300, 24);
       // Cap zoom for small graphs so a single node doesn't fill the canvas
       innerTimer = setTimeout(() => {
+        if (!isActive) return;
         const cur = fgRef.current?.zoom();
         if (cur != null && cur > 2) fgRef.current?.zoom(2, 200);
       }, 350);
       // Save initial positions after layout has settled
       snapshotTimer = setTimeout(() => {
+        if (!isActive) return;
         const snapshot = new Map<string, { x: number; y: number }>();
         graphData.nodes.forEach((node) => {
           if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
@@ -243,6 +249,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
       }, 1000);
     }, 600);
     return () => {
+      isActive = false;
       clearTimeout(timer);
       clearTimeout(innerTimer);
       clearTimeout(snapshotTimer);
@@ -304,7 +311,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           const n = graphData.nodes.length;
           if (hasStrength(chargeForce)) chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
           if (hasStrength(linkForce)) linkForce.strength(0.7);
-          graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; node.vx = 0; node.vy = 0; });
+          graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; });
           fgRef.current?.zoomToFit(300, 24);
         }
       };

@@ -1,5 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, Link, Network, Search, GitBranch, Circle, SlidersHorizontal } from 'lucide-react';
+import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal } from 'lucide-react';
 import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
@@ -7,9 +7,33 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { TasksPanel } from './rightPanel/TasksPanel';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
+import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 
-export type RightPanelTab = 'tasks' | 'backlinks' | 'graph' | 'properties';
+export type RightPanelTab = 'tasks' | 'backlinks' | 'outgoing' | 'graph' | 'properties';
+
+// Custom link-with-arrow icons (backlinks = incoming, outgoing = external)
+function BacklinksIcon({ size = 14, strokeWidth = 1.75, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      <path d="M7 17l-3 3" />
+      <path d="M4 17h3v3" />
+    </svg>
+  );
+}
+
+function OutgoingIcon({ size = 14, strokeWidth = 1.75, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      <path d="M17 7l3-3" />
+      <path d="M17 4h3v3" />
+    </svg>
+  );
+}
 
 interface RightPanelProps {
   tasks: GlobalTask[];
@@ -46,6 +70,20 @@ export default function RightPanel({
       ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
     ).length;
   }, [activeNote, notes]);
+  const outgoingCount = useMemo(() => {
+    if (!activeNote) return 0;
+    const titleSet = new Set(notes.map(n => n.title));
+    const idSet = new Set(notes.map(n => n.id));
+    const seen = new Set<string>();
+    (activeNote.linkRefs ?? []).forEach(id => { if (id !== activeNote.id && idSet.has(id)) seen.add(id); });
+    (activeNote.links ?? []).forEach(t => {
+      if (!titleSet.has(t)) return;
+      notes.forEach((candidate) => {
+        if (candidate.title === t && candidate.id !== activeNote.id) seen.add(candidate.id);
+      });
+    });
+    return seen.size;
+  }, [activeNote, notes]);
 
   useEffect(() => {
     if (activeTab !== 'graph' || !graphContainerRef.current) return;
@@ -63,21 +101,41 @@ export default function RightPanel({
 
   return (
     <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
-      {/* Tab bar */}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center bg-[#DCD9CE] shrink-0 overflow-hidden">
+      {/* Tab bar — icon only */}
+      <div className="h-8 border-b border-[#2D2D2D] flex items-center justify-start gap-1 px-2 bg-[#DCD9CE] shrink-0 overflow-hidden">
         {([
           { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
-          { id: 'backlinks', label: 'Links', icon: Link, badge: backlinksCount > 0 ? backlinksCount : null },
+          { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
+          { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
           { id: 'graph', label: 'Graph', icon: Network, badge: null },
-          { id: 'properties', label: 'Props', icon: SlidersHorizontal, badge: null },
-        ] as const).map((tab, i, arr) => (
-          <button key={tab.id} onClick={() => onTabChange(tab.id)} title={tab.label}
-            className={`flex-1 flex items-center justify-center gap-1 h-full text-xs font-bold uppercase tracking-wider transition-colors active:opacity-70 font-redaction relative ${i < arr.length - 1 ? 'border-r border-[#2D2D2D]/30' : ''} ${activeTab === tab.id ? 'bg-[#EAE8E0] text-[#2D2D2D]' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]'}`}>
-            <tab.icon size={12} className="text-[#B89B5E] shrink-0" />
-            <span>{tab.label}</span>
-            {tab.badge !== null && <span className="absolute top-0.5 right-1 text-[9px] font-bold text-[#B89B5E] leading-none">{tab.badge}</span>}
-          </button>
-        ))}
+          { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
+        ] as const).map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
+              aria-label={tab.label}
+              aria-pressed={isActive}
+              className={`relative flex items-center justify-center w-6 h-6 rounded-sm transition-colors active:opacity-70 ${
+                isActive
+                  ? 'bg-[#EAE8E0] text-[#2D2D2D] shadow-[inset_0_0_0_1px_rgba(45,45,45,0.15)]'
+                  : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/60'
+              }`}
+            >
+              <tab.icon size={14} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+              {tab.badge !== null && (
+                <span
+                  aria-label={`${tab.badge} pending`}
+                  className="absolute top-0 right-0.5 text-[8px] font-bold leading-none tabular-nums text-[#B89B5E]"
+                >
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
@@ -89,6 +147,11 @@ export default function RightPanel({
       {activeTab === 'backlinks' && (
         <div key="backlinks" className="tab-fade-in flex flex-col flex-1 min-h-0">
           <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+        </div>
+      )}
+      {activeTab === 'outgoing' && (
+        <div key="outgoing" className="tab-fade-in flex flex-col flex-1 min-h-0">
+          <OutgoingLinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
       {activeTab === 'properties' && (
@@ -167,8 +230,10 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
       const targets = new Set<string>();
       (note.linkRefs ?? []).forEach(id => { if (degreeMap.has(id)) targets.add(id); });
       (note.links ?? []).forEach(targetTitle => {
-        const ids = titleToIds.get(targetTitle);
-        if (ids && ids.length === 1 && degreeMap.has(ids[0])) targets.add(ids[0]);
+        const ids = titleToIds.get(targetTitle) ?? [];
+        ids.forEach((id) => {
+          if (degreeMap.has(id)) targets.add(id);
+        });
       });
       targets.forEach(targetId => {
         if (degreeMap.has(targetId)) {
@@ -191,8 +256,8 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
     const inc = new Set<string>();
     (note.linkRefs ?? []).forEach(id => out.add(id));
     (note.links ?? []).forEach(title => {
-      const ids = titleToIds.get(title);
-      if (ids && ids.length === 1) out.add(ids[0]);
+      const ids = titleToIds.get(title) ?? [];
+      ids.forEach((id) => out.add(id));
     });
     notes.forEach(candidate => {
       if (candidate.id === note.id) return;
@@ -223,7 +288,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
               Active · {notes.find(n => n.id === activeNoteId)?.title ?? 'Unknown'}
             </div>
             {activeConnections.length === 0 ? (
-              <div className={`text-[10px] italic ${isDark ? 'text-[rgba(240,237,230,0.25)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
+              <div className={`text-[10px] italic ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
             ) : (
               <div className="space-y-1">
                 {activeConnections.slice(0, 6).map(id => {
@@ -234,12 +299,12 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
                       className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                       <Circle size={5} className="shrink-0 fill-[#B89B5E] text-[#B89B5E]" />
                       <span className="truncate">{target.title}</span>
-                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.2)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
+                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
                     </button>
                   );
                 })}
                 {activeConnections.length > 6 && (
-                  <div className={`text-[9px] pl-3 ${isDark ? 'text-[rgba(240,237,230,0.25)]' : 'text-[#2D2D2D]/40'}`}>+{activeConnections.length - 6} more</div>
+                  <div className={`text-[9px] pl-3 ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/40'}`}>+{activeConnections.length - 6} more</div>
                 )}
               </div>
             )}
@@ -257,7 +322,7 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
                     className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                     <div className="shrink-0 bg-[#B89B5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                     <span className="truncate">{target.title}</span>
-                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.2)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
+                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
                   </button>
                 );
               })}
