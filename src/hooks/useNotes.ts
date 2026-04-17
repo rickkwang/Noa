@@ -64,6 +64,9 @@ export function useNotes(settings?: AppSettings) {
     const elapsed = Date.now() - firstScheduledAt;
     // If we've been deferring for longer than the max interval, fire immediately
     const delay = elapsed >= MAX_SNAPSHOT_INTERVAL_MS ? 0 : 30_000;
+    // Starting a new window on forced-flush so subsequent edits don't keep
+    // firing at delay=0 before the previous callback drains.
+    if (delay === 0) snapshotFirstScheduled.current.delete(noteId);
 
     if (existing) clearTimeout(existing);
     const t = setTimeout(async () => {
@@ -363,7 +366,7 @@ Export regularly: use Settings → Data → Export Backup.`,
           return {
             ...n,
             content: updatedContent,
-            links: n.links.map(l => l === oldTitle ? newTitle : l),
+            links: n.links.map(l => l === oldTitle ? safeNewTitle : l),
             updatedAt: new Date().toISOString(),
           };
         }
@@ -518,7 +521,8 @@ Export regularly: use Settings → Data → Export Backup.`,
   useEffect(() => { foldersRef.current = folders; }, [folders]);
 
   const handleNavigateToNote = useCallback((title: string) => {
-    const existing = notes.find(n => n.title === title);
+    // Always read from notesRef so we see the latest state even during rapid updates.
+    const existing = notesRef.current.find(n => n.title === title);
     if (existing) {
       setActiveNoteIdWithRecent(existing.id);
       return;
@@ -535,25 +539,39 @@ Export regularly: use Settings → Data → Export Backup.`,
       linkRefs: [],
       source: 'noa',
     };
+    // Resolve the id to activate inside the updater so it always reflects the
+    // latest prev — avoids a race between the closure check and the updater check.
+    let resolvedId = newNote.id;
     setNotes(prev => {
-      if (prev.some(n => n.title === title)) return prev;
+      const collision = prev.find(n => n.title === title);
+      if (collision) {
+        resolvedId = collision.id;
+        return prev;
+      }
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-    setActiveNoteIdWithRecent(newNote.id);
-  }, [notes, setActiveNoteIdWithRecent, syncLinkRefs]);
+    // setActiveNoteIdWithRecent runs after setNotes; by then resolvedId is final.
+    // Use a microtask flush so the state update above is batched first.
+    Promise.resolve().then(() => setActiveNoteIdWithRecent(resolvedId));
+  }, [notesRef, setActiveNoteIdWithRecent, syncLinkRefs, foldersRef]);
 
 
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
-    const noteToDelete = notesRef.current.find(n => n.id === id);
     try {
-      if (noteToDelete?.attachments?.length) {
-        await storage.deleteAttachmentBlobsByNoteId(id, noteToDelete.attachments, notesRef.current);
-      }
       await storage.deleteNote(id);
     } catch {
       setSaveError('Failed to delete note.');
       return false;
     }
+    // Attachment blobs are pruned asynchronously via pruneOrphanedAttachments
+    // using the post-deletion notes list. Computing "still referenced" from
+    // a pre-deletion snapshot (as deleteAttachmentBlobsByNoteId does) races
+    // with concurrent deletions of sibling notes sharing the same blob.
+    const remaining = notesRef.current.filter(n => n.id !== id);
+    const validIds = new Set(
+      remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
+    );
+    storage.pruneOrphanedAttachments(validIds).catch(() => {});
     // Cancel any pending debounce save/snapshot for this note so it cannot be
     // re-written to storage after deletion.
     const pending = saveTimers.current.get(id);
@@ -625,9 +643,6 @@ Export regularly: use Settings → Data → Export Backup.`,
     const toDelete = currentNotes.filter(n => folderIdsToDelete.has(n.folder));
     const results = await Promise.allSettled(
       toDelete.map(async (note) => {
-        if (note.attachments?.length) {
-          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, currentNotes);
-        }
         await storage.deleteNote(note.id);
         return note.id;
       })
@@ -643,24 +658,39 @@ Export regularly: use Settings → Data → Export Backup.`,
         saveTimers.current.delete(id);
       }
     });
-    if (deletedIds.length > 0) {
+    const failedCount = results.length - deletedIds.length;
+    if (deletedIds.length > 0 || failedCount === 0) {
       const deletedSet = new Set(deletedIds);
       setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
-      setNotes(prev => syncLinkRefs(prev.filter((note) => !deletedSet.has(note.id)), prev));
+      // Remove deleted notes and, when no failures, also remove the folders themselves.
+      // Both are applied in one setNotes call to avoid a redundant syncLinkRefs pass.
+      const removeFolders = failedCount === 0;
+      setNotes(prev => syncLinkRefs(
+        prev.filter(n => !deletedSet.has(n.id) && !(removeFolders && folderIdsToDelete.has(n.folder))),
+        prev
+      ));
+      if (removeFolders) {
+        setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
+      }
     }
-    const failedCount = results.length - deletedIds.length;
     if (failedCount > 0) {
       setSaveError(`Failed to delete ${failedCount} note(s) in folder. Please try again.`);
-      return deletedIds;
     }
-    setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
-    setNotes(prev => syncLinkRefs(prev.filter(n => !folderIdsToDelete.has(n.folder)), prev));
+    if (deletedIds.length > 0) {
+      const deletedSet = new Set(deletedIds);
+      const remaining = notesRef.current.filter(n => !deletedSet.has(n.id));
+      const validIds = new Set(
+        remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
+      );
+      storage.pruneOrphanedAttachments(validIds).catch(() => {});
+    }
     return deletedIds;
   }, [syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
-    notes,
+    notesRef,
     settings,
+    foldersRef,
     setFolders,
     setNotes,
     setActiveNoteIdWithRecent,
@@ -703,6 +733,21 @@ Export regularly: use Settings → Data → Export Backup.`,
           }))
       );
 
+      // Pre-flight total-size check. base64 adds ~33% overhead, decode into
+      // Blob briefly doubles footprint, so the practical peak memory is
+      // roughly 2× the raw byte size. We reject imports whose decoded size
+      // would exceed this threshold to prevent OOM on low-RAM devices.
+      const IMPORT_TOTAL_RAW_LIMIT = 500 * 1024 * 1024; // 500 MB decoded
+      const approxRawBytes = importAttachments.reduce(
+        (sum, a) => sum + Math.floor(a.dataBase64.length * 0.75),
+        0,
+      );
+      if (approxRawBytes > IMPORT_TOTAL_RAW_LIMIT) {
+        throw new Error(
+          `Import rejected: attachments total ~${Math.round(approxRawBytes / 1024 / 1024)}MB exceed the ${IMPORT_TOTAL_RAW_LIMIT / 1024 / 1024}MB safety limit. Split the backup into smaller parts.`,
+        );
+      }
+
       // Smaller batch size reduces peak memory usage for large attachments.
       const ATTACHMENT_BATCH_SIZE = 5;
       for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
@@ -722,7 +767,19 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
 
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
-      const withRefs = syncLinkRefs(normalizedNotes.map((note) => {
+      // When vault-sync prunes, rescue any local Noa-native notes that were
+      // created between mergeScannedNotes() capturing its snapshot and this
+      // import landing. Without this, a note created during bootstrap
+      // (Cmd+N while the vault is still scanning) would be prune-deleted.
+      const mergedBase: ImportedNote[] = (() => {
+        if (!shouldPrune) return normalizedNotes;
+        const importedIds = new Set(normalizedNotes.map(n => n.id));
+        const rescued = notesRef.current.filter(
+          n => (n.source ?? 'noa') === 'noa' && !importedIds.has(n.id)
+        );
+        return rescued.length > 0 ? [...normalizedNotes, ...rescued] : normalizedNotes;
+      })();
+      const withRefs = syncLinkRefs(mergedBase.map((note) => {
         // Obsidian-imported notes carry their own tags/links from frontmatter;
         // re-extracting from body content would overwrite them with wrong data.
         if ((note.source ?? 'noa') === 'obsidian-import') return note;
@@ -949,6 +1006,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     isLoaded,
     loadError,
     saveError,
+    setSaveError,
     clearSaveError: () => setSaveError(null),
     flushAllPendingSaves,
     workspaceName,

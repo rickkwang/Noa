@@ -158,6 +158,27 @@ describe('validateAttachmentPayloads', () => {
 
     expect(error).toMatch(/attachment payload is invalid/i);
   });
+
+  it('accepts a well-formed base64 attachment payload', () => {
+    const error = validateAttachmentPayloads([
+      {
+        ...makeNote('id1', 'Note A'),
+        attachments: [
+          {
+            id: 'att-1',
+            noteId: 'id1',
+            filename: 'image.png',
+            mimeType: 'image/png',
+            size: 5,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            dataBase64: 'aGVsbG8=',
+          },
+        ],
+      } as any,
+    ]);
+
+    expect(error).toBeNull();
+  });
 });
 
 describe('folder import file classification', () => {

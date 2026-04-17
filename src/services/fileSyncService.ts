@@ -114,9 +114,9 @@ export async function mergeScannedNotes(
 
 let _vaultWriteQueue: Promise<void> = Promise.resolve();
 
-// Per-note pending timers: noteId → { timer, resolve }
+// Per-note pending timers: noteId → { timer, resolve/reject }
 const _noteDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const _notePendingResolvers = new Map<string, Array<() => void>>();
+const _notePendingSettlers = new Map<string, Array<{ resolve: () => void; reject: (err: unknown) => void }>>();
 
 /** Flush a note write immediately, skipping the debounce. */
 function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> {
@@ -133,11 +133,14 @@ function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> 
     (err: unknown) => { console.error('[fileSyncService] vault write failed:', err); }
   );
 
-  // Resolve any callers that were waiting on this note's debounce.
-  const resolvers = _notePendingResolvers.get(noteId);
-  if (resolvers) {
-    result.finally(() => { resolvers.forEach(r => r()); });
-    _notePendingResolvers.delete(noteId);
+  // Settle any callers that were waiting on this note's debounce.
+  const settlers = _notePendingSettlers.get(noteId);
+  if (settlers) {
+    result.then(
+      () => settlers.forEach(s => s.resolve()),
+      (err: unknown) => settlers.forEach(s => s.reject(err)),
+    );
+    _notePendingSettlers.delete(noteId);
   }
 
   return result;
@@ -148,11 +151,11 @@ function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> 
  * Structural operations (rename, move, delete) bypass this via flushNoteWrite.
  */
 function debouncedNoteWrite(noteId: string, fn: () => Promise<void>, delayMs = 300): Promise<void> {
-  return new Promise<void>((resolve) => {
-    // Register this caller so it gets resolved when the write eventually fires.
-    const resolvers = _notePendingResolvers.get(noteId) ?? [];
-    resolvers.push(resolve);
-    _notePendingResolvers.set(noteId, resolvers);
+  return new Promise<void>((resolve, reject) => {
+    // Register this caller so it gets settled when the write eventually fires.
+    const settlers = _notePendingSettlers.get(noteId) ?? [];
+    settlers.push({ resolve, reject });
+    _notePendingSettlers.set(noteId, settlers);
 
     // Reset the debounce timer — only the last fn wins.
     const existing = _noteDebounceTimers.get(noteId);

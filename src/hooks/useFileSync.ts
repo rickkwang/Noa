@@ -32,6 +32,8 @@ interface UseFileSyncResult {
   fsLastSyncAt: string | null;
   fsSyncError: string | null;
   permissionRevoked: boolean;
+  needsReauth: boolean;
+  autoRetryExhausted: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   retry: () => void;
@@ -45,8 +47,8 @@ interface UseFileSyncResult {
 
 const AUTO_RETRY_INITIAL_DELAY_MS = 400;
 const AUTO_RETRY_MULTIPLIER = 2;
-const AUTO_RETRY_MAX_DELAY_MS = 5_000;
-const AUTO_RETRY_MAX_ATTEMPTS = 3;
+const AUTO_RETRY_MAX_DELAY_MS = 15_000;
+const AUTO_RETRY_MAX_ATTEMPTS = 5;
 
 function isObsidianImportedNote(note: Note): boolean {
   return (note.source ?? 'noa') === 'obsidian-import';
@@ -65,7 +67,9 @@ export function useFileSync({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [fsLastSyncAt, setFsLastSyncAt] = useState<string | null>(null);
   const [fsSyncError, setFsSyncError] = useState<string | null>(null);
-  const [permissionRevoked, setPermissionRevoked] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
+  const [autoRetryExhausted, setAutoRetryExhausted] = useState(false);
+  const permissionRevoked = needsReauth || autoRetryExhausted;
   const autoRetryAttempts = useRef(0);
   const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapped = useRef(false);
@@ -95,7 +99,8 @@ export function useFileSync({
     setSyncStatus('ready');
     setFsLastSyncAt(new Date().toISOString());
     setFsSyncError(null);
-    setPermissionRevoked(false);
+    setNeedsReauth(false);
+    setAutoRetryExhausted(false);
     resetRetryState();
   }, [resetRetryState]);
 
@@ -105,7 +110,7 @@ export function useFileSync({
     setSyncStatus('error');
     setFsSyncError(appError.userMessage || normalized.message);
     if (normalized.code === 'permission_denied') {
-      setPermissionRevoked(true);
+      setNeedsReauth(true);
     }
     recordErrorSnapshot({
       at: new Date().toISOString(),
@@ -120,7 +125,7 @@ export function useFileSync({
     if (!fsHandleRef.current) return;
     if (autoRetryTimer.current) return;
     if (autoRetryAttempts.current >= AUTO_RETRY_MAX_ATTEMPTS) {
-      setPermissionRevoked(true);
+      setAutoRetryExhausted(true);
       return;
     }
 
@@ -150,7 +155,7 @@ export function useFileSync({
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
-    setPermissionRevoked(false);
+    setAutoRetryExhausted(false);
     setSyncStatus('syncing');
     const managedNotes = notesRef.current.filter(isObsidianImportedNote);
     void retryFullSync(fsHandle, managedNotes, foldersRef.current)
@@ -161,8 +166,6 @@ export function useFileSync({
   const reconnect = useCallback(async () => {
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
-    setPermissionRevoked(false);
-    setFsSyncError(null);
     setSyncStatus('syncing');
     try {
       if (typeof fsHandle.requestPermission === 'function') {
@@ -171,6 +174,10 @@ export function useFileSync({
           throw new Error('File system permission denied.');
         }
       }
+      // Permission re-granted — clear reauth flag before running the sync.
+      setNeedsReauth(false);
+      setAutoRetryExhausted(false);
+      setFsSyncError(null);
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
       const { notes: merged, newFolders } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
@@ -194,22 +201,30 @@ export function useFileSync({
     if (!isLoaded) {
       bootstrapped.current = false;
       resetRetryState();
+      setSyncStatus('idle');
       return;
     }
     if (bootstrapped.current) return;
     bootstrapped.current = true;
+    // Captured for the async chain below: if isLoaded flips false again
+    // before restore resolves, bootstrapped.current will have been reset,
+    // signalling that we should abandon the in-flight restore.
+    const bootstrapToken = bootstrapped;
 
     if (!activeNoteId) {
       ensureInitialNote();
     }
 
     void restorePersistedFsHandle().then(async (handle) => {
+      if (!bootstrapToken.current) return;
       if (!handle) {
         setSyncStatus('idle');
-        setPermissionRevoked(false);
+        setNeedsReauth(false);
+        setAutoRetryExhausted(false);
         return;
       }
       try {
+        if (!bootstrapToken.current) return;
         setSyncStatus('syncing');
         setFsHandle(handle);
         const currentNotes = notesRef.current;
@@ -270,7 +285,8 @@ export function useFileSync({
     setFsHandle(null);
     setSyncStatus('idle');
     setFsSyncError(null);
-    setPermissionRevoked(false);
+    setNeedsReauth(false);
+    setAutoRetryExhausted(false);
   }, [resetRetryState]);
 
   const syncNoteOnUpdate = useCallback(
@@ -375,6 +391,8 @@ export function useFileSync({
     fsLastSyncAt,
     fsSyncError,
     permissionRevoked,
+    needsReauth,
+    autoRetryExhausted,
     connect,
     disconnect,
     retry,

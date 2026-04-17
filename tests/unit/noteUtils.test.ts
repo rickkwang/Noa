@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTitleToIdsMap, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
+import { buildTitleToIdsMap, extractLinks, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -44,8 +44,40 @@ describe('recomputeLinkRefsForNotes', () => {
   });
 });
 
+describe('extractLinks', () => {
+  it('extracts plain wiki links', () => {
+    expect(extractLinks('See [[Alpha]] and [[Beta]]')).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('strips alias display text', () => {
+    expect(extractLinks('[[Real Note|shown]]')).toEqual(['Real Note']);
+  });
+
+  it('strips heading anchors', () => {
+    expect(extractLinks('[[Note#Morning Routine]]')).toEqual(['Note']);
+  });
+
+  it('strips block-id anchors', () => {
+    expect(extractLinks('[[Note#^abc123]]')).toEqual(['Note']);
+  });
+
+  it('strips anchor + alias combination', () => {
+    expect(extractLinks('[[Note#Section|alias]]')).toEqual(['Note']);
+  });
+
+  it('deduplicates links across anchors', () => {
+    expect(extractLinks('[[A#x]] and [[A#y]] and [[A]]')).toEqual(['A']);
+  });
+
+  it('drops empty link targets', () => {
+    expect(extractLinks('[[#only-anchor]] [[ ]]')).toEqual([]);
+  });
+});
+
 describe('extractTags', () => {
-  it('does not merge adjacent hashtags into a single tag', () => {
+  it('ignores hashtags glued together without whitespace (requires boundary)', () => {
+    // By design: adjacent hashtags like "#tag1#tag2" are not split — a hashtag
+    // must be preceded by start-of-string or whitespace to count.
     expect(extractTags('#tag1#tag2')).toEqual([]);
   });
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useResizeDrag } from './useResizeDrag';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { DEFAULT_RIGHT_TAB, isRightTab, RightTab } from '../constants/rightTabs';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 
 export function useLayout() {
@@ -13,12 +14,9 @@ export function useLayout() {
     const saved = lsGet(STORAGE_KEYS.RIGHT_PANEL_OPEN);
     return saved !== null ? saved === 'true' : true;
   });
-  const [activeRightTab, setActiveRightTab] = useState<'tasks' | 'backlinks' | 'graph' | 'properties'>(() => {
+  const [activeRightTab, setActiveRightTab] = useState<RightTab>(() => {
     const saved = lsGet(STORAGE_KEYS.RIGHT_TAB);
-    const valid = ['tasks', 'backlinks', 'graph', 'properties'] as const;
-    return saved !== null && (valid as readonly string[]).includes(saved)
-      ? (saved as 'tasks' | 'backlinks' | 'graph' | 'properties')
-      : 'tasks';
+    return isRightTab(saved) ? saved : DEFAULT_RIGHT_TAB;
   });
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
     const saved = lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE);

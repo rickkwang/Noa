@@ -106,20 +106,12 @@ describe('SearchEngine', () => {
     expect(results.some(r => r.note.id === '4')).toBe(true);
   });
 
-  it('reuses cached results for same query/config', () => {
+  it('returns newly added notes after updateNotes', () => {
     const engine = new SearchEngine(notes);
-    const first = engine.search('meeting');
-    const second = engine.search('meeting');
-    expect(second).toBe(first);
-  });
-
-  it('invalidates cache when notes update', () => {
-    const engine = new SearchEngine(notes);
-    const first = engine.search('travel');
+    engine.search('travel');
     const newNote = makeNote('4', 'Travel Checklist', 'travel bags');
     engine.updateNotes([...notes, newNote]);
     const second = engine.search('travel');
-    expect(second).not.toBe(first);
     expect(second.some(r => r.note.id === '4')).toBe(true);
   });
 

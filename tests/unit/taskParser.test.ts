@@ -100,8 +100,9 @@ describe('parseTasksFromNotes', () => {
 
   it('assigns correct lineIndex', () => {
     const tasks = parseTasksFromNotes([note('# Header\n- [ ] task one\n- [ ] task two')]);
-    const lineIndices = tasks.map(t => t.lineIndex).sort((a, b) => a - b);
-    expect(lineIndices).toEqual([1, 2]);
+    const byContent = new Map(tasks.map(t => [t.content, t.lineIndex]));
+    expect(byContent.get('task one')).toBe(1);
+    expect(byContent.get('task two')).toBe(2);
   });
 
   it('returns empty array for notes with no tasks', () => {

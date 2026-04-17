@@ -4,9 +4,14 @@ export const extractLinks = (content: string): string[] => {
   const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
   return Array.from(new Set(matches.map(m => {
     const raw = m[1];
+    // Strip alias: [[Note|display]] → "Note"
     const pipeIdx = raw.indexOf('|');
-    return (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
-  })));
+    const withoutAlias = pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw;
+    // Strip heading/block anchor: [[Note#Heading]] / [[Note#^block]] → "Note"
+    const hashIdx = withoutAlias.indexOf('#');
+    const target = hashIdx >= 0 ? withoutAlias.slice(0, hashIdx) : withoutAlias;
+    return target.trim();
+  }).filter(Boolean)));
 };
 
 export const extractTags = (content: string): string[] => {

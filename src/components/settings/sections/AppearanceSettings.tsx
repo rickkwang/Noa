@@ -25,7 +25,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
     if (didLoad.current) return;
     didLoad.current = true;
 
-    const api = (window as any).queryLocalFonts;
+    const api = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
     if (typeof api !== 'function') return;
 
     setLoadingFonts(true);

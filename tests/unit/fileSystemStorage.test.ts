@@ -67,7 +67,7 @@ describe('fileSystemStorage frontmatter write-back', () => {
 });
 
 describe('fileSystemStorage persisted handle restore', () => {
-  it('returns a stored handle without prompting for permission during bootstrap', async () => {
+  it('does not request permission during bootstrap when a handle is stored', async () => {
     const handle = {
       queryPermission: vi.fn().mockResolvedValue('prompt'),
       requestPermission: vi.fn().mockResolvedValue('denied'),

@@ -5,12 +5,14 @@ import GraphView from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
+import { useOutgoingLinks } from '../hooks/useOutgoingLinks';
 import { TasksPanel } from './rightPanel/TasksPanel';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 
-export type RightPanelTab = 'tasks' | 'backlinks' | 'outgoing' | 'graph' | 'properties';
+import type { RightTab } from '../constants/rightTabs';
+export type RightPanelTab = RightTab;
 
 // Custom link-with-arrow icons (backlinks = incoming, outgoing = external)
 function BacklinksIcon({ size = 14, strokeWidth = 1.75, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
@@ -70,20 +72,8 @@ export default function RightPanel({
       ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
     ).length;
   }, [activeNote, notes]);
-  const outgoingCount = useMemo(() => {
-    if (!activeNote) return 0;
-    const titleSet = new Set(notes.map(n => n.title));
-    const idSet = new Set(notes.map(n => n.id));
-    const seen = new Set<string>();
-    (activeNote.linkRefs ?? []).forEach(id => { if (id !== activeNote.id && idSet.has(id)) seen.add(id); });
-    (activeNote.links ?? []).forEach(t => {
-      if (!titleSet.has(t)) return;
-      notes.forEach((candidate) => {
-        if (candidate.title === t && candidate.id !== activeNote.id) seen.add(candidate.id);
-      });
-    });
-    return seen.size;
-  }, [activeNote, notes]);
+  const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes);
+  const outgoingCount = outgoingResolved.length;
 
   useEffect(() => {
     if (activeTab !== 'graph' || !graphContainerRef.current) return;

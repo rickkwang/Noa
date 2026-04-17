@@ -75,6 +75,7 @@ export default function App() {
     restoreSnapshot,
     loadError,
     saveError,
+    setSaveError,
     clearSaveError,
     flushAllPendingSaves,
     retryInitialization,
@@ -92,6 +93,8 @@ export default function App() {
     fsLastSyncAt,
     fsSyncError,
     permissionRevoked,
+    needsReauth,
+    autoRetryExhausted,
     connect,
     disconnect,
     retry,
@@ -316,6 +319,17 @@ export default function App() {
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
+
+  // Detect orphan activeNoteId: the note was deleted in another tab/window.
+  // Without this, Editor.onUpdate fires into a null target and edits are
+  // silently dropped. Clear the selection and surface a toast.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (activeNoteId && !activeNote) {
+      setSaveError('The active note was removed. Recent input was not saved.');
+      setActiveNoteId('');
+    }
+  }, [isLoaded, activeNoteId, activeNote, setActiveNoteId, setSaveError]);
   const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
 
   const navigateById = useCallback((id: string) => {
@@ -496,8 +510,12 @@ export default function App() {
                 activeNoteId={activeNoteId}
                 recentNoteIds={recentNoteIds}
                 onSelectNote={(id) => {
-                  setActiveNoteId(id);
-                  if (isMobile) setIsSidebarOpen(false);
+                  void flushAllPendingSaves().catch(err => {
+                    console.error('[Noa] Failed to flush saves on note select:', err);
+                  }).finally(() => {
+                    setActiveNoteId(id);
+                    if (isMobile) setIsSidebarOpen(false);
+                  });
                 }}
                 onCreateNote={handleCreateNote}
                 onDeleteNote={handleDeleteNote}
@@ -624,21 +642,25 @@ export default function App() {
         <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
           <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
-            {permissionRevoked
+            {needsReauth
               ? 'Vault sync is paused — changes will NOT sync to your folder until reconnected. Notes are saved locally only.'
-              : fsSyncError}
+              : autoRetryExhausted
+                ? 'Vault sync failed after several attempts. Notes are saved locally only until the next sync succeeds.'
+                : fsSyncError}
           </div>
           <div className="flex gap-2">
             <button
-              onClick={permissionRevoked ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
+              disabled={syncStatus === 'syncing'}
+              onClick={needsReauth ? reconnect : retry}
+              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {permissionRevoked ? 'Reconnect Folder' : 'Retry Sync'}
+              {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
             </button>
             {permissionRevoked && (
               <button
+                disabled={syncStatus === 'syncing'}
                 onClick={handleDisconnectFolder}
-                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70"
+                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Disconnect
               </button>

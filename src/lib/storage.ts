@@ -67,9 +67,20 @@ export const storage = {
         await notesStore.setItem(`note:${n.id}`, n);
         written.push(n.id);
       }
-    } catch (err) {
+    } catch {
       // Roll back all keys written so far so the store stays consistent.
-      await Promise.allSettled(written.map(id => notesStore.removeItem(`note:${id}`)));
+      const rollback = await Promise.allSettled(
+        written.map(id => notesStore.removeItem(`note:${id}`))
+      );
+      const rollbackFailures = rollback.filter(r => r.status === 'rejected').length;
+      if (rollbackFailures > 0) {
+        // Store is now in an inconsistent state — partial writes remain.
+        // Surface this explicitly so the caller can prompt the user to
+        // reset or restore from backup instead of silently proceeding.
+        throw new Error(
+          `Import failed after writing ${written.length}/${notes.length} notes, and ${rollbackFailures} rollback operation(s) also failed. Storage is in an inconsistent state — please reset the workspace and restore from backup.`
+        );
+      }
       throw new Error(
         `Import failed after writing ${written.length}/${notes.length} notes (rolled back). Storage may be full.`
       );

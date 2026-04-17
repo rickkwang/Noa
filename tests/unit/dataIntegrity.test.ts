@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeAndValidateNotes, validateExportData } from '../../src/lib/dataIntegrity';
+import { parseFrontmatterBlock } from '../../src/lib/frontmatter';
 
 const validNote = {
   id: 'abc',
@@ -124,5 +125,15 @@ describe('validateExportData', () => {
     const { content: _c, ...noContent } = validNote;
     const report = validateExportData([noContent as any], [folder]);
     expect(report.ok).toBe(false);
+  });
+});
+
+describe('parseFrontmatterBlock', () => {
+  it('parses yaml list values for read-only imported properties', () => {
+    expect(parseFrontmatterBlock(['title: Communications', 'tags:', '  - study', '  - comms', 'created: 2026-03-07'].join('\n'))).toEqual({
+      title: 'Communications',
+      tags: 'study, comms',
+      created: '2026-03-07',
+    });
   });
 });

@@ -126,7 +126,12 @@ export function useCodeMirror({
       const isRemoteSync = update.transactions.some((transaction) => transaction.annotation(remoteSyncAnnotation));
       if (update.docChanged) {
         const content = update.state.doc.toString();
-        if (!isRemoteSync) {
+        // Suppress onUpdate while an IME composition is in-flight. Firing mid-
+        // composition causes extractLinks/debounceSave to race with the user
+        // finishing a CJK character, producing jittery link state. The final
+        // compositionend triggers a regular docChanged transaction which will
+        // flush the complete content.
+        if (!isRemoteSync && !update.view.composing) {
           onUpdateRef.current(content);
 
           const cursor = update.state.selection.main.head;
@@ -220,8 +225,16 @@ export function useCodeMirror({
     const view = new EditorView({ state, parent: containerRef.current });
     editorViewRef.current = view;
 
+    // Flush once when IME composition ends, since updateListener skipped
+    // intermediate transactions while view.composing was true.
+    const handleCompositionEnd = () => {
+      onUpdateRef.current(view.state.doc.toString());
+    };
+    view.contentDOM.addEventListener('compositionend', handleCompositionEnd);
+
     return () => {
       savedCursorRef.current = view.state.selection.main.head;
+      view.contentDOM.removeEventListener('compositionend', handleCompositionEnd);
       view.destroy();
       editorViewRef.current = null;
     };

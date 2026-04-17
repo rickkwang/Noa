@@ -120,7 +120,12 @@ export class SearchEngine {
     const normalize = (s: string) => isCaseSensitive ? s : s.toLowerCase();
     const cacheKey = `${this.notesVersion}|${isCaseSensitive ? 1 : 0}|${this.fuzzySearch ? 1 : 0}|${queryString}`;
     const cached = this.cache.get(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      // Re-insert to mark as most-recently-used (Map preserves insertion order).
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, cached);
+      return cached;
+    }
 
     if (!queryString.trim()) {
       const allResults = this.notes.map(note => ({
@@ -128,6 +133,10 @@ export class SearchEngine {
         titleSnippet: note.title,
         contentSnippet: this.getSnippet(note.content, []),
       }));
+      if (this.cache.size >= CACHE_MAX_SIZE) {
+        const oldest = this.cache.keys().next().value;
+        if (oldest !== undefined) this.cache.delete(oldest);
+      }
       this.cache.set(cacheKey, allResults);
       return allResults;
     }
@@ -198,9 +207,11 @@ export class SearchEngine {
         contentSnippet: contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
       };
     });
-    // Evict oldest entry when cache exceeds limit to bound memory usage.
+    // True LRU: cached hits re-insert above so the first key is always the
+    // least-recently-used. Evict it when we exceed the cap.
     if (this.cache.size >= CACHE_MAX_SIZE) {
-      this.cache.delete(this.cache.keys().next().value!);
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
     }
     this.cache.set(cacheKey, mappedResults);
     return mappedResults;
