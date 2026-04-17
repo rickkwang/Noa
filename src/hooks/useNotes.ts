@@ -550,9 +550,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-    // setActiveNoteIdWithRecent runs after setNotes; by then resolvedId is final.
-    // Use a microtask flush so the state update above is batched first.
-    Promise.resolve().then(() => setActiveNoteIdWithRecent(resolvedId));
+    // Call activation synchronously after setNotes — React 18 batches both,
+    // and the activation always uses the resolvedId computed above.
+    setActiveNoteIdWithRecent(resolvedId);
   }, [notesRef, setActiveNoteIdWithRecent, syncLinkRefs, foldersRef]);
 
 
