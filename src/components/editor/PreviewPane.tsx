@@ -1,18 +1,104 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useScrollingClass } from '../../hooks/useScrollingClass';
 import { useIsDark } from '../../hooks/useIsDark';
 import Markdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import remarkEmoji from 'remark-emoji';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import 'katex/dist/contrib/mhchem.min.js';
 import { visit } from 'unist-util-visit';
 import type { Root, Text, Parent, RootContent } from 'mdast';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
 import { MermaidBlock } from './MermaidBlock';
+import { Copy, Check } from 'lucide-react';
+
+function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+  const handleCopy = useCallback(() => {
+    const text = preRef.current?.innerText ?? '';
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  }, []);
+  return (
+    <div style={{ position: 'relative' }}>
+      <pre ref={preRef}>{children}</pre>
+      <button
+        onClick={handleCopy}
+        title={copied ? 'Copied' : 'Copy'}
+        style={{
+          position: 'absolute',
+          top: '6px',
+          right: '6px',
+          padding: '4px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'transparent',
+          color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.55)',
+          cursor: 'pointer',
+          opacity: 0.6,
+          transition: 'opacity 120ms, color 120ms',
+          border: 'none',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </div>
+  );
+}
+
+function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
+  const [zoomed, setZoomed] = useState(false);
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoomed]);
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="max-w-full"
+        style={{ display: 'block', cursor: 'zoom-in' }}
+        onClick={() => setZoomed(true)}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
+      {zoomed && createPortal(
+        <div
+          onClick={() => setZoomed(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'zoom-out',
+            padding: '2rem',
+          }}
+        >
+          <img src={src} alt={alt} style={{ maxWidth: '95%', maxHeight: '95%', objectFit: 'contain' }} />
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 const SAFE_HREF_PROTOCOLS = ['http:', 'https:', 'mailto:', 'note-internal:', 'note-attachment:'];
 
@@ -149,12 +235,6 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
     }
   }
 
-  // initialise collapsed state from syntax only once
-  const initialisedRef = React.useRef(false);
-  if (!initialisedRef.current && foldable && defaultCollapsed) {
-    initialisedRef.current = true;
-    // synchronously set without triggering re-render loop
-  }
   React.useEffect(() => {
     if (foldable && defaultCollapsed) setIsCollapsed(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -302,7 +382,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           const noteId = href.replace('note-internal://id/', '');
           return (
             <span
-              className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
+              className={`${isDark ? 'text-[#D97757]' : 'text-[#B89B5E]'} cursor-pointer hover:underline font-bold`}
               onClick={() => onNavigateToNoteById(noteId)}
             >
               {children}
@@ -314,7 +394,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           const noteTitle = decodeURIComponent(encoded);
           return (
             <span
-              className="text-[#B89B5E] cursor-pointer hover:underline font-bold"
+              className={`${isDark ? 'text-[#D97757]' : 'text-[#B89B5E]'} cursor-pointer hover:underline font-bold`}
               onClick={() => onNavigateToNoteLegacy(noteTitle)}
             >
               {children}
@@ -345,18 +425,9 @@ export const PreviewPane = React.memo(function PreviewPane({
           if (!url) {
             return <span className="text-xs italic" style={{ color: isDark ? 'rgba(245,240,235,0.35)' : 'rgba(45,45,45,0.4)' }}>[Loading attachment...]</span>;
           }
-          return <img src={url} alt={alt ?? ''} loading="lazy" className="max-w-full" style={{ display: 'block' }} />;
+          return <ZoomableImage src={url} alt={alt ?? ''} />;
         }
-        return (
-          <img
-            src={src}
-            alt={alt}
-            loading="lazy"
-            className="max-w-full"
-            style={{ display: 'block' }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-          />
-        );
+        return <ZoomableImage src={src} alt={alt} />;
       },
       blockquote: ({ children }) => (
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
@@ -382,6 +453,16 @@ export const PreviewPane = React.memo(function PreviewPane({
         return (
           <code className={className}>{children}</code>
         );
+      },
+      pre: ({ children }) => {
+        // If the pre wraps a mermaid code block, render it directly without the CodeBlock chrome
+        const childArray = React.Children.toArray(children);
+        const codeChild = childArray.find(
+          (c): c is React.ReactElement<{ className?: string }> =>
+            React.isValidElement(c) && (c as React.ReactElement<{ className?: string }>).props?.className?.includes('language-mermaid') === true
+        );
+        if (codeChild) return <>{children}</>;
+        return <CodeBlock isDark={isDark}>{children}</CodeBlock>;
       },
       del: ({ children }) => (
         <del style={{ textDecoration: 'line-through', opacity: 0.55 }}>{children}</del>
@@ -484,13 +565,13 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
-              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50'
+              ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F0EDE6] prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
+              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           <Markdown
-            remarkPlugins={[remarkGfm, remarkMath, remarkMark]}
+            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkMark]}
             rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#D97757' }]]}
             components={markdownComponents}
           >

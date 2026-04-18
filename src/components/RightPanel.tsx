@@ -89,7 +89,7 @@ export default function RightPanel({
   }, [activeTab]);
 
   return (
-    <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
+    <div className="w-full h-full flex flex-col bg-[#EAE8E0] shrink-0 relative">
       {/* Tab bar — icon only */}
       <div className="h-8 border-b border-[#2D2D2D] flex items-center justify-end gap-1 px-2 bg-[#DCD9CE] shrink-0 overflow-hidden">
         {([

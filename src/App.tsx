@@ -515,8 +515,11 @@ export default function App() {
           style={{
             width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
+            borderRightWidth: isFocusMode ? 0 : 1,
+            borderRightStyle: 'solid',
+            borderRightColor: (isSidebarOpen && !isFocusMode) ? '#2D2D2D' : 'transparent',
           }}
         >
           <div
@@ -609,8 +612,11 @@ export default function App() {
           style={{
             width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0')),
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
+            borderLeftWidth: isFocusMode ? 0 : 1,
+            borderLeftStyle: 'solid',
+            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? '#2D2D2D' : 'transparent',
           }}
         >
           <div

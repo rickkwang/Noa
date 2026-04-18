@@ -300,7 +300,7 @@ export default function Sidebar({
 
   return (
     <div 
-      className="w-full h-full border-r border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative"
+      className="w-full h-full flex flex-col bg-[#EAE8E0] shrink-0 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

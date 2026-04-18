@@ -67,7 +67,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
 
       {/* Center Section: Search */}
       <div className="flex items-center justify-center min-w-0 px-4" style={noDragRegion}>
-        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-1.5 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-md focus-within:ring-1 ring-[#B89B5E] transition-all min-w-0">
+        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-1 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-xs focus-within:ring-1 ring-[#B89B5E] transition-all min-w-0">
           <Search size={14} className="text-[#2D2D2D]/50 mr-2 shrink-0" />
           <input
             ref={searchInputRef}

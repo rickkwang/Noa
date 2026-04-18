@@ -154,6 +154,19 @@ export default function Editor({
       : new URL('highlight.js/styles/github.css', import.meta.url).href;
   }, [isDark]);
 
+  useEffect(() => {
+    const id = 'noa-hljs-overrides';
+    let style = document.getElementById(id) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = id;
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      .hljs-addition, .hljs-deletion { background-color: transparent !important; }
+    `;
+  }, []);
+
   const stats = useMemo(() => {
     const text = note?.content ?? '';
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;

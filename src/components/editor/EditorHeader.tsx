@@ -19,11 +19,10 @@ function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onE
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-1 p-1 text-xs active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+        className={`flex items-center p-1.5 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
         title="Export"
       >
-        <Download size={13} />
-        <span>Export</span>
+        <Download size={14} />
       </button>
       {open && (
         <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#262624] border border-[#F0EDE6]/10' : 'bg-[#EAE8E0] border border-[#2D2D2D]/15'}`}>
@@ -43,6 +42,20 @@ function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onE
       )}
     </div>
   );
+}
+
+function formatRelativeTime(timestamp: string | number | Date): string {
+  const then = new Date(timestamp).getTime();
+  const now = Date.now();
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return 'just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 function useIsDarkLocal(): boolean {
@@ -273,47 +286,57 @@ export function EditorHeader({
       </div>
 
       {/* Right controls */}
-      <div className={`flex items-center space-x-2 shrink-0 whitespace-nowrap self-center ${isDark ? 'text-[#F0EDE6]/50' : 'text-[#2D2D2D]/60'}`}>
-        <div className={`flex items-center space-x-1 border-r pr-2 shrink-0 ${isDark ? 'border-[#F0EDE6]/10' : 'border-[#2D2D2D]/20'}`}>
+      <div className={`flex items-center gap-3 shrink-0 whitespace-nowrap self-center px-1 ${isDark ? 'text-[#F0EDE6]/50' : 'text-[#2D2D2D]/60'}`}>
+        {/* Group 1: view modes */}
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setViewMode('edit')}
-            className={`p-1 active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Edit Only"
           >
             <Edit2 size={14} />
           </button>
           <button
             onClick={() => setViewMode('split')}
-            className={`p-1 active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Split View"
           >
             <Columns size={14} />
           </button>
           <button
             onClick={() => setViewMode('preview')}
-            className={`p-1 active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Preview Only"
           >
             <Eye size={14} />
           </button>
         </div>
-        <div className="flex items-center space-x-2 text-xs shrink min-w-0 truncate">
-          <span className="truncate">{new Date(note.updatedAt).toLocaleDateString()}</span>
-          <span className="truncate">
-            {new Date(note.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
+
+        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F0EDE6]/10' : 'bg-[#2D2D2D]/20'}`} />
+
+        {/* Group 2: actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} />
+          {onToggleHistory && (
+            <button
+              onClick={onToggleHistory}
+              className={`p-1.5 active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+              title="Version History"
+            >
+              <Clock size={14} />
+            </button>
+          )}
         </div>
-        <div className={`self-stretch w-px shrink-0 ${isDark ? 'bg-[#F0EDE6]/10' : 'bg-[#2D2D2D]/20'}`} />
-        <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} />
-        {onToggleHistory && (
-          <button
-            onClick={onToggleHistory}
-            className={`p-1 active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
-            title="Version History"
-          >
-            <Clock size={14} />
-          </button>
-        )}
+
+        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F0EDE6]/10' : 'bg-[#2D2D2D]/20'}`} />
+
+        {/* Group 3: timestamp */}
+        <div
+          className="text-xs shrink min-w-0 truncate opacity-60 tracking-wide"
+          title={new Date(note.updatedAt).toLocaleString()}
+        >
+          {formatRelativeTime(note.updatedAt)}
+        </div>
       </div>
     </div>
   );
