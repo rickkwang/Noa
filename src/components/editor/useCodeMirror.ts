@@ -107,6 +107,11 @@ export function useCodeMirror({
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
+  const lastBuiltNoteIdRef = useRef<string | undefined>(undefined);
+  // Per-note cursor so A → B → A restores A's last cursor, not 0. Entries are
+  // only written on view teardown, so deleted notes age out naturally (their
+  // id never reappears in note?.id and the entry is unreachable).
+  const cursorByNoteIdRef = useRef<Map<string, number>>(new Map());
   const widthCompartmentRef = useRef(new Compartment());
   const maxWidthRef = useRef(maxWidth);
 
@@ -214,7 +219,14 @@ export function useCodeMirror({
     ];
 
     const docContent = note?.content ?? '';
-    const cursorPos = Math.min(savedCursorRef.current, docContent.length);
+    // Prefer the per-note cursor (A → B → A restores A). Fall back to
+    // savedCursorRef when rebuilding the same note (e.g. dark-mode toggle),
+    // since that ref is always up to date without a teardown hop.
+    const perNoteCursor = note?.id ? cursorByNoteIdRef.current.get(note.id) : undefined;
+    const cursorPos = note?.id === lastBuiltNoteIdRef.current
+      ? Math.min(savedCursorRef.current, docContent.length)
+      : Math.min(perNoteCursor ?? 0, docContent.length);
+    lastBuiltNoteIdRef.current = note?.id;
 
     const state = EditorState.create({
       doc: docContent,
@@ -233,7 +245,9 @@ export function useCodeMirror({
     view.contentDOM.addEventListener('compositionend', handleCompositionEnd);
 
     return () => {
-      savedCursorRef.current = view.state.selection.main.head;
+      const finalCursor = view.state.selection.main.head;
+      savedCursorRef.current = finalCursor;
+      if (note?.id) cursorByNoteIdRef.current.set(note.id, finalCursor);
       view.contentDOM.removeEventListener('compositionend', handleCompositionEnd);
       view.destroy();
       editorViewRef.current = null;

@@ -18,6 +18,30 @@ interface GraphViewProps {
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
+const PINNED_POSITIONS_KEY = 'noa-graph-pinned-positions-v1';
+
+type PinnedPositions = Record<string, { x: number; y: number }>;
+
+function loadPinnedPositions(): PinnedPositions {
+  // Guarded for non-browser environments (SSR, tests without jsdom).
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(PINNED_POSITIONS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePinnedPositions(positions: PinnedPositions) {
+  try {
+    localStorage.setItem(PINNED_POSITIONS_KEY, JSON.stringify(positions));
+  } catch {
+    /* quota exceeded or privacy mode — drop silently */
+  }
+}
 
 // Tag palette — cycles through these for the first N unique tags
 const TAG_PALETTE = [
@@ -81,6 +105,12 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
+  // Lazy init so the localStorage read happens exactly once on first render,
+  // not at module import time (import is too early for SSR/tests).
+  const pinnedPositionsRef = useRef<PinnedPositions | null>(null);
+  if (pinnedPositionsRef.current === null) {
+    pinnedPositionsRef.current = loadPinnedPositions();
+  }
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -131,8 +161,28 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
     const topNotes = stableTopologyRef.current.notes;
     const titleToIds = buildTitleToIdsMap(topNotes);
 
+    const pinnedMap = pinnedPositionsRef.current ?? {};
+    // Lazy prune: drop pinned entries for notes that no longer exist so
+    // localStorage doesn't grow unbounded as notes are deleted over time.
+    const liveIds = new Set(topNotes.map((n) => n.id));
+    let prunedAny = false;
+    for (const id of Object.keys(pinnedMap)) {
+      if (!liveIds.has(id)) {
+        delete pinnedMap[id];
+        prunedAny = true;
+      }
+    }
+    if (prunedAny) savePinnedPositions(pinnedMap);
     topNotes.forEach(note => {
       const node: GraphNode = { id: note.id, name: note.title, degree: 0, tags: note.tags ?? [] };
+      // Re-pin nodes the user has previously dragged so their layout survives reloads.
+      const pinned = pinnedMap[note.id];
+      if (pinned) {
+        node.x = pinned.x;
+        node.y = pinned.y;
+        node.fx = pinned.x;
+        node.fy = pinned.y;
+      }
       nodes.push(node);
       nodeMap.set(note.id, node);
       degreeMap.set(note.id, 0);
@@ -143,6 +193,11 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
 
     topNotes.forEach(note => {
       const targetIds = new Set<string>();
+      // linkRefs is the resolved source of truth (maintained by syncLinkRefs).
+      // We also fall back to title resolution via `links` so edges appear
+      // instantly after a content edit, before the async linkRefs pass runs.
+      // The Set + edgeSet below dedupe the two sources so no duplicate edges
+      // can slip through, even if both contain the same target.
       (note.linkRefs ?? []).forEach((id) => {
         if (nodeMap.has(id)) targetIds.add(id);
       });
@@ -313,6 +368,14 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           if (hasStrength(chargeForce)) chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
           if (hasStrength(linkForce)) linkForce.strength(0.7);
           graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; });
+          // User asked to reset the layout — discard persisted pins as well so
+          // the next reload doesn't re-pin nodes to their old drag positions.
+          if (pinnedPositionsRef.current) {
+            for (const k of Object.keys(pinnedPositionsRef.current)) {
+              delete pinnedPositionsRef.current[k];
+            }
+          }
+          savePinnedPositions({});
           fgRef.current?.zoomToFit(300, 24);
         }
       };
@@ -387,6 +450,12 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
           node.fx = node.x;
           node.fy = node.y;
           isDraggingNodeRef.current = false;
+          // Persist so user-curated layouts survive reloads. Mutate in place
+          // to avoid O(N) spread cost on large graphs.
+          if (node.x != null && node.y != null && pinnedPositionsRef.current) {
+            pinnedPositionsRef.current[String(node.id)] = { x: node.x, y: node.y };
+            savePinnedPositions(pinnedPositionsRef.current);
+          }
         }}
         onBackgroundClick={() => { isDraggingNodeRef.current = false; }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {

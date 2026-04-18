@@ -216,10 +216,17 @@ export default function App() {
   }, [_handleDeleteFolder, closeTabById, syncNoteOnDelete]);
 
   const handleDisconnectFolder = useCallback(async () => {
-    await disconnect();
-    const deletedNoteIds = await clearWorkspaceAfterDisconnect();
-    deletedNoteIds.forEach((id) => closeTabById(id));
-  }, [disconnect, clearWorkspaceAfterDisconnect, closeTabById]);
+    try {
+      await disconnect();
+      const deletedNoteIds = await clearWorkspaceAfterDisconnect();
+      deletedNoteIds.forEach((id) => closeTabById(id));
+    } catch (err) {
+      // Surface instead of swallowing — disconnect failures leave the workspace
+      // in a half-torn-down state and the user needs to know.
+      console.error('[App] handleDisconnectFolder failed:', err);
+      setSaveError('Failed to disconnect vault. Check folder permissions and retry.');
+    }
+  }, [disconnect, clearWorkspaceAfterDisconnect, closeTabById, setSaveError]);
 
   const {
     isMobile,
@@ -565,9 +572,9 @@ export default function App() {
               <Editor
                 note={activeNote}
                 allNotes={notes}
-                onUpdate={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
+                onUpdate={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
                 onNoteUpdate={handleSaveNote}
-                onRename={(title) => activeNote && handleRenameNote(activeNote.id, title)}
+                onRename={(title) => { if (activeNoteId) handleRenameNote(activeNoteId, title); }}
                 onClose={() => handleTabClose(activeNoteId)}
                 onNavigateToNoteLegacy={navigateByTitle}
                 onNavigateToNoteById={navigateById}
@@ -635,7 +642,7 @@ export default function App() {
                   notes={notes}
                   settings={settings}
                   activeNoteId={activeNote?.id}
-                  onUpdateNote={(content) => activeNote && handleUpdateNote(activeNote.id, content)}
+                  onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
                 />
               </Suspense>
               </ErrorBoundary>

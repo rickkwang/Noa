@@ -161,12 +161,17 @@ export default function Editor({
   }, [note?.content]);
 
   useEffect(() => {
-    if (note) {
-      setTitleInput(note.title || 'Untitled');
-      setMentionQuery(null);
-      setSlashQuery(null);
-      setIsHistoryOpen(false);
-    }
+    // Reset transient UI state whenever the active note changes — including when
+    // it becomes undefined (e.g. the note was deleted in another tab). Leaving
+    // stale titleInput / dropdowns visible misleads the user into thinking they
+    // are still editing the previous note.
+    setTitleInput(note?.title || '');
+    setMentionQuery(null);
+    setSlashQuery(null);
+    setIsHistoryOpen(false);
+    setIsFindReplaceOpen(false);
+    setIsEditingTitle(false);
+    setImageError(null);
   }, [note?.id]);
 
   useEffect(() => {

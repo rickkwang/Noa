@@ -1,7 +1,12 @@
 import localforage from 'localforage';
 import { Note, Folder, Attachment, NoteSnapshot } from '../types';
 
-const MAX_SNAPSHOTS_PER_NOTE = 20;
+const MAX_SNAPSHOTS_PER_NOTE = 60;
+// Exponential-decay retention window (ms). Within the newest snapshot, adjacent
+// kept snapshots must be separated by at least BASE_SPACING_MS × 2^depth.
+// This gives dense history for the last few minutes and sparse history hours back,
+// instead of the previous "last 10 minutes only" behavior at 20/30s cadence.
+const DECAY_BASE_SPACING_MS = 30_000;
 
 // Initialize localforage instances
 const notesStore = localforage.createInstance({
@@ -231,11 +236,31 @@ export const storage = {
     await historyStore.removeItem(`history:${noteId}:${savedAt}`);
   },
 
-  // Keep only the newest MAX_SNAPSHOTS_PER_NOTE snapshots, delete the rest.
+  // Keep the newest snapshot plus an exponentially-spaced tail, then cap at
+  // MAX_SNAPSHOTS_PER_NOTE. Dense recent history, thinning as we look back —
+  // so an 8-hour editing session still has snapshots from hours 1 and 2, not
+  // only the last 10 minutes.
   async pruneSnapshots(noteId: string): Promise<void> {
     const snapshots = await this.getSnapshots(noteId);
-    if (snapshots.length <= MAX_SNAPSHOTS_PER_NOTE) return;
-    const toDelete = snapshots.slice(MAX_SNAPSHOTS_PER_NOTE);
+    if (snapshots.length === 0) return;
+    // snapshots are pre-sorted newest-first.
+    const kept: NoteSnapshot[] = [snapshots[0]];
+    let lastKeptTs = Date.parse(snapshots[0].savedAt);
+    let depth = 0;
+    for (let i = 1; i < snapshots.length; i++) {
+      const ts = Date.parse(snapshots[i].savedAt);
+      if (Number.isNaN(ts)) continue;
+      const minGap = DECAY_BASE_SPACING_MS * Math.pow(2, depth);
+      if (lastKeptTs - ts >= minGap) {
+        kept.push(snapshots[i]);
+        lastKeptTs = ts;
+        depth += 1;
+        if (kept.length >= MAX_SNAPSHOTS_PER_NOTE) break;
+      }
+    }
+    const keepSet = new Set(kept.map(s => s.savedAt));
+    const toDelete = snapshots.filter(s => !keepSet.has(s.savedAt));
+    if (toDelete.length === 0) return;
     await Promise.allSettled(
       toDelete.map(s => historyStore.removeItem(`history:${s.noteId}:${s.savedAt}`))
     );

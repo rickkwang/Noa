@@ -107,6 +107,21 @@ export function EditorHeader({
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [hasOverflowLeft, setHasOverflowLeft] = useState(false);
   const [hasOverflowRight, setHasOverflowRight] = useState(false);
+  // Track IME composition so we don't commit a half-typed CJK title when the
+  // user presses Enter or blurs mid-selection.
+  const isComposingRef = useRef(false);
+  const handleCompositionStart = () => { isComposingRef.current = true; };
+  const handleCompositionEnd = () => { isComposingRef.current = false; };
+  const handleTitleBlur = () => { if (!isComposingRef.current) onTitleSubmit(); };
+  const handleTitleKeyDownGuarded = (e: React.KeyboardEvent) => {
+    // Swallow Enter while composing; some IMEs fire Enter to accept a candidate.
+    // keyCode 229 is the legacy "composition in progress" marker.
+    if (isComposingRef.current || e.nativeEvent.isComposing || (e as unknown as { keyCode: number }).keyCode === 229) {
+      if (e.key === 'Enter') e.preventDefault();
+      return;
+    }
+    onTitleKeyDown(e);
+  };
 
   useEffect(() => {
     const el = tabStripRef.current;
@@ -179,8 +194,10 @@ export function EditorHeader({
                         type="text"
                         value={titleInput}
                         onChange={(e) => onTitleInputChange(e.target.value)}
-                        onBlur={onTitleSubmit}
-                        onKeyDown={onTitleKeyDown}
+                        onBlur={handleTitleBlur}
+                        onKeyDown={handleTitleKeyDownGuarded}
+                        onCompositionStart={handleCompositionStart}
+                        onCompositionEnd={handleCompositionEnd}
                         className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#F0EDE6] border-[#D97757]' : 'text-[#2D2D2D] border-[#B89B5E]'}`}
                       />
                     ) : (
@@ -221,8 +238,10 @@ export function EditorHeader({
                   type="text"
                   value={titleInput}
                   onChange={(e) => onTitleInputChange(e.target.value)}
-                  onBlur={onTitleSubmit}
-                  onKeyDown={onTitleKeyDown}
+                  onBlur={handleTitleBlur}
+                  onKeyDown={handleTitleKeyDownGuarded}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
                   className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#F0EDE6] border-[#D97757]' : 'text-[#2D2D2D] border-[#B89B5E]'}`}
                 />
               ) : (

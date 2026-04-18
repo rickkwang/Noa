@@ -34,6 +34,15 @@ function classifyUpdaterIssue(message, fallbackReason = 'update-error') {
   return fallbackReason;
 }
 
+const CHECK_TIMEOUT_MS = 30_000;
+let checkTimeoutTimer = null;
+function clearCheckTimeout() {
+  if (checkTimeoutTimer) {
+    clearTimeout(checkTimeoutTimer);
+    checkTimeoutTimer = null;
+  }
+}
+
 function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
@@ -41,9 +50,23 @@ function setupAutoUpdater() {
 
   autoUpdater.on('checking-for-update', () => {
     emitUpdateStatus({ state: 'checking', message: 'Checking for updates...' });
+    // Guard against the updater getting wedged in 'checking' if the network
+    // silently drops the request — fire a synthetic error so the UI can
+    // recover rather than leaving the button disabled forever.
+    clearCheckTimeout();
+    checkTimeoutTimer = setTimeout(() => {
+      checkTimeoutTimer = null;
+      if (updateState.state !== 'checking') return;
+      emitUpdateStatus({
+        state: 'error',
+        reason: 'network-error',
+        message: 'Update check timed out. Please check your connection and retry.',
+      });
+    }, CHECK_TIMEOUT_MS);
   });
 
   autoUpdater.on('update-available', (info) => {
+    clearCheckTimeout();
     latestAvailableVersion = info?.version || latestAvailableVersion;
     latestAvailableInfo = info || null;
     emitUpdateStatus({
@@ -54,6 +77,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-not-available', () => {
+    clearCheckTimeout();
     latestAvailableVersion = null;
     latestAvailableInfo = null;
     emitUpdateStatus({ state: 'idle', message: `You're up to date (v${app.getVersion()}).` });
@@ -77,6 +101,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
+    clearCheckTimeout();
     console.error('[updater] error', err);
     const reason = classifyUpdaterIssue(err?.message, 'update-error');
 

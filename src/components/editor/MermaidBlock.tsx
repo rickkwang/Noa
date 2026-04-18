@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import DOMPurify from 'dompurify';
 
 interface MermaidBlockProps {
   code: string;
@@ -39,8 +40,36 @@ export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
         }
 
         const { svg: renderedSvg } = await mermaid.render(renderId, code.trim());
+        // Defense-in-depth: strip <script>, event handlers, and foreign HTML even
+        // though Mermaid runs in securityLevel:'strict'. A single library regression
+        // must not turn notes into an XSS vector. Explicit tag/attr allowlist is
+        // safer than the `svg` profile which permits <foreignObject> (arbitrary
+        // HTML inside SVG). Keep the list narrow to what Mermaid actually emits.
+        const safeSvg = DOMPurify.sanitize(renderedSvg, {
+          ALLOWED_TAGS: [
+            'svg', 'g', 'defs', 'marker', 'path', 'circle', 'ellipse', 'rect',
+            'line', 'polyline', 'polygon', 'text', 'tspan', 'title',
+            'linearGradient', 'radialGradient', 'stop', 'clipPath', 'use', 'pattern',
+          ],
+          ALLOWED_ATTR: [
+            'id', 'class', 'style', 'transform', 'd', 'fill', 'stroke',
+            'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
+            'stroke-miterlimit', 'opacity', 'fill-opacity', 'stroke-opacity',
+            'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
+            'width', 'height', 'viewBox', 'preserveAspectRatio',
+            'points', 'offset', 'stop-color', 'stop-opacity',
+            'text-anchor', 'dominant-baseline', 'alignment-baseline',
+            'font-family', 'font-size', 'font-weight', 'font-style',
+            'marker-end', 'marker-start', 'marker-mid', 'orient', 'refX', 'refY',
+            'markerWidth', 'markerHeight', 'markerUnits',
+            'clip-path', 'clipPathUnits', 'gradientUnits', 'gradientTransform',
+            'patternUnits', 'patternTransform',
+          ],
+          FORBID_TAGS: ['script', 'style', 'foreignObject', 'iframe', 'object', 'embed'],
+          KEEP_CONTENT: false,
+        });
         if (!cancelled) {
-          setSvg(renderedSvg);
+          setSvg(safeSvg);
           setError(null);
         }
       } catch (err) {

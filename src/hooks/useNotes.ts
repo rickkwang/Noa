@@ -363,10 +363,18 @@ Export regularly: use Settings → Data → Export Backup.`,
             new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'),
             `[[${safeNewTitle}]]`
           );
+          // For native notes, re-extract links from the rewritten content —
+          // this is the single source of truth. For Obsidian-imported notes we
+          // preserve the existing links array (frontmatter may carry aliases
+          // or hand-maintained link lists that extractLinks would overwrite)
+          // and just swap the old title for the new.
+          const nextLinks = n.source === 'obsidian-import'
+            ? n.links.map(l => l === oldTitle ? safeNewTitle : l)
+            : extractLinks(updatedContent);
           return {
             ...n,
             content: updatedContent,
-            links: n.links.map(l => l === oldTitle ? safeNewTitle : l),
+            links: nextLinks,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -541,18 +549,24 @@ Export regularly: use Settings → Data → Export Backup.`,
     };
     // Resolve the id to activate inside the updater so it always reflects the
     // latest prev — avoids a race between the closure check and the updater check.
-    let resolvedId = newNote.id;
+    // React in StrictMode may invoke the updater twice; always trust the latest prev.
+    const resolvedRef = { id: newNote.id };
     setNotes(prev => {
+      // Prefer an existing note with the same title (any match). If a previous
+      // run of this same updater already inserted newNote (StrictMode re-runs
+      // updaters twice), the collision is newNote itself and we must return
+      // prev untouched — inserting again or re-running syncLinkRefs would fire
+      // redundant debounceSaves.
       const collision = prev.find(n => n.title === title);
       if (collision) {
-        resolvedId = collision.id;
+        resolvedRef.id = collision.id;
         return prev;
       }
+      resolvedRef.id = newNote.id;
       return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
     });
-    // Call activation synchronously after setNotes — React 18 batches both,
-    // and the activation always uses the resolvedId computed above.
-    setActiveNoteIdWithRecent(resolvedId);
+    // Read the final id from the updater — guaranteed set synchronously inside setNotes.
+    setActiveNoteIdWithRecent(resolvedRef.id);
   }, [notesRef, setActiveNoteIdWithRecent, syncLinkRefs, foldersRef]);
 
 
