@@ -14,25 +14,24 @@ import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 import type { RightTab } from '../constants/rightTabs';
 export type RightPanelTab = RightTab;
 
-// Custom link-with-arrow icons (backlinks = incoming, outgoing = external)
-function BacklinksIcon({ size = 14, strokeWidth = 1.75, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+// Backlinks: single link with a bold arrow pointing IN (incoming links)
+function BacklinksIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      <path d="M7 17l-3 3" />
-      <path d="M4 17h3v3" />
+      <path d="M14.5 8.5l1-1a4 4 0 0 1 5.66 5.66l-2.83 2.83a4 4 0 0 1-5.66 0" />
+      <path d="M12 16l-8-8" />
+      <path d="M4 13v-5h5" />
     </svg>
   );
 }
 
-function OutgoingIcon({ size = 14, strokeWidth = 1.75, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+// Outgoing: single link with a bold arrow pointing OUT (outgoing links)
+function OutgoingIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      <path d="M17 7l3-3" />
-      <path d="M17 4h3v3" />
+      <path d="M9.5 15.5l-1 1a4 4 0 0 1-5.66-5.66l2.83-2.83a4 4 0 0 1 5.66 0" />
+      <path d="M12 8l8 8" />
+      <path d="M20 11v5h-5" />
     </svg>
   );
 }
@@ -92,7 +91,7 @@ export default function RightPanel({
   return (
     <div className="w-full h-full border-l border-[#2D2D2D] flex flex-col bg-[#EAE8E0] shrink-0 relative">
       {/* Tab bar — icon only */}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center justify-start gap-1 px-2 bg-[#DCD9CE] shrink-0 overflow-hidden">
+      <div className="h-8 border-b border-[#2D2D2D] flex items-center justify-end gap-1 px-2 bg-[#DCD9CE] shrink-0 overflow-hidden">
         {([
           { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
           { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
@@ -170,7 +169,7 @@ export default function RightPanel({
             <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
               <Network size={11} className="text-[#B89B5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
-              <div className="flex items-center gap-1 px-1.5 py-0.5"
+              <div className="flex items-center gap-1 h-5 px-1.5"
                 style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)' }}>
                 <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
                 <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
@@ -178,12 +177,12 @@ export default function RightPanel({
                   style={{ color: isDark ? '#F0EDE6' : '#2D2D2D' }} />
               </div>
               <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
-                className="px-1.5 py-0.5 text-[9px] font-bold font-redaction active:opacity-70 transition-colors"
+                className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
                 style={hideIsolated
                   ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
                   : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.4)'}`, color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
                 }>
-                <Network size={9} />
+                <Network size={10} />
               </button>
             </div>
             <div ref={graphContainerRef} className="flex-1 overflow-hidden">
