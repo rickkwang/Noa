@@ -1,7 +1,7 @@
 {
   "name": "noa",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "A fully client-side Markdown note-taking app",
   "type": "module",
   "main": "electron/main.cjs",
@@ -83,6 +83,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "category": "public.app-category.productivity",
       "target": [
         {
@@ -98,6 +99,9 @@
           ]
         }
       ]
+    },
+    "dmg": {
+      "title": "Noa Installer"
     },
     "publish": [
       {

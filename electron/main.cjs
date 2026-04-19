@@ -142,12 +142,14 @@ function buildMenu() {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '..', 'build', 'icon.icns');
   win = new BrowserWindow({
     width: 1400,
     height: 920,
     minWidth: 1024,
     minHeight: 700,
     title: 'Noa',
+    icon: iconPath,
     backgroundColor: '#EAE8E0',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 14, y: 16 },

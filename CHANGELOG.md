@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.15] - 2026-04-19
+
+### Fixed
+- Restored the app icon in the desktop build and ensured the installer uses a distinct volume title.
+
 ## [1.0.7] - 2026-03-30
 
 ### Fixed
