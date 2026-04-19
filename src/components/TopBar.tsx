@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
-import { Search, Settings, PanelLeft, PanelRight, Network, X, Calendar } from 'lucide-react';
+import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from 'lucide-react';
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -12,9 +12,6 @@ interface TopBarProps {
   isRightPanelOpen: boolean;
   searchQuery: string;
   onSearchChange?: (query: string) => void;
-  onToggleGraphView: () => void;
-  isGraphViewOpen?: boolean;
-  showGraphView?: boolean;
   showDailyNote?: boolean;
   searchInputRef?: React.RefObject<HTMLInputElement>;
   onOpenDailyNote?: () => void;
@@ -23,7 +20,7 @@ interface TopBarProps {
   hasFsHandle?: boolean;
 }
 
-export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, onToggleGraphView, isGraphViewOpen, showGraphView = true, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName, fsLastSyncAt, hasFsHandle }: TopBarProps) {
+export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName, fsLastSyncAt, hasFsHandle }: TopBarProps) {
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   useEffect(() => {
@@ -106,16 +103,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
         >
           <Settings size={16} />
         </button>
-        {showGraphView && (
-          <button
-            onClick={onToggleGraphView}
-            className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isGraphViewOpen ? 'text-[#B89B5E]' : ''}`}
-            title="Toggle Graph View"
-          >
-            <Network size={16} />
-          </button>
-        )}
-        <button 
+        <button
           onClick={onToggleRightPanel}
           className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? 'text-[#B89B5E]' : ''}`}
           title="Toggle Panel"

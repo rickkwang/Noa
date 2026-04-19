@@ -6,22 +6,21 @@ interface MermaidBlockProps {
   isDark: boolean;
 }
 
-// Each render call needs a unique element id — mermaid throws if the same id
-// is reused across render invocations within the same page session.
-let _renderCounter = 0;
-
 export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
   const baseId = useId().replace(/:/g, '');
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const prevThemeRef = useRef<string | null>(null);
+  // Per-instance counter so concurrent MermaidBlock instances never collide on ids
+  // even if their useId seeds happen to coincide after the regex strip.
+  const renderCounterRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     // Use a fresh unique id for every render call to avoid mermaid's
     // "element already exists" error when code or theme changes.
-    const renderId = `mermaid-${baseId}-${++_renderCounter}`;
+    const renderId = `mermaid-${baseId}-${++renderCounterRef.current}`;
 
     async function render() {
       try {

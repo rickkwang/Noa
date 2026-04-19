@@ -81,11 +81,6 @@ export function useLayout() {
     lsSet(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
   }, [isSidebarOpen, isRightPanelOpen, activeRightTab, editorViewMode]);
 
-  const openGraphView = useCallback(() => {
-    setIsRightPanelOpen(true);
-    setActiveRightTab('graph');
-  }, []);
-
   const [isFocusMode, setIsFocusMode] = useState(false);
   const toggleFocusMode = useCallback(() => setIsFocusMode(v => !v), []);
   const exitFocusMode = useCallback(() => setIsFocusMode(false), []);
@@ -98,7 +93,6 @@ export function useLayout() {
     setIsRightPanelOpen,
     activeRightTab,
     setActiveRightTab,
-    openGraphView,
     sidebarWidth,
     rightPanelWidth,
     isDraggingSidebar,

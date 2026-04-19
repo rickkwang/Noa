@@ -6,6 +6,8 @@ import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 import { buildTitleToIdsMap, computeTopologySignature } from '../lib/noteUtils';
 
+export type GraphColorMode = 'tag' | 'none';
+
 interface GraphViewProps {
   notes: Note[];
   onNavigateToNoteById: (id: string) => void;
@@ -15,6 +17,10 @@ interface GraphViewProps {
   width: number;
   height: number;
   hideIsolated?: boolean;
+  localDepth?: number;
+  tagFilter?: string[];
+  colorMode?: GraphColorMode;
+  sizeByDegree?: boolean;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -94,12 +100,28 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
 
-// Node radius: matches Obsidian proportions
-function nodeRadius(_degree: number): number {
-  return 5;
+// Node radius: log-scaled by degree (Obsidian-like).
+// sizeByDegree=false → fixed 5px (legacy mode).
+function nodeRadius(degree: number, sizeByDegree: boolean): number {
+  if (!sizeByDegree) return 5;
+  // log1p(degree) maps 0→0, 1→0.69, 5→1.79, 20→3.04, 50→3.93
+  return Math.min(9, 3 + Math.log1p(degree) * 1.6);
 }
 
-export default function GraphView({ notes, onNavigateToNoteById, settings, searchQuery = '', activeNoteId, width, height, hideIsolated = false }: GraphViewProps) {
+export default function GraphView({
+  notes,
+  onNavigateToNoteById,
+  settings,
+  searchQuery = '',
+  activeNoteId,
+  width,
+  height,
+  hideIsolated = false,
+  localDepth = 0,
+  tagFilter,
+  colorMode = 'tag',
+  sizeByDegree = true,
+}: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -229,14 +251,56 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
       n.degree = degreeMap.get(String(n.id)) ?? 0;
     });
 
-    const filteredNodes = hideIsolated ? nodes.filter(n => n.degree > 0) : nodes;
+    // Tag filter (any-of). Empty/undefined → no restriction.
+    const activeTagSet = tagFilter && tagFilter.length > 0 ? new Set(tagFilter) : null;
+    let keepIds: Set<string> | null = null;
+    if (activeTagSet) {
+      keepIds = new Set(
+        nodes.filter((n) => (n.tags ?? []).some((t) => activeTagSet.has(t))).map((n) => String(n.id))
+      );
+    }
+
+    // Local graph: BFS from active note up to localDepth hops.
+    if (localDepth > 0 && activeNoteId && nodeMap.has(activeNoteId)) {
+      // Build adjacency from (already deduped) links.
+      const adj = new Map<string, Set<string>>();
+      for (const link of links) {
+        const s = readLinkEndpointId(link.source);
+        const t = readLinkEndpointId(link.target);
+        if (!adj.has(s)) adj.set(s, new Set());
+        if (!adj.has(t)) adj.set(t, new Set());
+        adj.get(s)!.add(t);
+        adj.get(t)!.add(s);
+      }
+      const reach = new Set<string>([activeNoteId]);
+      let frontier: string[] = [activeNoteId];
+      for (let d = 0; d < localDepth; d++) {
+        const next: string[] = [];
+        for (const id of frontier) {
+          for (const nb of adj.get(id) ?? []) {
+            if (!reach.has(nb)) {
+              reach.add(nb);
+              next.push(nb);
+            }
+          }
+        }
+        frontier = next;
+        if (frontier.length === 0) break;
+      }
+      keepIds = keepIds ? new Set([...keepIds].filter((id) => reach.has(id))) : reach;
+      // Always keep the active node itself even if tag filter would have excluded it.
+      keepIds.add(activeNoteId);
+    }
+
+    let filteredNodes = keepIds ? nodes.filter((n) => keepIds!.has(String(n.id))) : nodes;
+    if (hideIsolated) filteredNodes = filteredNodes.filter((n) => n.degree > 0);
     const nodeSet = new Set(filteredNodes.map((n) => String(n.id)));
-    const filteredLinks = hideIsolated
-      ? links.filter((link) => nodeSet.has(readLinkEndpointId(link.source)) && nodeSet.has(readLinkEndpointId(link.target)))
-      : links;
+    const filteredLinks = links.filter(
+      (link) => nodeSet.has(readLinkEndpointId(link.source)) && nodeSet.has(readLinkEndpointId(link.target))
+    );
 
     return { nodes: filteredNodes, links: filteredLinks };
-  }, [hideIsolated, topologyKey]);
+  }, [hideIsolated, topologyKey, localDepth, activeNoteId, tagFilter]);
 
   // Build neighbour set for hovered node
   const hoveredNeighbours = useMemo(() => {
@@ -272,7 +336,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
       linkForce.strength(0.7);
     }
     // Collide: minimal padding, let link distance do the spacing
-    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0) + 3).iterations(3);
+    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0, sizeByDegree) + 3).iterations(3);
     fgRef.current.d3Force('collide', collide);
     // Center force: holds the graph together without crushing it
     fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.3));
@@ -325,13 +389,15 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
 
   // Pick node fill color: tag color > accent (connected) > grey (isolated)
   const getNodeColor = useCallback((node: GraphNode): string => {
-    const tags: string[] = node.tags ?? [];
-    for (const tag of tags) {
-      const c = tagColorMap.get(tag);
-      if (c) return c;
+    if (colorMode === 'tag') {
+      const tags: string[] = node.tags ?? [];
+      for (const tag of tags) {
+        const c = tagColorMap.get(tag);
+        if (c) return c;
+      }
     }
     return (node.degree ?? 0) > 0 ? nodeColor : (isDark ? '#5A5648' : '#B0AA9E');
-  }, [tagColorMap, nodeColor, isDark]);
+  }, [tagColorMap, nodeColor, isDark, colorMode]);
 
   const zoomControls = [
     { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
@@ -461,7 +527,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
           const degree = node.degree ?? 0;
-          const radius = nodeRadius(degree);
+          const radius = nodeRadius(degree, sizeByDegree);
           const isActive = activeNoteId && String(node.id) === activeNoteId;
           const isHovered = hoveredNodeId === String(node.id);
           const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
@@ -534,7 +600,7 @@ export default function GraphView({ notes, onNavigateToNoteById, settings, searc
         }}
         nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
           if (node.x == null || node.y == null) return;
-          const radius = nodeRadius(node.degree ?? 0);
+          const radius = nodeRadius(node.degree ?? 0, sizeByDegree);
           ctx.fillStyle = color;
           ctx.beginPath();
           // Slightly larger hit area makes node drags less likely to start a canvas pan.

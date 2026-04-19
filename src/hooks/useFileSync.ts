@@ -84,6 +84,11 @@ export function useFileSync({
   }, [notes, folders, workspaceName]);
   useEffect(() => { fsHandleRef.current = fsHandle; }, [fsHandle]);
 
+  // Tracks the retry-generation id. Every user-initiated reset (retry/reconnect/
+  // disconnect) bumps this so any timer or in-flight retry callback scheduled
+  // under an older generation becomes a no-op when it eventually fires.
+  const retryGeneration = useRef(0);
+
   const clearRetryTimer = useCallback(() => {
     if (!autoRetryTimer.current) return;
     clearTimeout(autoRetryTimer.current);
@@ -93,6 +98,9 @@ export function useFileSync({
   const resetRetryState = useCallback(() => {
     clearRetryTimer();
     autoRetryAttempts.current = 0;
+    // Invalidate any in-flight retry callback so it becomes a no-op when it
+    // eventually settles (see scheduleRetry's generation check).
+    retryGeneration.current += 1;
   }, [clearRetryTimer]);
 
   const recordSuccess = useCallback(() => {
@@ -137,15 +145,24 @@ export function useFileSync({
     const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(baseDelay * 0.25)));
     const delay = baseDelay + jitter;
 
+    const generation = retryGeneration.current;
     autoRetryTimer.current = setTimeout(() => {
       autoRetryTimer.current = null;
+      // If resetRetryState ran while we were waiting, our generation is stale.
+      // Aborting here prevents a dead branch from resurrecting sync after the
+      // user disconnected or manually retried.
+      if (generation !== retryGeneration.current) return;
       const handle = fsHandleRef.current;
       if (!handle) return;
       setSyncStatus('syncing');
       const managedNotes = notesRef.current.filter(isObsidianImportedNote);
       void retryFullSync(handle, managedNotes, foldersRef.current)
-        .then(recordSuccess)
+        .then(() => {
+          if (generation !== retryGeneration.current) return;
+          recordSuccess();
+        })
         .catch((error) => {
+          if (generation !== retryGeneration.current) return;
           recordFailure(error);
           scheduleRetry();
         });

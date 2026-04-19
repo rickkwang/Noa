@@ -119,13 +119,19 @@ export default function App() {
   // (left over from a previous vault session), reset it to the default.
   // We wait for syncStatus === 'idle' to confirm bootstrap has completed
   // and there is genuinely no persisted vault handle.
+  // workspaceName and setWorkspaceName are intentionally omitted: we only want
+  // this effect to re-evaluate on bootstrap/sync transitions, not when the name
+  // itself changes (which would cause the guard below to re-run after the set).
+  const workspaceNameRef = useRef(workspaceName);
+  useEffect(() => { workspaceNameRef.current = workspaceName; }, [workspaceName]);
+  const setWorkspaceNameRef = useRef(setWorkspaceName);
+  useEffect(() => { setWorkspaceNameRef.current = setWorkspaceName; }, [setWorkspaceName]);
   useEffect(() => {
     if (!isLoaded) return;
     if (fsHandle !== null) return;
     if (syncStatus !== 'idle') return;
-    if (workspaceName === 'Default Workspace') return;
-    setWorkspaceName('Default Workspace');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (workspaceNameRef.current === 'Default Workspace') return;
+    setWorkspaceNameRef.current('Default Workspace');
   }, [isLoaded, fsHandle, syncStatus]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
@@ -236,7 +242,6 @@ export default function App() {
     setIsRightPanelOpen,
     activeRightTab,
     setActiveRightTab,
-    openGraphView,
     sidebarWidth,
     rightPanelWidth,
     isDraggingSidebar,
@@ -391,7 +396,6 @@ export default function App() {
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
     onOpenDailyNote: () => handleOpenDailyNote(),
     onOpenSettings: () => setIsSettingsOpen(true),
-    onOpenGraphView: () => openGraphView(),
     onFocusSearch: () => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
@@ -491,9 +495,6 @@ export default function App() {
         isRightPanelOpen={isRightPanelOpen}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onToggleGraphView={openGraphView}
-        isGraphViewOpen={isRightPanelOpen && activeRightTab === 'graph'}
-        showGraphView={settings.corePlugins.graphView}
         showDailyNote={settings.corePlugins.dailyNotes}
         searchInputRef={searchInputRef}
         onOpenDailyNote={() => handleOpenDailyNote()}

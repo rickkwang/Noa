@@ -12,7 +12,6 @@ type UseCommandPaletteOptions = {
   onCreateNote: () => void;
   onOpenDailyNote: () => void;
   onOpenSettings: () => void;
-  onOpenGraphView: () => void;
   onFocusSearch: () => void;
   onOpenNoteById: (id: string) => void;
 };
@@ -22,7 +21,6 @@ export function useCommandPalette({
   onCreateNote,
   onOpenDailyNote,
   onOpenSettings,
-  onOpenGraphView,
   onFocusSearch,
   onOpenNoteById,
 }: UseCommandPaletteOptions) {
@@ -45,7 +43,6 @@ export function useCommandPalette({
       { id: 'new-note', label: 'New note', action: onCreateNote },
       { id: 'open-daily-note', label: "Open today's daily note", action: onOpenDailyNote },
       { id: 'open-settings', label: 'Open settings', action: onOpenSettings },
-      { id: 'open-graph', label: 'Open graph view', action: onOpenGraphView },
       { id: 'focus-search', label: 'Focus search', action: onFocusSearch },
     ];
 
@@ -65,7 +62,7 @@ export function useCommandPalette({
       }));
 
     return [...filteredBase, ...noteCommands];
-  }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenGraphView, onOpenNoteById, onOpenSettings, query]);
+  }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenNoteById, onOpenSettings, query]);
 
   useEffect(() => {
     if (!isOpen) return;

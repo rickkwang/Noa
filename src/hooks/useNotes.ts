@@ -139,9 +139,16 @@ export function useNotes(settings?: AppSettings) {
     return withRefs;
   }, [debounceSave, sameStringArray]);
 
+  // Tracks whether the hook is still mounted. flushAllPendingSaves awaits
+  // storage writes sequentially, so between iterations the component may have
+  // unmounted; re-reading notesRef after unmount risks writing stale snapshots
+  // if something else touched storage in the meantime.
+  const isMountedRef = useRef(true);
+
   // Cleanup all pending save/snapshot timers on unmount
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       saveTimers.current.forEach(t => clearTimeout(t));
       saveTimers.current.clear();
       snapshotTimers.current.forEach(t => clearTimeout(t));
@@ -151,16 +158,24 @@ export function useNotes(settings?: AppSettings) {
   }, []);
 
   const flushAllPendingSaves = useCallback(async (_currentNotes?: Note[]) => {
+    // Snapshot pending ids AND their corresponding notes atomically, before
+    // awaiting. This prevents a late debounceSave between iterations from
+    // inserting a newer timer whose note we'd then read from a possibly
+    // stale-by-the-time-await-resolves notesRef.
     const pending = Array.from(saveTimers.current.keys());
+    const notesToFlush: Note[] = [];
     for (const id of pending) {
       clearTimeout(saveTimers.current.get(id));
       saveTimers.current.delete(id);
-      // Always use notesRef.current — it's updated synchronously in the same
-      // render cycle and is guaranteed more recent than any passed-in snapshot.
       const note = notesRef.current.find(n => n.id === id);
-      if (note) {
-        try { await storage.saveNote(note); } catch { /* best effort on quit */ }
-      }
+      if (note) notesToFlush.push(note);
+    }
+    for (const note of notesToFlush) {
+      // If the component unmounted mid-flush, abort — the unmount cleanup
+      // already cleared timers and any further writes race with whatever
+      // re-mounts after us.
+      if (!isMountedRef.current) return;
+      try { await storage.saveNote(note); } catch { /* best effort on quit */ }
     }
   }, []);
 

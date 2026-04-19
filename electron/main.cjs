@@ -6,6 +6,17 @@ const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cj
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
 
+// Grace periods before forcing app.quit(). Configurable via env so slow machines
+// can extend the window for in-flight saves/installs to drain. Values are
+// clamped to a safe floor to avoid a misconfiguration corrupting pending writes.
+function parseDelay(envVar, fallback) {
+  const raw = Number(process.env[envVar]);
+  if (!Number.isFinite(raw) || raw < 100) return fallback;
+  return Math.min(raw, 10_000);
+}
+const MAC_POST_INSTALL_QUIT_DELAY_MS = parseDelay('NOA_MAC_INSTALL_QUIT_DELAY_MS', 400);
+const BEFORE_QUIT_FLUSH_DELAY_MS = parseDelay('NOA_BEFORE_QUIT_FLUSH_DELAY_MS', 800);
+
 let win;
 let updateState = { state: 'idle', message: '' };
 let latestAvailableVersion = null;
@@ -233,7 +244,7 @@ app.whenReady().then(() => {
           progress: 100,
           message: result.message,
         });
-        setTimeout(() => app.quit(), 400);
+        setTimeout(() => app.quit(), MAC_POST_INSTALL_QUIT_DELAY_MS);
         return result;
       } catch (error) {
         console.error('[updater] mac install failed', error);
@@ -336,5 +347,5 @@ app.on('before-quit', (event) => {
     return;
   }
   activeWindow.webContents.send('app:before-quit');
-  setTimeout(() => app.quit(), 800);
+  setTimeout(() => app.quit(), BEFORE_QUIT_FLUSH_DELAY_MS);
 });

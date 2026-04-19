@@ -1,7 +1,7 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal } from 'lucide-react';
+import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from 'lucide-react';
 import { GlobalTask, Note, AppSettings } from '../types';
-import GraphView from './GraphView';
+import GraphView, { type GraphColorMode } from './GraphView';
 import { buildTitleToIdsMap } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
@@ -57,6 +57,23 @@ export default function RightPanel({
   const [hideIsolated, setHideIsolated] = useState(false);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
+  const [showFilters, setShowFilters] = useState(false);
+  const [localDepth, setLocalDepth] = useState(0);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [colorMode, setColorMode] = useState<GraphColorMode>('tag');
+  const [sizeByDegree, setSizeByDegree] = useState(true);
+
+  // All tags across notes (ordered by first appearance for stable chip order).
+  const allTags = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const n of notes) {
+      for (const t of n.tags ?? []) {
+        if (!seen.has(t)) { seen.add(t); out.push(t); }
+      }
+    }
+    return out;
+  }, [notes]);
   const [showGraphGuide, setShowGraphGuide] = useState(() => {
     try { return !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN); } catch { return true; }
   });
@@ -89,17 +106,36 @@ export default function RightPanel({
   }, [activeTab]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#EAE8E0] shrink-0 relative">
-      {/* Tab bar — icon only */}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center justify-end gap-1 px-2 bg-[#DCD9CE] shrink-0 overflow-hidden">
+    <div className={`w-full h-full flex flex-col shrink-0 relative ${isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]'}`}>
+      {/* Tab bar — full-width segmented control */}
+      <div
+        className="h-8 flex items-stretch shrink-0 overflow-hidden border-b"
+        style={{
+          background: isDark ? '#1E1E1C' : '#DCD9CE',
+          borderColor: isDark ? 'rgba(240,237,230,0.18)' : '#2D2D2D',
+        }}
+      >
         {([
           { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
           { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
           { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
           { id: 'graph', label: 'Graph', icon: Network, badge: null },
           { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
-        ] as const).map((tab) => {
+        ] as const).map((tab, idx) => {
           const isActive = activeTab === tab.id;
+          const baseStyle: React.CSSProperties = {
+            borderLeft: idx > 0
+              ? `1px solid ${isDark ? 'rgba(240,237,230,0.08)' : 'rgba(45,45,45,0.15)'}`
+              : undefined,
+          };
+          const activeStyle: React.CSSProperties = isActive
+            ? {
+                background: isDark ? '#262624' : '#EAE8E0',
+                color: isDark ? '#F0EDE6' : '#2D2D2D',
+              }
+            : {
+                color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.55)',
+              };
           return (
             <button
               key={tab.id}
@@ -107,17 +143,18 @@ export default function RightPanel({
               title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
               aria-label={tab.label}
               aria-pressed={isActive}
-              className={`relative flex items-center justify-center w-6 h-6 rounded-sm transition-colors active:opacity-70 ${
+              className={`relative flex-1 flex items-center justify-center transition-colors active:opacity-70 ${
                 isActive
-                  ? 'bg-[#EAE8E0] text-[#2D2D2D] shadow-[inset_0_0_0_1px_rgba(45,45,45,0.15)]'
-                  : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/60'
+                  ? ''
+                  : isDark ? 'hover:text-[#F0EDE6] hover:bg-[#F0EDE6]/[0.04]' : 'hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/50'
               }`}
+              style={{ ...baseStyle, ...activeStyle }}
             >
-              <tab.icon size={14} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+              <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
               {tab.badge !== null && (
                 <span
                   aria-label={`${tab.badge} pending`}
-                  className="absolute top-0 right-0.5 text-[8px] font-bold leading-none tabular-nums text-[#B89B5E]"
+                  className="absolute top-1 right-1.5 text-[8px] font-bold leading-none tabular-nums text-[#B89B5E]"
                 >
                   {tab.badge > 9 ? '9+' : tab.badge}
                 </span>
@@ -184,11 +221,35 @@ export default function RightPanel({
                 }>
                 <Network size={10} />
               </button>
+              <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
+                className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
+                style={showFilters
+                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
+                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.4)'}`, color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                }>
+                <Filter size={10} />
+              </button>
             </div>
+            {showFilters && (
+              <GraphFilterPanel
+                isDark={isDark}
+                localDepth={localDepth}
+                onLocalDepthChange={setLocalDepth}
+                hasActiveNote={!!activeNoteId}
+                colorMode={colorMode}
+                onColorModeChange={setColorMode}
+                sizeByDegree={sizeByDegree}
+                onSizeByDegreeChange={setSizeByDegree}
+                allTags={allTags}
+                tagFilter={tagFilter}
+                onTagFilterChange={setTagFilter}
+              />
+            )}
             <div ref={graphContainerRef} className="flex-1 overflow-hidden">
               <GraphView notes={notes} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
-                width={graphDimensions.width} height={graphDimensions.height} hideIsolated={hideIsolated} />
+                width={graphDimensions.width} height={graphDimensions.height} hideIsolated={hideIsolated}
+                localDepth={localDepth} tagFilter={tagFilter} colorMode={colorMode} sizeByDegree={sizeByDegree} />
             </div>
           </div>
           <GraphInfoPanel notes={notes} activeNoteId={activeNoteId} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
@@ -319,6 +380,139 @@ function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = fa
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Graph Filter Panel ────────────────────────────────────────────────────────
+
+interface GraphFilterPanelProps {
+  isDark: boolean;
+  localDepth: number;
+  onLocalDepthChange: (v: number) => void;
+  hasActiveNote: boolean;
+  colorMode: GraphColorMode;
+  onColorModeChange: (v: GraphColorMode) => void;
+  sizeByDegree: boolean;
+  onSizeByDegreeChange: (v: boolean) => void;
+  allTags: string[];
+  tagFilter: string[];
+  onTagFilterChange: (v: string[]) => void;
+}
+
+function GraphFilterPanel({
+  isDark,
+  localDepth,
+  onLocalDepthChange,
+  hasActiveNote,
+  colorMode,
+  onColorModeChange,
+  sizeByDegree,
+  onSizeByDegreeChange,
+  allTags,
+  tagFilter,
+  onTagFilterChange,
+}: GraphFilterPanelProps) {
+  const labelCls = `text-[9px] uppercase tracking-wider font-bold ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/55'}`;
+  const valueCls = `text-[10px] tabular-nums ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/80'}`;
+  const borderCol = isDark ? 'rgba(240,237,230,0.12)' : 'rgba(45,45,45,0.45)';
+  const toggleTag = (t: string) => {
+    onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
+  };
+  const depthLabel = localDepth === 0 ? 'all' : `${localDepth} hop${localDepth > 1 ? 's' : ''}`;
+  return (
+    <div
+      className="px-2.5 py-2 border-b space-y-2 shrink-0"
+      style={{ borderColor: borderCol, background: isDark ? '#1E1E1C' : '#E2E0D6' }}
+    >
+      {/* Local depth */}
+      <div className="flex items-center gap-2">
+        <span className={`${labelCls} w-12 shrink-0`}>Depth</span>
+        <input
+          type="range"
+          min={0}
+          max={3}
+          step={1}
+          value={localDepth}
+          onChange={(e) => onLocalDepthChange(Number(e.target.value))}
+          disabled={!hasActiveNote}
+          className="flex-1 h-1 accent-[#B89B5E] disabled:opacity-40"
+        />
+        <span className={`${valueCls} w-10 text-right`}>{hasActiveNote ? depthLabel : '—'}</span>
+      </div>
+
+      {/* Color mode */}
+      <div className="flex items-center gap-2">
+        <span className={`${labelCls} w-12 shrink-0`}>Color</span>
+        <div className="flex gap-px flex-1">
+          {(['tag', 'none'] as const).map((m) => {
+            const active = colorMode === m;
+            return (
+              <button
+                key={m}
+                onClick={() => onColorModeChange(m)}
+                className="flex-1 h-5 text-[9px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+                style={active
+                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
+                  : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.6)' }
+                }
+              >
+                {m === 'tag' ? 'Tag' : 'Off'}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Size by degree */}
+      <div className="flex items-center gap-2">
+        <span className={`${labelCls} w-12 shrink-0`}>Size</span>
+        <button
+          onClick={() => onSizeByDegreeChange(!sizeByDegree)}
+          className="flex-1 h-5 text-[9px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+          style={sizeByDegree
+            ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
+            : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.6)' }
+          }
+        >
+          {sizeByDegree ? 'By Degree' : 'Uniform'}
+        </button>
+      </div>
+
+      {/* Tag chips */}
+      {allTags.length > 0 && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className={labelCls}>Tags</span>
+            {tagFilter.length > 0 && (
+              <button
+                onClick={() => onTagFilterChange([])}
+                className={`text-[9px] uppercase tracking-wider ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/55 hover:text-[#B89B5E]'}`}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+            {allTags.map((t) => {
+              const active = tagFilter.includes(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleTag(t)}
+                  className="text-[9px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors active:opacity-70"
+                  style={active
+                    ? { background: '#B89B5E', color: isDark ? '#1E1E1C' : '#FFFFFF', border: '1px solid #B89B5E' }
+                    : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.65)' }
+                  }
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
