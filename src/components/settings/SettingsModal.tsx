@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Settings, X, Book } from 'lucide-react';
 import { Note, Folder, AppSettings, SyncStatus } from '../../types';
+import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
 import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
 import AppearanceSettings from './sections/AppearanceSettings';
 import DataSettings from './sections/DataSettings';
@@ -25,6 +26,7 @@ interface SettingsModalProps {
   fsSyncError?: string | null;
   syncStatus: SyncStatus;
   onRetryFsSync?: () => void;
+  autoBackup: UseAutoBackupResult;
 }
 
 export default function SettingsModal({
@@ -44,6 +46,7 @@ export default function SettingsModal({
   fsSyncError,
   syncStatus,
   onRetryFsSync,
+  autoBackup,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
   const [mounted, setMounted] = useState(false);
@@ -153,6 +156,7 @@ export default function SettingsModal({
                 fsSyncError={fsSyncError}
                 syncStatus={syncStatus}
                 onRetryFsSync={onRetryFsSync}
+                autoBackup={autoBackup}
               />
             )}
 

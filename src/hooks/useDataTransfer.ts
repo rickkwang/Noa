@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import { AppErrorCode, Attachment, Folder, Note, RecoveryAction } from '../types';
 import { storage } from '../lib/storage';
-import { mdToHtml } from '../lib/export';
+import { mdToHtml, buildBackupPayload } from '../lib/export';
 import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
 import { markExported } from '../lib/exportTimestamp';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
@@ -169,37 +169,11 @@ function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
   }));
 }
 
-async function hydrateAttachmentPayloads(notes: ImportedNote[]): Promise<ImportedNote[]> {
-  const hydrated = await Promise.all(
-    notes.map(async (note) => {
-      if (!note.attachments?.length) return note;
-      const attachments = await Promise.all(
-        note.attachments.map(async (attachment) => {
-          const blob = await storage.getAttachmentBlob(attachment.id);
-          if (!blob) return null;
-          const dataBase64 = await blobToBase64(blob);
-          return { ...attachment, dataBase64 };
-        })
-      );
-      return {
-        ...note,
-        attachments: attachments.filter((att): att is BackupAttachment => att !== null),
-      };
-    })
-  );
-  return hydrated;
-}
-
 export async function exportJsonSnapshot(notes: Note[], folders: Folder[], workspaceName: string): Promise<boolean> {
   try {
     const report = validateExportData(notes, folders);
     if (!report.ok) return false;
-    const payload: BackupPayload = {
-      version: 2,
-      notes: await hydrateAttachmentPayloads(cloneNotesForBackup(notes)),
-      folders,
-      workspaceName,
-    };
+    const payload = await buildBackupPayload(notes, folders, workspaceName);
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json',
     });

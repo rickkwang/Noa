@@ -105,6 +105,9 @@ export interface AppSettings {
   templates: {
     userTemplates: UserTemplate[];
   };
+  backup: {
+    autoBackupEnabled: boolean;
+  };
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'ready' | 'error';

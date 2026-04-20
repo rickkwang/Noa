@@ -15,6 +15,7 @@ import { useLayout } from './hooks/useLayout';
 import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useBackupReminder } from './hooks/useBackupReminder';
+import { useAutoBackup } from './hooks/useAutoBackup';
 import { exportJsonSnapshot } from './hooks/useDataTransfer';
 import { useCommandPalette } from './hooks/useCommandPalette';
 import ThemeInjector from './components/ThemeInjector';
@@ -73,6 +74,7 @@ export default function App() {
     handleOpenDailyNote,
     handleToggleTask,
     handleImportData,
+    getIsImporting,
     restoreSnapshot,
     loadError,
     saveError,
@@ -113,6 +115,21 @@ export default function App() {
     activeNoteId,
     ensureInitialNote,
     onImportData: handleImportData,
+  });
+
+  const autoBackup = useAutoBackup({
+    notes,
+    folders,
+    workspaceName,
+    isLoaded,
+    autoBackupEnabled: settings.backup?.autoBackupEnabled ?? false,
+    onSettingsUpdate: useCallback((patch: { autoBackupEnabled: boolean }) => {
+      updateSettings((prev) => ({
+        ...prev,
+        backup: { ...prev.backup, autoBackupEnabled: patch.autoBackupEnabled },
+      }));
+    }, [updateSettings]),
+    getIsImporting,
   });
 
   // If the app loads with no vault connected but a stale workspace name
@@ -825,6 +842,7 @@ export default function App() {
             fsSyncError={fsSyncError}
             syncStatus={syncStatus}
             onRetryFsSync={retry}
+            autoBackup={autoBackup}
           />
         </Suspense>
       )}

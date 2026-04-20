@@ -86,7 +86,8 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none"
             >
               {/* Built-in bundled fonts */}
-              <option value="font-redaction">Redaction 50 (Default)</option>
+              <option value="font-iosevka">Iosevka Nerd Font Mono (Default)</option>
+              <option value="font-redaction">Redaction 50</option>
               <option value="font-pixelify">Pixelify Sans</option>
               <option value="font-work-sans">Work Sans</option>
 

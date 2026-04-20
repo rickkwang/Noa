@@ -1,4 +1,79 @@
-import { Note } from '../types';
+import { Attachment, Folder, Note } from '../types';
+import { storage } from './storage';
+import { blobToBase64, type ImportedNote } from './attachmentUtils';
+
+type BackupAttachment = Attachment & { dataBase64: string };
+
+export interface BackupPayload {
+  version: 2;
+  notes: ImportedNote[];
+  folders: Folder[];
+  workspaceName: string;
+}
+
+function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
+  return notes.map((note) => ({
+    ...note,
+    attachments: note.attachments?.map((attachment) => ({ ...attachment })),
+  }));
+}
+
+async function hydrateAttachmentPayloads(notes: ImportedNote[]): Promise<ImportedNote[]> {
+  return Promise.all(
+    notes.map(async (note) => {
+      if (!note.attachments?.length) return note;
+      const attachments = await Promise.all(
+        note.attachments.map(async (attachment) => {
+          const blob = await storage.getAttachmentBlob(attachment.id);
+          if (!blob) return null;
+          const dataBase64 = await blobToBase64(blob);
+          return { ...attachment, dataBase64 };
+        }),
+      );
+      return {
+        ...note,
+        attachments: attachments.filter((att): att is BackupAttachment => att !== null),
+      };
+    }),
+  );
+}
+
+/**
+ * Build a complete backup payload with all attachment blobs hydrated as base64.
+ * Shared between manual JSON export and automatic backup so the two paths
+ * cannot diverge in format or content.
+ */
+export async function buildBackupPayload(
+  notes: Note[],
+  folders: Folder[],
+  workspaceName: string,
+): Promise<BackupPayload> {
+  return {
+    version: 2,
+    notes: await hydrateAttachmentPayloads(cloneNotesForBackup(notes)),
+    folders,
+    workspaceName,
+  };
+}
+
+/**
+ * Write a snapshot JSON file into an already-authorized directory handle.
+ * Caller is responsible for permission checks; this function only writes.
+ */
+export async function writeSnapshotToDirectory(
+  dirHandle: FileSystemDirectoryHandle,
+  filename: string,
+  payload: BackupPayload,
+): Promise<void> {
+  const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+  const writable = await fileHandle.createWritable();
+  try {
+    await writable.write(JSON.stringify(payload, null, 2));
+  } finally {
+    await writable.close();
+  }
+}
+
 
 function downloadFile(content: string, filename: string, type: string) {
   const blob = new Blob([content], { type });

@@ -162,7 +162,14 @@ export const storage = {
           if (!validSet.has(id)) keysToDelete.push(key);
         }
       });
-      await Promise.all(keysToDelete.map(k => notesStore.removeItem(k)));
+      // Use allSettled so one failed removeItem doesn't short-circuit the rest.
+      // Previously Promise.all would reject on first failure, leaving later
+      // orphans in storage that would resurrect on next load.
+      const results = await Promise.allSettled(keysToDelete.map(k => notesStore.removeItem(k)));
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        console.error(`[Noa] pruneOrphanedNotes: ${failed}/${keysToDelete.length} deletions failed`);
+      }
     } catch (err) {
       console.error('Error pruning orphaned notes:', err);
     }

@@ -4,12 +4,14 @@ import { useDataTransfer, ConfirmRequest, DataTransferMessage } from '../../../h
 import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
 import { useStorageEstimate } from '../../../hooks/useStorageEstimate';
 import BackupSection from './data/BackupSection';
+import AutoBackupSection from './data/AutoBackupSection';
 import ImportSection from './data/ImportSection';
 import WorkspaceSection from './data/WorkspaceSection';
 import { ConfirmState } from './data/types';
 import { getLastExportAt } from '../../../lib/exportTimestamp';
 import { getBackupHealth } from '../../../lib/backupHealth';
 import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
+import { UseAutoBackupResult } from '../../../hooks/useAutoBackup';
 
 interface DataSettingsProps {
   workspaceName: string;
@@ -23,6 +25,7 @@ interface DataSettingsProps {
   onConnectFs: () => Promise<void>;
   onDisconnectFs: () => Promise<void>;
   onRetryFsSync?: () => void;
+  autoBackup: UseAutoBackupResult;
 }
 
 
@@ -38,6 +41,7 @@ export default function DataSettings({
   onConnectFs,
   onDisconnectFs,
   onRetryFsSync,
+  autoBackup,
 }: DataSettingsProps) {
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -257,6 +261,18 @@ export default function DataSettings({
         backupHealth={backupHealth.status}
         daysSinceExport={backupHealth.daysSinceExport}
         lastExportAt={backupHealth.lastExportAt}
+      />
+
+      <AutoBackupSection
+        status={autoBackup.backupStatus}
+        error={autoBackup.backupError}
+        lastAutoBackupAt={autoBackup.lastAutoBackupAt}
+        directoryName={autoBackup.directoryName}
+        hasBackupHandle={autoBackup.hasBackupHandle}
+        onChooseDirectory={autoBackup.chooseDirectory}
+        onDisconnect={autoBackup.disconnect}
+        onRunNow={autoBackup.runNow}
+        onReconnect={autoBackup.reconnect}
       />
 
       <ImportSection

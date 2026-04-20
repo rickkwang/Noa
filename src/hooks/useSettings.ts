@@ -10,7 +10,7 @@ export const defaultSettings: AppSettings = {
   appearance: {
     theme: 'system',
     accentColor: '#B89B5E',
-    fontFamily: 'font-redaction',
+    fontFamily: 'font-iosevka',
     maxWidth: 680,
   },
   dailyNotes: {
@@ -27,6 +27,9 @@ export const defaultSettings: AppSettings = {
   },
   templates: {
     userTemplates: [],
+  },
+  backup: {
+    autoBackupEnabled: false,
   },
 };
 
@@ -45,6 +48,7 @@ export function useSettings() {
           search: { ...defaultSettings.search, ...parsed.search },
           corePlugins: { ...defaultSettings.corePlugins, ...parsed.corePlugins },
           templates: { userTemplates: parsed.templates?.userTemplates ?? [] },
+          backup: { ...defaultSettings.backup, ...parsed.backup },
         };
       } catch (e) {
         return defaultSettings;

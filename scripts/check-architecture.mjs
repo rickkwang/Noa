@@ -30,6 +30,14 @@ if (appSource.includes("from './lib/storage'")) {
   failures.push('App.tsx must not import from lib/storage directly. Use hooks instead.');
 }
 
+if (appSource.includes("from './lib/backupDirectoryStorage'")) {
+  failures.push('App.tsx must not import from lib/backupDirectoryStorage directly. Use useAutoBackup instead.');
+}
+
+if (appSource.includes("from './services/autoBackupService'")) {
+  failures.push('App.tsx must not import autoBackupService directly. Use useAutoBackup instead.');
+}
+
 if (failures.length > 0) {
   console.error('Architecture check failed:');
   failures.forEach((msg) => console.error(` - ${msg}`));

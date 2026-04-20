@@ -51,6 +51,15 @@ export function useNotes(settings?: AppSettings) {
   const notesRef = useRef<Note[]>([]);
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
+  // Import mutex: while a vault/backup import is running, debounceSave defers
+  // its writes into a queue instead of firing timers. This prevents:
+  //  (1) concurrent writes to the same note from user edits and import batch
+  //  (2) user edits made during import being silently overwritten when
+  //      handleImportData calls setNotes(withRefs) at the end.
+  // Deferred notes are flushed and rescued after the import transaction.
+  const isImportingRef = useRef(false);
+  const deferredSavesRef = useRef<Map<string, Note>>(new Map());
+
   const scheduleSnapshot = useCallback((note: Note) => {
     const noteId = note.id;
     const existing = snapshotTimers.current.get(noteId);
@@ -91,6 +100,14 @@ export function useNotes(settings?: AppSettings) {
 
   const debounceSave = useCallback((note: Note) => {
     const noteId = note.id;
+    // If an import is in progress, remember the latest in-memory version of
+    // this note and skip scheduling a write. We flush the queue when the
+    // import finishes; until then, user edits stay in React state and will
+    // be rescued before setNotes(withRefs) runs.
+    if (isImportingRef.current) {
+      deferredSavesRef.current.set(noteId, note);
+      return;
+    }
     const existing = saveTimers.current.get(noteId);
     if (existing) clearTimeout(existing);
     const t = setTimeout(async () => {
@@ -746,6 +763,12 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
     const savedAttachmentIds: string[] = [];
+    // Acquire import lock BEFORE flushing pending saves so any concurrent
+    // debounceSave calls that arrive mid-flush get queued instead of racing.
+    isImportingRef.current = true;
+    // Persist whatever the user has edited up to this moment. These writes
+    // are what the "rescue" logic below preserves.
+    try { await flushAllPendingSaves(); } catch { /* best-effort */ }
     try {
       const attachmentError = findInvalidAttachmentPayload(importedNotes);
       if (attachmentError) {
@@ -801,12 +824,28 @@ Export regularly: use Settings → Data → Export Backup.`,
       // import landing. Without this, a note created during bootstrap
       // (Cmd+N while the vault is still scanning) would be prune-deleted.
       const mergedBase: ImportedNote[] = (() => {
-        if (!shouldPrune) return normalizedNotes;
         const importedIds = new Set(normalizedNotes.map(n => n.id));
+        // Rescue locally-edited notes that were changed while the import was
+        // in flight. deferredSavesRef holds the newest in-memory version for
+        // any note whose debounceSave fired during the lock window.
+        const deferredById = deferredSavesRef.current;
+        const overlayEdits = (list: ImportedNote[]): ImportedNote[] => {
+          if (deferredById.size === 0) return list;
+          return list.map(n => {
+            const edited = deferredById.get(n.id);
+            // Only overlay onto noa-native notes; obsidian-import notes must
+            // keep the version that the vault just delivered, otherwise we
+            // would clobber the canonical file with a potentially stale copy.
+            if (!edited || (n.source ?? 'noa') !== 'noa') return n;
+            return edited;
+          });
+        };
+        if (!shouldPrune) return overlayEdits(normalizedNotes);
         const rescued = notesRef.current.filter(
           n => (n.source ?? 'noa') === 'noa' && !importedIds.has(n.id)
         );
-        return rescued.length > 0 ? [...normalizedNotes, ...rescued] : normalizedNotes;
+        const base = rescued.length > 0 ? [...normalizedNotes, ...rescued] : normalizedNotes;
+        return overlayEdits(base);
       })();
       const withRefs = syncLinkRefs(mergedBase.map((note) => {
         // Obsidian-imported notes carry their own tags/links from frontmatter;
@@ -838,8 +877,19 @@ Export regularly: use Settings → Data → Export Backup.`,
     } catch (error) {
       await Promise.allSettled(savedAttachmentIds.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
       throw error;
+    } finally {
+      // Release the import lock and flush any edits that queued up while
+      // we held it. We write directly to storage (bypassing the 500ms
+      // debounce) because the user made these edits up to several seconds
+      // ago and any further delay increases the risk of losing them on quit.
+      isImportingRef.current = false;
+      const queued = Array.from(deferredSavesRef.current.values());
+      deferredSavesRef.current.clear();
+      for (const note of queued) {
+        try { await storage.saveNote(note); } catch { /* best-effort */ }
+      }
     }
-  }, [syncLinkRefs]);
+  }, [syncLinkRefs, flushAllPendingSaves]);
 
   const retryInitialization = useCallback(() => {
     setIsLoaded(false);
@@ -1060,6 +1110,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => void,
     handleToggleTask,
     handleImportData,
+    getIsImporting: () => isImportingRef.current,
     retryInitialization,
     resetWorkspaceFromRecovery,
     clearWorkspaceAfterDisconnect,

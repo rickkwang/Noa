@@ -45,7 +45,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     root.style.setProperty('--accent-color', accentColor);
   }, [isDark, settings.appearance.accentColor]);
 
-  const fontFamilyStyle = settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
+  const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
+                          settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
                           settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
                           settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
                           settings.appearance.fontFamily;

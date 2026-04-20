@@ -14,4 +14,6 @@ export const STORAGE_KEYS = {
   ERROR_SNAPSHOTS:  'redaction-error-snapshots',
   LAST_ACTIVE_NOTE: 'redaction-last-active-note-id',
   NOTE_SORT_ORDER: 'app-note-sort-order',
+  LAST_AUTO_BACKUP_AT: 'noa:last-auto-backup-at',
+  AUTO_BACKUP_LAST_ERROR: 'noa:auto-backup-last-error',
 } as const;
