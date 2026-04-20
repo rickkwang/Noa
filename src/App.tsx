@@ -444,7 +444,7 @@ export default function App() {
       <>
       <ThemeInjector settings={settings} />
       <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #EAE8E0)' }}>
-        <div className="h-12 border-b border-[#2D2D2D]/20 shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)' }}>
+        <div className="h-12 border-b shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)', borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
           <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
         </div>
         <div className="flex flex-1 overflow-hidden">
@@ -520,7 +520,7 @@ export default function App() {
             minWidth: 0,
             borderRightWidth: isFocusMode ? 0 : 1,
             borderRightStyle: 'solid',
-            borderRightColor: (isSidebarOpen && !isFocusMode) ? '#2D2D2D' : 'transparent',
+            borderRightColor: (isSidebarOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2D)' : 'transparent',
           }}
         >
           <div
@@ -617,7 +617,7 @@ export default function App() {
             minWidth: 0,
             borderLeftWidth: isFocusMode ? 0 : 1,
             borderLeftStyle: 'solid',
-            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? '#2D2D2D' : 'transparent',
+            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2D)' : 'transparent',
           }}
         >
           <div

@@ -88,7 +88,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const txt = isDark ? 'text-[#E8E0D0]' : 'text-[#2D2D2D]';
   const txtMuted = isDark ? 'text-[rgba(232,224,208,0.5)]' : 'text-[#2D2D2D]/50';
   const border = isDark ? 'border-[rgba(232,224,208,0.25)]' : 'border-[#2D2D2D]';
-  const cardBg = isDark ? 'bg-[#242420]' : 'bg-[#DCD9CE]/40';
+  const cardBg = isDark ? 'bg-[#1E1E1C]' : 'bg-[#DCD9CE]/40';
   const cardHover = isDark ? 'hover:bg-[#2C2C28]' : 'hover:bg-[#DCD9CE]/70';
   const filterActive = isDark ? 'bg-[#E8E0D0] text-[#1A1A18]' : 'bg-[#2D2D2D] text-[#EAE8E0]';
   const filterInactive = isDark ? 'border-[rgba(232,224,208,0.25)] text-[rgba(232,224,208,0.45)] hover:border-[rgba(232,224,208,0.6)]' : 'border-[#2D2D2D]/40 text-[#2D2D2D]/50 hover:border-[#2D2D2D]';
@@ -192,7 +192,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
           </div>
           <div className="space-y-2">
             {completedTasks.slice(0, completedPageSize).map(task => (
-              <div key={task.id} className={`group flex flex-col px-3 py-2 border opacity-45 hover:opacity-70 transition-opacity ${isDark ? 'border-[rgba(232,224,208,0.15)] bg-[#242420]' : 'border-[#2D2D2D]/25 bg-[#DCD9CE]/40'}`}>
+              <div key={task.id} className={`group flex flex-col px-3 py-2 border opacity-45 hover:opacity-70 transition-opacity ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#1E1E1C]' : 'border-[#2D2D2D]/25 bg-[#DCD9CE]/40'}`}>
                 <div className="flex items-start gap-2">
                   <button onClick={() => onToggleTask(task)} className="mt-0.5 shrink-0 active:opacity-70">
                     <div className={`w-3.5 h-3.5 border flex items-center justify-center ${isDark ? 'border-[rgba(240,237,230,0.4)] bg-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]/50 bg-[#2D2D2D]/20'}`}>

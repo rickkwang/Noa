@@ -16,6 +16,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.setAttribute('data-theme', 'dark');
       root.style.setProperty('--bg-primary', '#262624');
       root.style.setProperty('--bg-secondary', '#1E1E1C');
+      root.style.setProperty('--bg-tertiary', '#2C2C28');
       root.style.setProperty('--text-primary', '#F0EDE6');
       root.style.setProperty('--text-secondary', 'rgba(240,237,230,0.5)');
       root.style.setProperty('--border-primary', '#3A3A37');
@@ -23,6 +24,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.removeAttribute('data-theme');
       root.style.setProperty('--bg-primary', '#EAE8E0');
       root.style.setProperty('--bg-secondary', '#DCD9CE');
+      root.style.setProperty('--bg-tertiary', '#CFCBBE');
       root.style.setProperty('--text-primary', '#2D2D2D');
       root.style.setProperty('--text-secondary', 'rgba(45,45,45,0.5)');
       root.style.setProperty('--border-primary', '#2D2D2D');

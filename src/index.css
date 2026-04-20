@@ -27,6 +27,7 @@ body {
   overflow: hidden;
   font-size: var(--app-font-size, 12px);
   line-height: var(--app-line-height, 1.5);
+  --panel-divider: #2D2D2D;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -36,15 +37,16 @@ body {
 
 /* Warm dark palette:
    bg-primary   #262624  (main content bg)
-   bg-secondary #1E1E1C  (sidebar / panels / code blocks)
+   bg-secondary #1A1A18  (sidebar / panels / code blocks — darker for clearer panel separation)
    text-primary #F0EDE6  (warm off-white)
    accent       #D97757  (Anthropic coral)
-   border       #3A3A37
+   border       #4A4A46  (structural dividers — lifted for visibility on #262624)
 */
 
 [data-theme="dark"] body {
   background-color: #262624;
   color: #F0EDE6;
+  --panel-divider: rgba(240,237,230,0.15);
 }
 
 /* ── Backgrounds ── */

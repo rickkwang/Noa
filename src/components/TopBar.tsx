@@ -29,7 +29,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
   }, []);
 
   return (
-    <div className="h-12 border-b border-[#2D2D2D] grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={dragRegion}>
+    <div className="h-12 border-b grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ ...dragRegion, borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
       {/* Left Section: Traffic lights space + icon + title */}
       <div className="flex items-center justify-start pl-[90px] pr-4">
         <div className="flex items-center gap-2" style={noDragRegion}>

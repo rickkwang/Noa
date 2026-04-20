@@ -188,7 +188,7 @@ export default function RightPanel({
       {activeTab === 'graph' && (
         <div key="graph" className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
           {showGraphGuide && (
-            <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#242420] text-[rgba(240,237,230,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
+            <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#1E1E1C] text-[rgba(240,237,230,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
               <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/60'}`}>Graph Guide</div>
               <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
               <button
@@ -217,7 +217,7 @@ export default function RightPanel({
                 className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
                 style={hideIsolated
                   ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.4)'}`, color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
                 }>
                 <Network size={10} />
               </button>
@@ -225,7 +225,7 @@ export default function RightPanel({
                 className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
                 style={showFilters
                   ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.2)' : 'rgba(45,45,45,0.4)'}`, color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
                 }>
                 <Filter size={10} />
               </button>

@@ -159,7 +159,7 @@ export function EditorHeader({
   }, [tabs, note.id]);
 
   return (
-    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#F0EDE6]/20' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
+    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#F0EDE6]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
       {/* Tab strip */}
       <div className="relative min-w-0 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {hasOverflowLeft && (
