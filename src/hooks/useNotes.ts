@@ -174,6 +174,8 @@ export function useNotes(settings?: AppSettings) {
     };
   }, []);
 
+  const getIsImporting = useCallback(() => isImportingRef.current, []);
+
   const flushAllPendingSaves = useCallback(async (_currentNotes?: Note[]) => {
     // Snapshot pending ids AND their corresponding notes atomically, before
     // awaiting. This prevents a late debounceSave between iterations from
@@ -1110,7 +1112,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => void,
     handleToggleTask,
     handleImportData,
-    getIsImporting: () => isImportingRef.current,
+    getIsImporting,
     retryInitialization,
     resetWorkspaceFromRecovery,
     clearWorkspaceAfterDisconnect,

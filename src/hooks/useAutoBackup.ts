@@ -134,23 +134,44 @@ export function useAutoBackup({
 
   // Bootstrap scheduler: once per app start, if enabled + handle present +
   // permission granted + 24h elapsed, run a backup.
+  //
+  // If an import is in flight when we arrive (e.g. vault reconnect triggered
+  // handleImportData on mount), we must not mark bootstrap as done — that
+  // would strand the user without a backup for the rest of the session. Poll
+  // briefly and retry; imports typically complete in under a second.
   useEffect(() => {
     if (!isLoaded) return;
     if (!autoBackupEnabled) return;
     if (!handle) return;
     if (bootstrapDidRunRef.current) return;
-    bootstrapDidRunRef.current = true;
 
-    (async () => {
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const attempt = async () => {
+      if (cancelled) return;
+      if (getIsImporting()) {
+        // Don't set bootstrapDidRunRef; try again shortly.
+        retryTimer = setTimeout(() => { void attempt(); }, 1500);
+        return;
+      }
+      bootstrapDidRunRef.current = true;
       const perm = await queryBackupPermission(handle);
+      if (cancelled) return;
       if (perm !== 'granted' && perm !== 'unsupported') {
         setBackupStatus('needs-reauth');
         return;
       }
       if (!shouldRunAutoBackup(getLastAutoBackupAt())) return;
       await doRun(handle);
-    })();
-  }, [isLoaded, autoBackupEnabled, handle, doRun]);
+    };
+
+    void attempt();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [isLoaded, autoBackupEnabled, handle, doRun, getIsImporting]);
 
   const chooseDirectory = useCallback(async (): Promise<boolean> => {
     let picked: FileSystemDirectoryHandle;

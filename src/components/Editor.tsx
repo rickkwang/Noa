@@ -446,6 +446,7 @@ export default function Editor({
                 insertMention(title, index);
                 setMentionQuery(null);
               }}
+              onDismiss={() => setMentionQuery(null)}
             />
           )}
           {slashQuery && (
