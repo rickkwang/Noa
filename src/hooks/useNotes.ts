@@ -211,6 +211,13 @@ export function useNotes(settings?: AppSettings) {
     await storage.saveWorkspaceName(name);
   }, []);
 
+  // Bootstrap effect reads these via ref to avoid re-running when their
+  // identities change (they depend on debounceSave, which changes every render).
+  const syncLinkRefsRef = useRef(syncLinkRefs);
+  const collectChangedRef = useRef(collectNotesWithChangedLinkRefs);
+  useEffect(() => { syncLinkRefsRef.current = syncLinkRefs; }, [syncLinkRefs]);
+  useEffect(() => { collectChangedRef.current = collectNotesWithChangedLinkRefs; }, [collectNotesWithChangedLinkRefs]);
+
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -247,8 +254,8 @@ export function useNotes(settings?: AppSettings) {
               'Data integrity check failed while loading notes.',
             );
           }
-          const withRefs = syncLinkRefs(normalized);
-          const changedForPersist = collectNotesWithChangedLinkRefs(withRefs, normalized);
+          const withRefs = syncLinkRefsRef.current(normalized);
+          const changedForPersist = collectChangedRef.current(withRefs, normalized);
           if (changedForPersist.length > 0) {
             await storage.saveNotes(changedForPersist);
           }
@@ -320,7 +327,7 @@ Export regularly: use Settings → Data → Export Backup.`,
             { id: dailyFolderId, name: 'Daily Notes', source: 'noa' as const }
           ];
           setFolders(initialFolders);
-          setNotes(syncLinkRefs([welcomeNote, dailyNote]));
+          setNotes(syncLinkRefsRef.current([welcomeNote, dailyNote]));
           setActiveNoteId(welcomeNote.id);
           await storage.saveFolders(initialFolders);
           await storage.saveNote(welcomeNote);
@@ -344,7 +351,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     };
     loadData();
     return () => { controller.abort(); };
-  }, [collectNotesWithChangedLinkRefs, loadAttempt, syncLinkRefs]);
+  }, [loadAttempt]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -388,15 +395,21 @@ Export regularly: use Settings → Data → Export Backup.`,
       const oldNote = prev.find(n => n.id === id);
       if (!oldNote) return prev;
       const oldTitle = oldNote.title;
+      // Match [[Title]], [[Title|alias]], [[Title#heading]], [[Title#^block]]
+      // but NOT [[TitlePrefix...]] where Title is only a prefix of the target.
+      const escapedOld = oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const renameRegex = new RegExp(`\\[\\[${escapedOld}(?=[\\]|#])`, 'g');
       const updated = prev.map(n => {
         if (n.id === id) return { ...n, title: newTitle, updatedAt: new Date().toISOString() };
-        if (n.id !== id && n.content.includes(`[[${oldTitle}]]`)) {
-          // Sanitize newTitle so embedded "]]" cannot break the wiki-link syntax.
-          const safeNewTitle = newTitle.replace(/\]\]/g, '] ]');
-          const updatedContent = n.content.replace(
-            new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'),
-            `[[${safeNewTitle}]]`
-          );
+        if (n.id !== id && renameRegex.test(n.content)) {
+          // Reset lastIndex because /g regexes retain state between test/exec calls.
+          renameRegex.lastIndex = 0;
+          // Sanitize newTitle so embedded "]]", "|" or "#" cannot break wiki-link syntax.
+          const safeNewTitle = newTitle
+            .replace(/\]\]/g, '] ]')
+            .replace(/\|/g, ' ')
+            .replace(/#/g, ' ');
+          const updatedContent = n.content.replace(renameRegex, `[[${safeNewTitle}`);
           // For native notes, re-extract links from the rewritten content —
           // this is the single source of truth. For Obsidian-imported notes we
           // preserve the existing links array (frontmatter may carry aliases
@@ -865,9 +878,12 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
       if (importedFolders) await storage.saveFolders(importedFolders);
       if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
-      // 清理孤立附件 Blob（best-effort，非关键路径）
+      // 清理孤立附件 Blob（best-effort，非关键路径）.
+      // Use withRefs (the final merged state including rescued noa-native notes),
+      // not importedNotes — otherwise attachments belonging to rescued local notes
+      // would be flagged as orphans and deleted.
       const validIds = new Set(
-        importedNotes.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
+        withRefs.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
       );
       storage.pruneOrphanedAttachments(validIds).catch((err) => {
         console.error('[Noa] Failed to prune orphaned attachments:', err);
@@ -880,16 +896,17 @@ Export regularly: use Settings → Data → Export Backup.`,
       await Promise.allSettled(savedAttachmentIds.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
       throw error;
     } finally {
-      // Release the import lock and flush any edits that queued up while
-      // we held it. We write directly to storage (bypassing the 500ms
-      // debounce) because the user made these edits up to several seconds
-      // ago and any further delay increases the risk of losing them on quit.
-      isImportingRef.current = false;
+      // Flush queued edits BEFORE releasing the lock. If we released first,
+      // a concurrent debounceSave between release and flush would schedule
+      // a fresh timer reading stale state and overwrite newer queued content.
+      // Writing directly to storage bypasses the 500ms debounce because these
+      // edits are already several seconds old and at risk on quit.
       const queued = Array.from(deferredSavesRef.current.values());
       deferredSavesRef.current.clear();
       for (const note of queued) {
         try { await storage.saveNote(note); } catch { /* best-effort */ }
       }
+      isImportingRef.current = false;
     }
   }, [syncLinkRefs, flushAllPendingSaves]);
 
@@ -915,16 +932,20 @@ Export regularly: use Settings → Data → Export Backup.`,
     pending.forEach((timer) => clearTimeout(timer));
     saveTimers.current.clear();
 
+    // Read latest state via refs — otherwise stale closures miss notes/folders
+    // the user created right before invoking disconnect.
+    const currentFolders = foldersRef.current;
+    const currentNotes = notesRef.current;
     const importedFolderIds = new Set(
-      folders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import').map((folder) => folder.id),
+      currentFolders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import').map((folder) => folder.id),
     );
-    const importedNotes = notes.filter(
+    const importedNotes = currentNotes.filter(
       (note) => (note.source ?? 'noa') === 'obsidian-import' || importedFolderIds.has(note.folder),
     );
     const results = await Promise.allSettled(
       importedNotes.map(async (note) => {
         if (note.attachments?.length) {
-          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, notes);
+          await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, currentNotes);
         }
         await storage.deleteNote(note.id);
         return note.id;
@@ -938,7 +959,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const failedCount = results.length - deletedNoteIds.length;
 
     const remainingImportedNotes = importedNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
-    const importedFolders = folders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import');
+    const importedFolders = currentFolders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import');
     const importedFolderById = new Map(importedFolders.map((folder) => [folder.id, folder]));
     const importedFolderByName = new Map(importedFolders.map((folder) => [folder.name, folder]));
 
@@ -955,15 +976,15 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
     }
 
-    const nextFolders = folders.filter((folder) => {
+    const nextFolders = currentFolders.filter((folder) => {
       const source = folder.source ?? 'noa';
       if (source !== 'obsidian-import') return true;
       return keptImportedFolderIds.has(folder.id);
     });
-    const nextNotes = notes.filter((note) => !deletedNoteIdsSet.has(note.id));
+    const nextNotes = currentNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
 
     if (deletedNoteIds.length > 0 || importedFolderIds.size > 0) {
-      const nextNotesWithRefs = syncLinkRefs(nextNotes, notes);
+      const nextNotesWithRefs = syncLinkRefs(nextNotes, currentNotes);
       setFolders(nextFolders);
       setNotes(nextNotesWithRefs);
       setRecentNoteIds((prev) => {
@@ -988,7 +1009,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       setSaveError(null);
     }
     return deletedNoteIds;
-  }, [folders, notes, syncLinkRefs]);
+  }, [syncLinkRefs]);
 
   const importBackupFromRecovery = useCallback(async (file: File) => {
     try {

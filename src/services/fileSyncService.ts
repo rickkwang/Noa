@@ -75,7 +75,16 @@ export async function mergeScannedNotes(
     SCAN_TIMEOUT_MS,
     'Vault directory scan'
   );
-  const scannedById = new Map(scanned.map((n) => [n.id, n]));
+  const scannedById = new Map<string, Note>();
+  for (const n of scanned) {
+    if (scannedById.has(n.id)) {
+      // Duplicate id on disk (e.g. a file copied outside Noa sharing another file's id).
+      // Log and keep the first occurrence so merge stays deterministic.
+      console.warn(`[Noa] Duplicate note id "${n.id}" found in vault — keeping first occurrence.`);
+      continue;
+    }
+    scannedById.set(n.id, n);
+  }
   // Update existing obsidian-import notes with fresh data from disk;
   // keep Noa-native notes untouched.
   // Drop obsidian-import notes that no longer exist on disk — they were deleted

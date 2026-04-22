@@ -1,7 +1,18 @@
 import { Note } from '../types';
 
+// Replaces fenced code blocks (``` ... ```), indented code blocks, and inline
+// code spans (`...`) with spaces of equal length. Keeping byte length stable
+// means downstream regex match indices (unused here, but useful for future
+// callers) remain valid. Links/tags inside code must not pollute refs.
+const stripCodeSpans = (content: string): string => {
+  let out = content.replace(/```[\s\S]*?```/g, (m) => ' '.repeat(m.length));
+  out = out.replace(/`[^`\n]+`/g, (m) => ' '.repeat(m.length));
+  return out;
+};
+
 export const extractLinks = (content: string): string[] => {
-  const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
+  const sanitized = stripCodeSpans(content);
+  const matches = Array.from(sanitized.matchAll(/\[\[(.*?)\]\]/g));
   return Array.from(new Set(matches.map(m => {
     const raw = m[1];
     // Strip alias: [[Note|display]] → "Note"
@@ -14,8 +25,16 @@ export const extractLinks = (content: string): string[] => {
   }).filter(Boolean)));
 };
 
+// CJK Unified Ideographs + CJK Ext-A + Hiragana + Katakana + Hangul Syllables.
+// Broader than before which only covered basic CJK (\u4e00-\u9fa5).
+const TAG_CHAR = '\\w\\u3040-\\u309f\\u30a0-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';
+const TAG_REGEX = new RegExp(
+  `(?:^|(?<=\\s))#([${TAG_CHAR}]+(?:\\/[${TAG_CHAR}]+)*)(?![${TAG_CHAR}#\\/])`,
+  'g',
+);
 export const extractTags = (content: string): string[] => {
-  const matches = Array.from(content.matchAll(/(?:^|(?<=\s))#([\w\u4e00-\u9fa5]+(?:\/[\w\u4e00-\u9fa5]+)*)(?![\w\u4e00-\u9fa5#\/])/g));
+  const sanitized = stripCodeSpans(content);
+  const matches = Array.from(sanitized.matchAll(TAG_REGEX));
   return Array.from(new Set(matches.map(m => m[1])));
 };
 

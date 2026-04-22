@@ -31,53 +31,73 @@ export function useAttachments(
     ?.map((attachment) => `${attachment.id}:${attachment.filename}:${attachment.mimeType}:${attachment.size}`)
     .join('|') ?? '';
 
-  // Load blob URLs for all attachments of the current note
+  // Load blob URLs for all attachments of the current note.
+  // Incremental: only revoke URLs whose attachment id is gone (or whose size/
+  // mimeType/filename changed — signature mismatch). URLs for unchanged ids
+  // are kept across renders so <img> tags do not flicker when a sibling
+  // attachment is added/removed, and so uploadFile's optimistic URL isn't
+  // double-revoked by this effect.
   useEffect(() => {
     let cancelled = false;
-    const newUrls = new Map<string, string>();
-    const pendingUrls: string[] = [];
-    const previousUrls = [...objectUrlsRef.current.values()];
+    const previousMap = objectUrlsRef.current;
+    const nextAttachments = note?.attachments ?? [];
+    const nextIds = new Set(nextAttachments.map((a) => a.id));
 
-    if (!note?.attachments?.length) {
-      revokeUrls(previousUrls);
-      setObjectUrls(new Map());
+    // Revoke URLs that are no longer needed (attachment removed or note cleared).
+    const toRevoke: string[] = [];
+    previousMap.forEach((url, id) => {
+      if (!nextIds.has(id)) toRevoke.push(url);
+    });
+    if (toRevoke.length > 0) revokeUrls(toRevoke);
+
+    if (nextAttachments.length === 0) {
+      if (previousMap.size > 0) setObjectUrls(new Map());
       return;
     }
 
+    // Only fetch blobs for ids we don't already have a URL for.
+    const missing = nextAttachments.filter((a) => !previousMap.has(a.id));
+    if (missing.length === 0) {
+      // Prune the map in place if anything was revoked above.
+      if (toRevoke.length > 0) {
+        const next = new Map<string, string>();
+        previousMap.forEach((url, id) => { if (nextIds.has(id)) next.set(id, url); });
+        setObjectUrls(next);
+      }
+      setAttachmentLoadError(null);
+      return;
+    }
+
+    const pendingUrls: string[] = [];
     Promise.allSettled(
-      (note.attachments ?? []).map(async (att) => {
+      missing.map(async (att) => {
         const blob = await storage.getAttachmentBlob(att.id);
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          pendingUrls.push(url);
-          if (!cancelled) {
-            newUrls.set(att.id, url);
-          }
-        } else {
-          throw new Error(`Attachment blob missing: ${att.filename}`);
-        }
+        if (!blob) throw new Error(`Attachment blob missing: ${att.filename}`);
+        const url = URL.createObjectURL(blob);
+        pendingUrls.push(url);
+        return { id: att.id, url };
       })
     ).then((results) => {
-      if (!cancelled) {
-        revokeUrls(previousUrls);
-        setObjectUrls(new Map(newUrls));
-        const failures = results.filter(r => r.status === 'rejected');
-        if (failures.length > 0) {
-          setAttachmentLoadError(`${failures.length} attachment(s) could not be loaded.`);
-        } else {
-          setAttachmentLoadError(null);
-        }
-      } else {
+      if (cancelled) {
         revokeUrls(pendingUrls);
+        return;
       }
+      setObjectUrls((prev) => {
+        const next = new Map<string, string>();
+        prev.forEach((url, id) => { if (nextIds.has(id)) next.set(id, url); });
+        results.forEach((r) => {
+          if (r.status === 'fulfilled') next.set(r.value.id, r.value.url);
+        });
+        return next;
+      });
+      const failures = results.filter((r) => r.status === 'rejected').length;
+      setAttachmentLoadError(failures > 0 ? `${failures} attachment(s) could not be loaded.` : null);
     }).catch((err) => {
       console.error('[Noa] Failed to load attachment URLs:', err);
       revokeUrls(pendingUrls);
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [note?.id, attachmentSignature, revokeUrls]);
 
   // Revoke all object URLs on unmount
