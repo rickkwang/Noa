@@ -10,3 +10,5 @@ coverage/
 !.env.example
 .alma-snapshots
 test-results/.last-run.json
+CLAUDE.md
+AGENTS.md
