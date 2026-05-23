@@ -1,10 +1,11 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
-import { forceCollide, forceCenter } from 'd3-force';
+import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
 import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
-import { buildTitleToIdsMap, computeTopologySignature } from '../lib/noteUtils';
+import { computeTopologySignature } from '../lib/noteUtils';
+import { buildGraphModel } from '../lib/graphModel';
 
 export type GraphColorMode = 'tag' | 'none';
 
@@ -26,26 +27,12 @@ interface GraphViewProps {
 const GRAPH_PERF_WARN_THRESHOLD = 200;
 const PINNED_POSITIONS_KEY = 'noa-graph-pinned-positions-v1';
 
-type PinnedPositions = Record<string, { x: number; y: number }>;
-
-function loadPinnedPositions(): PinnedPositions {
-  // Guarded for non-browser environments (SSR, tests without jsdom).
-  if (typeof localStorage === 'undefined') return {};
+function clearPinnedPositions() {
+  if (typeof localStorage === 'undefined') return;
   try {
-    const raw = localStorage.getItem(PINNED_POSITIONS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    localStorage.removeItem(PINNED_POSITIONS_KEY);
   } catch {
-    return {};
-  }
-}
-
-function savePinnedPositions(positions: PinnedPositions) {
-  try {
-    localStorage.setItem(PINNED_POSITIONS_KEY, JSON.stringify(positions));
-  } catch {
-    /* quota exceeded or privacy mode — drop silently */
+    /* privacy mode or storage unavailable */
   }
 }
 
@@ -82,16 +69,6 @@ function readLinkEndpointId(endpoint: GraphLink['source'] | GraphLink['target'])
   return (endpoint?.id as string | undefined) ?? '';
 }
 
-function readLinkEndpointTitle(
-  endpoint: GraphLink['source'] | GraphLink['target'],
-  idToTitle: Map<string, string>
-): string {
-  if (typeof endpoint === 'string' || typeof endpoint === 'number') {
-    return idToTitle.get(String(endpoint)) ?? String(endpoint);
-  }
-  return (endpoint?.name as string | undefined) ?? idToTitle.get(String(endpoint?.id ?? '')) ?? '';
-}
-
 function hasDistance(force: unknown): force is { distance: (value: number) => void } {
   return Boolean(force) && typeof (force as { distance?: unknown }).distance === 'function';
 }
@@ -99,6 +76,30 @@ function hasDistance(force: unknown): force is { distance: (value: number) => vo
 function hasStrength(force: unknown): force is { strength: (value: number) => void } {
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
+
+function hasAlphaTarget(forceGraph: ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined): forceGraph is ForceGraphMethods<GraphNodeData, GraphLinkData> & { d3AlphaTarget: (value?: number) => number | unknown } {
+  return Boolean(forceGraph) && typeof (forceGraph as { d3AlphaTarget?: unknown }).d3AlphaTarget === 'function';
+}
+
+function smoothStep(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function graphChargeStrength(nodeCount: number): number {
+  return nodeCount > 100 ? -65 : nodeCount > 30 ? -90 : -110;
+}
+
+function graphLinkDistance(nodeCount: number): number {
+  return nodeCount > 100 ? 40 : nodeCount > 30 ? 50 : 62;
+}
+
+function graphCenteringStrength(nodeCount: number): number {
+  return nodeCount > 100 ? 0.06 : nodeCount > 30 ? 0.08 : 0.1;
+}
+
+// Higher than d3-force's degree-based default; tightens link springs so flowers
+// keep a clean radial shape. Update reset-view alongside if changed.
+const LINK_STRENGTH = 1.25;
 
 // Node radius: log-scaled by degree (Obsidian-like).
 // sizeByDegree=false → fixed 5px (legacy mode).
@@ -127,12 +128,22 @@ export default function GraphView({
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
-  // Lazy init so the localStorage read happens exactly once on first render,
-  // not at module import time (import is too early for SSR/tests).
-  const pinnedPositionsRef = useRef<PinnedPositions | null>(null);
-  if (pinnedPositionsRef.current === null) {
-    pinnedPositionsRef.current = loadPinnedPositions();
-  }
+  const initialView = useRef<{ x: number; y: number; zoom: number } | null>(null);
+  const resetAnimationRef = useRef<number | null>(null);
+  // Stable world-coord center for forceX/forceY — pinned per graph, not per
+  // resize. Tracking width/height here would yank nodes toward a moving target
+  // on every sidebar drag (visible as a viewport jump when grabbing a node).
+  const physicsCenterRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    clearPinnedPositions();
+  }, []);
+
+  useEffect(() => () => {
+    if (resetAnimationRef.current != null) {
+      cancelAnimationFrame(resetAnimationRef.current);
+    }
+  }, []);
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -176,131 +187,34 @@ export default function GraphView({
   }, [topologyNotes]);
 
   const graphData = useMemo(() => {
-    const nodes: GraphNode[] = [];
-    const links: GraphLink[] = [];
-    const nodeMap = new Map<string, GraphNode>();
-    const degreeMap = new Map<string, number>();
     const topNotes = stableTopologyRef.current.notes;
-    const titleToIds = buildTitleToIdsMap(topNotes);
 
-    const pinnedMap = pinnedPositionsRef.current ?? {};
-    // Lazy prune: drop pinned entries for notes that no longer exist so
-    // localStorage doesn't grow unbounded as notes are deleted over time.
-    const liveIds = new Set(topNotes.map((n) => n.id));
-    let prunedAny = false;
-    for (const id of Object.keys(pinnedMap)) {
-      if (!liveIds.has(id)) {
-        delete pinnedMap[id];
-        prunedAny = true;
-      }
-    }
-    if (prunedAny) savePinnedPositions(pinnedMap);
-    topNotes.forEach(note => {
-      const node: GraphNode = { id: note.id, name: note.title, degree: 0, tags: note.tags ?? [] };
-      // Re-pin nodes the user has previously dragged so their layout survives reloads.
-      const pinned = pinnedMap[note.id];
-      if (pinned) {
-        node.x = pinned.x;
-        node.y = pinned.y;
-        node.fx = pinned.x;
-        node.fy = pinned.y;
-      }
-      nodes.push(node);
-      nodeMap.set(note.id, node);
-      degreeMap.set(note.id, 0);
+    const model = buildGraphModel(topNotes, {
+      hideIsolated,
+      localDepth,
+      activeNoteId,
+      tagFilter,
+      searchQuery,
     });
 
-    const edgeSet = new Set<string>();
-    const edgeMap = new Map<string, GraphLink>();
-
-    topNotes.forEach(note => {
-      const targetIds = new Set<string>();
-      // linkRefs is the resolved source of truth (maintained by syncLinkRefs).
-      // We also fall back to title resolution via `links` so edges appear
-      // instantly after a content edit, before the async linkRefs pass runs.
-      // The Set + edgeSet below dedupe the two sources so no duplicate edges
-      // can slip through, even if both contain the same target.
-      (note.linkRefs ?? []).forEach((id) => {
-        if (nodeMap.has(id)) targetIds.add(id);
-      });
-      (note.links ?? []).forEach((linkTitle) => {
-        const ids = titleToIds.get(linkTitle) ?? [];
-        ids.forEach((id) => {
-          if (nodeMap.has(id)) targetIds.add(id);
-        });
-      });
-      targetIds.forEach((targetId) => {
-        if (nodeMap.has(targetId)) {
-          const edgeKey = [note.id, targetId].sort().join('→');
-          if (!edgeSet.has(edgeKey)) {
-            edgeSet.add(edgeKey);
-            const nextLink: GraphLink = { source: note.id, target: targetId, bidirectional: false };
-            links.push(nextLink);
-            edgeMap.set(edgeKey, nextLink);
-          } else {
-            const existing = edgeMap.get(edgeKey);
-            if (existing) existing.bidirectional = true;
-          }
-          degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
-          degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
-        }
-      });
+    const nodes: GraphNode[] = model.nodes.map((modelNode) => {
+      const node: GraphNode = {
+        id: modelNode.id,
+        name: modelNode.title,
+        degree: modelNode.degree,
+        tags: modelNode.tags,
+      };
+      return node;
     });
 
-    nodes.forEach(n => {
-      n.degree = degreeMap.get(String(n.id)) ?? 0;
-    });
+    const links: GraphLink[] = model.links.map((link) => ({
+      source: link.source,
+      target: link.target,
+      bidirectional: link.bidirectional,
+    }));
 
-    // Tag filter (any-of). Empty/undefined → no restriction.
-    const activeTagSet = tagFilter && tagFilter.length > 0 ? new Set(tagFilter) : null;
-    let keepIds: Set<string> | null = null;
-    if (activeTagSet) {
-      keepIds = new Set(
-        nodes.filter((n) => (n.tags ?? []).some((t) => activeTagSet.has(t))).map((n) => String(n.id))
-      );
-    }
-
-    // Local graph: BFS from active note up to localDepth hops.
-    if (localDepth > 0 && activeNoteId && nodeMap.has(activeNoteId)) {
-      // Build adjacency from (already deduped) links.
-      const adj = new Map<string, Set<string>>();
-      for (const link of links) {
-        const s = readLinkEndpointId(link.source);
-        const t = readLinkEndpointId(link.target);
-        if (!adj.has(s)) adj.set(s, new Set());
-        if (!adj.has(t)) adj.set(t, new Set());
-        adj.get(s)!.add(t);
-        adj.get(t)!.add(s);
-      }
-      const reach = new Set<string>([activeNoteId]);
-      let frontier: string[] = [activeNoteId];
-      for (let d = 0; d < localDepth; d++) {
-        const next: string[] = [];
-        for (const id of frontier) {
-          for (const nb of adj.get(id) ?? []) {
-            if (!reach.has(nb)) {
-              reach.add(nb);
-              next.push(nb);
-            }
-          }
-        }
-        frontier = next;
-        if (frontier.length === 0) break;
-      }
-      keepIds = keepIds ? new Set([...keepIds].filter((id) => reach.has(id))) : reach;
-      // Always keep the active node itself even if tag filter would have excluded it.
-      keepIds.add(activeNoteId);
-    }
-
-    let filteredNodes = keepIds ? nodes.filter((n) => keepIds!.has(String(n.id))) : nodes;
-    if (hideIsolated) filteredNodes = filteredNodes.filter((n) => n.degree > 0);
-    const nodeSet = new Set(filteredNodes.map((n) => String(n.id)));
-    const filteredLinks = links.filter(
-      (link) => nodeSet.has(readLinkEndpointId(link.source)) && nodeSet.has(readLinkEndpointId(link.target))
-    );
-
-    return { nodes: filteredNodes, links: filteredLinks };
-  }, [hideIsolated, topologyKey, localDepth, activeNoteId, tagFilter]);
+    return { nodes, links };
+  }, [hideIsolated, topologyKey, localDepth, activeNoteId, tagFilter, searchQuery]);
 
   // Build neighbour set for hovered node
   const hoveredNeighbours = useMemo(() => {
@@ -319,33 +233,45 @@ export default function GraphView({
   useEffect(() => {
     if (!fgRef.current) return;
     const n = graphData.nodes.length;
-    const cx = width / 2;
-    const cy = height / 2;
+    if (!physicsCenterRef.current) {
+      physicsCenterRef.current = { x: width / 2, y: height / 2 };
+    }
+    const { x: cx, y: cy } = physicsCenterRef.current;
 
     // Repulsion: breathing room without scattering
     const chargeForce = fgRef.current.d3Force('charge');
     if (hasStrength(chargeForce)) {
-      chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
+      chargeForce.strength(graphChargeStrength(n));
     }
     // Link distance: short lines, tight graph
     const linkForce = fgRef.current.d3Force('link');
     if (hasDistance(linkForce)) {
-      linkForce.distance(n > 100 ? 40 : n > 30 ? 30 : 22);
+      linkForce.distance(graphLinkDistance(n));
     }
     if (hasStrength(linkForce)) {
-      linkForce.strength(0.7);
+      linkForce.strength(LINK_STRENGTH);
     }
-    // Collide: minimal padding, let link distance do the spacing
-    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0, sizeByDegree) + 3).iterations(3);
+    // Collide padding pushes nodes apart enough that labels don't crash.
+    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0, sizeByDegree) + 6).iterations(3);
     fgRef.current.d3Force('collide', collide);
-    // Center force: holds the graph together without crushing it
-    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.3));
+    // Pin centering forces to a stable world-coord captured on first layout.
+    // Container resize must NOT move these targets, or dragging post-resize will
+    // yank all nodes toward the new center (visible as a viewport jump).
+    fgRef.current.d3Force('center', forceCenter(cx, cy).strength(0.2));
+    fgRef.current.d3Force('x', forceX(cx).strength(graphCenteringStrength(n)));
+    fgRef.current.d3Force('y', forceY(cy).strength(graphCenteringStrength(n)));
     fgRef.current.d3Force('radial', null);
-  }, [graphData.nodes.length, width, height]);
+    // Reheat so updated forces actually move existing nodes; otherwise the
+    // simulation sits at alpha≈0 and parameter changes are invisible.
+    fgRef.current.d3ReheatSimulation();
+  }, [graphData.nodes.length, sizeByDegree]);
 
   useEffect(() => {
     if (!fgRef.current) return;
     initialPositions.current = new Map();
+    // Graph identity changed (topology, filter, etc.) — re-anchor physics center
+    // to the current viewport so the new layout settles centered.
+    physicsCenterRef.current = null;
     let innerTimer: ReturnType<typeof setTimeout> | undefined;
     let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
     let isActive = true;
@@ -366,6 +292,11 @@ export default function GraphView({
           if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
         });
         initialPositions.current = snapshot;
+        const center = fgRef.current?.centerAt();
+        const zoom = fgRef.current?.zoom();
+        if (center && zoom != null) {
+          initialView.current = { x: center.x, y: center.y, zoom };
+        }
       }, 1000);
     }, 600);
     return () => {
@@ -375,12 +306,6 @@ export default function GraphView({
       clearTimeout(snapshotTimer);
     };
   }, [graphData]);
-
-  const lowerSearch = searchQuery.toLowerCase().trim();
-  const idToTitle = useMemo(
-    () => new Map(graphData.nodes.map((node) => [String(node.id), node.name])),
-    [graphData.nodes]
-  );
 
   const fontFamily = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
                      settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
@@ -400,53 +325,96 @@ export default function GraphView({
     return (node.degree ?? 0) > 0 ? nodeColor : (isDark ? '#5A5648' : '#B0AA9E');
   }, [tagColorMap, nodeColor, isDark, colorMode]);
 
+  const zoomBy = useCallback((scale: number) => {
+    const graph = fgRef.current;
+    const cur = graph?.zoom();
+    if (cur == null) return;
+    graph?.resumeAnimation();
+    graph?.zoom(cur * scale, 200);
+  }, []);
+
   const zoomControls = [
-    { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 1.3, 200); } },
-    { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => { const cur = fgRef.current?.zoom(); if (cur != null) fgRef.current?.zoom(cur * 0.77, 200); } },
+    { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => zoomBy(1.3) },
+    { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => zoomBy(0.77) },
     { icon: <Maximize2 size={12} />, title: 'Reset view', action: () => {
+      clearPinnedPositions();
+      if (resetAnimationRef.current != null) {
+        cancelAnimationFrame(resetAnimationRef.current);
+        resetAnimationRef.current = null;
+      }
       const snapshot = initialPositions.current;
-      if (snapshot.size === 0) { fgRef.current?.zoomToFit(300, 24); return; }
-      const duration = 500;
+      if (snapshot.size === 0) {
+        fgRef.current?.resumeAnimation();
+        fgRef.current?.zoomToFit(300, 24);
+        return;
+      }
+
+      const duration = 720;
       const start = performance.now();
-      const from = new Map(graphData.nodes.map((n) => [String(n.id), { x: n.x ?? 0, y: n.y ?? 0 }]));
-      // Silence forces so they don't fight the animation.
+      const from = new Map(graphData.nodes.map((node) => [String(node.id), { x: node.x ?? 0, y: node.y ?? 0 }]));
       const chargeForce = fgRef.current?.d3Force('charge');
       const linkForce = fgRef.current?.d3Force('link');
+      const previousAlphaTarget = hasAlphaTarget(fgRef.current) ? fgRef.current.d3AlphaTarget() as number : null;
+      const targetView = initialView.current;
+
       if (hasStrength(chargeForce)) chargeForce.strength(0);
       if (hasStrength(linkForce)) linkForce.strength(0);
-      // Pin all nodes and reheat so simulation keeps rendering each frame.
-      graphData.nodes.forEach((n) => { n.fx = n.x; n.fy = n.y; });
+      if (hasAlphaTarget(fgRef.current)) fgRef.current.d3AlphaTarget(0);
+      graphData.nodes.forEach((node) => {
+        node.fx = node.x;
+        node.fy = node.y;
+      });
+      if (targetView) {
+        fgRef.current?.centerAt(targetView.x, targetView.y, duration);
+        fgRef.current?.zoom(targetView.zoom, duration);
+      }
+      fgRef.current?.resumeAnimation();
       fgRef.current?.d3ReheatSimulation();
+
       const tick = (now: number) => {
         const t = Math.min(1, (now - start) / duration);
-        const ease = 1 - Math.pow(1 - t, 3);
+        const ease = smoothStep(t);
         graphData.nodes.forEach((node) => {
-          const f = from.get(String(node.id));
           const target = snapshot.get(String(node.id));
-          if (!f || !target) return;
-          node.fx = f.x + (target.x - f.x) * ease;
-          node.fy = f.y + (target.y - f.y) * ease;
+          const origin = from.get(String(node.id));
+          if (!target || !origin) return;
+          const x = origin.x + (target.x - origin.x) * ease;
+          const y = origin.y + (target.y - origin.y) * ease;
+          node.x = x;
+          node.y = y;
+          node.fx = x;
+          node.fy = y;
         });
+
         if (t < 1) {
-          requestAnimationFrame(tick);
-        } else {
-          // Restore forces, unpin nodes, done.
-          const n = graphData.nodes.length;
-          if (hasStrength(chargeForce)) chargeForce.strength(n > 100 ? -130 : n > 30 ? -95 : -60);
-          if (hasStrength(linkForce)) linkForce.strength(0.7);
-          graphData.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined; });
-          // User asked to reset the layout — discard persisted pins as well so
-          // the next reload doesn't re-pin nodes to their old drag positions.
-          if (pinnedPositionsRef.current) {
-            for (const k of Object.keys(pinnedPositionsRef.current)) {
-              delete pinnedPositionsRef.current[k];
-            }
-          }
-          savePinnedPositions({});
-          fgRef.current?.zoomToFit(300, 24);
+          resetAnimationRef.current = requestAnimationFrame(tick);
+          return;
         }
+
+        graphData.nodes.forEach((node) => {
+          const target = snapshot.get(String(node.id));
+          if (!target) return;
+          node.x = target.x;
+          node.y = target.y;
+          node.vx = 0;
+          node.vy = 0;
+          node.fx = target.x;
+          node.fy = target.y;
+        });
+        const n = graphData.nodes.length;
+        if (hasStrength(chargeForce)) chargeForce.strength(graphChargeStrength(n));
+        if (hasStrength(linkForce)) linkForce.strength(LINK_STRENGTH);
+        if (hasAlphaTarget(fgRef.current) && typeof previousAlphaTarget === 'number') {
+          fgRef.current.d3AlphaTarget(previousAlphaTarget);
+        }
+        graphData.nodes.forEach((node) => {
+          node.fx = undefined;
+          node.fy = undefined;
+        });
+        fgRef.current?.resumeAnimation();
+        resetAnimationRef.current = null;
       };
-      requestAnimationFrame(tick);
+      resetAnimationRef.current = requestAnimationFrame(tick);
     }},
   ];
 
@@ -470,11 +438,6 @@ export default function GraphView({
           if (hoveredNeighbours) {
             if (!hoveredNeighbours.has(src) && !hoveredNeighbours.has(tgt)) return `${linkColor}20`;
             return link.bidirectional ? nodeColor : linkColor;
-          }
-          if (lowerSearch) {
-            const srcMatch = readLinkEndpointTitle(link.source, idToTitle).toLowerCase().includes(lowerSearch);
-            const tgtMatch = readLinkEndpointTitle(link.target, idToTitle).toLowerCase().includes(lowerSearch);
-            if (!srcMatch && !tgtMatch) return `${linkColor}30`;
           }
           return link.bidirectional ? nodeColor : linkColor;
         }}
@@ -502,27 +465,33 @@ export default function GraphView({
         onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
-        // Read from ref inside interaction predicates to avoid drag-frame re-renders.
-        enablePanInteraction={() => !isDraggingNodeRef.current}
-        enableZoomInteraction={() => !isDraggingNodeRef.current}
-        cooldownTicks={graphData.nodes.length > 200 ? 15 : graphData.nodes.length > 100 ? 20 : 30}
-        cooldownTime={graphData.nodes.length > 200 ? 800 : 1500}
-        d3AlphaDecay={graphData.nodes.length > 200 ? 0.08 : 0.04}
-        d3VelocityDecay={graphData.nodes.length > 200 ? 0.8 : 0.7}
-        onNodeDrag={() => {
+        // Disable pan whenever a node is hovered. Hover state is set before
+        // mouse-down, so by the time the user presses on a node, pan is already
+        // off and won't race with the node-drag handler. (A ref-based predicate
+        // wouldn't work — d3-zoom's filter runs on mousedown, when the drag flag
+        // is still false from the previous frame.)
+        enablePanInteraction={!hoveredNodeId}
+        enableZoomInteraction={true}
+        // Longer cooldown + slower decay let leaf nodes settle into an even radial
+        // arrangement around their hub (otherwise they freeze near their initial
+        // random positions before the simulation reaches equilibrium).
+        cooldownTicks={graphData.nodes.length > 200 ? 40 : graphData.nodes.length > 100 ? 60 : 90}
+        cooldownTime={graphData.nodes.length > 200 ? 1200 : graphData.nodes.length > 30 ? 2500 : 1500}
+        d3AlphaDecay={graphData.nodes.length > 200 ? 0.05 : 0.025}
+        d3VelocityDecay={graphData.nodes.length > 200 ? 0.65 : 0.5}
+        onNodeDrag={(node: GraphNode) => {
+          node.fx = node.x;
+          node.fy = node.y;
+          fgRef.current?.resumeAnimation();
           isDraggingNodeRef.current = true;
         }}
         onNodeDragEnd={(node: GraphNode) => {
-          // Match the recommended force-graph pattern: pin the dragged node at its drop point.
-          node.fx = node.x;
-          node.fy = node.y;
           isDraggingNodeRef.current = false;
-          // Persist so user-curated layouts survive reloads. Mutate in place
-          // to avoid O(N) spread cost on large graphs.
-          if (node.x != null && node.y != null && pinnedPositionsRef.current) {
-            pinnedPositionsRef.current[String(node.id)] = { x: node.x, y: node.y };
-            savePinnedPositions(pinnedPositionsRef.current);
-          }
+          node.vx = 0;
+          node.vy = 0;
+          node.fx = undefined;
+          node.fy = undefined;
+          fgRef.current?.resumeAnimation();
         }}
         onBackgroundClick={() => { isDraggingNodeRef.current = false; }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
@@ -533,11 +502,9 @@ export default function GraphView({
           const isHovered = hoveredNodeId === String(node.id);
           const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
 
-          const searchMatched = !lowerSearch || node.name.toLowerCase().includes(lowerSearch);
-          const dimBySearch = lowerSearch && !searchMatched;
           const dimByHover = hoveredNeighbours && !inHoverNeighbour;
 
-          const alpha = dimBySearch || dimByHover ? 0.08 : 1;
+          const alpha = dimByHover ? 0.08 : 1;
 
           ctx.save();
           ctx.globalAlpha = alpha;

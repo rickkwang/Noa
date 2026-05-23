@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTitleToIdsMap, extractLinks, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
+import { buildTitleToIdsMap, computeTopologySignature, extractLinks, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -41,6 +41,19 @@ describe('recomputeLinkRefsForNotes', () => {
     const withRefs = recomputeLinkRefsForNotes(notes);
     const a = withRefs.find((n) => n.id === 'a');
     expect(a?.linkRefs).toEqual(['b', 'd1', 'd2']);
+  });
+});
+
+describe('computeTopologySignature', () => {
+  it('changes when tags change', () => {
+    const before = computeTopologySignature([
+      note({ id: 'a', title: 'A', tags: ['work'] }),
+    ]);
+    const after = computeTopologySignature([
+      note({ id: 'a', title: 'A', tags: ['personal'] }),
+    ]);
+
+    expect(after).not.toBe(before);
   });
 });
 

@@ -2,7 +2,7 @@ import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'r
 import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from 'lucide-react';
 import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
-import { buildTitleToIdsMap } from '../lib/noteUtils';
+import { buildGraphModel } from '../lib/graphModel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { useOutgoingLinks } from '../hooks/useOutgoingLinks';
@@ -79,6 +79,13 @@ export default function RightPanel({
   });
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphDimensions, setGraphDimensions] = useState({ width: 320, height: 400 });
+  // Once the graph tab is opened, keep it mounted across tab switches so the
+  // force simulation and viewport survive — otherwise switching back replays the
+  // "explode and zoom-to-fit" animation every time.
+  const [hasVisitedGraph, setHasVisitedGraph] = useState(activeTab === 'graph');
+  useEffect(() => {
+    if (activeTab === 'graph') setHasVisitedGraph(true);
+  }, [activeTab]);
 
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
   const backlinksCount = useMemo(() => {
@@ -185,8 +192,11 @@ export default function RightPanel({
           <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} isDark={isDark} />
         </div>
       )}
-      {activeTab === 'graph' && (
-        <div key="graph" className="tab-fade-in flex-1 flex flex-col overflow-hidden p-3 gap-3">
+      {(hasVisitedGraph || activeTab === 'graph') && (
+        <div
+          className="flex-1 flex-col overflow-hidden p-3 gap-3"
+          style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
+        >
           {showGraphGuide && (
             <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#1E1E1C] text-[rgba(240,237,230,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
               <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/60'}`}>Graph Guide</div>
@@ -252,7 +262,16 @@ export default function RightPanel({
                 localDepth={localDepth} tagFilter={tagFilter} colorMode={colorMode} sizeByDegree={sizeByDegree} />
             </div>
           </div>
-          <GraphInfoPanel notes={notes} activeNoteId={activeNoteId} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+          <GraphInfoPanel
+            notes={notes}
+            activeNoteId={activeNoteId}
+            onNavigateToNoteById={onNavigateToNoteById}
+            isDark={isDark}
+            hideIsolated={hideIsolated}
+            localDepth={localDepth}
+            tagFilter={tagFilter}
+            searchQuery={deferredGraphSearch}
+          />
         </div>
       )}
     </div>
@@ -266,56 +285,30 @@ interface GraphInfoPanelProps {
   activeNoteId?: string;
   onNavigateToNoteById: (id: string) => void;
   isDark?: boolean;
+  hideIsolated?: boolean;
+  localDepth?: number;
+  tagFilter?: string[];
+  searchQuery?: string;
 }
 
-function GraphInfoPanel({ notes, activeNoteId, onNavigateToNoteById, isDark = false }: GraphInfoPanelProps) {
-  const titleToIds = useMemo(() => buildTitleToIdsMap(notes), [notes]);
-
-  const stats = useMemo(() => {
-    let totalLinks = 0;
-    let isolated = 0;
-    const degreeMap = new Map<string, number>();
-    notes.forEach(n => degreeMap.set(n.id, 0));
-    notes.forEach(note => {
-      const targets = new Set<string>();
-      (note.linkRefs ?? []).forEach(id => { if (degreeMap.has(id)) targets.add(id); });
-      (note.links ?? []).forEach(targetTitle => {
-        const ids = titleToIds.get(targetTitle) ?? [];
-        ids.forEach((id) => {
-          if (degreeMap.has(id)) targets.add(id);
-        });
-      });
-      targets.forEach(targetId => {
-        if (degreeMap.has(targetId)) {
-          totalLinks++;
-          degreeMap.set(targetId, (degreeMap.get(targetId) ?? 0) + 1);
-          degreeMap.set(note.id, (degreeMap.get(note.id) ?? 0) + 1);
-        }
-      });
-    });
-    notes.forEach(n => { if ((degreeMap.get(n.id) ?? 0) === 0) isolated++; });
-    const ranked = [...degreeMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).filter(([, d]) => d > 0);
-    return { totalNotes: notes.length, totalLinks, isolated, ranked, degreeMap };
-  }, [notes, titleToIds]);
-
-  const activeConnections = useMemo(() => {
-    if (!activeNoteId) return [];
-    const note = notes.find(n => n.id === activeNoteId);
-    if (!note) return [];
-    const out = new Set<string>();
-    const inc = new Set<string>();
-    (note.linkRefs ?? []).forEach(id => out.add(id));
-    (note.links ?? []).forEach(title => {
-      const ids = titleToIds.get(title) ?? [];
-      ids.forEach((id) => out.add(id));
-    });
-    notes.forEach(candidate => {
-      if (candidate.id === note.id) return;
-      if ((candidate.linkRefs ?? []).includes(note.id)) inc.add(candidate.id);
-      if ((candidate.links ?? []).includes(note.title)) inc.add(candidate.id);
-    });
-    return [...new Set([...out, ...inc])];
-  }, [notes, activeNoteId, titleToIds]);
+function GraphInfoPanel({
+  notes,
+  activeNoteId,
+  onNavigateToNoteById,
+  isDark = false,
+  hideIsolated = false,
+  localDepth = 0,
+  tagFilter,
+  searchQuery,
+}: GraphInfoPanelProps) {
+  const graphModel = useMemo(() => buildGraphModel(notes, {
+    activeNoteId,
+    hideIsolated,
+    localDepth,
+    tagFilter,
+    searchQuery,
+  }), [notes, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery]);
+  const { stats, activeConnections } = graphModel;
 
   return (
     <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>

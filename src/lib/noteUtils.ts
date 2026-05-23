@@ -81,7 +81,7 @@ export const recomputeLinkRefsForSubset = (notes: Note[], targetIds: Set<string>
 };
 
 export const computeTopologySignature = (
-  notes: Array<Pick<Note, 'id' | 'title' | 'links' | 'linkRefs'>>
+  notes: Array<Pick<Note, 'id' | 'title' | 'links' | 'linkRefs'> & Partial<Pick<Note, 'tags'>>>
 ): string => {
   // 32-bit FNV-1a style hash to avoid large string allocations on every render.
   let hash = 0x811c9dc5;
@@ -97,6 +97,7 @@ export const computeTopologySignature = (
     addString(note.title);
     (note.links ?? []).forEach(addString);
     (note.linkRefs ?? []).forEach(addString);
+    (note.tags ?? []).forEach(addString);
     hash ^= 0x9e3779b9;
   });
 
