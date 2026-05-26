@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   analyzeConflicts,
   applyImportStrategy,
+  buildVaultImportPayload,
   classifyFolderImportFile,
   countImportedNotes,
   getFolderImportPath,
@@ -209,5 +210,88 @@ describe('getFolderImportPath', () => {
 
   it('keeps the full subtree beneath the selected vault root', () => {
     expect(getFolderImportPath({ webkitRelativePath: 'MyVault/Projects/Noa/specs/plan.md' })).toBe('MyVault/Projects/Noa/specs');
+  });
+});
+
+describe('buildVaultImportPayload', () => {
+  it('associates referenced attachment files with the markdown note and stages blobs', async () => {
+    const pngBytes = Uint8Array.from([137, 80, 78, 71]);
+    const files = [
+      {
+        pathSegments: ['MyVault', 'Docs', 'guide.md'],
+        file: new File(['# Guide\n\n![[../assets/pixel.png]]'], 'guide.md', { type: 'text/markdown' }),
+      },
+      {
+        pathSegments: ['MyVault', 'assets', 'pixel.png'],
+        file: new File([pngBytes], 'pixel.png', { type: 'image/png' }),
+      },
+    ];
+    const folderIdByPath = new Map([
+      ['MyVault', 'root-folder'],
+      ['MyVault/Docs', 'docs-folder'],
+      ['MyVault/assets', 'assets-folder'],
+    ]);
+
+    const result = await buildVaultImportPayload(files, folderIdByPath);
+
+    expect(result.notes).toHaveLength(1);
+    expect(result.stagedAttachments).toHaveLength(1);
+    expect(result.notes[0]?.title).toBe('guide');
+    expect(result.notes[0]?.attachments).toHaveLength(1);
+    expect(result.notes[0]?.attachments?.[0]?.filename).toBe('pixel.png');
+    expect(result.notes[0]?.attachments?.[0]?.vaultPath).toBe('../assets/pixel.png');
+    expect(result.notes[0]?.folder).toBe('docs-folder');
+  });
+
+  it('preserves nested README notes and only skips root export artifacts upstream', async () => {
+    const files = [
+      {
+        pathSegments: ['MyVault', 'Docs', 'README.md'],
+        file: new File(['# Nested Readme\n\nkeep-me'], 'README.md', { type: 'text/markdown' }),
+      },
+    ];
+    const folderIdByPath = new Map([
+      ['MyVault', 'root-folder'],
+      ['MyVault/Docs', 'docs-folder'],
+    ]);
+
+    const result = await buildVaultImportPayload(files, folderIdByPath);
+
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0]?.title).toBe('README');
+    expect(result.notes[0]?.folder).toBe('docs-folder');
+    expect(result.notes[0]?.content).toContain('keep-me');
+  });
+
+  it('does not bind ambiguous basename-only references to multiple same-named attachments', async () => {
+    const pngBytes = Uint8Array.from([137, 80, 78, 71]);
+    const files = [
+      {
+        pathSegments: ['MyVault', 'Docs', 'guide.md'],
+        file: new File(['# Guide\n\n![[image.png]]'], 'guide.md', { type: 'text/markdown' }),
+      },
+      {
+        pathSegments: ['MyVault', 'assets-a', 'image.png'],
+        file: new File([pngBytes], 'image.png', { type: 'image/png' }),
+      },
+      {
+        pathSegments: ['MyVault', 'assets-b', 'image.png'],
+        file: new File([pngBytes], 'image.png', { type: 'image/png' }),
+      },
+    ];
+    const folderIdByPath = new Map([
+      ['MyVault', 'root-folder'],
+      ['MyVault/Docs', 'docs-folder'],
+      ['MyVault/assets-a', 'assets-a-folder'],
+      ['MyVault/assets-b', 'assets-b-folder'],
+    ]);
+
+    const result = await buildVaultImportPayload(files, folderIdByPath);
+    const guide = result.notes.find((note) => note.title === 'guide');
+
+    expect(guide).toBeDefined();
+    expect(guide?.attachments ?? []).toHaveLength(0);
+    expect(result.stagedAttachments).toHaveLength(2);
+    expect(result.notes.filter((note) => note.title === 'image')).toHaveLength(2);
   });
 });

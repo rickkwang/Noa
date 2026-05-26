@@ -16,9 +16,7 @@ function resolveImportTags(content: string): string[] {
   return fm.length > 0 ? fm : extractTags(content);
 }
 import {
-  blobToBase64,
   inferAttachmentMimeType,
-  canDecodeBase64,
   mergeAttachmentPayloads,
   type ImportedNote,
 } from '../lib/attachmentUtils';
@@ -37,7 +35,7 @@ import {
 } from '../lib/importUtils';
 
 export type { ConflictSummary };
-export { analyzeConflicts, applyImportStrategy, classifyFolderImportFile, countImportedNotes, getFolderImportPath, prepareImportedNotes, validateAttachmentPayloads };
+export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, classifyFolderImportFile, countImportedNotes, getFolderImportPath, prepareImportedNotes, validateAttachmentPayloads };
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
@@ -108,6 +106,27 @@ interface VaultScanFile {
   file: File;
 }
 
+interface VaultNoteDraft {
+  note: ImportedNote;
+  vaultFolderPath: string;
+}
+
+interface VaultAttachmentCandidate {
+  file: Blob;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  folderId: string;
+  vaultRelativePath: string;
+  vaultFolderPath: string;
+}
+
+interface StagedAttachment {
+  attachmentId: string;
+  blob: Blob;
+}
+
 function expandFolderHierarchy(paths: Iterable<string>): string[] {
   const allPaths = new Set<string>();
   for (const path of paths) {
@@ -142,7 +161,8 @@ async function collectVaultDirectoryEntries(
   }
 
   for await (const [entryName, handle] of dirHandle.entries()) {
-    if (entryName === '.obsidian' || entryName === '.DS_Store' || entryName === 'manifest.json' || entryName === 'README.md') continue;
+    const isVaultRootArtifact = relativeSegments.length <= 1 && (entryName === 'manifest.json' || entryName === 'README.md');
+    if (entryName === '.obsidian' || entryName === '.DS_Store' || isVaultRootArtifact) continue;
     if (handle.kind === 'directory') {
       await collectVaultDirectoryEntries(
         handle as FileSystemDirectoryHandle,
@@ -167,6 +187,193 @@ function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
     ...note,
     attachments: note.attachments?.map((attachment) => ({ ...attachment })),
   }));
+}
+
+function normalizeVaultRelativePath(pathSegments: string[]): string {
+  return sanitizeFolderPath(pathSegments.join('/'));
+}
+
+function relativePathFromFolder(folderPath: string, filePath: string): string {
+  const from = folderPath.split('/').filter(Boolean);
+  const target = filePath.split('/').filter(Boolean);
+  let commonIdx = 0;
+  while (commonIdx < from.length && commonIdx < target.length - 1 && from[commonIdx] === target[commonIdx]) {
+    commonIdx += 1;
+  }
+  const up = Array.from({ length: from.length - commonIdx }, () => '..');
+  const down = target.slice(commonIdx);
+  return [...up, ...down].join('/');
+}
+
+function attachmentReferenceCandidates(vaultFilePath: string, vaultFolderPath: string): string[] {
+  const relativeFromFolder = relativePathFromFolder(vaultFolderPath, vaultFilePath);
+  return Array.from(new Set([
+    vaultFilePath,
+    relativeFromFolder,
+    relativeFromFolder && !relativeFromFolder.startsWith('../') ? `./${relativeFromFolder}` : '',
+  ].filter(Boolean)));
+}
+
+function matchingAttachmentReference(
+  note: Pick<ImportedNote, 'links'>,
+  vaultFolderPath: string,
+  vaultFilePath: string,
+  allowBasenameMatch: boolean,
+): string | null {
+  const links = new Set(note.links ?? []);
+  const pathMatch = attachmentReferenceCandidates(vaultFilePath, vaultFolderPath).find((candidate) => links.has(candidate));
+  if (pathMatch) return pathMatch;
+  if (!allowBasenameMatch) return null;
+  const basename = vaultFilePath.split('/').pop() ?? vaultFilePath;
+  return links.has(basename) ? basename : null;
+}
+
+function createImportedAttachment(
+  noteId: string,
+  attachmentId: string,
+  filename: string,
+  mimeType: string,
+  size: number,
+  createdAt: string,
+  vaultPath: string,
+): Attachment {
+  return {
+    id: attachmentId,
+    noteId,
+    filename,
+    mimeType,
+    size,
+    createdAt,
+    vaultPath,
+  };
+}
+
+async function buildVaultImportPayload(
+  files: VaultScanFile[],
+  folderIdByPath: Map<string, string>,
+): Promise<{ notes: ImportedNote[]; stagedAttachments: StagedAttachment[] }> {
+  const noteDrafts: VaultNoteDraft[] = [];
+  const attachmentCandidates: VaultAttachmentCandidate[] = [];
+  const stagedAttachments: StagedAttachment[] = [];
+
+  for (const entry of files) {
+    if (entry.pathSegments.some((segment) => segment === '.obsidian')) continue;
+    const file = entry.file;
+    const fullFolderPath = sanitizeFolderPath(entry.pathSegments.slice(0, -1).join('/'));
+    const folderId = fullFolderPath ? folderIdByPath.get(fullFolderPath) ?? '' : '';
+    const relativeSegments = entry.pathSegments.slice(1);
+    const vaultRelativePath = normalizeVaultRelativePath(relativeSegments);
+    const vaultFolderPath = normalizeVaultRelativePath(relativeSegments.slice(0, -1));
+    const classification = classifyFolderImportFile(file);
+    if (classification.kind === 'unsupported') continue;
+
+    if (classification.kind === 'text') {
+      let content = '';
+      try {
+        content = await file.text();
+      } catch {
+        continue;
+      }
+      const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
+      noteDrafts.push({
+        vaultFolderPath,
+        note: {
+          id: crypto.randomUUID(),
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          content,
+          createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
+          updatedAt: fallbackTs,
+          folder: folderId,
+          tags: resolveImportTags(content),
+          links: extractLinks(content),
+          linkRefs: [],
+          source: 'obsidian-import',
+        },
+      });
+      continue;
+    }
+
+    attachmentCandidates.push({
+      file,
+      filename: file.name,
+      mimeType: inferAttachmentMimeType(file),
+      size: file.size,
+      createdAt: new Date(file.lastModified || Date.now()).toISOString(),
+      folderId,
+      vaultRelativePath,
+      vaultFolderPath,
+    });
+  }
+
+  const basenameCounts = attachmentCandidates.reduce((counts, candidate) => {
+    counts.set(candidate.filename, (counts.get(candidate.filename) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+
+  for (const candidate of attachmentCandidates) {
+    const matches = noteDrafts
+      .map((draft) => ({
+        draft,
+        matchedRef: matchingAttachmentReference(
+          draft.note,
+          draft.vaultFolderPath,
+          candidate.vaultRelativePath,
+          (basenameCounts.get(candidate.filename) ?? 0) === 1,
+        ),
+      }))
+      .filter((item): item is { draft: VaultNoteDraft; matchedRef: string } => Boolean(item.matchedRef));
+
+    if (matches.length === 0) {
+      const noteId = crypto.randomUUID();
+      const attachmentId = crypto.randomUUID();
+      const attachment = createImportedAttachment(
+        noteId,
+        attachmentId,
+        candidate.filename,
+        candidate.mimeType,
+        candidate.size,
+        candidate.createdAt,
+        candidate.vaultRelativePath,
+      );
+      noteDrafts.push({
+        vaultFolderPath: candidate.vaultFolderPath,
+        note: {
+          id: noteId,
+          title: candidate.filename.replace(/\.[^/.]+$/, ''),
+          content: isInlinePreviewableMimeType(candidate.mimeType)
+            ? `![[${candidate.vaultRelativePath}]]`
+            : `Attached file: ${candidate.filename}`,
+          createdAt: candidate.createdAt,
+          updatedAt: candidate.createdAt,
+          folder: candidate.folderId,
+          tags: [],
+          links: [],
+          linkRefs: [],
+          source: 'obsidian-import',
+          attachments: [attachment],
+        },
+      });
+      stagedAttachments.push({ attachmentId, blob: candidate.file });
+      continue;
+    }
+
+    for (const { draft, matchedRef } of matches) {
+      const attachmentId = crypto.randomUUID();
+      const attachment = createImportedAttachment(
+        draft.note.id,
+        attachmentId,
+        candidate.filename,
+        candidate.mimeType,
+        candidate.size,
+        candidate.createdAt,
+        matchedRef,
+      );
+      draft.note.attachments = [...(draft.note.attachments ?? []), attachment];
+      stagedAttachments.push({ attachmentId, blob: candidate.file });
+    }
+  }
+
+  return { notes: noteDrafts.map((draft) => draft.note), stagedAttachments };
 }
 
 export async function exportJsonSnapshot(notes: Note[], folders: Folder[], workspaceName: string): Promise<boolean> {
@@ -515,7 +722,6 @@ export function useDataTransfer({
       });
       const newFolders = sortedFolderPaths.map((name) => ({ id: crypto.randomUUID(), name, source: 'obsidian-import' as const }));
       const folderIdByPath = new Map(newFolders.map((folder) => [folder.name, folder.id]));
-      const newNotes: ImportedNote[] = [];
       let processedCount = 0;
 
       for (const entry of files) {
@@ -523,59 +729,9 @@ export function useDataTransfer({
         if (processedCount % 25 === 0 || processedCount === files.length) {
           setImportStatusText(`Scanning vault files (${processedCount}/${files.length})...`);
         }
-        if (entry.pathSegments.some((segment) => segment === '.obsidian')) continue;
-        const file = entry.file;
-        const folderPath = sanitizeFolderPath(entry.pathSegments.slice(0, -1).join('/'));
-        const folderId = folderPath ? folderIdByPath.get(folderPath) ?? '' : '';
-        const classification = classifyFolderImportFile(file);
-        if (classification.kind === 'unsupported') continue;
-
-        if (classification.kind === 'text') {
-          let content = '';
-          try { content = await file.text(); } catch { continue; }
-          const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
-          newNotes.push({
-            id: crypto.randomUUID(),
-            title: file.name.replace(/\.[^/.]+$/, ''),
-            content,
-            createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
-            updatedAt: fallbackTs,
-            folder: folderId,
-            tags: resolveImportTags(content),
-            links: extractLinks(content),
-            linkRefs: [],
-            source: 'obsidian-import',
-          });
-        } else {
-          const noteId = crypto.randomUUID();
-          const attachmentId = crypto.randomUUID();
-          const mimeType = inferAttachmentMimeType(file);
-          const attachment: Attachment = {
-            id: attachmentId,
-            noteId,
-            filename: file.name,
-            mimeType,
-            size: file.size,
-            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
-            vaultPath: `attachments/${noteId}/${attachmentId}-${file.name}`,
-          };
-          newNotes.push({
-            id: noteId,
-            title: file.name.replace(/\.[^/.]+$/, ''),
-            content: isInlinePreviewableMimeType(mimeType)
-              ? `![[attachments/${noteId}/${attachmentId}-${file.name}]]`
-              : `Attached file: ${file.name}`,
-            createdAt: new Date(file.lastModified || Date.now()).toISOString(),
-            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
-            folder: folderId,
-            tags: [],
-            links: [],
-            linkRefs: [],
-            source: 'obsidian-import',
-            attachments: [attachment],
-          });
-        }
       }
+
+      const { notes: newNotes, stagedAttachments } = await buildVaultImportPayload(files, folderIdByPath);
 
       const { notes: validatedNotes, report } = normalizeAndValidateNotes(newNotes);
       if (!report.ok) {
@@ -600,12 +756,33 @@ export function useDataTransfer({
         message: `Import "${workspaceLabel}" (${remappedNotes.length} note(s), ${newFolders.length} folder(s)) into current workspace?`,
         onConfirm: async () => {
           try {
+            setImportStatusText('Saving imported attachments...');
+            const attachmentResults = await Promise.allSettled(
+              stagedAttachments.map(async ({ attachmentId, blob }) => {
+                await storage.saveAttachmentBlob(attachmentId, blob);
+              })
+            );
+            if (attachmentResults.some((result) => result.status === 'rejected')) {
+              await Promise.allSettled(
+                stagedAttachments.map(async ({ attachmentId }) => {
+                  await storage.deleteAttachmentBlob(attachmentId);
+                })
+              );
+              notify({ type: 'error', text: 'Failed to save one or more imported attachments.' });
+              return;
+            }
+
             await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
             notify({
               type: 'success',
-              text: `Imported ${remappedNotes.length} note(s) from "${workspaceLabel}" into your workspace.`,
+              text: `Imported ${remappedNotes.length} note(s) from "${workspaceLabel}" into your workspace${stagedAttachments.length > 0 ? ` with ${stagedAttachments.length} attachment(s)` : ''}.`,
             });
           } catch (error) {
+            await Promise.allSettled(
+              stagedAttachments.map(async ({ attachmentId }) => {
+                await storage.deleteAttachmentBlob(attachmentId);
+              })
+            );
             const appError = fromStorageError(error);
             recordErrorSnapshot({
               at: new Date().toISOString(),
@@ -637,9 +814,7 @@ export function useDataTransfer({
     (files: FileList) => {
       const doImport = async () => {
         setImportStatusText('Scanning folder files...');
-        const newNotes: Note[] = [];
         const newFolders: Folder[] = [];
-        const stagedAttachments: Array<{ attachmentId: string; blob: Blob }> = [];
         let newWorkspaceName = 'Imported Folder';
 
         if (files[0]?.webkitRelativePath) {
@@ -668,51 +843,7 @@ export function useDataTransfer({
           return currentFolder;
         };
 
-        const addTextNote = async (file: File, folderId: string) => {
-          const content = await file.text();
-          const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
-          newNotes.push({
-            id: crypto.randomUUID(),
-            title: file.name.replace(/\.[^/.]+$/, ''),
-            content,
-            createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
-            updatedAt: fallbackTs,
-            folder: folderId,
-            tags: resolveImportTags(content),
-            links: extractLinks(content),
-            linkRefs: [],
-            source: 'obsidian-import',
-          });
-        };
-
-        const addAttachmentNote = (file: File, folderId: string) => {
-          const noteId = crypto.randomUUID();
-          const attachmentId = crypto.randomUUID();
-          const mimeType = inferAttachmentMimeType(file);
-          const attachment: Attachment = {
-            id: attachmentId,
-            noteId,
-            filename: file.name,
-            mimeType,
-            size: file.size,
-            createdAt: new Date().toISOString(),
-            vaultPath: `attachments/${noteId}/${attachmentId}-${file.name}`,
-          };
-          newNotes.push({
-            id: noteId,
-            title: file.name.replace(/\.[^/.]+$/, ''),
-            content: isInlinePreviewableMimeType(mimeType) ? `![[attachments/${noteId}/${attachmentId}-${file.name}]]` : `Attached file: ${file.name}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date(file.lastModified || Date.now()).toISOString(),
-            folder: folderId,
-            tags: [],
-            links: [],
-            linkRefs: [],
-            source: 'obsidian-import',
-            attachments: [attachment],
-          });
-          stagedAttachments.push({ attachmentId, blob: file });
-        };
+        const scannedFiles: VaultScanFile[] = [];
 
         for (let i = 0; i < files.length; i += 1) {
           const file = files[i];
@@ -723,13 +854,15 @@ export function useDataTransfer({
           if (classification.kind === 'unsupported') continue;
 
           const folderPath = getFolderImportPath(file);
-          const folderId = folderPath ? (getOrCreateFolder(folderPath)?.id ?? '') : '';
-          if (classification.kind === 'text') {
-            await addTextNote(file, folderId);
-          } else {
-            addAttachmentNote(file, folderId);
-          }
+          if (folderPath) getOrCreateFolder(folderPath);
+          scannedFiles.push({
+            pathSegments: (file.webkitRelativePath || file.name).split('/').filter(Boolean),
+            file,
+          });
         }
+
+        const folderIdByPath = new Map(newFolders.map((folder) => [folder.name, folder.id]));
+        const { notes: newNotes, stagedAttachments } = await buildVaultImportPayload(scannedFiles, folderIdByPath);
 
         if (newNotes.length === 0) {
           const appError = fromImportError('import_integrity_failed', 'No supported files found.');
@@ -1064,7 +1197,7 @@ export function useDataTransfer({
       await onConnectFolder();
       notify({
         type: 'success',
-        text: 'Connected to local folder. Notes will sync automatically.',
+        text: 'Connected to local folder. Imported vault notes will sync automatically.',
       });
     } catch (error) {
       const appError = fromSyncError(error);

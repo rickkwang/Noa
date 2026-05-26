@@ -75,6 +75,61 @@ async function waitForFoldersPersisted(page: import('@playwright/test').Page, ex
   );
 }
 
+async function waitForAttachmentPersisted(page: import('@playwright/test').Page, filename: string) {
+  await page.waitForFunction(
+    async (target) => {
+      const noteRequest = indexedDB.open('redaction-diary-notes-db');
+      const noteDb = await new Promise<IDBDatabase | null>((resolve) => {
+        noteRequest.onsuccess = () => resolve(noteRequest.result);
+        noteRequest.onerror = () => resolve(null);
+      });
+      if (!noteDb) return false;
+
+      const notes = await new Promise<any[]>((resolve) => {
+        const tx = noteDb.transaction('notes', 'readonly');
+        const store = tx.objectStore('notes');
+        const out: any[] = [];
+        const cursorReq = store.openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (!cursor) {
+            resolve(out);
+            return;
+          }
+          out.push(cursor.value);
+          cursor.continue();
+        };
+        cursorReq.onerror = () => resolve([]);
+      });
+      noteDb.close();
+
+      const attachment = notes
+        .flatMap((note) => note?.attachments ?? [])
+        .find((candidate) => candidate && candidate.filename === target);
+      if (!attachment?.id) return false;
+
+      const blobRequest = indexedDB.open('redaction-diary-attachments-db');
+      const blobDb = await new Promise<IDBDatabase | null>((resolve) => {
+        blobRequest.onsuccess = () => resolve(blobRequest.result);
+        blobRequest.onerror = () => resolve(null);
+      });
+      if (!blobDb) return false;
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        const tx = blobDb.transaction('attachments', 'readonly');
+        const store = tx.objectStore('attachments');
+        const getReq = store.get(`blob:${attachment.id}`);
+        getReq.onsuccess = () => resolve((getReq.result as Blob | null) ?? null);
+        getReq.onerror = () => resolve(null);
+      });
+      blobDb.close();
+      return blob instanceof Blob && blob.size > 0;
+    },
+    filename,
+    { timeout: 10_000 },
+  );
+}
+
 async function installMockDirectoryPicker(
   page: import('@playwright/test').Page,
 ) {
@@ -88,18 +143,22 @@ async function installMockDirectoryPicker(
       kind = 'file' as const;
       name: string;
       content = '';
+      mimeType = '';
+      binaryBase64: string | null = null;
 
-      constructor(name: string) {
+      constructor(name: string, mimeType = '') {
         this.name = name;
+        this.mimeType = mimeType;
       }
 
       async getFile() {
-        return {
-          name: this.name,
-          text: async () => this.content,
+        const binary = this.binaryBase64
+          ? Uint8Array.from(atob(this.binaryBase64), (char) => char.charCodeAt(0))
+          : this.content;
+        return new File([binary], this.name, {
           lastModified: Date.now(),
-          type: '',
-        };
+          type: this.mimeType,
+        });
       }
 
       async createWritable() {
@@ -109,9 +168,16 @@ async function installMockDirectoryPicker(
         }
         const fileHandle = this;
         return {
-          async write(value: string) {
+          async write(value: string | Blob) {
             await delay(40);
+            if (value instanceof Blob) {
+              fileHandle.mimeType = value.type;
+              fileHandle.content = await value.text();
+              fileHandle.binaryBase64 = btoa(String.fromCharCode(...new Uint8Array(await value.arrayBuffer())));
+              return;
+            }
             fileHandle.content = value;
+            fileHandle.binaryBase64 = null;
           },
           async close() {
             await delay(20);
@@ -172,7 +238,13 @@ async function installMockDirectoryPicker(
       }
     }
 
-    const seedFromPath = (root: MockDirectoryHandle, path: string, content?: string) => {
+    const seedFromPath = (
+      root: MockDirectoryHandle,
+      path: string,
+      content?: string,
+      base64?: string,
+      type?: string,
+    ) => {
       const parts = path.split('/').filter(Boolean);
       if (parts.length === 0) return;
       let current: MockDirectoryHandle = root;
@@ -188,9 +260,12 @@ async function installMockDirectoryPicker(
         current = next;
       }
       const fileName = parts[parts.length - 1];
-      const file = new MockFileHandle(fileName);
+      const file = new MockFileHandle(fileName, type ?? '');
       if (typeof content === 'string') {
         file['content'] = content;
+      }
+      if (typeof base64 === 'string') {
+        file['binaryBase64'] = base64;
       }
       current.entriesMap.set(fileName, file);
     };
@@ -199,7 +274,7 @@ async function installMockDirectoryPicker(
       await delay(30);
       (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = true;
       const seed = (window as typeof window & {
-        __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
+        __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string; base64?: string; type?: string }> };
       }).__pickerSeed;
       const root = new MockDirectoryHandle(seed?.rootName || 'mock-vault');
       if (seed) {
@@ -217,7 +292,7 @@ async function installMockDirectoryPicker(
             current = next;
           }
         });
-        (seed.files ?? []).forEach(({ path, content }) => seedFromPath(root, path, content));
+        (seed.files ?? []).forEach(({ path, content, base64, type }) => seedFromPath(root, path, content, base64, type));
       }
       return root as unknown as FileSystemDirectoryHandle;
     };
@@ -396,6 +471,78 @@ test('vault import preserves nested folder structure', async ({ page }) => {
 
   const fileTree = page.getByTestId('sidebar-file-tree');
   await expect(fileTree.getByText(`Projects-${vaultSuffix}`, { exact: true }).first()).toBeVisible();
+});
+
+test('vault import keeps nested README notes and restores referenced image attachments', async ({ page }) => {
+  const vaultSuffix = `vault-attachments-${Date.now()}`;
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Data' }).click();
+  await page.evaluate((suffix) => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string; base64?: string; type?: string }> };
+    }).__pickerSeed = {
+      rootName: `Vault-${suffix}`,
+      dirs: [
+        `Vault-${suffix}/Docs`,
+        `Vault-${suffix}/assets`,
+      ],
+      files: [
+        { path: `Vault-${suffix}/README.md`, content: '# Export Readme\n\nShould stay skipped.' },
+        { path: `Vault-${suffix}/Docs/README.md`, content: '# Nested Readme\n\nnested-readme-marker' },
+        { path: `Vault-${suffix}/Docs/guide.md`, content: '# Guide\n\n![[../assets/pixel.png]]' },
+        {
+          path: `Vault-${suffix}/assets/pixel.png`,
+          base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wf5K5sAAAAASUVORK5CYII=',
+          type: 'image/png',
+        },
+      ],
+    };
+  }, vaultSuffix);
+
+  await page.getByRole('button', { name: 'Import Vault Folder' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm' }).click();
+
+  await waitForMarkerPersisted(page, 'nested-readme-marker');
+  await waitForAttachmentPersisted(page, 'pixel.png');
+  await page.waitForFunction(async () => {
+    const request = indexedDB.open('redaction-diary-notes-db');
+    const db = await new Promise<IDBDatabase | null>((resolve) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    });
+    if (!db) return false;
+
+    const notes = await new Promise<any[]>((resolve) => {
+      const tx = db.transaction('notes', 'readonly');
+      const store = tx.objectStore('notes');
+      const out: any[] = [];
+      const cursorReq = store.openCursor();
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result;
+        if (!cursor) {
+          resolve(out);
+          return;
+        }
+        out.push(cursor.value);
+        cursor.continue();
+      };
+      cursorReq.onerror = () => resolve([]);
+    });
+    db.close();
+
+    return notes.some((note) =>
+      note?.title === 'guide'
+      && typeof note?.content === 'string'
+      && note.content.includes('![[../assets/pixel.png]]')
+      && Array.isArray(note?.attachments)
+      && note.attachments.some((attachment: { filename?: string; vaultPath?: string }) =>
+        attachment.filename === 'pixel.png' && attachment.vaultPath === '../assets/pixel.png')
+    );
+  }, { timeout: 10_000 });
 });
 
 test('multi-tab content persists after closing and reopening tabs', async ({ page }) => {

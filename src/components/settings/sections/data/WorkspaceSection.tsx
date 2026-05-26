@@ -81,7 +81,7 @@ export default function WorkspaceSection({
       {isFileSystemSupported && (
         <SettingItem
           label="Vault Folder"
-          description={fsHandle ? `Syncing to: ${fsHandle.name} (${syncStatusLabel})` : 'Pick a local folder to mirror notes as vault-style .md files.'}
+          description={fsHandle ? `Syncing imported vault notes to: ${fsHandle.name} (${syncStatusLabel})` : 'Connect an existing vault-style folder to import and sync imported notes.'}
           stacked
         >
           <div className="space-y-2">
@@ -122,6 +122,9 @@ export default function WorkspaceSection({
             )}
             <p className="text-xs text-[#2D2D2D]/60">
               Sync status: {syncStatusLabel}. If conflicts happen, use import strategy or manual review before overwrite.
+            </p>
+            <p className="text-xs text-[#2D2D2D]/60">
+              Connected folders sync imported vault notes. Noa-local notes stay local unless you migrate them into the vault area.
             </p>
             <p className="text-xs text-[#2D2D2D]/60">
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
