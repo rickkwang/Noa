@@ -615,7 +615,7 @@ export default function Sidebar({
         />
       )}
 
-      <TagBrowser notes={notes} onSearchTag={onSearchTag} />
+      <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} />
     </div>
   );
 }

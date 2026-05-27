@@ -13,10 +13,24 @@ interface TagNode {
 interface TagBrowserProps {
   notes: Note[];
   onSearchTag?: (tag: string) => void;
+  searchQuery?: string;
 }
 
-export function TagBrowser({ notes, onSearchTag }: TagBrowserProps) {
+export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps) {
   const [isTagsOpen, setIsTagsOpen] = useState(false);
+
+  // Mirror search.ts's tag-extraction regex so the active-state highlight stays
+  // in sync with what the search engine actually filters on.
+  const activeTags = useMemo(() => {
+    const set = new Set<string>();
+    if (!searchQuery) return set;
+    const re = /tag:(#?[\w一-龥/]+)/gi;
+    let m;
+    while ((m = re.exec(searchQuery)) !== null) {
+      set.add(m[1].replace(/^#/, '').toLowerCase());
+    }
+    return set;
+  }, [searchQuery]);
   const { size: tagsHeight, setIsDragging } = useResizeDrag(
     250, 100, 600,
     (e: MouseEvent) => Math.min(window.innerHeight * 0.8, window.innerHeight - e.clientY),
@@ -70,10 +84,11 @@ export function TagBrowser({ notes, onSearchTag }: TagBrowserProps) {
   const renderTagNode = (node: TagNode, depth: number): React.ReactNode => {
     const hasChildren = node.children.size > 0;
     const isExpanded = expandedTagNodes.has(node.fullPath);
+    const isActive = activeTags.has(node.fullPath.toLowerCase());
     return (
       <div key={node.fullPath}>
         <div
-          className="flex items-center gap-1 px-1 py-0.5 hover:bg-[#DCD9CE]/50 group"
+          className={`flex items-center gap-1 px-1 py-0.5 group ${isActive ? 'bg-[#DCD9CE]' : 'hover:bg-[#DCD9CE]/50'}`}
           style={{ paddingLeft: `${depth * 12 + 4}px` }}
         >
           {hasChildren ? (
@@ -88,7 +103,7 @@ export function TagBrowser({ notes, onSearchTag }: TagBrowserProps) {
           )}
           <button
             onClick={() => onSearchTag && onSearchTag(node.fullPath)}
-            className="flex-1 text-left text-xs font-redaction text-[#2D2D2D] hover:text-[#B89B5E] active:opacity-70 truncate flex items-center gap-0.5"
+            className={`flex-1 text-left text-xs font-redaction active:opacity-70 truncate flex items-center gap-0.5 ${isActive ? 'text-[#B89B5E] font-bold' : 'text-[#2D2D2D] hover:text-[#B89B5E]'}`}
           >
             <span className="opacity-40">#</span>{node.name}
           </button>
