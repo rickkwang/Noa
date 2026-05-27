@@ -115,7 +115,6 @@ export function useSidebarDrag({
   }, [draggedItem]);
 
   return {
-    draggedItem,
     dropTargetId,
     handleDropItem,
     handleDragStartItem,
