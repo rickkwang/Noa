@@ -17,7 +17,6 @@ export function useSidebarDrag({
 }: UseSidebarDragOptions) {
   const [draggedItem, setDraggedItem] = useState<{ kind: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
 
   const resolveNoteSource = useCallback((note: Note) => note.source ?? 'noa', []);
   const resolveFolderSource = useCallback((folder: Folder) => folder.source ?? 'noa', []);
@@ -66,7 +65,6 @@ export function useSidebarDrag({
     const item = parseDraggedItem(e);
     setDraggedItem(null);
     setDropTargetId(null);
-    setDropPosition(null);
     if (!item) return;
 
     if (item.kind === 'note') {
@@ -99,7 +97,6 @@ export function useSidebarDrag({
   const handleDragEndItem = useCallback(() => {
     setDraggedItem(null);
     setDropTargetId(null);
-    setDropPosition(null);
   }, []);
 
   const handleDragOverTarget = useCallback((targetId: string | null) => (e: React.DragEvent) => {
@@ -107,8 +104,6 @@ export function useSidebarDrag({
     e.stopPropagation();
     if (!draggedItem) return;
     setDropTargetId(targetId);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setDropPosition(e.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom');
     e.dataTransfer.dropEffect = 'move';
   }, [draggedItem]);
 
@@ -122,7 +117,6 @@ export function useSidebarDrag({
   return {
     draggedItem,
     dropTargetId,
-    dropPosition,
     handleDropItem,
     handleDragStartItem,
     handleDragEndItem,

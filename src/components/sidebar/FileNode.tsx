@@ -24,7 +24,6 @@ export interface FileNodeProps {
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   isDropTarget?: boolean;
-  dropPosition?: 'top' | 'bottom' | null;
   addButtonProps?: Record<string, unknown>;
   depth?: number;
 }
@@ -74,7 +73,7 @@ export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText, iconColor,
   onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver,
-  onDrop, onDragEnd, isDropTarget, dropPosition, addButtonProps = {}, depth = 0,
+  onDrop, onDragEnd, isDropTarget, addButtonProps = {}, depth = 0,
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);

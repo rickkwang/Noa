@@ -80,9 +80,7 @@ export default function Sidebar({
   const searchResults = useSidebarSearch({ notes, folders, searchQuery, caseSensitive, fuzzySearch });
 
   const {
-    draggedItem,
     dropTargetId,
-    dropPosition,
     handleDropItem,
     handleDragStartItem,
     handleDragEndItem,
@@ -188,7 +186,6 @@ export default function Sidebar({
           onDrop={(e) => handleDropItem(node.folder.id, e)}
           onDragEnd={handleDragEndItem}
           isDropTarget={dropTargetId === node.folder.id}
-          dropPosition={dropTargetId === node.folder.id ? dropPosition : null}
           addButtonProps={{ 'data-template-btn': node.folder.id }}
           onRename={(newName: string) => renameFolderWithValidation(node.folder.id, parentPath ? `${parentPath}/${newName}` : newName)}
           onDelete={() => setPendingDelete({ type: 'folder', id: node.folder.id, name: node.folder.name })}
@@ -223,11 +220,12 @@ export default function Sidebar({
               depth={depth + 1}
             />
           ))}
+          {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
           {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction text-sm" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
-  }, [dropPosition, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameNote, onSelectNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId, sortNotes]);
+  }, [dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, notesByFolderId, onCreateFolder, onCreateNote, onDeleteFolder, onRenameNote, onSelectNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId, sortNotes]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -257,7 +255,11 @@ export default function Sidebar({
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    if (isFileImportDrag(e)) {
+    if (!isFileImportDrag(e)) return;
+    // dragleave fires every time the cursor crosses an internal child boundary.
+    // Only clear the overlay when the cursor actually exits the sidebar
+    // (relatedTarget is null when leaving the window entirely; contains(null) is false).
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setIsDragOver(false);
     }
   };
