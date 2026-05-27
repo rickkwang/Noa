@@ -479,10 +479,10 @@ export default function Sidebar({
                     <button
                       onClick={onClearSearch}
                       className="text-[#2D2D2D]/40 hover:text-[#B89B5E] active:opacity-70 flex items-center gap-1"
-                      title="Clear search"
+                      title="Close search"
                     >
                       <X size={11} />
-                      <span className="text-[10px]">Clear</span>
+                      <span className="text-[10px]">Close</span>
                     </button>
                   )}
                 </div>
