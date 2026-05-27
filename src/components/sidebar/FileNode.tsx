@@ -123,19 +123,13 @@ export const FileNode = React.memo(({
 
   return (
     <div className="font-redaction">
-      {isDropTarget && dropPosition === 'top' && (
-        <div
-          className="h-1 bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
-        />
-      )}
       <div
         className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
           isDropTarget
             ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
             : isSelected
               ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
-              : (isActive ? 'bg-[#EAE8E0]' : 'hover:bg-[#DCD9CE]/50')
+              : (isActive ? 'bg-[#DCD9CE]' : 'hover:bg-[#DCD9CE]/50')
         }`}
         style={{ paddingLeft: `${depth === 0 ? 4 : 2}px` }}
         draggable={draggable}
@@ -207,12 +201,6 @@ export const FileNode = React.memo(({
           )}
         </div>
       </div>
-      {isDropTarget && dropPosition === 'bottom' && (
-        <div
-          className="h-1 bg-[#B89B5E] ml-2"
-          style={{ marginLeft: `${depth === 0 ? 4 : 2}px` }}
-        />
-      )}
       {isEditing && renameError && (
         <div className="px-2 pt-1 text-[10px] text-red-600 font-redaction leading-snug">
           {renameError}

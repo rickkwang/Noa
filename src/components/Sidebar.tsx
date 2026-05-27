@@ -223,7 +223,7 @@ export default function Sidebar({
               depth={depth + 1}
             />
           ))}
-          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction text-sm" style={{ paddingLeft: `${(depth + 2) * 12}px` }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction text-sm" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -243,7 +243,10 @@ export default function Sidebar({
 
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const isFileImportDrag = (e: React.DragEvent) => e.dataTransfer.files.length > 0;
+  // During dragenter/dragover/dragleave, browsers put dataTransfer in "protected mode"
+  // where files is an empty FileList — only `types` reliably exposes that files are involved.
+  // (files becomes populated only at drop time.)
+  const isFileImportDrag = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
