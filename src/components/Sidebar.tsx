@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { ChevronRight, ChevronDown, FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices } from 'lucide-react';
+import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from 'lucide-react';
 import { Note, Folder as FolderType } from '../types';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { classifyFolderImportFile } from '../lib/importUtils';
@@ -56,6 +56,7 @@ interface SidebarProps {
   onOpenDailyNote?: (targetDate?: string) => void;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
+  onClearSearch?: () => void;
   caseSensitive?: boolean;
   fuzzySearch?: boolean;
   dateFormat?: string;
@@ -66,7 +67,7 @@ export default function Sidebar({
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onUpdateNoteContent, onOpenDailyNote,
-  onImportNote, onSearchTag, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
+  onImportNote, onSearchTag, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
@@ -472,8 +473,18 @@ export default function Sidebar({
         <div className="py-2">
           {searchQuery ? (
               <div className="px-2">
-                <div className="text-xs text-[#2D2D2D]/50 mb-2 px-2 font-redaction uppercase tracking-wider">
-                  Search Results ({searchResults.length})
+                <div className="text-xs text-[#2D2D2D]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
+                  <span>Search Results ({searchResults.length})</span>
+                  {onClearSearch && (
+                    <button
+                      onClick={onClearSearch}
+                      className="text-[#2D2D2D]/40 hover:text-[#B89B5E] active:opacity-70 flex items-center gap-1"
+                      title="Clear search"
+                    >
+                      <X size={11} />
+                      <span className="text-[10px]">Clear</span>
+                    </button>
+                  )}
                 </div>
                 {searchResults.map(result => (
                   <div 
@@ -605,15 +616,14 @@ export default function Sidebar({
           </div>
         </div>
 
-      {/* Calendar Panel */}
-      {!searchQuery && (
-        <CalendarPanel
-          notes={notes}
-          activeNoteId={activeNoteId}
-          onSelectDate={(dateStr) => onOpenDailyNote?.(dateStr)}
-          dateFormat={dateFormat}
-        />
-      )}
+      {/* Calendar Panel — always mounted so open/closed and viewMonth state survive
+          search toggles (otherwise it remounts on every searchQuery flip). */}
+      <CalendarPanel
+        notes={notes}
+        activeNoteId={activeNoteId}
+        onSelectDate={(dateStr) => onOpenDailyNote?.(dateStr)}
+        dateFormat={dateFormat}
+      />
 
       <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} />
     </div>

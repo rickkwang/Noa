@@ -573,6 +573,7 @@ export default function App() {
                 onOpenDailyNote={handleOpenDailyNote}
                 onImportNote={handleImportNote}
                 onSearchTag={(tag) => setSearchQuery(`tag:${tag}`)}
+                onClearSearch={() => setSearchQuery('')}
                 caseSensitive={settings.search.caseSensitive}
                 fuzzySearch={settings.search.fuzzySearch}
                 dateFormat={settings.dailyNotes.dateFormat}
