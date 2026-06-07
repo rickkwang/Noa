@@ -377,7 +377,7 @@ Footnote ref[^1]
   await page.getByTitle('Preview Only').click();
 
   const preview = page.locator('.prose').last();
-  await expect(preview.getByRole('heading', { name: marker })).toBeVisible();
+  await expect(preview.getByText(marker, { exact: true })).toBeVisible();
   await expect(preview.getByText('@anthropic-ai/sandbox-runtime', { exact: true })).toBeVisible();
   await expect(preview.getByRole('columnheader', { name: 'Col A' })).toBeVisible();
   await expect(preview.getByRole('columnheader', { name: 'Col B' })).toBeVisible();
