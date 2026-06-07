@@ -103,3 +103,14 @@ export const computeTopologySignature = (
 
   return String(hash >>> 0);
 };
+
+// Notes that link INTO `activeNote` — via resolved linkRefs (preferred) or a
+// title match in raw links (legacy fallback). Single source of truth shared by
+// the Backlinks panel and its tab badge so the count never drifts from the list.
+export const getBacklinks = (activeNote: Note | undefined, notes: Note[]): Note[] => {
+  if (!activeNote) return [];
+  return notes.filter(n =>
+    n.id !== activeNote.id &&
+    ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
+  );
+};

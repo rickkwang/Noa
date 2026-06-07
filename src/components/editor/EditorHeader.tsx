@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, X, Eye, Edit2, Columns, Plus, Clock, Download } from 'lucide-react';
+import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from 'lucide-react';
 import { Note } from '../../types';
 
 function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void }) {
@@ -145,6 +145,11 @@ export function EditorHeader({
       setHasOverflowRight(maxScrollLeft > 1 && el.scrollLeft < maxScrollLeft - 1);
     };
 
+    // Keep the active tab in view when it changes (e.g. activated via keyboard or
+    // sidebar while scrolled off-screen), so it never sits clipped under a fade.
+    const active = el.querySelector<HTMLElement>('[data-active-tab="true"]');
+    active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+
     syncOverflow();
     el.addEventListener('scroll', syncOverflow, { passive: true });
     const observer = new ResizeObserver(syncOverflow);
@@ -161,14 +166,14 @@ export function EditorHeader({
   return (
     <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#F0EDE6]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
       {/* Tab strip */}
-      <div className="relative min-w-0 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="relative min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {hasOverflowLeft && (
           <div className={`pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r z-10 ${isDark ? 'from-[#1E1E1C]' : 'from-[#DCD9CE]'} to-transparent`} />
         )}
         {hasOverflowRight && (
           <div className={`pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l z-10 ${isDark ? 'from-[#1E1E1C]' : 'from-[#DCD9CE]'} to-transparent`} />
         )}
-        <div ref={tabStripRef} className="flex items-end pt-1">
+        <div ref={tabStripRef} className="flex items-end pt-1 w-full">
           {tabs && tabs.length > 0 ? (
             tabs.map((tab, idx) => {
               const isActiveTab = tab.id === note.id;
@@ -177,12 +182,13 @@ export function EditorHeader({
               const showDivider = idx > 0 && !isActiveTab && !prevIsActive;
               return (
                 <React.Fragment key={tab.id}>
-                  {showDivider && (
-                    <div className={`self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#F0EDE6]/15' : 'bg-[#2D2D2D]/20'}`} />
+                  {idx > 0 && (
+                    <div className={`self-center h-3.5 w-px shrink-0 ${showDivider ? (isDark ? 'bg-[#F0EDE6]/15' : 'bg-[#2D2D2D]/20') : 'bg-transparent'}`} />
                   )}
                   <div
+                    data-active-tab={isActiveTab}
                     onClick={() => onTabChange?.(tab.id)}
-                    className={`group flex items-center gap-1.5 px-3 cursor-pointer shrink-0 transition-colors relative w-36 ${
+                    className={`group flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
                       isActiveTab
                         ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#F0EDE6]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
                         : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F0EDE6]/40 hover:text-[#F0EDE6]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
@@ -224,7 +230,7 @@ export function EditorHeader({
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
-                      className={`shrink-0 opacity-0 group-hover:opacity-100 transition-all active:opacity-70 ${isDark ? 'text-[#F0EDE6]/30 hover:text-[#D97757]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
+                      className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity active:opacity-70 ${isDark ? 'text-[#F0EDE6]/30 hover:text-[#D97757]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
                     >
                       <X size={11} />
                     </button>
@@ -291,21 +297,21 @@ export function EditorHeader({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setViewMode('edit')}
-            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Edit Only"
           >
             <Edit2 size={14} />
           </button>
           <button
             onClick={() => setViewMode('split')}
-            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Split View"
           >
             <Columns size={14} />
           </button>
           <button
             onClick={() => setViewMode('preview')}
-            className={`p-1.5 active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
             title="Preview Only"
           >
             <Eye size={14} />
@@ -320,10 +326,10 @@ export function EditorHeader({
           {onToggleHistory && (
             <button
               onClick={onToggleHistory}
-              className={`p-1.5 active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+              className={`p-1.5 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
               title="Version History"
             >
-              <Clock size={14} />
+              <History size={14} />
             </button>
           )}
         </div>

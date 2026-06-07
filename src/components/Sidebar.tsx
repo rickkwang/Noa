@@ -222,7 +222,7 @@ export default function Sidebar({
             />
           ))}
           {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
-          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction text-sm" style={{ paddingLeft: '22px' }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );

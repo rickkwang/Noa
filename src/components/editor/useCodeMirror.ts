@@ -8,6 +8,7 @@ import { tags } from '@lezer/highlight';
 import { Note } from '../../types';
 import { buildMinimalReplaceChange } from './contentSync';
 import { hideTaskMarkers } from './hideTaskMarkers';
+import { codeDecorations } from './codeDecorations';
 
 // Annotation to mark external content syncs so history does not merge them
 // into the user's local undo stack.
@@ -26,15 +27,19 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
   return true;
 }
 
-// Warm dark palette: bg #262624, text #F0EDE6, accent #D97757
+// Warm dark palette: bg #262624, text #D7D2C5, accent #D97757
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#F0EDE6' },
-  '.cm-content': { caretColor: '#F0EDE6', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#D7D2C5' },
+  '.cm-content': { caretColor: '#D7D2C5', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
   '.cm-line': { padding: '0' },
-  '.cm-cursor': { borderLeftColor: '#F0EDE6' },
+  '.cm-code-line': { background: 'rgba(192,128,107,0.06)', borderLeft: '2px solid rgba(217,119,87,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
+  '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
+  '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
+  '.cm-inline-code': { background: 'rgba(192,128,107,0.07)', borderRadius: '4px', padding: '0.05em 0.3em' },
+  '.cm-cursor': { borderLeftColor: '#D7D2C5' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(217,119,87,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(217,119,87,0.38)' },
   '.cm-activeLine': { backgroundColor: 'rgba(240,237,230,0.03)' },
@@ -49,20 +54,24 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#D97757', background: 'rgba(217,119,87,0.10)' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#D7D2C5' },
   { tag: tags.link, color: '#D97757', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(240,237,230,0.32)', fontFamily: '"JetBrains Mono", monospace' },
+  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(240,237,230,0.32)', fontFamily: 'inherit' },
   { tag: tags.quote, fontStyle: 'italic', color: 'rgba(240,237,230,0.52)' },
 ]);
 
 const lightTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#2D2D2D' },
-  '.cm-content': { caretColor: '#2D2D2D', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '0' },
+  '.cm-content': { caretColor: '#2D2D2D', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
   '.cm-line': { padding: '0' },
+  '.cm-code-line': { background: 'rgba(175,156,116,0.09)', borderLeft: '2px solid rgba(184,155,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
+  '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
+  '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
+  '.cm-inline-code': { background: 'rgba(175,156,116,0.14)', borderRadius: '4px', padding: '0.05em 0.3em' },
   '.cm-cursor': { borderLeftColor: '#2D2D2D' },
   '.cm-selectionBackground': { backgroundColor: '#B89B5E40' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: '#B89B5E60' },
@@ -78,18 +87,20 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: '"JetBrains Mono", monospace', color: '#B89B5E', background: '#DCD9CE' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2D' },
   { tag: tags.link, color: '#B89B5E', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2D40', fontFamily: '"JetBrains Mono", monospace' },
+  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2D40', fontFamily: 'inherit' },
   { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2D80' },
 ]);
 
-// Caps the content column to a reading width and centers it. Vertical padding
-// lives here (inside .cm-scroller) so the first line is not clipped behind the
-// toolbar — see editPane padding note in Editor.tsx.
+// Caps the content column to a reading width and centers it. The vertical/right
+// padding lives in the base light/dark theme's .cm-content rule (a single
+// shorthand) so it isn't clobbered by ordering against this compartment — the
+// top pad sits inside .cm-scroller so the first line isn't clipped behind the
+// toolbar. See editPane padding note in Editor.tsx.
 const buildWidthTheme = (w: number) => EditorView.theme({
-  '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingTop: '2rem', paddingBottom: '2rem', paddingRight: '2rem' },
+  '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box' },
 });
 
 interface UseCodeMirrorOptions {
@@ -214,6 +225,7 @@ export function useCodeMirror({
       markdown(),
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
       hideTaskMarkers,
+      codeDecorations,
       updateListener,
       insertMentionKeymap,
       keymap.of([...defaultKeymap]),

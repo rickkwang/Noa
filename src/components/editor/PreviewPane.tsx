@@ -137,6 +137,36 @@ function remarkMark() {
   };
 }
 
+// Renders inline #tags as styled pills. Only #tag at a word boundary (start or
+// after whitespace) and starting with a letter/underscore counts — so headings
+// (handled before text nodes), `C#`, and `http://x#frag` are not matched. Visits
+// only 'text' nodes, so tags inside code/inline-code are left untouched.
+function remarkTag() {
+  return (tree: Root) => {
+    visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
+      if (!node.value || !node.value.includes('#') || index == null || !parent) return;
+      const re = /(?<=^|\s)#[A-Za-z_][\w/-]*/g;
+      const value = node.value;
+      const children: RootContent[] = [];
+      let last = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(value)) !== null) {
+        if (m.index > last) children.push({ type: 'text', value: value.slice(last, m.index) });
+        const label = m[0];
+        children.push({
+          type: 'tag',
+          value: label,
+          data: { hName: 'span', hProperties: { className: 'noa-tag' }, hChildren: [{ type: 'text', value: label }] },
+        } as unknown as RootContent);
+        last = m.index + label.length;
+      }
+      if (children.length === 0) return;
+      if (last < value.length) children.push({ type: 'text', value: value.slice(last) });
+      parent.children.splice(index, 1, ...children);
+    });
+  };
+}
+
 interface BacklinkItem {
   id: string;
   title: string;
@@ -341,10 +371,15 @@ export const PreviewPane = React.memo(function PreviewPane({
       return (note.attachments ?? []).find((a) => a.filename === basename || a.vaultPath === ref);
     };
 
+    // Step 0: strip %%comments%% (Obsidian comments) so they never render. Done at
+    // the string level to match Obsidian's pre-parse behavior; the rare case of a
+    // literal %% inside a fenced code block is not special-cased.
+    const withoutComments = note.content.replace(/%%[\s\S]*?%%/g, '');
+
     // Step 1: rewrite ![[filename]] attachment embeds into safe Markdown image syntax
     // Uses note-attachment://id/<id> scheme — intercepted by the img component below.
     // Missing attachments use note-attachment://missing to render a placeholder.
-    const withAttachments = note.content.replace(/!\[\[(.*?)\]\]/g, (_, filename) => {
+    const withAttachments = withoutComments.replace(/!\[\[(.*?)\]\]/g, (_, filename) => {
       const safeFilename = String(filename ?? '').trim();
       const att = findAttachment(safeFilename);
       if (!att) return `![${safeFilename}](note-attachment://missing)`;
@@ -355,31 +390,43 @@ export const PreviewPane = React.memo(function PreviewPane({
     return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
       const safeRaw = String(raw ?? '').trim();
       const pipeIdx = safeRaw.indexOf('|');
-      const realTitle = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
+      const target = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
       const rawDisplay = pipeIdx >= 0 ? safeRaw.slice(pipeIdx + 1).trim() : safeRaw;
       // Escape [ and ] so the display text doesn't break Markdown link syntax
       const displayText = rawDisplay.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+      // Split off a heading / block anchor: [[Note#heading]] or [[Note#^blockId]].
+      // The anchor is preserved in the href (so a future scroll-to-anchor step can
+      // use it) but stripped before resolving the note by title.
+      const hashIdx = target.indexOf('#');
+      const realTitle = hashIdx >= 0 ? target.slice(0, hashIdx).trim() : target;
+      const anchor = hashIdx >= 0 ? target.slice(hashIdx + 1).trim() : '';
+      const anchorSuffix = anchor ? `#${encodeURIComponent(anchor)}` : '';
+      // Same-note anchor: [[#heading]] points within the current note.
+      if (realTitle === '' && anchor) {
+        return `[${displayText}](note-internal://id/${note.id}${anchorSuffix})`;
+      }
       const ids = titleToIds.get(realTitle);
       if (ids && ids.length > 0) {
         // When multiple notes share the same title, link to the first one.
         // All of them will appear in the knowledge graph because computeLinkRefs
         // now includes all matching IDs.
-        return `[${displayText}](note-internal://id/${ids[0]})`;
+        return `[${displayText}](note-internal://id/${ids[0]}${anchorSuffix})`;
       }
       const legacyAttachment = findAttachment(realTitle);
       if (legacyAttachment) {
         return `![${displayText}](note-attachment://id/${encodeURIComponent(legacyAttachment.id)})`;
       }
       const encoded = encodeURIComponent(realTitle);
-      return `[${displayText}](note-internal://title/${encoded})`;
+      return `[${displayText}](note-internal://title/${encoded}${anchorSuffix})`;
     });
-  }, [note.content, note.attachments, titleToIds]);
+  }, [note.id, note.content, note.attachments, titleToIds]);
 
   const markdownComponents = useMemo((): Components => {
     return {
       a: ({ href, children, ...props }) => {
         if (href?.startsWith('note-internal://id/')) {
-          const noteId = href.replace('note-internal://id/', '');
+          // Strip any #heading / #^block anchor — note resolution only needs the id.
+          const noteId = href.replace('note-internal://id/', '').split('#')[0];
           return (
             <span
               className={`${isDark ? 'text-[#D97757]' : 'text-[#B89B5E]'} cursor-pointer hover:underline font-bold`}
@@ -390,7 +437,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           );
         }
         if (href?.startsWith('note-internal://title/')) {
-          const encoded = href.replace('note-internal://title/', '');
+          const encoded = href.replace('note-internal://title/', '').split('#')[0];
           const noteTitle = decodeURIComponent(encoded);
           return (
             <span
@@ -563,15 +610,15 @@ export const PreviewPane = React.memo(function PreviewPane({
     <div ref={scrollRef} className="flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50" style={{ paddingRight: '2rem', ...style }}>
       <div className="flex-1">
         <div
-          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-code:before:content-none prose-code:after:content-none ${
+          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
               ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F0EDE6] prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
-              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D] prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
+              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D]/12 prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           <Markdown
-            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkMark]}
+            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkMark, remarkTag]}
             rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#D97757' }]]}
             components={markdownComponents}
           >

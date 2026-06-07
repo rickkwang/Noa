@@ -6,6 +6,7 @@ import { buildGraphModel } from '../lib/graphModel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { useOutgoingLinks } from '../hooks/useOutgoingLinks';
+import { getBacklinks } from '../lib/noteUtils';
 import { TasksPanel } from './rightPanel/TasksPanel';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
@@ -88,13 +89,7 @@ export default function RightPanel({
   }, [activeTab]);
 
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
-  const backlinksCount = useMemo(() => {
-    if (!activeNote) return 0;
-    return notes.filter(n =>
-      n.id !== activeNote.id &&
-      ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
-    ).length;
-  }, [activeNote, notes]);
+  const backlinksCount = useMemo(() => getBacklinks(activeNote, notes).length, [activeNote, notes]);
   const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes);
   const outgoingCount = outgoingResolved.length;
 
@@ -309,6 +304,9 @@ function GraphInfoPanel({
     searchQuery,
   }), [notes, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery]);
   const { stats, activeConnections } = graphModel;
+  // Lookup map so per-row title resolution is O(1) instead of scanning `notes`
+  // for every connection / ranked entry on each render.
+  const notesById = useMemo(() => new Map(notes.map(n => [n.id, n])), [notes]);
 
   return (
     <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
@@ -328,14 +326,14 @@ function GraphInfoPanel({
         {activeNoteId && (
           <div>
             <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>
-              Active · {notes.find(n => n.id === activeNoteId)?.title ?? 'Unknown'}
+              Active · {notesById.get(activeNoteId)?.title ?? 'Unknown'}
             </div>
             {activeConnections.length === 0 ? (
               <div className={`text-[10px] italic ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
             ) : (
               <div className="space-y-1">
                 {activeConnections.slice(0, 6).map(id => {
-                  const target = notes.find(n => n.id === id);
+                  const target = notesById.get(id);
                   if (!target) return null;
                   return (
                     <button key={id} onClick={() => onNavigateToNoteById(id)}
@@ -358,7 +356,7 @@ function GraphInfoPanel({
             <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>Most Connected</div>
             <div className="space-y-1">
               {stats.ranked.map(([id, degree]) => {
-                const target = notes.find(n => n.id === id);
+                const target = notesById.get(id);
                 if (!target) return null;
                 return (
                   <button key={id} onClick={() => onNavigateToNoteById(id)}

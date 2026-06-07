@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Note } from '../../types';
+import { getBacklinks } from '../../lib/noteUtils';
 
 interface BacklinksPanelProps {
   activeNote?: Note;
@@ -20,13 +21,7 @@ function getSnippet(note: Note, targetTitle: string): string {
 }
 
 export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark = false }: BacklinksPanelProps) {
-  const backlinks = useMemo(() => {
-    if (!activeNote) return [];
-    return notes.filter(n =>
-      n.id !== activeNote.id &&
-      ((n.linkRefs ?? []).includes(activeNote.id) || (n.links ?? []).includes(activeNote.title))
-    );
-  }, [activeNote, notes]);
+  const backlinks = useMemo(() => getBacklinks(activeNote, notes), [activeNote, notes]);
 
   const backlinkSnippets = useMemo(() => {
     const map = new Map<string, string>();
