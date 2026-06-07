@@ -164,6 +164,9 @@ export function useFileSync({
         .catch((error) => {
           if (generation !== retryGeneration.current) return;
           recordFailure(error);
+          // Permission errors need user re-auth; don't burn the retry budget on
+          // them — recordFailure has already raised needsReauth.
+          if (classifySyncError(error).code === 'permission_denied') return;
           scheduleRetry();
         });
     }, delay);
@@ -172,7 +175,9 @@ export function useFileSync({
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
-    setAutoRetryExhausted(false);
+    // Keep autoRetryExhausted sticky through the attempt so the Disconnect
+    // escape hatch stays visible if this manual retry also fails.
+    // recordSuccess clears it on the happy path.
     setSyncStatus('syncing');
     const managedNotes = notesRef.current.filter(isObsidianImportedNote);
     void retryFullSync(fsHandle, managedNotes, foldersRef.current)
