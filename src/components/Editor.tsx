@@ -426,7 +426,12 @@ export default function Editor({
             display: viewMode === 'preview' ? 'none' : undefined,
             width: viewMode === 'split' ? `${splitRatio * 100}%` : undefined,
             flex: viewMode === 'split' ? 'none' : '1',
-            padding: '2rem 0 2rem 2rem',
+            // Only the horizontal inset lives here. Vertical padding must NOT sit
+            // on this (non-scrolling) wrapper — the real scroll viewport is
+            // CodeMirror's .cm-scroller, and a top pad here pushes its top edge
+            // below the toolbar, clipping the first line behind a dead band.
+            // Vertical breathing room is applied inside .cm-content instead.
+            padding: '0 0 0 2rem',
           }}
         >
           <div className="h-full" style={editorStyle}>

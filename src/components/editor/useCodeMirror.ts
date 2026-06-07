@@ -84,6 +84,13 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2D80' },
 ]);
 
+// Caps the content column to a reading width and centers it. Vertical padding
+// lives here (inside .cm-scroller) so the first line is not clipped behind the
+// toolbar — see editPane padding note in Editor.tsx.
+const buildWidthTheme = (w: number) => EditorView.theme({
+  '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingTop: '2rem', paddingBottom: '2rem', paddingRight: '2rem' },
+});
+
 interface UseCodeMirrorOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
   note: Note | undefined;
@@ -202,10 +209,6 @@ export function useCodeMirror({
       },
     ]);
 
-    const buildWidthTheme = (w: number) => EditorView.theme({
-      '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
-    });
-
     const extensions = [
       markdown(),
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
@@ -259,9 +262,6 @@ export function useCodeMirror({
     maxWidthRef.current = maxWidth;
     const view = editorViewRef.current;
     if (!view) return;
-    const buildWidthTheme = (w: number) => EditorView.theme({
-      '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box', paddingRight: '2rem' },
-    });
     view.dispatch({ effects: widthCompartmentRef.current.reconfigure(buildWidthTheme(maxWidth)) });
   }, [maxWidth]);
 
