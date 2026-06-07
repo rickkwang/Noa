@@ -130,6 +130,16 @@ async function waitForAttachmentPersisted(page: import('@playwright/test').Page,
   );
 }
 
+async function ensureEditMode(page: import('@playwright/test').Page) {
+  await page.locator('[title="Edit Only"]').click();
+  await expect(page.locator('.cm-content').first()).toBeVisible();
+}
+
+async function createNewNote(page: import('@playwright/test').Page) {
+  await page.getByTitle('New note').click();
+  await ensureEditMode(page);
+}
+
 async function installMockDirectoryPicker(
   page: import('@playwright/test').Page,
 ) {
@@ -324,7 +334,7 @@ test('create notes and edited content persists after reload', async ({ page }) =
   const marker = `smoke-${Date.now()}`;
   await page.goto('/');
 
-  await page.keyboard.press('Control+n');
+  await createNewNote(page);
 
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}\n\n- [ ] task`);
@@ -336,7 +346,7 @@ test('create notes and edited content persists after reload', async ({ page }) =
 test('wiki-link preview mode is reachable', async ({ page }) => {
   const linkedTitle = `Linked-${Date.now()}`;
   await page.goto('/');
-  await page.keyboard.press('Control+n');
+  await createNewNote(page);
   await page.locator('.cm-content').first().click();
   await page.keyboard.type(`Jump to [[${linkedTitle}]]`);
   await page.getByTitle('Preview Only').click();
@@ -346,7 +356,7 @@ test('wiki-link preview mode is reachable', async ({ page }) => {
 test('preview renders headings, table, math, callout, footnote, and task list', async ({ page }) => {
   const marker = `render-${Date.now()}`;
   await page.goto('/');
-  await page.keyboard.press('Control+n');
+  await createNewNote(page);
   await page.locator('.cm-content').first().click();
   await page.keyboard.type(`# ${marker}
 
@@ -550,19 +560,19 @@ test('multi-tab content persists after closing and reopening tabs', async ({ pag
   const markerB = `tab-b-${Date.now() + 1}`;
   await page.goto('/');
 
-  // 创建笔记 A
-  await page.keyboard.press('Control+n');
+  // Create note A
+  await createNewNote(page);
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${markerA}`);
   await waitForMarkerPersisted(page, markerA);
 
-  // 新建标签页，创建笔记 B
-  await page.keyboard.press('Control+n');
+  // Create note B in a new tab
+  await createNewNote(page);
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${markerB}`);
   await waitForMarkerPersisted(page, markerB);
 
-  // 页面重载后两条笔记内容仍在 IndexedDB 中
+  // Both note bodies should still exist in IndexedDB after reload.
   await page.reload();
   await waitForMarkerPersisted(page, markerA);
   await waitForMarkerPersisted(page, markerB);
@@ -648,7 +658,7 @@ test('attachment previews recycle object URLs when switching notes', async ({ pa
   await page.addInitScript(statsScript);
   await page.goto('/');
 
-  await page.keyboard.press('Control+n');
+  await createNewNote(page);
   const attachmentInput = page.locator('input[type="file"][accept="image/*"]');
   await attachmentInput.setInputFiles({
     name: 'pixel.png',
@@ -669,7 +679,7 @@ test('attachment previews recycle object URLs when switching notes', async ({ pa
     return stats?.revoked.length ?? 0;
   });
 
-  await page.keyboard.press('Control+n');
+  await createNewNote(page);
 
   await page.waitForFunction((previous) => {
     const stats = (window as typeof window & { __urlStats?: { revoked: string[] } }).__urlStats;

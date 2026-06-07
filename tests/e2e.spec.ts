@@ -49,7 +49,7 @@ test('new note flow creates and persists a note', async ({ page }) => {
   const marker = `e2e-note-${Date.now()}`;
   await page.goto('/');
 
-  await page.keyboard.press('Control+n');
+  await page.getByTitle('New note').click();
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}\n\nThis note verifies the create flow.`);
 
