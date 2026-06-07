@@ -7,6 +7,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { Note } from '../../types';
 import { buildMinimalReplaceChange } from './contentSync';
+import { hideTaskMarkers } from './hideTaskMarkers';
 
 // Annotation to mark external content syncs so history does not merge them
 // into the user's local undo stack.
@@ -212,6 +213,7 @@ export function useCodeMirror({
     const extensions = [
       markdown(),
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
+      hideTaskMarkers,
       updateListener,
       insertMentionKeymap,
       keymap.of([...defaultKeymap]),

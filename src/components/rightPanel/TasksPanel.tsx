@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ExternalLink } from 'lucide-react';
+import { Check, ChevronRight, ExternalLink } from 'lucide-react';
 import { GlobalTask } from '../../types';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
+import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
 
 function getDueDateStatus(dueDate: string | undefined): 'overdue' | 'today' | 'soon' | null {
   if (!dueDate) return null;
@@ -33,6 +35,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const [dueDateFilter, setDueDateFilter] = useState<typeof DUE_OPTIONS[number]>('all');
   const [activePageSize, setActivePageSize] = useState(TASKS_PAGE_SIZE);
   const [completedPageSize, setCompletedPageSize] = useState(TASKS_PAGE_SIZE);
+  const [completedExpanded, setCompletedExpanded] = useState(() => lsGetBoolean(STORAGE_KEYS.TASKS_COMPLETED_EXPANDED));
 
   const { activeTasks, completedTasks, overdueCount, todayCount } = useMemo(() => {
     const activeTasks: typeof tasks = [];
@@ -79,7 +82,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const dim = isDark ? 'text-[rgba(232,224,208,0.5)]' : 'text-[#2D2D2D]/50';
   const dimmer = isDark ? 'text-[rgba(232,224,208,0.3)]' : 'text-[#2D2D2D]/30';
   const dimmest = isDark ? 'text-[rgba(232,224,208,0.18)]' : 'text-[#2D2D2D]/20';
-  const rowBorder = isDark ? 'border-[rgba(232,224,208,0.08)]' : 'border-[#2D2D2D]/8';
+  const rowBorder = isDark ? 'border-[rgba(232,224,208,0.06)]' : 'border-[#2D2D2D]/[0.06]';
   const rowHover = isDark ? 'hover:bg-[rgba(232,224,208,0.04)]' : 'hover:bg-[#DCD9CE]/35';
   const progressTrack = isDark ? 'bg-[rgba(232,224,208,0.1)]' : 'bg-[#2D2D2D]/8';
   const progressFill = isDark ? 'bg-[#E8E0D0]' : 'bg-[#2D2D2D]';
@@ -93,6 +96,10 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
     ? 'border-[rgba(240,237,230,0.15)] text-[rgba(240,237,230,0.3)] hover:border-[rgba(240,237,230,0.4)] hover:text-[rgba(240,237,230,0.6)]'
     : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]';
   const lowRail = isDark ? 'bg-[rgba(232,224,208,0.25)]' : 'bg-[#2D2D2D]/25';
+
+  // Numeric/UI-data font — locked to the monospace stack so counters and dates
+  // stay crisp and tabular regardless of the user's chosen prose font.
+  const numFont: React.CSSProperties = { fontFamily: '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' };
 
   function priorityRailColor(p: string): string | null {
     if (p === 'high') return 'bg-red-400';
@@ -146,7 +153,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
               <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
-              <div className="flex items-baseline gap-1.5 tabular-nums text-xs font-bold">
+              <div className="flex items-baseline gap-1 tabular-nums text-[10px] font-semibold" style={numFont}>
                 <span className={txt}>{completedTasks.length}</span>
                 <span className={dimmer}>/</span>
                 <span className={dim}>{total}</span>
@@ -161,7 +168,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
               />
             </div>
             {(overdueCount > 0 || todayCount > 0) && (
-              <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold">
+              <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold" style={numFont}>
                 {overdueCount > 0 && <span className="text-red-500">▴ {overdueCount} overdue</span>}
                 {todayCount > 0 && <span className="text-[#B89B5E]">● {todayCount} today</span>}
               </div>
@@ -191,13 +198,13 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             const railColor = priorityRailColor(task.priority);
             return (
               <div key={task.id}
-                className={`group relative flex items-start gap-2.5 pl-3 pr-1 py-2 border-b transition-colors ${rowHover} ${isOverdue ? 'border-red-400/40' : rowBorder}`}>
+                className={`group relative flex items-start gap-2.5 pl-3 pr-1 py-2 border-b transition-colors ${rowHover} ${rowBorder}`}>
                 {railColor && (
-                  <span className={`absolute left-0 top-2 bottom-2 w-[2px] ${railColor}`} title={task.priority} />
+                  <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
-                <div className="flex items-center h-[17px] shrink-0">
-                  <button onClick={() => onToggleTask(task)} className="active:opacity-70">
-                    <div className={`w-3.5 h-3.5 border transition-colors hover:border-[#B89B5E] ${checkboxBorder}`} />
+                <div className="flex items-center h-[18px] shrink-0">
+                  <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Complete task">
+                    <div className={`w-[15px] h-[15px] rounded-[4px] border transition-all hover:border-[#B89B5E] hover:bg-[#B89B5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -211,7 +218,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                     </button>
                   </div>
                   {task.dueDate && (
-                    <div className={`mt-0.5 text-[10px] tabular-nums font-bold ${
+                    <div style={numFont} className={`mt-0.5 text-[10px] tabular-nums font-bold ${
                       isOverdue ? 'text-red-500' : isToday ? 'text-[#B89B5E]' : isSoon ? 'text-[#D97757]' : dim
                     }`}>
                       {isOverdue ? '⚠ ' : isToday ? '● ' : '→ '}{task.dueDate}
@@ -233,23 +240,32 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
       {/* ─── Completed section ───────────────────────────────────────── */}
       {completedTasks.length > 0 && (
         <div className="mt-5">
-          <div className="flex items-center gap-2 mb-1">
+          <button
+            onClick={() => setCompletedExpanded(v => { lsSetBoolean(STORAGE_KEYS.TASKS_COMPLETED_EXPANDED, !v); return !v; })}
+            className="flex items-center gap-2 mb-1 w-full group/comp active:opacity-70"
+            aria-expanded={completedExpanded}
+          >
+            <ChevronRight
+              size={11}
+              className={`shrink-0 transition-transform ${dimmer} ${completedExpanded ? 'rotate-90' : ''}`}
+            />
             <span className={`text-[9px] uppercase tracking-[0.3em] font-bold shrink-0 ${dimmer}`}>Completed</span>
-            <span className={`text-[9px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
+            <span style={numFont} className={`text-[9px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
             <div className={`flex-1 h-px ${sectionLine}`} />
-          </div>
+          </button>
+          {completedExpanded && (
           <div>
             {completedTasks.slice(0, completedPageSize).map(task => {
               const railColor = priorityRailColor(task.priority);
               return (
                 <div key={task.id} className={`group relative flex items-start gap-2.5 pl-3 pr-1 py-2 border-b opacity-50 hover:opacity-80 transition-opacity ${rowBorder}`}>
                   {railColor && (
-                    <span className={`absolute left-0 top-2 bottom-2 w-[2px] ${railColor}`} title={task.priority} />
+                    <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
-                  <div className="flex items-center h-[17px] shrink-0">
-                    <button onClick={() => onToggleTask(task)} className="active:opacity-70">
-                      <div className={`w-3.5 h-3.5 border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
-                        <Check size={9} strokeWidth={2.5} className={checkmarkColor} />
+                  <div className="flex items-center h-[18px] shrink-0">
+                    <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Reopen task">
+                      <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
+                        <Check size={10} strokeWidth={2.5} className={checkmarkColor} />
                       </div>
                     </button>
                   </div>
@@ -264,7 +280,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                       </button>
                     </div>
                     {task.dueDate && (
-                      <div className={`mt-0.5 text-[10px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
+                      <div style={numFont} className={`mt-0.5 text-[10px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
                     )}
                   </div>
                 </div>
@@ -277,6 +293,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
               </button>
             )}
           </div>
+          )}
         </div>
       )}
     </div>
