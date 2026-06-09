@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
-import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from 'lucide-react';
+import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from '@/src/lib/icons';
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -108,7 +108,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
           className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? 'text-[#B89B5E]' : ''}`}
           title="Toggle Panel"
         >
-          <PanelRight size={16} />
+          <PanelRight size={16} className="scale-x-[-1]" />
         </button>
       </div>
     </div>

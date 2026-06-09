@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileArchive, FileText, Loader2 } from 'lucide-react';
+import { Download, FileArchive, FileText, Loader2 } from '@/src/lib/icons';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
 import { StorageEstimate } from '../../../../hooks/useStorageEstimate';
@@ -47,7 +47,7 @@ export default function BackupSection({
       : 'text-red-700';
   return (
     <SettingSection title="Backup" description="Export your data for safekeeping.">
-      <div className="px-1 pb-2 space-y-1 text-[11px]">
+      <div className="px-1 pb-2 space-y-1 text-xs">
         <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
         <div className="text-[#2D2D2D]/60">
           Last export: {formatExportTimestamp(lastExportAt)}
@@ -58,7 +58,7 @@ export default function BackupSection({
       </div>
       {showStorage && storageEstimate && (
         <div className="px-1 pb-2 space-y-1">
-          <div className="text-[11px] text-[#2D2D2D]/60 font-redaction">
+          <div className="text-xs text-[#2D2D2D]/60 font-redaction">
             Storage used: {formatBytes(storageEstimate.usageBytes)} / ~{formatBytes(storageEstimate.quotaBytes)} (estimated)
           </div>
           <div className="h-1 w-full bg-[#2D2D2D]/10 overflow-hidden">
@@ -71,7 +71,7 @@ export default function BackupSection({
             />
           </div>
           {storageEstimate.ratio > 0.8 && (
-            <p className="text-[11px] text-amber-600 font-redaction">
+            <p className="text-xs text-amber-600 font-redaction">
               Storage is over 80% full. Consider exporting and clearing old data.
             </p>
           )}

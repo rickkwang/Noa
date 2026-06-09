@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCcw, Download } from 'lucide-react';
+import { RefreshCcw, Download } from '@/src/lib/icons';
 import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';

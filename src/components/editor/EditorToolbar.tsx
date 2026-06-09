@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bold, Italic, List, CheckSquare, Code, AlignLeft } from 'lucide-react';
+import { Bold, Italic, List, CheckSquare, Code, AlignLeft } from '@/src/lib/icons';
 
 interface EditorToolbarProps {
   onInsertFormatting: (before: string, after?: string) => void;

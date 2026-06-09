@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FolderOpen, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FolderOpen, Loader2 } from '@/src/lib/icons';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
 import { isFileSystemSupported } from '../../../../lib/backupDirectoryStorage';

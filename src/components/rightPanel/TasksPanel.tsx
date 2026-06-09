@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronRight, ExternalLink } from 'lucide-react';
+import { Check, ChevronRight, ExternalLink } from '@/src/lib/icons';
 import { GlobalTask } from '../../types';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
@@ -265,7 +265,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                   <div className="flex items-center h-[18px] shrink-0">
                     <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Reopen task">
                       <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
-                        <Check size={10} strokeWidth={2.5} className={checkmarkColor} />
+                        <Check size={10} weight="bold" className={checkmarkColor} />
                       </div>
                     </button>
                   </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X } from '@/src/lib/icons';
 import { formatExportTimestamp } from '../lib/exportTimestamp';
 import { BackupHealthStatus } from '../types';
 

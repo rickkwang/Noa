@@ -1,5 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from 'lucide-react';
+import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
 import { buildGraphModel } from '../lib/graphModel';
@@ -207,7 +207,7 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.56)' }}>
+          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.9)' }}>
             <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
               <Network size={11} className="text-[#B89B5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from 'lucide-react';
+import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
 import { Note, Folder as FolderType } from '../types';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { classifyFolderImportFile } from '../lib/importUtils';
@@ -469,7 +469,7 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <div className="py-2">
           {searchQuery ? (
               <div className="px-2">
@@ -489,7 +489,7 @@ export default function Sidebar({
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 mb-1 cursor-pointer border ${activeNoteId === result.note.id ? 'bg-[#DCD9CE] border-[#B89B5E]' : 'border-transparent hover:bg-[#DCD9CE]/50'} transition-colors`}
+                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#B89B5E]/10 border-l-[#B89B5E]' : 'border-l-transparent hover:bg-[#DCD9CE]/50'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2D] mb-1 flex items-center">

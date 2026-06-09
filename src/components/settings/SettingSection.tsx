@@ -8,7 +8,7 @@ interface SettingSectionProps {
 
 export default function SettingSection({ title, description, children }: SettingSectionProps) {
   return (
-    <div className="mb-10">
+    <div>
       <div className="mb-4">
         <h2 className="font-bold text-lg text-[#2D2D2D]">{title}</h2>
         {description && (

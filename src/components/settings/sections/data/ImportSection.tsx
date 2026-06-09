@@ -1,5 +1,5 @@
 import React, { RefObject } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload } from '@/src/lib/icons';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
 
@@ -27,7 +27,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
           onChange={onImportJsonInput}
         />
       </SettingItem>
-      <p className="text-[11px] text-[#2D2D2D]/60 px-1">
+      <p className="text-xs text-[#2D2D2D]/60 px-1">
         To migrate an Obsidian vault or restore a Vault ZIP, select the folder with Import Vault Folder above.
       </p>
     </SettingSection>

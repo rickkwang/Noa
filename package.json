@@ -32,6 +32,7 @@
     "@fontsource/pixelify-sans": "^5.2.7",
     "@fontsource/redaction-50": "^5.2.5",
     "@fontsource/work-sans": "^5.2.8",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",

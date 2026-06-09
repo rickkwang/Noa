@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink } from '@/src/lib/icons';
 import { Note } from '../../types';
 import { useOutgoingLinks } from '../../hooks/useOutgoingLinks';
 

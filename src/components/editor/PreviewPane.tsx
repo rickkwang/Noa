@@ -16,7 +16,7 @@ import type { Root, Text, Parent, RootContent } from 'mdast';
 import { Note, AppSettings } from '../../types';
 import { buildTitleToIdsMap } from '../../lib/noteUtils';
 import { MermaidBlock } from './MermaidBlock';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check } from '@/src/lib/icons';
 
 function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
   const [copied, setCopied] = useState(false);

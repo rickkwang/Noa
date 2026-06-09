@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
 import { Note } from '../types';
 import { formatDate } from '../lib/templates';
 
@@ -58,10 +58,10 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
     <div className="shrink-0 border-t border-[#2D2D2D]">
       {/* Section header */}
       <button
-        className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 flex items-center transition-colors cursor-pointer"
+        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 font-redaction flex items-center transition-colors cursor-pointer"
         onClick={() => setIsOpen(v => !v)}
       >
-        <Calendar size={12} className="mr-1 shrink-0" />
+        <Calendar size={12} className="mr-1.5 shrink-0" />
         Calendar
         <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
       </button>

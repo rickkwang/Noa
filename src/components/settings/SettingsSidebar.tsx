@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, PenTool, Database, Info, Download } from 'lucide-react';
+import { Palette, PenTool, Database, Info, Download } from '@/src/lib/icons';
 
 export type SettingsTab = 'editor' | 'appearance' | 'data' | 'updates' | 'about';
 

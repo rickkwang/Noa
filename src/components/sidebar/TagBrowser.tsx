@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, ChevronDown, Hash } from 'lucide-react';
+import { ChevronRight, ChevronDown, Tag } from '@/src/lib/icons';
 import { Note } from '../../types';
 import { useResizeDrag } from '../../hooks/useResizeDrag';
 
@@ -24,7 +24,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
   const activeTags = useMemo(() => {
     const set = new Set<string>();
     if (!searchQuery) return set;
-    const re = /tag:(#?[\w一-龥/]+)/gi;
+    const re = /tag:(#?[\w一-龥/-]+)/gi;
     let m;
     while ((m = re.exec(searchQuery)) !== null) {
       set.add(m[1].replace(/^#/, '').toLowerCase());
@@ -130,10 +130,10 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         />
       )}
       <button
-        className="w-full px-3 py-2 text-xs font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 border-b border-[#2D2D2D]/20 flex items-center shrink-0 transition-colors cursor-pointer"
+        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 font-redaction border-b border-[#2D2D2D]/20 flex items-center shrink-0 transition-colors cursor-pointer"
         onClick={() => setIsTagsOpen(v => !v)}
       >
-        <Hash size={12} className="mr-1 shrink-0" />
+        <Tag size={12} className="mr-1.5 shrink-0" />
         Tags Explorer
         <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>

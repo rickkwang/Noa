@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderPlus } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderOpen, FolderPlus } from '@/src/lib/icons';
 import { Folder as FolderType } from '../../types';
 import { getFolderParentPath } from '../../lib/pathUtils';
 
@@ -148,7 +148,10 @@ export const FileNode = React.memo(({
             {isFolder ? <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} /> : null}
           </span>
           <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#B89B5E]' : (isActive ? 'text-[#B89B5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
-            <Icon size={14} fill={isFolder ? "currentColor" : "none"} />
+            {(() => {
+              const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
+              return <RenderIcon size={14} weight="regular" />;
+            })()}
           </span>
           {isEditing ? (
             <input

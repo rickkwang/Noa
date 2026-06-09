@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from 'lucide-react';
+import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from '@/src/lib/icons';
 import { Note } from '../../types';
 
 function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void }) {

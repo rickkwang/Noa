@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/src/lib/icons';
 
 interface TocHeading {
   level: number;

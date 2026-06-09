@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@/src/lib/icons';
 import { Note } from '../../types';
 import { parseFrontmatter, parseFrontmatterBlock, stringifyFrontmatter, hasFrontmatter } from '../../lib/frontmatter';
 

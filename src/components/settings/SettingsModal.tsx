@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Settings, X, Book } from 'lucide-react';
+import { Settings, X, Book } from '@/src/lib/icons';
 import { Note, Folder, AppSettings, SyncStatus } from '../../types';
 import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
 import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
+import SettingSection from './SettingSection';
 import AppearanceSettings from './sections/AppearanceSettings';
 import DataSettings from './sections/DataSettings';
 import EditorSettings from './sections/EditorSettings';
@@ -167,44 +168,34 @@ export default function SettingsModal({
             {activeTab === 'about' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="font-bold mb-2 text-lg">About</h2>
-                  <p className="text-[#2D2D2D]/70 text-sm">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
+                  <h2 className="font-bold text-lg text-[#2D2D2D]">About</h2>
+                  <p className="text-sm text-[#2D2D2D]/70 mt-1">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
                 </div>
-                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-4 space-y-3">
-                  <div>
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#2D2D2D]/70">Feedback</h3>
-                    <p className="text-xs text-[#2D2D2D]/70 mt-1">
-                      Send feedback with a prefilled template. Nothing is collected automatically.
-                    </p>
-                  </div>
+                <SettingSection title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackMailto}
                     className="inline-flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
                   >
                     <span>Send Feedback</span>
                   </a>
-                </div>
-                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] p-4 space-y-3">
-                  <div>
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#2D2D2D]/70">Diagnostics</h3>
-                    <p className="text-xs text-[#2D2D2D]/70 mt-1">
-                      Export a local-only diagnostics bundle for support. Nothing is uploaded.
-                    </p>
+                </SettingSection>
+                <SettingSection title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleExportDiagnostics}
+                      className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                      disabled={diagnosticsState === 'exporting'}
+                    >
+                      <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
+                    </button>
+                    {diagnosticsState === 'success' && (
+                      <p className="text-xs text-[#2D2D2D]/70">Diagnostics exported locally.</p>
+                    )}
+                    {diagnosticsState === 'error' && (
+                      <p className="text-xs text-red-700">Diagnostics export failed. Try again.</p>
+                    )}
                   </div>
-                  <button
-                    onClick={handleExportDiagnostics}
-                    className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
-                    disabled={diagnosticsState === 'exporting'}
-                  >
-                    <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
-                  </button>
-                  {diagnosticsState === 'success' && (
-                    <p className="text-xs text-[#2D2D2D]/70">Diagnostics exported locally.</p>
-                  )}
-                  {diagnosticsState === 'error' && (
-                    <p className="text-xs text-red-700">Diagnostics export failed. Try again.</p>
-                  )}
-                </div>
+                </SettingSection>
                 <div className="border-2 border-[#2D2D2D] overflow-hidden">
                   <div className="bg-[#DCD9CE] px-4 py-1.5 border-b border-[#2D2D2D]">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70">Keyboard Shortcuts</span>

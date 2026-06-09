@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorView } from '@codemirror/view';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from '@/src/lib/icons';
 
 interface FindReplacePanelProps {
   editorViewRef: React.RefObject<EditorView | null>;

@@ -20,7 +20,7 @@ export const parseQuery = (queryString: string, caseSensitive: boolean = false):
   let after: Date | undefined;
 
   // Extract tags: tag:#xxx or tag:xxx (supports nested tags like tag:parent/child)
-  let currentQuery = queryString.replace(/tag:(#?[\w\u4e00-\u9fa5/]+)/gi, (_, tag) => {
+  let currentQuery = queryString.replace(/tag:(#?[\w\u4e00-\u9fa5/-]+)/gi, (_, tag) => {
     tags.push(normalize(tag.replace('#', '')));
     return '';
   });

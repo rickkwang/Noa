@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, RotateCcw, Clock } from 'lucide-react';
+import { X, RotateCcw, Clock } from '@/src/lib/icons';
 import { NoteSnapshot } from '../../types';
 import { storage } from '../../lib/storage';
 
