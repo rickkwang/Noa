@@ -27,15 +27,20 @@ import {
   countImportedNotes,
   getFolderImportPath,
   mergeImportedWorkspaceData,
+  parseZipAttachmentPath,
   prepareImportedNotes,
+  resolveImportedFolders,
+  resolveImportedWorkspaceName,
   sanitizeFilename,
   sanitizeFolderPath,
+  uniqueExportFilename,
   validateAttachmentPayloads,
+  zipAttachmentPath,
   type ConflictSummary,
 } from '../lib/importUtils';
 
 export type { ConflictSummary };
-export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, classifyFolderImportFile, countImportedNotes, getFolderImportPath, prepareImportedNotes, validateAttachmentPayloads };
+export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, classifyFolderImportFile, countImportedNotes, getFolderImportPath, parseZipAttachmentPath, prepareImportedNotes, resolveImportedFolders, resolveImportedWorkspaceName, uniqueExportFilename, validateAttachmentPayloads, zipAttachmentPath };
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
@@ -485,36 +490,47 @@ export function useDataTransfer({
         `# ${workspaceName} Vault\n\nThis archive uses a vault-style folder layout.\n\n- Markdown notes live in the archive root or in folder directories.\n- Attachments live in \`attachments/\`.\n- \`manifest.json\` lets Noa restore note and attachment metadata.\n\nUnzip this archive into a local folder to use it as an Obsidian-style vault.`
       );
 
+      // Used filenames per archive directory — duplicate titles must not
+      // overwrite each other's entries (keyed by folder path so two folder
+      // records sharing a name still land in one namespace).
+      const usedNamesByDir = new Map<string, Set<string>>();
+      const usedNamesFor = (dirKey: string): Set<string> => {
+        let used = usedNamesByDir.get(dirKey);
+        if (!used) {
+          used = new Set();
+          usedNamesByDir.set(dirKey, used);
+        }
+        return used;
+      };
+
       folders.forEach((folder) => {
         const folderNotes = notes.filter((note) => note.folder === folder.id);
         if (folderNotes.length === 0) return;
         const folderZip = ensureZipFolder(zip, folder.name);
         if (!folderZip) return;
+        const used = usedNamesFor(folder.name);
         folderNotes.forEach((note) => {
-          folderZip.file(`${sanitizeFilename(note.title || 'Untitled')}.md`, note.content);
+          folderZip.file(uniqueExportFilename(used, note.title, note.id, '.md'), note.content);
         });
       });
 
+      const rootUsed = usedNamesFor('');
       notes
         .filter((note) => !note.folder)
         .forEach((note) => {
-          zip.file(`${sanitizeFilename(note.title || 'Untitled')}.md`, note.content);
+          zip.file(uniqueExportFilename(rootUsed, note.title, note.id, '.md'), note.content);
         });
 
-      // Export attachments
-      const attachmentsZip = zip.folder('attachments');
-      if (attachmentsZip) {
-        const allAttachments = notes.flatMap((n) => n.attachments ?? []);
-        await Promise.all(
-          allAttachments.map(async (att) => {
+      // Export attachments using the vault layout so importZip can recover
+      // each blob's attachment id without guessing.
+      await Promise.all(
+        notes.flatMap((note) =>
+          (note.attachments ?? []).map(async (att) => {
             const blob = await storage.getAttachmentBlob(att.id);
-            if (blob) {
-              const attFolder = attachmentsZip.folder(att.id);
-              attFolder?.file(att.filename, blob);
-            }
+            if (blob) zip.file(zipAttachmentPath(note.id, att), blob);
           })
-        );
-      }
+        )
+      );
 
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-vault.zip`);
@@ -543,6 +559,7 @@ export function useDataTransfer({
       const htmlFolder = zip.folder('html-export');
 
       if (htmlFolder) {
+        const usedNames = new Set<string>();
         notes.forEach((note) => {
           const safeTitle = escapeHtml(note.title || 'Untitled');
           const html = `<!DOCTYPE html>
@@ -558,7 +575,7 @@ export function useDataTransfer({
   ${mdToHtml(note.content)}
 </body>
 </html>`;
-          htmlFolder.file(`${sanitizeFilename(note.title || 'Untitled')}.html`, html);
+          htmlFolder.file(uniqueExportFilename(usedNames, note.title, note.id, '.html'), html);
         });
       }
 
@@ -651,15 +668,17 @@ export function useDataTransfer({
             conflictSummary,
             onStrategyChange: (s) => { importStrategyRef.current = s; },
             onConfirm: async () => {
-              const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, importStrategyRef.current);
+              const strategy = importStrategyRef.current;
+              const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, strategy);
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
-              const importedCount = countImportedNotes(finalNotes, notes, importStrategyRef.current);
+              const importedCount = countImportedNotes(finalNotes, notes, strategy);
+              const incomingFolders = Array.isArray(parsed.folders) ? parsed.folders as Folder[] : [];
               try {
                 await trackedImportData(
                   finalNotes as ImportedNote[],
-                  parsed.folders || [],
-                  parsed.workspaceName || 'Imported Workspace',
-                  importStrategyRef.current === 'overwrite',
+                  resolveImportedFolders(strategy, folders, incomingFolders),
+                  resolveImportedWorkspaceName(strategy, parsed.workspaceName),
+                  strategy === 'overwrite',
                 );
                 notify({
                   type: 'success',
@@ -722,14 +741,7 @@ export function useDataTransfer({
       });
       const newFolders = sortedFolderPaths.map((name) => ({ id: crypto.randomUUID(), name, source: 'obsidian-import' as const }));
       const folderIdByPath = new Map(newFolders.map((folder) => [folder.name, folder.id]));
-      let processedCount = 0;
-
-      for (const entry of files) {
-        processedCount += 1;
-        if (processedCount % 25 === 0 || processedCount === files.length) {
-          setImportStatusText(`Scanning vault files (${processedCount}/${files.length})...`);
-        }
-      }
+      setImportStatusText(`Importing ${files.length} vault file(s)...`);
 
       const { notes: newNotes, stagedAttachments } = await buildVaultImportPayload(files, folderIdByPath);
 
@@ -1080,16 +1092,9 @@ export function useDataTransfer({
         const stagedAttachments: Array<{ attachmentId: string; blob: Blob }> = [];
         if (attachmentFiles.length > 0) {
           for (const [path, zipFile] of attachmentFiles) {
-            const parts = path.split('/');
-            if (parts.length < 3) continue;
-            // Attachment filename format: `${uuid}-${originalFilename}`
-            // A UUID has 5 dash-separated groups (8-4-4-4-12), so rejoin the
-            // first 5 segments to reconstruct the full ID.
-            const fileSegments = parts[2].split('-');
-            const attachmentId = fileSegments.length >= 5
-              ? fileSegments.slice(0, 5).join('-')
-              : fileSegments[0] || parts[1];
-            const filename = fileSegments.slice(5).join('-') || parts[parts.length - 1];
+            const parsedPath = parseZipAttachmentPath(path);
+            if (!parsedPath) continue;
+            const { attachmentId, filename } = parsedPath;
             try {
               const blob = await zipFile.async('blob');
               stagedAttachments.push({ attachmentId, blob });

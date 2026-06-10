@@ -69,10 +69,14 @@ function sanitizePathSegment(name: string): string {
   return sanitizeFilename(name).replace(/\s+/g, '_');
 }
 
+// Must apply the exact same per-segment transformation as getFolderHandle —
+// manifest keys and scan matching compare against real on-disk directory
+// names, which keep their spaces (Obsidian vault folders are created with
+// spaces; replacing them here would make every manifest lookup miss).
 function sanitizeFolderPath(path: string): string {
   return path
     .split('/')
-    .map((segment) => sanitizeFilename(segment).replace(/\s+/g, '_'))
+    .map((segment) => sanitizeFilename(segment))
     .filter(Boolean)
     .join('/');
 }
@@ -337,55 +341,106 @@ export async function writeNote(
 export async function deleteNoteFile(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
-  folders: Folder[]
+  folders: Folder[],
+  options?: { keepAttachments?: boolean }
 ): Promise<void> {
   const manifest = await readVaultManifest(rootHandle);
-  const folder = folders.find(f => f.id === note.folder);
-  const dirHandle = folder
-    ? await getFolderHandle(rootHandle, folder.name, false)
-    : rootHandle;
-  if (!dirHandle) return;
-
-  const baseName = sanitizeFilename(note.title || 'Untitled');
-  for (const filename of [`${baseName}.md`, `${baseName}_${note.id.slice(0, 8)}.md`]) {
-    try {
-      await dirHandle.removeEntry(filename);
-      break;
-    } catch {
-      // try next variant
-    }
-  }
-  try {
-    const attachmentsRoot = await getFolderHandle(rootHandle, 'attachments', false);
-    if (attachmentsRoot) {
-      await attachmentsRoot.removeEntry(sanitizePathSegment(note.id), { recursive: true });
-    }
-  } catch {
-    // ignore
-  }
   const manifestEntry = manifestEntryForId(manifest, note.id);
+
+  // The manifest records which file this note id owns — use it so duplicate
+  // titles never cause a sibling note's file to be removed.
+  let deleted = false;
+  if (manifestEntry) {
+    const segments = manifestEntry[0].split('/').filter(Boolean);
+    const parentHandle = segments.length > 1
+      ? await ensureDirectory(rootHandle, segments.slice(0, -1), false)
+      : rootHandle;
+    if (parentHandle) {
+      try {
+        await parentHandle.removeEntry(segments[segments.length - 1]);
+        deleted = true;
+      } catch {
+        // Stale manifest path — fall through to title heuristics.
+      }
+    }
+  }
+
+  if (!deleted) {
+    const folder = folders.find(f => f.id === note.folder);
+    const dirHandle = folder
+      ? await getFolderHandle(rootHandle, folder.name, false)
+      : rootHandle;
+    if (dirHandle) {
+      const baseName = sanitizeFilename(note.title || 'Untitled');
+      for (const filename of [`${baseName}.md`, `${baseName}_${note.id.slice(0, 8)}.md`]) {
+        // Never remove a path the manifest attributes to a different note.
+        const owner = manifest.notes[relativeNotePath(folder?.name, filename)];
+        if (owner && owner.id !== note.id) continue;
+        try {
+          await dirHandle.removeEntry(filename);
+          break;
+        } catch {
+          // try next variant
+        }
+      }
+    }
+  }
+
+  if (!options?.keepAttachments) {
+    try {
+      const attachmentsRoot = await getFolderHandle(rootHandle, 'attachments', false);
+      if (attachmentsRoot) {
+        await attachmentsRoot.removeEntry(sanitizePathSegment(note.id), { recursive: true });
+      }
+    } catch {
+      // ignore
+    }
+  }
   if (manifestEntry) {
     delete manifest.notes[manifestEntry[0]];
     await writeVaultManifest(rootHandle, manifest);
   }
 }
 
-export async function deleteFolderTree(
+async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): Promise<void> {
+  const subdirs: Array<[string, FileSystemDirectoryHandle]> = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind === 'directory') subdirs.push([name, handle as FileSystemDirectoryHandle]);
+  }
+  for (const [name, handle] of subdirs) {
+    await pruneEmptySubdirectories(handle);
+    try {
+      // Non-recursive removeEntry only succeeds on empty directories, so any
+      // untracked files (PDFs, .canvas, ...) keep their parent chain alive.
+      await dirHandle.removeEntry(name);
+    } catch {
+      // Directory still has content — keep it.
+    }
+  }
+}
+
+/**
+ * Remove a folder tree, but only the parts that are empty. Vault folders may
+ * contain files Noa does not track; those files (and their parent directories)
+ * must survive structural operations like folder renames.
+ */
+export async function removeEmptyFolderTree(
   rootHandle: FileSystemDirectoryHandle,
   folderPath: string
 ): Promise<void> {
   const segments = folderPath.split('/').filter(Boolean).map((segment) => sanitizeFilename(segment));
   if (segments.length === 0) return;
-  const parentSegments = segments.slice(0, -1);
-  const folderName = segments[segments.length - 1];
-  const parentHandle = parentSegments.length > 0
-    ? await ensureDirectory(rootHandle, parentSegments, false)
+  const dirHandle = await ensureDirectory(rootHandle, segments, false);
+  if (!dirHandle) return;
+  await pruneEmptySubdirectories(dirHandle);
+  const parentHandle = segments.length > 1
+    ? await ensureDirectory(rootHandle, segments.slice(0, -1), false)
     : rootHandle;
   if (!parentHandle) return;
   try {
-    await parentHandle.removeEntry(folderName, { recursive: true });
+    await parentHandle.removeEntry(segments[segments.length - 1]);
   } catch {
-    // ignore missing directories during best-effort cleanup
+    // Not empty (untracked files remain) or already gone — leave as is.
   }
 }
 

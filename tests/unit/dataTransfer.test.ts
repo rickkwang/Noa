@@ -7,7 +7,12 @@ import {
   countImportedNotes,
   getFolderImportPath,
   prepareImportedNotes,
+  parseZipAttachmentPath,
+  resolveImportedFolders,
+  resolveImportedWorkspaceName,
+  uniqueExportFilename,
   validateAttachmentPayloads,
+  zipAttachmentPath,
 } from '../../src/hooks/useDataTransfer';
 import { Note } from '../../src/types';
 
@@ -293,5 +298,140 @@ describe('buildVaultImportPayload', () => {
     expect(guide?.attachments ?? []).toHaveLength(0);
     expect(result.stagedAttachments).toHaveLength(2);
     expect(result.notes.filter((note) => note.title === 'image')).toHaveLength(2);
+  });
+});
+
+describe('resolveImportedFolders', () => {
+  const existing = [
+    { id: 'f-existing', name: 'diaries', source: 'noa' as const },
+    { id: 'f-shared', name: 'essays', source: 'noa' as const },
+  ];
+  const incoming = [
+    { id: 'f-shared', name: 'essays (backup)', source: 'noa' as const },
+    { id: 'f-new', name: 'projects', source: 'noa' as const },
+  ];
+
+  it('overwrite: replaces folders with the imported set', () => {
+    expect(resolveImportedFolders('overwrite', existing, incoming)).toEqual(incoming);
+  });
+
+  it('merge: keeps every existing folder and appends only new incoming ids', () => {
+    const result = resolveImportedFolders('merge', existing, incoming);
+    expect(result.map((f) => f.id)).toEqual(['f-existing', 'f-shared', 'f-new']);
+    // The existing folder wins on id conflicts — its name is not clobbered.
+    expect(result.find((f) => f.id === 'f-shared')?.name).toBe('essays');
+  });
+
+  it('skip: behaves like merge for folders (existing data is preserved)', () => {
+    const result = resolveImportedFolders('skip', existing, incoming);
+    expect(result.map((f) => f.id)).toEqual(['f-existing', 'f-shared', 'f-new']);
+  });
+
+  it('merge with no incoming folders keeps existing folders intact', () => {
+    expect(resolveImportedFolders('merge', existing, [])).toEqual(existing);
+  });
+});
+
+describe('resolveImportedWorkspaceName', () => {
+  it('overwrite: uses the backup workspace name', () => {
+    expect(resolveImportedWorkspaceName('overwrite', 'Backup WS')).toBe('Backup WS');
+  });
+
+  it('overwrite: falls back when the backup name is missing or not a string', () => {
+    expect(resolveImportedWorkspaceName('overwrite', undefined)).toBe('Imported Workspace');
+    expect(resolveImportedWorkspaceName('overwrite', 42 as unknown as string)).toBe('Imported Workspace');
+    expect(resolveImportedWorkspaceName('overwrite', '   ')).toBe('Imported Workspace');
+  });
+
+  it('merge/skip: keeps the current workspace name untouched', () => {
+    expect(resolveImportedWorkspaceName('merge', 'Backup WS')).toBeUndefined();
+    expect(resolveImportedWorkspaceName('skip', 'Backup WS')).toBeUndefined();
+  });
+});
+
+describe('zip attachment paths', () => {
+  const ATT_ID = '0f0f0f0f-1111-4222-8333-444455556666';
+  const NOTE_ID = 'aaaa1111-2222-4333-8444-555566667777';
+
+  it('builds vault-style paths that round-trip through the parser', () => {
+    const path = zipAttachmentPath(NOTE_ID, { id: ATT_ID, filename: 'my-photo (1).png' });
+    expect(path).toBe(`attachments/${NOTE_ID}/${ATT_ID}-my-photo (1).png`);
+    expect(parseZipAttachmentPath(path)).toEqual({
+      attachmentId: ATT_ID,
+      filename: 'my-photo (1).png',
+    });
+  });
+
+  it('parses dash-heavy filenames without truncating them', () => {
+    const path = `attachments/${NOTE_ID}/${ATT_ID}-a-b-c-d-e-final.png`;
+    expect(parseZipAttachmentPath(path)).toEqual({
+      attachmentId: ATT_ID,
+      filename: 'a-b-c-d-e-final.png',
+    });
+  });
+
+  it('parses the legacy export layout attachments/{attachmentId}/{filename}', () => {
+    expect(parseZipAttachmentPath(`attachments/${ATT_ID}/photo.png`)).toEqual({
+      attachmentId: ATT_ID,
+      filename: 'photo.png',
+    });
+  });
+
+  it('rejects paths it cannot attribute to an attachment id', () => {
+    expect(parseZipAttachmentPath('attachments/not-a-uuid/a-b-c-d-e.png')).toBeNull();
+    expect(parseZipAttachmentPath('attachments/orphan.png')).toBeNull();
+    expect(parseZipAttachmentPath('notes/whatever.md')).toBeNull();
+  });
+});
+
+describe('prepareImportedNotes source handling', () => {
+  it('preserves frontmatter-derived tags and links for obsidian-import notes', () => {
+    const note: Note = {
+      ...makeNote('id1', 'Imported'),
+      source: 'obsidian-import',
+      content: 'Body with #bodytag and [[Body Link]]',
+      tags: ['frontmatter-tag'],
+      links: ['Curated Link'],
+    };
+
+    const [prepared] = prepareImportedNotes([note]);
+
+    expect(prepared.tags).toEqual(['frontmatter-tag']);
+    expect(prepared.links).toEqual(['Curated Link']);
+  });
+
+  it('still re-extracts tags and links for noa-native notes', () => {
+    const note: Note = {
+      ...makeNote('id2', 'Native'),
+      source: 'noa',
+      content: 'Body with #bodytag and [[Body Link]]',
+      tags: ['stale-tag'],
+      links: ['Stale Link'],
+    };
+
+    const [prepared] = prepareImportedNotes([note]);
+
+    expect(prepared.tags).toEqual(['bodytag']);
+    expect(prepared.links).toEqual(['Body Link']);
+  });
+});
+
+describe('uniqueExportFilename', () => {
+  it('keeps the plain filename when the title is unique', () => {
+    const used = new Set<string>();
+    expect(uniqueExportFilename(used, 'Sample', 'a1a1a1a1-x', '.md')).toBe('Sample.md');
+  });
+
+  it('suffixes the note id for duplicate titles so no archive entry is overwritten', () => {
+    const used = new Set<string>();
+    expect(uniqueExportFilename(used, 'Sample', 'a1a1a1a1-x', '.md')).toBe('Sample.md');
+    expect(uniqueExportFilename(used, 'Sample', 'b2b2b2b2-x', '.md')).toBe('Sample_b2b2b2b2.md');
+    expect(uniqueExportFilename(used, 'Sample', 'b2b2b2b2-x', '.md')).toBe('Sample_b2b2b2b2_2.md');
+  });
+
+  it('sanitizes titles and falls back for empty ones', () => {
+    const used = new Set<string>();
+    expect(uniqueExportFilename(used, 'a/b:c', 'a1a1a1a1-x', '.html')).toBe('a_b_c.html');
+    expect(uniqueExportFilename(used, '', 'a1a1a1a1-x', '.md')).toBe('Untitled.md');
   });
 });

@@ -24,6 +24,7 @@ import {
   mergeAttachmentPayloads,
   type ImportedNote,
 } from '../lib/attachmentUtils';
+import { prepareImportedNotes } from '../lib/importUtils';
 
 const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
@@ -1036,15 +1037,11 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
 
       const rawById = new Map(rawNotes.map((note) => [note.id, note]));
-      const normalizedWithPayloads: ImportedNote[] = normalizedNotes.map((note) => {
-        const merged = mergeAttachmentPayloads(note, rawById.get(note.id));
-        const contentValue = merged.content || '';
-        return {
-          ...merged,
-          tags: extractTags(contentValue),
-          links: extractLinks(contentValue),
-        };
-      });
+      // prepareImportedNotes re-derives tags/links for noa-native notes only;
+      // obsidian-import notes keep their frontmatter-derived values.
+      const normalizedWithPayloads: ImportedNote[] = prepareImportedNotes(
+        normalizedNotes.map((note) => mergeAttachmentPayloads(note, rawById.get(note.id))),
+      );
       const attachmentError = findInvalidAttachmentPayload(normalizedWithPayloads);
       if (attachmentError) {
         setLoadError({ code: 'import_integrity_failed', message: attachmentError });

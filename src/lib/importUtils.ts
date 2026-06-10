@@ -36,12 +36,18 @@ export function analyzeConflicts(incoming: Note[], existing: Note[]): ConflictSu
   return { sameIdCount, dupeTitleCount, newCount };
 }
 
-export function prepareImportedNotes(notes: Note[]): Note[] {
-  return notes.map((note) => ({
-    ...note,
-    tags: extractTags(note.content),
-    links: extractLinks(note.content),
-  }));
+export function prepareImportedNotes<T extends Note>(notes: T[]): T[] {
+  return notes.map((note) => {
+    // Obsidian-imported notes own their tags/links via frontmatter, and their
+    // content no longer carries that frontmatter — re-extracting from the body
+    // would clobber the curated values.
+    if ((note.source ?? 'noa') === 'obsidian-import') return note;
+    return {
+      ...note,
+      tags: extractTags(note.content),
+      links: extractLinks(note.content),
+    };
+  });
 }
 
 export function validateAttachmentPayloads(notes: ImportedNote[]): string | null {
@@ -75,6 +81,30 @@ export function applyImportStrategy(
     }
   }
   return merged;
+}
+
+/**
+ * Folders to persist after a JSON import. Only the destructive 'overwrite'
+ * strategy may replace the existing folder set; merge/skip preserve current
+ * folders (so kept notes don't lose their folder) and append unseen ones.
+ */
+export function resolveImportedFolders(
+  strategy: 'overwrite' | 'merge' | 'skip',
+  existing: Folder[],
+  incoming: Folder[],
+): Folder[] {
+  if (strategy === 'overwrite') return incoming;
+  const existingIds = new Set(existing.map((folder) => folder.id));
+  return [...existing, ...incoming.filter((folder) => !existingIds.has(folder.id))];
+}
+
+/** Workspace name to apply after a JSON import; undefined keeps the current name. */
+export function resolveImportedWorkspaceName(
+  strategy: 'overwrite' | 'merge' | 'skip',
+  importedName: unknown,
+): string | undefined {
+  if (strategy !== 'overwrite') return undefined;
+  return typeof importedName === 'string' && importedName.trim() ? importedName : 'Imported Workspace';
 }
 
 export function countImportedNotes(
@@ -120,6 +150,65 @@ export function classifyFolderImportFile(file: Pick<File, 'name' | 'type'>): { k
 
 export function sanitizeFilename(name: string): string {
   return name.replace(/[/\\:*?"<>|]/g, '_');
+}
+
+/**
+ * Filename for one exported note, unique within its archive directory.
+ * Duplicate titles get the vault-style `_<id-prefix>` suffix instead of
+ * silently overwriting the earlier entry. Registers the result in usedNames.
+ */
+export function uniqueExportFilename(
+  usedNames: Set<string>,
+  title: string,
+  noteId: string,
+  extension: string,
+): string {
+  const base = sanitizeFilename(title || 'Untitled');
+  let candidate = `${base}${extension}`;
+  if (usedNames.has(candidate)) {
+    candidate = `${base}_${noteId.slice(0, 8)}${extension}`;
+  }
+  let counter = 2;
+  while (usedNames.has(candidate)) {
+    candidate = `${base}_${noteId.slice(0, 8)}_${counter}${extension}`;
+    counter += 1;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
+const UUID_SOURCE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const VAULT_ATTACHMENT_BASENAME_RE = new RegExp(`^(${UUID_SOURCE})-(.+)$`, 'i');
+const UUID_ONLY_RE = new RegExp(`^${UUID_SOURCE}$`, 'i');
+
+/**
+ * ZIP archive path for an attachment blob. Mirrors the vault-on-disk layout
+ * (attachments/{noteId}/{attachmentId}-{filename}) so exported archives and
+ * connected vault folders share one format.
+ */
+export function zipAttachmentPath(noteId: string, attachment: { id: string; filename: string }): string {
+  return `attachments/${noteId}/${attachment.id}-${sanitizeFilename(attachment.filename)}`;
+}
+
+/**
+ * Recover { attachmentId, filename } from a ZIP attachment path. Accepts the
+ * vault layout (attachments/{noteId}/{uuid}-{filename}) and the legacy export
+ * layout (attachments/{uuid}/{filename}). Returns null when the id cannot be
+ * determined — never guesses from dash-splitting, which corrupted ids for
+ * filenames containing dashes.
+ */
+export function parseZipAttachmentPath(path: string): { attachmentId: string; filename: string } | null {
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] !== 'attachments' || parts.length < 3) return null;
+  const basename = parts[parts.length - 1];
+  const vaultMatch = basename.match(VAULT_ATTACHMENT_BASENAME_RE);
+  if (vaultMatch) {
+    return { attachmentId: vaultMatch[1], filename: vaultMatch[2] };
+  }
+  if (UUID_ONLY_RE.test(parts[1])) {
+    return { attachmentId: parts[1], filename: parts.slice(2).join('/') };
+  }
+  return null;
 }
 
 export function sanitizeFolderPath(path: string): string {

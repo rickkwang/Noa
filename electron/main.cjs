@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
+const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
@@ -169,6 +170,23 @@ function createWindow() {
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.cjs'),
     },
+  });
+
+  // External links open in the system browser, never inside the app shell —
+  // a new in-app window would inherit the preload bridge.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (resolveNavigationPolicy(url, { isDev }) === 'open-external') {
+      void shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    const policy = resolveNavigationPolicy(url, { isDev });
+    if (policy === 'allow') return;
+    event.preventDefault();
+    if (policy === 'open-external') {
+      void shell.openExternal(url);
+    }
   });
 
   if (isDev) {

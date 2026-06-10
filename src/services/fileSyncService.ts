@@ -1,10 +1,10 @@
 import { Folder, Note } from '../types';
 import {
   clearPersistedHandle,
-  deleteFolderTree,
   deleteNoteFile,
   getPersistedHandle,
   persistHandle,
+  removeEmptyFolderTree,
   requestDirectoryAccess,
   scanDirectory,
   writeNote,
@@ -207,7 +207,10 @@ export async function syncNoteRename(
   folders: Folder[],
 ): Promise<void> {
   await withVaultLock(async () => {
-    await deleteNoteFile(handle, note, folders);
+    // keepAttachments: the note continues to exist — its attachments/{noteId}
+    // directory must survive the rename (writeNote does not recreate it for
+    // obsidian-import notes).
+    await deleteNoteFile(handle, note, folders, { keepAttachments: true });
     await writeNote(handle, { ...note, title: newTitle, updatedAt: new Date().toISOString() }, folders);
   });
 }
@@ -227,7 +230,7 @@ export async function syncNoteMove(
   folders: Folder[],
 ): Promise<void> {
   await withVaultLock(async () => {
-    await deleteNoteFile(handle, previousNote, folders);
+    await deleteNoteFile(handle, previousNote, folders, { keepAttachments: true });
     await writeNote(handle, nextNote, folders);
   });
 }
@@ -254,10 +257,21 @@ export async function syncFolderRename(
         .map((folder) => folder.id)
     );
 
-    await deleteFolderTree(handle, previousName);
+    // Folder list as it looked before the rename, so each note's old file can
+    // be located when the manifest has no entry for it.
+    const previousFolders = currentFolders.map((folder) =>
+      affectedFolderIds.has(folder.id)
+        ? { ...folder, name: previousName + folder.name.slice(newPrefix.length) }
+        : folder
+    );
+
+    // Move managed notes one by one instead of deleting the directory tree —
+    // vault folders may contain files Noa does not track, and those must survive.
     for (const note of notes.filter((n) => affectedFolderIds.has(n.folder))) {
+      await deleteNoteFile(handle, note, previousFolders, { keepAttachments: true });
       await writeNote(handle, note, currentFolders);
     }
+    await removeEmptyFolderTree(handle, previousName);
   });
 }
 
