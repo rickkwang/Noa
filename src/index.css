@@ -207,6 +207,35 @@ body {
   animation: tab-fade-in 150ms ease-out both;
 }
 
+/* ── Editor tab strip ── */
+@keyframes editor-tab-slot-enter {
+  from {
+    min-width: 0;
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  to {
+    min-width: 4.5rem;
+    max-width: 9rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+.editor-tab-enter {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  will-change: min-width, max-width, padding-left, padding-right;
+  animation: editor-tab-slot-enter 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-tab-enter {
+    animation: none;
+  }
+}
+
 /* ── Slide-down reveal (delete confirm bar, banners) ── */
 @keyframes slide-down {
   from { opacity: 0; transform: translateY(-6px); }

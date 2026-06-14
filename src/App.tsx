@@ -38,9 +38,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
   const [tabLimitWarning, setTabLimitWarning] = useState(false);
   const restoredOpenTabsRef = useRef(false);
   const openTabIdsRef = useRef<string[]>([]);
+  const pendingNewTabAnimationRef = useRef(false);
+  const pendingNewTabAnimationResetRef = useRef<number | null>(null);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
       return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
@@ -301,6 +304,12 @@ export default function App() {
     openTabIdsRef.current = openTabIds;
   }, [openTabIds]);
 
+  useEffect(() => () => {
+    if (pendingNewTabAnimationResetRef.current !== null) {
+      window.clearTimeout(pendingNewTabAnimationResetRef.current);
+    }
+  }, []);
+
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
@@ -352,8 +361,20 @@ export default function App() {
   }, [closeTabById]);
 
   const handleNewTab = useCallback(() => {
+    pendingNewTabAnimationRef.current = true;
+    if (pendingNewTabAnimationResetRef.current !== null) {
+      window.clearTimeout(pendingNewTabAnimationResetRef.current);
+    }
+    pendingNewTabAnimationResetRef.current = window.setTimeout(() => {
+      pendingNewTabAnimationRef.current = false;
+      pendingNewTabAnimationResetRef.current = null;
+    }, 1000);
     handleCreateNote(primaryNoaFolderId);
   }, [primaryNoaFolderId, handleCreateNote]);
+
+  const handleTabEnterComplete = useCallback((id: string) => {
+    setEnteringTabId(current => current === id ? null : current);
+  }, []);
 
   const openTabs = useMemo(() => {
     const noteById = new Map(notes.map(n => [n.id, n]));
@@ -362,6 +383,17 @@ export default function App() {
       return n ? [{ id: n.id, title: n.title }] : [];
     });
   }, [openTabIds, notes]);
+
+  useEffect(() => {
+    if (!pendingNewTabAnimationRef.current || !activeNoteId) return;
+    if (!openTabIds.includes(activeNoteId)) return;
+    pendingNewTabAnimationRef.current = false;
+    if (pendingNewTabAnimationResetRef.current !== null) {
+      window.clearTimeout(pendingNewTabAnimationResetRef.current);
+      pendingNewTabAnimationResetRef.current = null;
+    }
+    setEnteringTabId(activeNoteId);
+  }, [activeNoteId, openTabIds]);
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
@@ -604,9 +636,11 @@ export default function App() {
                 setViewMode={setEditorViewMode}
                 settings={settings}
                 tabs={openTabs}
+                enteringTabId={enteringTabId}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}
                 onNewTab={handleNewTab}
+                onTabEnterComplete={handleTabEnterComplete}
                 onRestoreSnapshot={restoreSnapshot}
               />
             ) : (

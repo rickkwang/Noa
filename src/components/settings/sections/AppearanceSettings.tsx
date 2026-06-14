@@ -14,6 +14,35 @@ function isBuiltin(fontFamily: string) {
   return BUILTIN_FONTS.includes(fontFamily);
 }
 
+function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-7 w-14 border-2 border-[#2D2D2D] transition-colors active:translate-x-px active:translate-y-px ${
+        checked ? 'bg-[#B89B5E]' : 'bg-[#EAE8E0]'
+      }`}
+    >
+      <span
+        className={`absolute left-1 top-1 h-4 w-4 border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[2px_2px_0_0_rgba(45,45,45,1)] transition-transform ${
+          checked ? 'translate-x-7' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   const [systemFonts, setSystemFonts] = useState<string[]>([]);
   const [loadingFonts, setLoadingFonts] = useState(false);
@@ -167,6 +196,16 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               className="w-32 accent-[#B89B5E]"
             />
           </div>
+        </SettingItem>
+        <SettingItem label="Use pointer cursors" description="Change the cursor to a pointer when hovering over interactive elements.">
+          <ToggleSwitch
+            checked={settings.appearance.usePointerCursors}
+            label="Use pointer cursors"
+            onChange={(checked) => updateSettings(s => ({
+              ...s,
+              appearance: { ...s.appearance, usePointerCursors: checked },
+            }))}
+          />
         </SettingItem>
       </SettingSection>
     </div>

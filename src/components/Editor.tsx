@@ -37,9 +37,11 @@ interface EditorProps {
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   settings: AppSettings;
   tabs?: EditorTab[];
+  enteringTabId?: string | null;
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
   onNewTab?: () => void;
+  onTabEnterComplete?: (id: string) => void;
 }
 
 export default function Editor({
@@ -55,9 +57,11 @@ export default function Editor({
   setViewMode,
   settings,
   tabs,
+  enteringTabId,
   onTabChange,
   onTabClose,
   onNewTab,
+  onTabEnterComplete,
   onRestoreSnapshot,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -367,6 +371,8 @@ export default function Editor({
         onExportMd={() => exportNoteAsMd(note)}
         onExportHtml={() => exportNoteAsHtml(note)}
         titleInputRef={titleInputRef}
+        enteringTabId={enteringTabId}
+        onTabEnterComplete={onTabEnterComplete}
         onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
         isHistoryOpen={isHistoryOpen}
       />

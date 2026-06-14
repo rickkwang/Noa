@@ -4,9 +4,10 @@ interface SettingSectionProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  bare?: boolean;
 }
 
-export default function SettingSection({ title, description, children }: SettingSectionProps) {
+export default function SettingSection({ title, description, children, bare = false }: SettingSectionProps) {
   return (
     <div>
       <div className="mb-4">
@@ -15,9 +16,11 @@ export default function SettingSection({ title, description, children }: Setting
           <p className="text-sm text-[#2D2D2D]/70 mt-1">{description}</p>
         )}
       </div>
-      <div className="bg-[#DCD9CE] border-2 border-[#2D2D2D] p-4">
-        {children}
-      </div>
+      {bare ? children : (
+        <div className="bg-[#DCD9CE] border-2 border-[#2D2D2D] p-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

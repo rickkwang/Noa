@@ -89,6 +89,7 @@ export interface AppSettings {
     accentColor: string;
     fontFamily: string;
     maxWidth: number;
+    usePointerCursors: boolean;
   };
   dailyNotes: {
     template: string;

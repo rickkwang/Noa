@@ -43,7 +43,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       ? (isDark ? palette.dark : palette.light)
       : (settings.appearance.accentColor ?? '#B89B5E');
     root.style.setProperty('--accent-color', accentColor);
-  }, [isDark, settings.appearance.accentColor]);
+    root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
+  }, [isDark, settings.appearance.accentColor, settings.appearance.usePointerCursors]);
 
   const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
                           settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
@@ -105,6 +106,23 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
         color: var(--text-primary);
         font-family: ${fontFamilyStyle} !important;
       }
+
+      ${settings.appearance.usePointerCursors ? '' : `
+      html[data-pointer-cursors="disabled"] button:not(:disabled),
+      html[data-pointer-cursors="disabled"] a[href],
+      html[data-pointer-cursors="disabled"] summary,
+      html[data-pointer-cursors="disabled"] [role="button"],
+      html[data-pointer-cursors="disabled"] [role="switch"],
+      html[data-pointer-cursors="disabled"] input[type="button"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] input[type="submit"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] input[type="reset"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] input[type="checkbox"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] input[type="radio"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] input[type="color"]:not(:disabled),
+      html[data-pointer-cursors="disabled"] .cursor-pointer:not(.cursor-default):not(.cursor-text):not(.cursor-not-allowed):not(.cursor-col-resize):not(.cursor-row-resize):not(.cursor-zoom-in):not(.cursor-zoom-out) {
+        cursor: default !important;
+      }
+      `}
     `}</style>
   );
 }

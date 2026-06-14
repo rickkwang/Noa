@@ -12,6 +12,7 @@ export const defaultSettings: AppSettings = {
     accentColor: '#B89B5E',
     fontFamily: 'font-iosevka',
     maxWidth: 680,
+    usePointerCursors: true,
   },
   dailyNotes: {
     template: '',

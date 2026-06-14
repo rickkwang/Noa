@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Settings, X, Book } from '@/src/lib/icons';
+import { Settings, X } from '@/src/lib/icons';
 import { Note, Folder, AppSettings, SyncStatus } from '../../types';
 import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
 import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
@@ -9,6 +9,7 @@ import DataSettings from './sections/DataSettings';
 import EditorSettings from './sections/EditorSettings';
 import AppUpdateSettings from './sections/AppUpdateSettings';
 import { buildDiagnostics, downloadDiagnostics } from '../../lib/diagnostics';
+import fable5VerifiedBadge from '../../assets/fable5-verified.png';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -168,10 +169,19 @@ export default function SettingsModal({
             {activeTab === 'about' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="font-bold text-lg text-[#2D2D2D]">About</h2>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="font-bold text-lg text-[#2D2D2D]">About</h2>
+                    <span className="text-base font-bold text-[#2D2D2D]">v{import.meta.env.PACKAGE_VERSION}</span>
+                  </div>
                   <p className="text-sm text-[#2D2D2D]/70 mt-1">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
+                  <img
+                    src={fable5VerifiedBadge}
+                    alt="Fable 5 Verified"
+                    className="h-8 w-auto block mt-4 select-none pointer-events-none"
+                    draggable={false}
+                  />
                 </div>
-                <SettingSection title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
+                <SettingSection bare title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackMailto}
                     className="inline-flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
@@ -179,7 +189,7 @@ export default function SettingsModal({
                     <span>Send Feedback</span>
                   </a>
                 </SettingSection>
-                <SettingSection title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
+                <SettingSection bare title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
                   <div className="space-y-2">
                     <button
                       onClick={handleExportDiagnostics}
@@ -217,23 +227,6 @@ export default function SettingsModal({
                       ))}
                     </tbody>
                   </table>
-                </div>
-
-                <div className="border-2 border-[#2D2D2D] bg-[#DCD9CE] px-4 py-3 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-[#B89B5E] border-2 border-[#2D2D2D] flex items-center justify-center shrink-0">
-                    <Book size={20} className="text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold tracking-widest uppercase text-sm">Noa</span>
-                      <span className="text-xs text-[#2D2D2D]/50">v{import.meta.env.PACKAGE_VERSION}</span>
-                    </div>
-                    <p className="text-xs text-[#2D2D2D]/50 mt-0.5">Local-first Markdown knowledge base · React · Tailwind</p>
-                  </div>
-                  <div className="flex gap-2 text-[10px] font-bold text-[#B89B5E] shrink-0">
-                    <span>#local-first</span>
-                    <span>#redaction</span>
-                  </div>
                 </div>
               </div>
             )}
