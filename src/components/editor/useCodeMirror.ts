@@ -27,10 +27,10 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
   return true;
 }
 
-// Warm dark palette: bg #262624, text #D7D2C5, accent #D97757
+// Warm dark palette: bg #262624, text #D6D4D1, accent #D97757
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#D7D2C5' },
-  '.cm-content': { caretColor: '#D7D2C5', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#D6D4D1' },
+  '.cm-content': { caretColor: '#D6D4D1', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
@@ -39,12 +39,12 @@ const darkTheme = EditorView.theme({
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
   '.cm-inline-code': { background: 'rgba(192,128,107,0.07)', borderRadius: '4px', padding: '0.05em 0.3em' },
-  '.cm-cursor': { borderLeftColor: '#D7D2C5' },
+  '.cm-cursor': { borderLeftColor: '#D6D4D1' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(217,119,87,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(217,119,87,0.38)' },
-  '.cm-activeLine': { backgroundColor: 'rgba(240,237,230,0.03)' },
+  '.cm-activeLine': { backgroundColor: 'rgba(238,237,234,0.03)' },
   '.cm-gutters': { display: 'none' },
-  '.cm-placeholder': { color: 'rgba(240,237,230,0.28)' },
+  '.cm-placeholder': { color: 'rgba(238,237,234,0.28)' },
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
@@ -54,11 +54,11 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'inherit', color: '#D7D2C5' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#D6D4D1' },
   { tag: tags.link, color: '#D97757', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(240,237,230,0.32)', fontFamily: 'inherit' },
-  { tag: tags.quote, fontStyle: 'italic', color: 'rgba(240,237,230,0.52)' },
+  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(238,237,234,0.32)', fontFamily: 'inherit' },
+  { tag: tags.quote, fontStyle: 'italic', color: 'rgba(238,237,234,0.52)' },
 ]);
 
 const lightTheme = EditorView.theme({

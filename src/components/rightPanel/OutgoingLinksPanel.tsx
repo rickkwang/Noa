@@ -47,7 +47,7 @@ export function OutgoingLinksPanel({ activeNote, notes, onNavigateToNoteById, is
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>Open a note to see outgoing links.</div>
       ) : !hasAny ? (
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>
-          No outgoing links from<br /><span className={`font-bold ${isDark ? 'text-[rgba(240,237,230,0.6)]' : 'text-[#2D2D2D]/70'}`}>"{activeNote.title}"</span>
+          No outgoing links from<br /><span className={`font-bold ${isDark ? 'text-[rgba(238,237,234,0.6)]' : 'text-[#2D2D2D]/70'}`}>"{activeNote.title}"</span>
         </div>
       ) : (
         <div className="space-y-2.5">

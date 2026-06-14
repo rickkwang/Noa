@@ -17,8 +17,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-primary', '#262624');
       root.style.setProperty('--bg-secondary', '#1E1E1C');
       root.style.setProperty('--bg-tertiary', '#2C2C28');
-      root.style.setProperty('--text-primary', '#F0EDE6');
-      root.style.setProperty('--text-secondary', 'rgba(240,237,230,0.5)');
+      root.style.setProperty('--text-primary', '#EEEDEA');
+      root.style.setProperty('--text-secondary', 'rgba(238,237,234,0.5)');
       root.style.setProperty('--border-primary', '#3A3A37');
     } else {
       root.removeAttribute('data-theme');

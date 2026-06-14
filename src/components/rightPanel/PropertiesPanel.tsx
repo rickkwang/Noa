@@ -27,12 +27,12 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
   // their frontmatter is owned by the vault file, not by Noa.
   const isReadOnlyFrontmatter = (activeNote?.source === 'obsidian-import') || (!noteHasContentFrontmatter && noteHasRawFrontmatter);
 
-  const txtMuted = isDark ? 'text-[rgba(240,237,230,0.4)]' : 'text-[#2D2D2D]/50';
-  const labelColor = isDark ? 'text-[rgba(240,237,230,0.3)]' : 'text-[#2D2D2D]/30';
-  const keyColor = isDark ? 'text-[rgba(240,237,230,0.4)]' : 'text-[#2D2D2D]/40';
+  const txtMuted = isDark ? 'text-[rgba(238,237,234,0.4)]' : 'text-[#2D2D2D]/50';
+  const labelColor = isDark ? 'text-[rgba(238,237,234,0.3)]' : 'text-[#2D2D2D]/30';
+  const keyColor = isDark ? 'text-[rgba(238,237,234,0.4)]' : 'text-[#2D2D2D]/40';
   const inputBg = isDark ? 'bg-[#2C2C28]' : 'bg-[#DCD9CE]/50';
-  const inputBorder = isDark ? 'border-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]/20';
-  const deleteBtn = isDark ? 'text-[rgba(240,237,230,0.3)] hover:text-red-400' : 'text-[#2D2D2D]/30 hover:text-red-500';
+  const inputBorder = isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[#2D2D2D]/20';
+  const deleteBtn = isDark ? 'text-[rgba(238,237,234,0.3)] hover:text-red-400' : 'text-[#2D2D2D]/30 hover:text-red-500';
 
   useEffect(() => {
     let meta: Record<string, string> = {};
@@ -94,7 +94,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                     </div>
                   ) : <span className="text-xs font-redaction opacity-30">—</span>
                 ) : isReadOnlyFrontmatter ? (
-                  <div className={`flex-1 text-xs font-redaction break-all min-w-0 ${isDark ? 'text-[rgba(240,237,230,0.6)]' : 'text-[#2D2D2D]/70'}`}>
+                  <div className={`flex-1 text-xs font-redaction break-all min-w-0 ${isDark ? 'text-[rgba(238,237,234,0.6)]' : 'text-[#2D2D2D]/70'}`}>
                     {value || <span className="opacity-30">—</span>}
                   </div>
                 ) : (
@@ -104,7 +104,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                       value={value}
                       onChange={(e) => setEditedMeta(prev => ({ ...prev, [key]: e.target.value }))}
                       onBlur={() => { if (onUpdateNote) onUpdateNote(stringifyFrontmatter(editedMetaRef.current, propBodyRef.current)); }}
-                      className={`flex-1 ${inputBg} border ${inputBorder} px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]'}`}
+                      className={`flex-1 ${inputBg} border ${inputBorder} px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                     />
                     <button
                       onClick={() => {
@@ -127,7 +127,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                 <input
                   type="text" placeholder="key" value={newPropKey}
                   onChange={(e) => setNewPropKey(e.target.value)}
-                  className={`w-20 shrink-0 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] ${isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]'}`}
+                  className={`w-20 shrink-0 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                   autoFocus
                 />
                 <input
@@ -142,23 +142,23 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                     }
                     if (e.key === 'Escape') { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }
                   }}
-                  className={`flex-1 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]'}`}
+                  className={`flex-1 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                 />
                 <button onClick={() => { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }}
-                  className={`${isDark ? 'text-[rgba(240,237,230,0.3)] hover:text-[rgba(240,237,230,0.7)]' : 'text-[#2D2D2D]/30 hover:text-[#2D2D2D]'} active:opacity-70 shrink-0`}>
+                  className={`${isDark ? 'text-[rgba(238,237,234,0.3)] hover:text-[rgba(238,237,234,0.7)]' : 'text-[#2D2D2D]/30 hover:text-[#2D2D2D]'} active:opacity-70 shrink-0`}>
                   <X size={12} />
                 </button>
               </div>
             ) : !isReadOnlyFrontmatter ? (
               <button onClick={() => setAddingProp(true)}
-                className={`flex items-center gap-1 text-xs active:opacity-70 pt-1 ${isDark ? 'text-[rgba(240,237,230,0.4)] hover:text-[rgba(240,237,230,0.8)]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D]'}`}>
+                className={`flex items-center gap-1 text-xs active:opacity-70 pt-1 ${isDark ? 'text-[rgba(238,237,234,0.4)] hover:text-[rgba(238,237,234,0.8)]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D]'}`}>
                 <Plus size={12} /><span className="font-redaction">Add property</span>
               </button>
             ) : null}
           </>
         )}
         {isObsidian(activeNote) && !noteHasFrontmatter && (
-          <div className={`text-xs font-redaction py-2 ${isDark ? 'text-[rgba(240,237,230,0.35)]' : 'text-[#2D2D2D]/45'}`}>
+          <div className={`text-xs font-redaction py-2 ${isDark ? 'text-[rgba(238,237,234,0.35)]' : 'text-[#2D2D2D]/45'}`}>
             This note has no frontmatter properties.
           </div>
         )}

@@ -578,7 +578,7 @@ export default function GraphView({
       />
       <div
         className="absolute bottom-2 right-2 flex flex-row gap-px backdrop-blur-sm"
-        style={{ background: isDark ? 'rgba(240,237,230,0.07)' : 'rgba(45,45,45,0.06)', border: `1px solid ${isDark ? 'rgba(240,237,230,0.12)' : 'rgba(45,45,45,0.15)'}` }}
+        style={{ background: isDark ? 'rgba(238,237,234,0.07)' : 'rgba(45,45,45,0.06)', border: `1px solid ${isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.15)'}` }}
       >
         {zoomControls.map(({ icon, title, action }) => (
           <button
@@ -586,7 +586,7 @@ export default function GraphView({
             onClick={action}
             title={title}
             className="w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors"
-            style={{ color: isDark ? 'rgba(240,237,230,0.45)' : 'rgba(45,45,45,0.5)' }}
+            style={{ color: isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)' }}
           >
             {icon}
           </button>

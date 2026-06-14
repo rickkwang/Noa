@@ -114,7 +114,7 @@ export default function RightPanel({
         className="h-8 flex items-stretch shrink-0 overflow-hidden border-b"
         style={{
           background: isDark ? '#1E1E1C' : '#DCD9CE',
-          borderColor: isDark ? 'rgba(240,237,230,0.18)' : '#2D2D2D',
+          borderColor: isDark ? 'rgba(238,237,234,0.18)' : '#2D2D2D',
         }}
       >
         {([
@@ -127,16 +127,16 @@ export default function RightPanel({
           const isActive = activeTab === tab.id;
           const baseStyle: React.CSSProperties = {
             borderLeft: idx > 0
-              ? `1px solid ${isDark ? 'rgba(240,237,230,0.08)' : 'rgba(45,45,45,0.15)'}`
+              ? `1px solid ${isDark ? 'rgba(238,237,234,0.08)' : 'rgba(45,45,45,0.15)'}`
               : undefined,
           };
           const activeStyle: React.CSSProperties = isActive
             ? {
                 background: isDark ? '#262624' : '#EAE8E0',
-                color: isDark ? '#F0EDE6' : '#2D2D2D',
+                color: isDark ? '#EEEDEA' : '#2D2D2D',
               }
             : {
-                color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.55)',
+                color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
               };
           return (
             <button
@@ -148,7 +148,7 @@ export default function RightPanel({
               className={`relative flex-1 flex items-center justify-center transition-colors active:opacity-70 ${
                 isActive
                   ? ''
-                  : isDark ? 'hover:text-[#F0EDE6] hover:bg-[#F0EDE6]/[0.04]' : 'hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/50'
+                  : isDark ? 'hover:text-[#EEEDEA] hover:bg-[#EEEDEA]/[0.04]' : 'hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/50'
               }`}
               style={{ ...baseStyle, ...activeStyle }}
             >
@@ -193,44 +193,44 @@ export default function RightPanel({
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (
-            <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#1E1E1C] text-[rgba(240,237,230,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
-              <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/60'}`}>Graph Guide</div>
+            <div className={`border px-3 py-2 text-[11px] leading-relaxed ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#1E1E1C] text-[rgba(238,237,234,0.65)]' : 'border-[#2D2D2D]/30 bg-[#DCD9CE] text-[#2D2D2D]/80'}`}>
+              <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/60'}`}>Graph Guide</div>
               <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
               <button
                 onClick={() => {
                   setShowGraphGuide(false);
                   try { localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1'); } catch { /* quota exceeded */ }
                 }}
-                className={`mt-2 text-[10px] uppercase tracking-wider font-bold border px-2 py-0.5 ${isDark ? 'border-[rgba(240,237,230,0.25)] hover:border-[rgba(240,237,230,0.6)] text-[rgba(240,237,230,0.5)]' : 'border-[#2D2D2D]/40 hover:border-[#2D2D2D]'}`}
+                className={`mt-2 text-[10px] uppercase tracking-wider font-bold border px-2 py-0.5 ${isDark ? 'border-[rgba(238,237,234,0.25)] hover:border-[rgba(238,237,234,0.6)] text-[rgba(238,237,234,0.5)]' : 'border-[#2D2D2D]/40 hover:border-[#2D2D2D]'}`}
               >
                 Got It
               </button>
             </div>
           )}
-          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.9)' }}>
-            <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
+          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.9)' }}>
+            <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
               <Network size={11} className="text-[#B89B5E] shrink-0" />
-              <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
               <div className="flex items-center gap-1 h-5 px-1.5"
-                style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)' }}>
-                <Search size={9} style={{ color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
+                style={{ border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)' }}>
+                <Search size={9} style={{ color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
                 <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                   placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-16"
-                  style={{ color: isDark ? '#F0EDE6' : '#2D2D2D' }} />
+                  style={{ color: isDark ? '#EEEDEA' : '#2D2D2D' }} />
               </div>
               <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
                 className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
                 style={hideIsolated
-                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                  ? { background: isDark ? '#EEEDEA' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#EEEDEA' : '#2D2D2D'}` }
+                  : { border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }
                 }>
                 <Network size={10} />
               </button>
               <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
                 className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors"
                 style={showFilters
-                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-                  : { border: `1px solid ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.5)' }
+                  ? { background: isDark ? '#EEEDEA' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#EEEDEA' : '#2D2D2D'}` }
+                  : { border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }
                 }>
                 <Filter size={10} />
               </button>
@@ -309,27 +309,27 @@ function GraphInfoPanel({
   const notesById = useMemo(() => new Map(notes.map(n => [n.id, n])), [notes]);
 
   return (
-    <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(240,237,230,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
-      <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(240,237,230,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
+    <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
+      <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
         <GitBranch size={11} className="text-[#B89B5E] shrink-0" />
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix Stats</span>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix Stats</span>
       </div>
       <div className="p-3 space-y-3">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
-            <div key={label} className={`border p-2 text-center ${isDark ? 'border-[rgba(240,237,230,0.15)]' : 'border-[#2D2D2D]'}`}>
+            <div key={label} className={`border p-2 text-center ${isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[#2D2D2D]'}`}>
               <div className={`text-sm font-bold leading-none tabular-nums ${isDark ? 'text-[#E8E0D0]' : 'text-[#2D2D2D]'}`}>{value}</div>
-              <div className={`text-[9px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>{label}</div>
+              <div className={`text-[9px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/50'}`}>{label}</div>
             </div>
           ))}
         </div>
         {activeNoteId && (
           <div>
-            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>
+            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/50'}`}>
               Active · {notesById.get(activeNoteId)?.title ?? 'Unknown'}
             </div>
             {activeConnections.length === 0 ? (
-              <div className={`text-[10px] italic ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
+              <div className={`text-[10px] italic ${isDark ? 'text-[rgba(238,237,234,0.55)]' : 'text-[#2D2D2D]/40'}`}>No connections</div>
             ) : (
               <div className="space-y-1">
                 {activeConnections.slice(0, 6).map(id => {
@@ -337,15 +337,15 @@ function GraphInfoPanel({
                   if (!target) return null;
                   return (
                     <button key={id} onClick={() => onNavigateToNoteById(id)}
-                      className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
+                      className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                       <Circle size={5} className="shrink-0 fill-[#B89B5E] text-[#B89B5E]" />
                       <span className="truncate">{target.title}</span>
-                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
+                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
                     </button>
                   );
                 })}
                 {activeConnections.length > 6 && (
-                  <div className={`text-[9px] pl-3 ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/40'}`}>+{activeConnections.length - 6} more</div>
+                  <div className={`text-[9px] pl-3 ${isDark ? 'text-[rgba(238,237,234,0.55)]' : 'text-[#2D2D2D]/40'}`}>+{activeConnections.length - 6} more</div>
                 )}
               </div>
             )}
@@ -353,17 +353,17 @@ function GraphInfoPanel({
         )}
         {stats.ranked.length > 0 && (
           <div>
-            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/50'}`}>Most Connected</div>
+            <div className={`text-[9px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/50'}`}>Most Connected</div>
             <div className="space-y-1">
               {stats.ranked.map(([id, degree]) => {
                 const target = notesById.get(id);
                 if (!target) return null;
                 return (
                   <button key={id} onClick={() => onNavigateToNoteById(id)}
-                    className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
+                    className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
                     <div className="shrink-0 bg-[#B89B5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                     <span className="truncate">{target.title}</span>
-                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(240,237,230,0.5)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
+                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
                   </button>
                 );
               })}
@@ -404,9 +404,9 @@ function GraphFilterPanel({
   tagFilter,
   onTagFilterChange,
 }: GraphFilterPanelProps) {
-  const labelCls = `text-[9px] uppercase tracking-wider font-bold ${isDark ? 'text-[rgba(240,237,230,0.55)]' : 'text-[#2D2D2D]/55'}`;
-  const valueCls = `text-[10px] tabular-nums ${isDark ? 'text-[rgba(240,237,230,0.75)]' : 'text-[#2D2D2D]/80'}`;
-  const borderCol = isDark ? 'rgba(240,237,230,0.12)' : 'rgba(45,45,45,0.45)';
+  const labelCls = `text-[9px] uppercase tracking-wider font-bold ${isDark ? 'text-[rgba(238,237,234,0.55)]' : 'text-[#2D2D2D]/55'}`;
+  const valueCls = `text-[10px] tabular-nums ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/80'}`;
+  const borderCol = isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.45)';
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
   };
@@ -444,8 +444,8 @@ function GraphFilterPanel({
                 onClick={() => onColorModeChange(m)}
                 className="flex-1 h-5 text-[9px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
                 style={active
-                  ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-                  : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.6)' }
+                  ? { background: isDark ? '#EEEDEA' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#EEEDEA' : '#2D2D2D'}` }
+                  : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.6)' }
                 }
               >
                 {m === 'tag' ? 'Tag' : 'Off'}
@@ -462,8 +462,8 @@ function GraphFilterPanel({
           onClick={() => onSizeByDegreeChange(!sizeByDegree)}
           className="flex-1 h-5 text-[9px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
           style={sizeByDegree
-            ? { background: isDark ? '#F0EDE6' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#F0EDE6' : '#2D2D2D'}` }
-            : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.6)' }
+            ? { background: isDark ? '#EEEDEA' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#EEEDEA' : '#2D2D2D'}` }
+            : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.6)' }
           }
         >
           {sizeByDegree ? 'By Degree' : 'Uniform'}
@@ -478,7 +478,7 @@ function GraphFilterPanel({
             {tagFilter.length > 0 && (
               <button
                 onClick={() => onTagFilterChange([])}
-                className={`text-[9px] uppercase tracking-wider ${isDark ? 'text-[rgba(240,237,230,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/55 hover:text-[#B89B5E]'}`}
+                className={`text-[9px] uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/55 hover:text-[#B89B5E]'}`}
               >
                 Clear
               </button>
@@ -494,7 +494,7 @@ function GraphFilterPanel({
                   className="text-[9px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors active:opacity-70"
                   style={active
                     ? { background: '#B89B5E', color: isDark ? '#1E1E1C' : '#FFFFFF', border: '1px solid #B89B5E' }
-                    : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.65)' }
+                    : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }
                   }
                 >
                   {t}

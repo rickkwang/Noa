@@ -62,11 +62,11 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
   }, [selected, onRestore, noteId]);
 
   const bg = isDark ? '#1E1E1C' : '#EAE8E0';
-  const border = isDark ? 'rgba(240,237,230,0.1)' : 'rgba(45,45,45,0.15)';
-  const textPrimary = isDark ? '#F0EDE6' : '#2D2D2D';
-  const textMuted = isDark ? 'rgba(240,237,230,0.45)' : 'rgba(45,45,45,0.55)';
+  const border = isDark ? 'rgba(238,237,234,0.1)' : 'rgba(45,45,45,0.15)';
+  const textPrimary = isDark ? '#EEEDEA' : '#2D2D2D';
+  const textMuted = isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.55)';
   const accent = isDark ? '#D97757' : '#B89B5E';
-  const hoverBg = isDark ? 'rgba(240,237,230,0.05)' : 'rgba(45,45,45,0.05)';
+  const hoverBg = isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)';
   const selectedBg = isDark ? 'rgba(217,119,87,0.12)' : 'rgba(184,155,94,0.1)';
 
   return (

@@ -43,7 +43,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
           alignItems: 'center',
           justifyContent: 'center',
           background: 'transparent',
-          color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.55)',
+          color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
           cursor: 'pointer',
           opacity: 0.6,
           transition: 'opacity 120ms, color 120ms',
@@ -489,7 +489,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         }}>{children}</mark>
       ),
       hr: () => (
-        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, margin: '1.5rem 0' }} />
+        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, margin: '1.5rem 0' }} />
       ),
       code: ({ className, children }) => {
         const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? '';
@@ -527,7 +527,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           return (
             <section
               style={{
-                borderTop: `1px dashed ${isDark ? 'rgba(240,237,230,0.15)' : 'rgba(45,45,45,0.2)'}`,
+                borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`,
                 marginTop: '2rem',
                 paddingTop: '0.75rem',
                 fontSize: '0.8em',
@@ -551,13 +551,13 @@ export const PreviewPane = React.memo(function PreviewPane({
       ),
       tbody: ({ children }) => <tbody>{children}</tbody>,
       tr: ({ children }) => (
-        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}` }}>{children}</tr>
+        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}>{children}</tr>
       ),
       th: ({ children }) => (
-        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, borderBottom: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, color: isDark ? '#F0EDE6' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderBottom: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, color: isDark ? '#D6D4D1' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
       ),
       td: ({ children }) => (
-        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}`, color: isDark ? 'rgba(240,237,230,0.85)' : '#2D2D2D' }}>{children}</td>
+        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, color: isDark ? '#D6D4D1' : '#2D2D2D' }}>{children}</td>
       ),
       li: ({ children, className, ...props }) => {
         const isTask = className?.includes('task-list-item');
@@ -580,7 +580,7 @@ export const PreviewPane = React.memo(function PreviewPane({
                 width: '14px',
                 height: '14px',
                 minWidth: '14px',
-                border: `1.5px solid ${isDark ? 'rgba(240,237,230,0.4)' : 'rgba(45,45,45,0.35)'}`,
+                border: `1.5px solid ${isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.35)'}`,
                 marginTop: '3px',
                 backgroundColor: isChecked ? (isDark ? '#D97757' : '#B89B5E') : 'transparent',
               }}
@@ -612,7 +612,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#F0EDE6] prose-headings:text-[#F0EDE6] prose-p:text-[#F0EDE6] prose-li:text-[#F0EDE6] prose-strong:text-[#F0EDE6] prose-em:text-[#F0EDE6] prose-blockquote:text-[#F0EDE6] prose-ol:text-[#F0EDE6] prose-ul:text-[#F0EDE6] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#F0EDE6] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F0EDE6] prose-hr:border-[#3A3A37] prose-th:text-[#F0EDE6] prose-td:text-[#F0EDE6]'
+              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#D6D4D1] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
               : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D]/12 prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
@@ -628,8 +628,8 @@ export const PreviewPane = React.memo(function PreviewPane({
       </div>
 
       {backlinks.length > 0 && (
-        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}` }}>
-          <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(240,237,230,0.3)' : 'rgba(45,45,45,0.35)' }}>
+        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}>
+          <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.35)' }}>
             <span>{backlinks.length}</span>
             <span>Linked Mentions</span>
           </h3>
@@ -638,13 +638,13 @@ export const PreviewPane = React.memo(function PreviewPane({
               <div
                 key={backlink.id}
                 className="px-2 py-1.5 cursor-pointer transition-colors group"
-                style={{ border: `1px solid ${isDark ? 'rgba(240,237,230,0.5)' : '#2D2D2D'}` }}
+                style={{ border: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}
                 onClick={() => onNavigateToNoteById(backlink.id)}
               >
-                <div className="text-xs font-bold transition-colors group-hover:text-[#B89B5E]" style={{ color: isDark ? 'rgba(240,237,230,0.55)' : 'rgba(45,45,45,0.65)' }}>
+                <div className="text-xs font-bold transition-colors group-hover:text-[#B89B5E]" style={{ color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }}>
                   {backlink.title}
                 </div>
-                <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(240,237,230,0.3)' : 'rgba(45,45,45,0.4)' }}>
+                <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.4)' }}>
                   {getSnippet(backlink.content, note.title)}
                 </div>
               </div>

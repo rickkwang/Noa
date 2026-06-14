@@ -87,13 +87,13 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const progressTrack = isDark ? 'bg-[rgba(232,224,208,0.1)]' : 'bg-[#2D2D2D]/8';
   const progressFill = isDark ? 'bg-[#E8E0D0]' : 'bg-[#2D2D2D]';
   const sectionLine = isDark ? 'bg-[rgba(232,224,208,0.12)]' : 'bg-[#2D2D2D]/12';
-  const checkboxBorder = isDark ? 'border-[rgba(240,237,230,0.3)]' : 'border-[#2D2D2D]/35';
-  const checkboxBorderDone = isDark ? 'border-[rgba(240,237,230,0.4)]' : 'border-[#2D2D2D]/50';
-  const checkboxBgDone = isDark ? 'bg-[rgba(240,237,230,0.15)]' : 'bg-[#2D2D2D]/20';
-  const checkmarkColor = isDark ? 'text-[#F0EDE6]' : 'text-[#2D2D2D]';
+  const checkboxBorder = isDark ? 'border-[rgba(238,237,234,0.3)]' : 'border-[#2D2D2D]/35';
+  const checkboxBorderDone = isDark ? 'border-[rgba(238,237,234,0.4)]' : 'border-[#2D2D2D]/50';
+  const checkboxBgDone = isDark ? 'bg-[rgba(238,237,234,0.15)]' : 'bg-[#2D2D2D]/20';
+  const checkmarkColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
   const noteLink = isDark ? 'text-[rgba(232,224,208,0.3)]' : 'text-[#2D2D2D]/35';
   const showMoreBtn = isDark
-    ? 'border-[rgba(240,237,230,0.15)] text-[rgba(240,237,230,0.3)] hover:border-[rgba(240,237,230,0.4)] hover:text-[rgba(240,237,230,0.6)]'
+    ? 'border-[rgba(238,237,234,0.15)] text-[rgba(238,237,234,0.3)] hover:border-[rgba(238,237,234,0.4)] hover:text-[rgba(238,237,234,0.6)]'
     : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]';
   const lowRail = isDark ? 'bg-[rgba(232,224,208,0.25)]' : 'bg-[#2D2D2D]/25';
 
