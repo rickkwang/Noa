@@ -436,8 +436,13 @@ export default function GraphView({
           const src = readLinkEndpointId(link.source);
           const tgt = readLinkEndpointId(link.target);
           if (hoveredNeighbours) {
-            if (!hoveredNeighbours.has(src) && !hoveredNeighbours.has(tgt)) return `${linkColor}20`;
-            return link.bidirectional ? nodeColor : linkColor;
+            // Only emphasise links whose BOTH endpoints are in the hovered set — i.e.
+            // direct connections of the hovered node. Links sharing just one endpoint
+            // (a neighbour's other spokes) dim like everything else. Matches linkWidth.
+            if (hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt)) {
+              return link.bidirectional ? nodeColor : linkColor;
+            }
+            return `${linkColor}20`;
           }
           return link.bidirectional ? nodeColor : linkColor;
         }}
@@ -457,7 +462,7 @@ export default function GraphView({
         linkDirectionalArrowColor={(link: GraphLink) => {
           const src = readLinkEndpointId(link.source);
           const tgt = readLinkEndpointId(link.target);
-          if (hoveredNeighbours && !hoveredNeighbours.has(src) && !hoveredNeighbours.has(tgt)) {
+          if (hoveredNeighbours && !(hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt))) {
             return `${linkColor}20`;
           }
           return linkColor;
