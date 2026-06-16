@@ -547,9 +547,6 @@ export default function App() {
         showDailyNote={settings.corePlugins.dailyNotes}
         searchInputRef={searchInputRef}
         onOpenDailyNote={() => handleOpenDailyNote()}
-        workspaceName={workspaceName}
-        fsLastSyncAt={fsLastSyncAt}
-        hasFsHandle={!!fsHandle}
       />}
       <div className="flex-1 flex overflow-hidden relative">
         {isMobile && isSidebarOpen && (

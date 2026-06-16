@@ -1,4 +1,4 @@
-import React, { CSSProperties, useEffect, useState } from 'react';
+import React, { CSSProperties } from 'react';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -15,19 +15,9 @@ interface TopBarProps {
   showDailyNote?: boolean;
   searchInputRef?: React.RefObject<HTMLInputElement>;
   onOpenDailyNote?: () => void;
-  workspaceName?: string;
-  fsLastSyncAt?: string | null;
-  hasFsHandle?: boolean;
 }
 
-export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, showDailyNote = true, searchInputRef, onOpenDailyNote, workspaceName, fsLastSyncAt, hasFsHandle }: TopBarProps) {
-  const [nowTick, setNowTick] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowTick(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
+export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, showDailyNote = true, searchInputRef, onOpenDailyNote }: TopBarProps) {
   return (
     <div className="h-12 border-b grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ ...dragRegion, borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
       {/* Left Section: Traffic lights space + icon + title */}
@@ -40,25 +30,6 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
           >
             <PanelLeft size={16} />
           </button>
-          {(() => {
-            const mins = hasFsHandle && fsLastSyncAt
-              ? Math.floor((nowTick - new Date(fsLastSyncAt).getTime()) / 60000)
-              : null;
-            const stale = mins != null && mins > 30;
-            const tooltip = [
-              workspaceName,
-              mins != null ? `${stale ? '⚠ ' : ''}Last synced: ${mins < 1 ? 'just now' : `${mins}m ago`}` : null,
-            ].filter(Boolean).join('\n');
-            return (
-              <span
-                className="text-sm font-bold leading-tight cursor-default"
-                title={tooltip || undefined}
-                style={stale ? { color: '#d97706' } : undefined}
-              >
-                Noa{stale ? ' ⚠' : ''}
-              </span>
-            );
-          })()}
         </div>
       </div>
 
