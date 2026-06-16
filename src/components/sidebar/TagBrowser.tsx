@@ -1,19 +1,25 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, ChevronDown, Tag } from '@/src/lib/icons';
+import React, { useMemo, useState } from 'react';
+import { ChevronDown, Tag } from '@/src/lib/icons';
 import { Note } from '../../types';
 import { useResizeDrag } from '../../hooks/useResizeDrag';
-
-interface TagNode {
-  name: string;
-  fullPath: string;
-  count: number;
-  children: Map<string, TagNode>;
-}
 
 interface TagBrowserProps {
   notes: Note[];
   onSearchTag?: (tag: string) => void;
   searchQuery?: string;
+}
+
+// Curated warm/earthy hues that sit in the same family as the gold/coral accent,
+// so tags stay color-coded for classification without breaking the paper theme.
+// (terracotta, ochre, gold, mustard, olive, sage, clay-brown, dusty rose)
+const TAG_HUES = [12, 26, 40, 52, 74, 98, 22, 348];
+
+function tagHue(name: string): number {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (Math.imul(h, 31) + name.charCodeAt(i)) | 0;
+  }
+  return TAG_HUES[(((h % TAG_HUES.length) + TAG_HUES.length) % TAG_HUES.length)];
 }
 
 export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps) {
@@ -31,92 +37,24 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
     }
     return set;
   }, [searchQuery]);
+
   const { size: tagsHeight, setIsDragging } = useResizeDrag(
     250, 100, 600,
     (e: MouseEvent) => Math.min(window.innerHeight * 0.8, window.innerHeight - e.clientY),
     'row-resize'
   );
 
-  const tagTree = useMemo(() => {
-    const roots = new Map<string, TagNode>();
-
-    const getOrCreate = (map: Map<string, TagNode>, name: string, fullPath: string): TagNode => {
-      if (!map.has(name)) map.set(name, { name, fullPath, count: 0, children: new Map() });
-      return map.get(name)!;
-    };
-
+  const tags = useMemo(() => {
+    const counts = new Map<string, number>();
     notes.forEach(note => {
       note.tags?.forEach(tag => {
-        const parts = tag.split('/');
-        let currentMap = roots;
-        let path = '';
-        parts.forEach((part, i) => {
-          path = path ? `${path}/${part}` : part;
-          const node = getOrCreate(currentMap, part, path);
-          if (i === parts.length - 1) node.count += 1;
-          currentMap = node.children;
-        });
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
       });
     });
-
-    const propagate = (node: TagNode): number => {
-      let total = node.count;
-      node.children.forEach(child => { total += propagate(child); });
-      node.count = total;
-      return total;
-    };
-    roots.forEach(propagate);
-
-    return roots;
+    return Array.from(counts.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
+      .map(([name, count]) => ({ name, count }));
   }, [notes]);
-
-  const [expandedTagNodes, setExpandedTagNodes] = useState<Set<string>>(new Set());
-
-  const toggleTagNode = useCallback((fullPath: string) => {
-    setExpandedTagNodes(prev => {
-      const next = new Set(prev);
-      if (next.has(fullPath)) next.delete(fullPath);
-      else next.add(fullPath);
-      return next;
-    });
-  }, []);
-
-  const renderTagNode = (node: TagNode, depth: number): React.ReactNode => {
-    const hasChildren = node.children.size > 0;
-    const isExpanded = expandedTagNodes.has(node.fullPath);
-    const isActive = activeTags.has(node.fullPath.toLowerCase());
-    return (
-      <div key={node.fullPath}>
-        <div
-          className={`flex items-center gap-1 px-1 py-0.5 group ${isActive ? 'bg-[#DCD9CE]' : 'hover:bg-[#DCD9CE]/50'}`}
-          style={{ paddingLeft: `${depth * 12 + 4}px` }}
-        >
-          {hasChildren ? (
-            <button
-              onClick={() => toggleTagNode(node.fullPath)}
-              className="shrink-0 text-[#2D2D2D]/40 hover:text-[#2D2D2D] active:opacity-70"
-            >
-              {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-            </button>
-          ) : (
-            <span className="w-[10px] shrink-0" />
-          )}
-          <button
-            onClick={() => onSearchTag && onSearchTag(node.fullPath)}
-            className={`flex-1 text-left text-xs font-redaction active:opacity-70 truncate flex items-center gap-0.5 ${isActive ? 'text-[#B89B5E] font-bold' : 'text-[#2D2D2D] hover:text-[#B89B5E]'}`}
-          >
-            <span className="opacity-40">#</span>{node.name}
-          </button>
-          <span className="text-[10px] text-[#2D2D2D]/40 shrink-0">{node.count}</span>
-        </div>
-        {hasChildren && isExpanded && (
-          <div>
-            {Array.from(node.children.values()).map(child => renderTagNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div
@@ -138,11 +76,29 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>
       {isTagsOpen && (
-        <div className="flex-1 overflow-y-auto p-2">
-          {tagTree.size === 0 ? (
+        <div className="flex-1 overflow-y-auto p-2.5" style={{ scrollbarGutter: 'stable' }}>
+          {tags.length === 0 ? (
             <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
           ) : (
-            Array.from(tagTree.values()).map(node => renderTagNode(node, 0))
+            <div className="flex flex-wrap gap-1">
+              {tags.map(tag => {
+                const isActive = activeTags.has(tag.name.toLowerCase());
+                return (
+                  <button
+                    key={tag.name}
+                    onClick={() => onSearchTag?.(tag.name)}
+                    data-active={isActive}
+                    style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}
+                    className="noa-tag-pill inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-redaction leading-none active:opacity-70"
+                    title={`#${tag.name}`}
+                  >
+                    <span className="opacity-50">#</span>
+                    <span className="truncate max-w-[150px]">{tag.name}</span>
+                    <span className="text-[10px] tabular-nums opacity-55 ml-0.5">{tag.count}</span>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

@@ -115,6 +115,32 @@ body {
 .noa-tag { color: #B89B5E; background: rgba(184,155,94,0.12); border-radius: 4px; padding: 0 0.3em; font-size: 0.9em; font-weight: 600; white-space: nowrap; }
 [data-theme="dark"] .noa-tag { color: #D97757; background: rgba(217,119,87,0.15); }
 
+/* ── Tag Explorer pills (sidebar) ──
+   Per-tag hue lives in --tag-h (set inline); lightness/saturation are baked here
+   so each pill stays muted and on-theme in both light and dark. */
+.noa-tag-pill {
+  border-radius: 3px;
+  background: hsl(var(--tag-h) 18% 85%);
+  color: hsl(var(--tag-h) 26% 31%);
+  border: 1px solid hsl(var(--tag-h) 16% 73%);
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.noa-tag-pill:hover { background: hsl(var(--tag-h) 22% 80%); }
+[data-theme="dark"] .noa-tag-pill {
+  background: hsl(var(--tag-h) 8% 17%);
+  color: hsl(var(--tag-h) 24% 66%);
+  border-color: rgba(238, 237, 234, 0.10);
+}
+[data-theme="dark"] .noa-tag-pill:hover { background: hsl(var(--tag-h) 10% 21%); }
+
+/* Active = currently filtering on this tag. Thin accent border + accent text,
+   placed last with theme-qualified selectors so it wins over the dark base rule. */
+.noa-tag-pill[data-active="true"],
+[data-theme="dark"] .noa-tag-pill[data-active="true"] {
+  border-color: var(--accent-color, #B89B5E);
+  color: var(--accent-color, #B89B5E);
+}
+
 /* ── Prose (Markdown preview) ── */
 [data-theme="dark"] .prose-a\:text-\[\#B89B5E\] a            { color: #D97757 !important; }
 [data-theme="dark"] .prose-pre\:bg-\[\#DCD9CE\] pre          { background-color: #1E1E1C !important; }
