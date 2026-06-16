@@ -5,6 +5,7 @@ import { useIsDark } from '../../hooks/useIsDark';
 import Markdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
 import remarkEmoji from 'remark-emoji';
 import rehypeHighlight from 'rehype-highlight';
@@ -229,14 +230,19 @@ const CALLOUT_HEADER_RE = /^\[!([A-Za-z]+)\]([+-]?)\s*(.*)?$/;
 function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const childArray = React.Children.toArray(children);
-  const firstChild = childArray[0];
+  // react-markdown emits "\n" whitespace text nodes between a blockquote's block
+  // children, so childArray[0] is a newline string, not the header paragraph.
+  // Filter those out before locating the header, or callout detection never runs
+  // and every callout silently degrades to a plain blockquote.
+  const elementChildren = childArray.filter((c) => !(typeof c === 'string' && c.trim() === ''));
+  const firstChild = elementChildren[0];
 
   let calloutType: string | null = null;
   let foldable = false;
   let defaultCollapsed = false;
   let customTitle = '';
   let restOfFirst: React.ReactNode = null;
-  const restChildren = childArray.slice(1);
+  const restChildren = elementChildren.slice(1);
 
   if (React.isValidElement(firstChild)) {
     const firstChildProps = (firstChild as React.ReactElement<{ children?: React.ReactNode }>).props;
@@ -249,13 +255,19 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
       foldable = foldChar === '+' || foldChar === '-';
       defaultCollapsed = foldChar === '-';
 
-      // Strip [!TYPE]± prefix from first child's children
+      // Strip the whole "[!TYPE]± title" header from the first child — the title
+      // is rendered separately in the callout chrome, so none of the matched
+      // header line should leak into the body. The regex is anchored (^…$) and a
+      // matching callout's first line is single-line, so match[0] is exactly that
+      // header line. Using its length (rather than indexOf on the title text) is
+      // robust even when the title duplicates a substring of the type, e.g.
+      // "[!NOTE]+ NOTE".
       const childNodes = React.Children.toArray(firstChildProps.children);
-      const prefix = firstText.slice(0, firstText.indexOf(customTitle || foldChar || ']') + (customTitle ? customTitle.length : 1));
+      const prefixLen = match[0].length;
       const stripped = childNodes
         .map((c, i) => {
           if (i === 0 && typeof c === 'string') {
-            const rest = c.slice(prefix.length).trimStart();
+            const rest = c.slice(prefixLen).trimStart();
             return rest || null;
           }
           return c;
@@ -448,6 +460,26 @@ export const PreviewPane = React.memo(function PreviewPane({
             </span>
           );
         }
+        // In-document anchor (footnote ref/backref, [text](#heading)) — scroll
+        // within the preview instead of opening a new browser tab. The footnote
+        // ref/def ids match (fn-N ↔ fnref-N), so a plain anchor scroll resolves
+        // both directions; target="_blank" was breaking that.
+        if (href?.startsWith('#')) {
+          return (
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault();
+                const id = decodeURIComponent(href.slice(1));
+                const el = id ? scrollRef.current?.querySelector(`#${CSS.escape(id)}`) : null;
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+              {...props}
+            >
+              {children}
+            </a>
+          );
+        }
         // XSS guard: only allow safe protocols for external links
         if (!isSafeHref(href)) {
           return <span {...props}>{children}</span>;
@@ -516,7 +548,7 @@ export const PreviewPane = React.memo(function PreviewPane({
       ),
       // Footnote reference: [^1] inline superscript
       sup: ({ children, ...props }) => (
-        <sup style={{ color: isDark ? '#D97757' : '#B89B5E', fontSize: '0.75em', fontWeight: 'bold' }} {...props}>
+        <sup style={{ color: isDark ? '#D97757' : '#B89B5E', fontSize: '0.75em', fontWeight: 'bold', verticalAlign: 'super' }} {...props}>
           {children}
         </sup>
       ),
@@ -527,7 +559,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           return (
             <section
               style={{
-                borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`,
+                borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.2)'}`,
                 marginTop: '2rem',
                 paddingTop: '0.75rem',
                 fontSize: '0.8em',
@@ -618,7 +650,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           <Markdown
-            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkMark, remarkTag]}
+            remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
             rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#D97757' }]]}
             components={markdownComponents}
           >
