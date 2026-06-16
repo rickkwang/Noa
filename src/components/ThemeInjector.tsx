@@ -30,21 +30,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--border-primary', '#2D2D2D');
     }
 
-    const accentColors: Record<string, { light: string; dark: string }> = {
-      gold:   { light: '#B89B5E', dark: '#D97757' },
-      blue:   { light: '#4A90E2', dark: '#5B9BD5' },
-      green:  { light: '#50E3C2', dark: '#4CAF8A' },
-      purple: { light: '#9013FE', dark: '#9B7FD4' },
-      red:    { light: '#D0021B', dark: '#D45555' },
-    };
-
-    const palette = accentColors[settings.appearance.accentColor];
-    const accentColor = palette
-      ? (isDark ? palette.dark : palette.light)
-      : (settings.appearance.accentColor ?? '#B89B5E');
-    root.style.setProperty('--accent-color', accentColor);
+    // Accent is a fixed theme token (gold in light, coral in dark), not user-configurable.
+    root.style.setProperty('--accent-color', isDark ? '#D97757' : '#B89B5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
-  }, [isDark, settings.appearance.accentColor, settings.appearance.usePointerCursors]);
+  }, [isDark, settings.appearance.usePointerCursors]);
 
   const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
                           settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :

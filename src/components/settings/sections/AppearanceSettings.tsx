@@ -8,7 +8,7 @@ interface AppearanceSettingsProps {
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
 }
 
-const BUILTIN_FONTS = ['font-redaction', 'font-pixelify', 'font-work-sans'];
+const BUILTIN_FONTS = ['font-iosevka', 'font-redaction', 'font-pixelify', 'font-work-sans'];
 
 function isBuiltin(fontFamily: string) {
   return BUILTIN_FONTS.includes(fontFamily);
@@ -78,7 +78,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
   const currentSystemFont = !currentIsBuiltin ? settings.appearance.fontFamily : '';
 
   // The <select> value: builtin key, or the actual family name for system fonts
-  const selectValue = currentIsBuiltin ? settings.appearance.fontFamily : settings.appearance.fontFamily;
+  const selectValue = settings.appearance.fontFamily;
 
   return (
     <div className="space-y-8">
@@ -93,14 +93,6 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             <option value="dark">Dark</option>
             <option value="system">System</option>
           </select>
-        </SettingItem>
-        <SettingItem label="Accent Color" description="The primary color used for highlights and active states.">
-          <input
-            type="color"
-            value={settings.appearance.accentColor}
-            onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, accentColor: e.target.value } }))}
-            className="w-10 h-10 p-0 border-2 border-[#2D2D2D] cursor-pointer"
-          />
         </SettingItem>
       </SettingSection>
 

@@ -168,10 +168,7 @@ export default function GraphView({
   const linkColor = isDark ? '#8A8070' : '#9A9080';
   const textColor = isDark ? '#E8E0D0' : '#2D2D2D';
 
-  const accentColors: Record<string, string> = {
-    gold: '#B89B5E', blue: '#4A90E2', green: '#50E3C2', purple: '#9013FE', red: '#D0021B',
-  };
-  const nodeColor = accentColors[settings.appearance.accentColor] ?? settings.appearance.accentColor ?? '#B89B5E';
+  const nodeColor = isDark ? '#D97757' : '#B89B5E';
 
   // Build tag → color map (first tag per note wins; ordered by first appearance)
   const tagColorMap = useMemo(() => {

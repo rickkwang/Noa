@@ -9,7 +9,6 @@ export const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'system',
-    accentColor: '#B89B5E',
     fontFamily: 'font-iosevka',
     maxWidth: 680,
     usePointerCursors: true,
@@ -41,6 +40,9 @@ export function useSettings() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // accentColor was removed; drop it from older stored settings so it
+        // isn't merged back in and re-persisted as a dead key.
+        if (parsed.appearance) delete parsed.appearance.accentColor;
         // Deep merge with default settings to ensure all properties exist
         return {
           editor: { ...defaultSettings.editor, ...parsed.editor },

@@ -86,7 +86,6 @@ export interface AppSettings {
   };
   appearance: {
     theme: 'light' | 'dark' | 'system';
-    accentColor: string;
     fontFamily: string;
     maxWidth: number;
     usePointerCursors: boolean;
