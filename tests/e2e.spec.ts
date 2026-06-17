@@ -42,7 +42,7 @@ async function waitForMarkerPersisted(page: import('@playwright/test').Page, mar
 
 async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
 }
 
 test('new note flow creates and persists a note', async ({ page }) => {
@@ -116,4 +116,64 @@ test('import json restores notes from a backup file', async ({ page }) => {
   await page.reload();
   await waitForMarkerPersisted(page, marker);
   await expect(page.getByText(marker, { exact: false })).toBeVisible();
+});
+
+test('settings modal closes with escape and backdrop click', async ({ page }) => {
+  await page.goto('/');
+
+  const searchInput = page.getByPlaceholder('Search notes, tags...');
+  await searchInput.fill('Welcome');
+  await page.getByTitle('Settings').click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[role="dialog"]')).toBeHidden();
+  await expect(searchInput).toHaveValue('Welcome');
+
+  await page.getByTitle('Settings').click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await page.mouse.click(5, 5);
+  await expect(page.locator('[role="dialog"]')).toBeHidden();
+});
+
+test('settings tabs support keyboard navigation', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
+});
+
+test('settings remembers the last active tab when reopened', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'About' }).click();
+  await expect(page.getByRole('button', { name: 'Export Diagnostics' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.locator('[role="dialog"]')).toBeHidden();
+
+  await page.getByTitle('Settings').click();
+  await expect(page.getByRole('button', { name: 'Export Diagnostics' })).toBeVisible();
+});
+
+test('settings keeps primary controls inside the dialog at narrower widths', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 700 });
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+
+  const dialogBox = await dialog.boundingBox();
+  const themeSelectBox = await page.getByRole('combobox').first().boundingBox();
+
+  expect(dialogBox).not.toBeNull();
+  expect(themeSelectBox).not.toBeNull();
+  if (!dialogBox || !themeSelectBox) {
+    throw new Error('Settings dialog geometry could not be measured.');
+  }
+
+  expect(themeSelectBox.x + themeSelectBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
 });

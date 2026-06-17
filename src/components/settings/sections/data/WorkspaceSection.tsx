@@ -38,9 +38,9 @@ export default function WorkspaceSection({
 }: WorkspaceSectionProps) {
   return (
     <SettingSection title="Workspace" description="Manage your current working directory.">
-      <SettingItem label="Current Path" description="The active workspace location.">
+      <SettingItem label="Workspace Name" description="The label used for this local workspace and exports.">
         <div className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)]">
-          ~/{workspaceName}
+          {workspaceName}
         </div>
       </SettingItem>
 

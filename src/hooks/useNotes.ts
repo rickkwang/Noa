@@ -456,7 +456,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const targetSource = targetFolder?.source ?? 'noa';
     if (targetSource !== 'noa') {
       setSaveError('Cannot create notes inside imported vault area.');
-      return;
+      return undefined;
     }
     const newNote: Note = {
       id: crypto.randomUUID(),
@@ -479,6 +479,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       return next;
     });
     setActiveNoteIdWithRecent(newNote.id);
+    return newNote.id;
   }, [folders, setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {

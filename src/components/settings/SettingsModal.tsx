@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Settings, X } from '@/src/lib/icons';
 import { Note, Folder, AppSettings, SyncStatus } from '../../types';
 import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
-import SettingsSidebar, { SettingsTab } from './SettingsSidebar';
+import SettingsSidebar, { SETTINGS_TABS, SettingsTab } from './SettingsSidebar';
 import SettingSection from './SettingSection';
 import AppearanceSettings from './sections/AppearanceSettings';
 import DataSettings from './sections/DataSettings';
@@ -10,6 +10,8 @@ import EditorSettings from './sections/EditorSettings';
 import AppUpdateSettings from './sections/AppUpdateSettings';
 import { buildDiagnostics, downloadDiagnostics } from '../../lib/diagnostics';
 import fable5VerifiedBadge from '../../assets/fable5-verified.png';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
+import { lsGet, lsSet } from '../../lib/safeLocalStorage';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -50,10 +52,31 @@ export default function SettingsModal({
   onRetryFsSync,
   autoBackup,
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const saved = lsGet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB);
+    const validTabs = SETTINGS_TABS.map((tab) => tab.id);
+    return saved && validTabs.includes(saved as SettingsTab) ? (saved as SettingsTab) : 'appearance';
+  });
   const [mounted, setMounted] = useState(false);
   const [diagnosticsState, setDiagnosticsState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    lsSet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB, activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [onClose]);
 
   const feedbackMailto = useMemo(() => {
     const appVersion = import.meta.env.PACKAGE_VERSION || 'unknown';
@@ -111,27 +134,42 @@ export default function SettingsModal({
     <div
       className="absolute inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
       style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)' }}
+      onClick={onClose}
     >
       <div
-        className="w-full max-w-[850px] h-full max-h-[650px] bg-[#EAE8E0] border-2 border-[#2D2D2D] flex flex-col font-redaction transition-all duration-150"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-dialog-title"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-2 border-[#2D2D2D] flex flex-col font-redaction transition-all duration-150 md:max-h-[650px]"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Title Bar */}
         <div className="h-10 border-b-2 border-[#2D2D2D] flex items-center justify-between px-4 bg-[#DCD9CE] shrink-0">
           <div className="flex items-center space-x-2">
             <Settings size={16} className="text-[#2D2D2D]" />
-            <span className="font-bold tracking-widest uppercase text-sm">SETTINGS</span>
+            <span id="settings-dialog-title" className="font-bold tracking-widest uppercase text-sm">SETTINGS</span>
           </div>
-          <button onClick={onClose} className="hover:bg-red-500 hover:text-white p-1 border border-transparent hover:border-[#2D2D2D] transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close settings"
+            className="hover:bg-red-500 hover:text-white p-1 border border-transparent hover:border-[#2D2D2D] transition-colors"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
           <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
           {/* Content */}
-          <div className="flex-1 p-8 bg-[#EAE8E0] overflow-y-auto">
+          <div
+            id={`settings-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`settings-tab-${activeTab}`}
+            className="flex-1 p-4 bg-[#EAE8E0] overflow-y-auto sm:p-6 md:p-8"
+          >
             {activeTab === 'appearance' && (
               <AppearanceSettings settings={settings} updateSettings={updateSettings} />
             )}

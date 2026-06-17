@@ -10,8 +10,20 @@ interface EditorSettingsProps {
   setEditorViewMode: (mode: 'edit' | 'preview' | 'split') => void;
 }
 
-const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+const Toggle = ({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={value}
+    aria-label={label}
     onClick={() => onChange(!value)}
     className={`w-12 h-6 border-2 border-[#2D2D2D] relative transition-colors ${value ? 'bg-[#B89B5E]' : 'bg-[#EAE8E0]'}`}
   >
@@ -214,12 +226,14 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
         <SettingItem label="Fuzzy Search" description="Match approximate spellings and partial words. Disable for exact-only matching.">
           <Toggle
             value={settings.search.fuzzySearch}
+            label="Fuzzy Search"
             onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, fuzzySearch: v } }))}
           />
         </SettingItem>
         <SettingItem label="Case Sensitive" description="Match uppercase and lowercase characters exactly.">
           <Toggle
             value={settings.search.caseSensitive}
+            label="Case Sensitive"
             onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, caseSensitive: v } }))}
           />
         </SettingItem>
@@ -229,12 +243,14 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
         <SettingItem label="Graph View" description="Show the knowledge graph button in the toolbar.">
           <Toggle
             value={settings.corePlugins.graphView}
+            label="Graph View"
             onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, graphView: v } }))}
           />
         </SettingItem>
         <SettingItem label="Daily Notes" description="Show the daily note button in the toolbar.">
           <Toggle
             value={settings.corePlugins.dailyNotes}
+            label="Daily Notes"
             onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, dailyNotes: v } }))}
           />
         </SettingItem>

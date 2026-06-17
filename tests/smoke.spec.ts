@@ -400,7 +400,7 @@ Footnote ref[^1]
 test('invalid JSON import is blocked with readable error', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
 
   const fileChooser = page.locator('input[type="file"][accept=".json"]');
   await fileChooser.setInputFiles({
@@ -415,14 +415,14 @@ test('invalid JSON import is blocked with readable error', async ({ page }) => {
 test('export json button is available from backup section', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
 });
 
 test('reset and import recovery flow uses confirmation', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await page.getByRole('button', { name: 'New Workspace' }).click();
   await expect(page.getByText(/this will clear current data/i)).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -440,7 +440,7 @@ test('graph tab opens in right panel', async ({ page }) => {
 test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
 });
 
@@ -450,7 +450,7 @@ test('vault import preserves nested folder structure', async ({ page }) => {
   await page.goto('/');
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
   await page.evaluate((suffix) => {
     (window as typeof window & {
@@ -489,7 +489,7 @@ test('vault import keeps nested README notes and restores referenced image attac
   await page.goto('/');
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await page.evaluate((suffix) => {
     (window as typeof window & {
       __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string; base64?: string; type?: string }> };
@@ -582,7 +582,7 @@ test('filesystem sync control and status are visible in data settings', async ({
   await installMockDirectoryPicker(page);
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await expect(page.getByText('Vault Folder', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Connect Folder|Disconnect/ })).toBeVisible();
 });
@@ -599,7 +599,7 @@ test('filesystem sync status transitions from syncing to ready on retry', async 
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
@@ -619,7 +619,7 @@ test('filesystem sync status transitions from syncing to error on retry', async 
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('button', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();

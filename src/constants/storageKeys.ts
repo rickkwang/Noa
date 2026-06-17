@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   SIDEBAR_OPEN: 'app-sidebar-open',
   RIGHT_TAB: 'app-right-tab',
   EDITOR_VIEW_MODE: 'app-editor-view-mode',
+  SETTINGS_ACTIVE_TAB: 'app-settings-active-tab',
   SETTINGS: 'app-settings',
   STORAGE_NOTICE_SEEN: 'redaction-storage-notice-seen',
   RECENT_NOTES: 'redaction-diary-recent-notes',
