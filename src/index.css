@@ -234,30 +234,53 @@ body {
 }
 
 /* ── Editor tab strip ── */
+/* Animate compositor-only properties (transform/opacity) rather than width/
+   padding. Opening a tab reconfigures CodeMirror on the main thread; a layout-
+   bound animation would drop frames against that work, while a composited one
+   keeps running smoothly off-thread. The tab takes its final width immediately
+   (one cheap reflow) and fades/slides into place. */
+.editor-tab {
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+.editor-tab-divider {
+  transition: opacity 140ms ease-out;
+}
+
 @keyframes editor-tab-slot-enter {
   from {
-    min-width: 0;
-    max-width: 0;
-    padding-left: 0;
-    padding-right: 0;
+    opacity: 0;
+    transform: translateX(-8px) scale(0.96);
   }
   to {
-    min-width: 4.5rem;
-    max-width: 9rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    opacity: 1;
+    transform: translateX(0) scale(1);
   }
 }
 .editor-tab-enter {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  will-change: min-width, max-width, padding-left, padding-right;
+  transform-origin: left center;
   animation: editor-tab-slot-enter 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+@keyframes editor-tab-slot-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.96);
+  }
+}
+.editor-tab-exit {
+  pointer-events: none;
+  transform-origin: left center;
+  animation: editor-tab-slot-exit 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .editor-tab-enter {
+  .editor-tab-enter,
+  .editor-tab-exit {
     animation: none;
   }
 }

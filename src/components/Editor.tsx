@@ -38,10 +38,13 @@ interface EditorProps {
   settings: AppSettings;
   tabs?: EditorTab[];
   enteringTabId?: string | null;
+  enteringFromTabId?: string | null;
+  closingTabIds?: string[];
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
+  onTabCloseAnimationComplete?: (id: string) => void;
 }
 
 export default function Editor({
@@ -58,10 +61,13 @@ export default function Editor({
   settings,
   tabs,
   enteringTabId,
+  enteringFromTabId,
+  closingTabIds,
   onTabChange,
   onTabClose,
   onNewTab,
   onTabEnterComplete,
+  onTabCloseAnimationComplete,
   onRestoreSnapshot,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -372,7 +378,10 @@ export default function Editor({
         onExportHtml={() => exportNoteAsHtml(note)}
         titleInputRef={titleInputRef}
         enteringTabId={enteringTabId}
+        enteringFromTabId={enteringFromTabId}
+        closingTabIds={closingTabIds}
         onTabEnterComplete={onTabEnterComplete}
+        onTabCloseAnimationComplete={onTabCloseAnimationComplete}
         onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
         isHistoryOpen={isHistoryOpen}
       />

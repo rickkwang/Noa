@@ -39,11 +39,16 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
+  const [enteringFromTabId, setEnteringFromTabId] = useState<string | null>(null);
+  const [closingTabIds, setClosingTabIds] = useState<Set<string>>(() => new Set());
   const [tabLimitWarning, setTabLimitWarning] = useState(false);
   const restoredOpenTabsRef = useRef(false);
   const openTabIdsRef = useRef<string[]>([]);
-  const pendingNewTabAnimationRef = useRef(false);
-  const pendingNewTabAnimationResetRef = useRef<number | null>(null);
+  const activeNoteIdRef = useRef('');
+  const enteringTabIdRef = useRef<string | null>(null);
+  const enteringTabResetRef = useRef<number | null>(null);
+  const closingTabTimeoutsRef = useRef<Map<string, number>>(new Map());
+  const tabLimitWarningTimeoutRef = useRef<number | null>(null);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
       return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
@@ -165,16 +170,18 @@ export default function App() {
   }, [_handleRenameNote, syncNoteOnRename]);
 
   const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
-    _handleCreateNote(folderId, initialContent);
+    const createdId = _handleCreateNote(folderId, initialContent);
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
     const userTemplates = settings.templates?.userTemplates ?? [];
-    if (userTemplates.length > 0 && !initialContent) {
+    if (createdId && userTemplates.length > 0 && !initialContent) {
       waitingForTemplateRef.current = true;
     }
+    return createdId;
   }, [_handleCreateNote, settings.templates?.userTemplates]);
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
+  useEffect(() => { activeNoteIdRef.current = activeNoteId; }, [activeNoteId]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
     const note = notesRef.current.find((item) => item.id === id);
@@ -206,19 +213,43 @@ export default function App() {
   }, [_handleRenameFolder, folders, syncFolderOnRename]);
 
   const closeTabById = useCallback((id: string) => {
-    const next = openTabIds.filter(t => t !== id);
+    const current = openTabIdsRef.current;
+    const idx = current.indexOf(id);
+    if (idx === -1) {
+      setClosingTabIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const nextClosing = new Set(prev);
+        nextClosing.delete(id);
+        return nextClosing;
+      });
+      return;
+    }
+
+    const closeTimeout = closingTabTimeoutsRef.current.get(id);
+    if (closeTimeout !== undefined) {
+      window.clearTimeout(closeTimeout);
+      closingTabTimeoutsRef.current.delete(id);
+    }
+
+    const next = current.filter(t => t !== id);
+    openTabIdsRef.current = next;
+    setClosingTabIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const nextClosing = new Set(prev);
+      nextClosing.delete(id);
+      return nextClosing;
+    });
     setOpenTabIds(next);
-    if (id === activeNoteId) {
+    if (id === activeNoteIdRef.current) {
       if (next.length === 0) {
         setActiveNoteId('');
       } else {
-        const idx = openTabIds.indexOf(id);
         // Prefer the tab to the right; fall back to the one to the left
         const nextActive = next[idx] ?? next[idx - 1];
         setActiveNoteId(nextActive);
       }
     }
-  }, [activeNoteId, openTabIds, setActiveNoteId]);
+  }, [setActiveNoteId]);
 
   const handleDeleteNote = useCallback((id: string) => {
     void deleteNoteWithLocalFirst({
@@ -285,7 +316,10 @@ export default function App() {
     try {
       const ids: string[] = JSON.parse(saved);
       const validIds = ids.filter(id => notes.some(n => n.id === id)).slice(-MAX_OPEN_TABS);
-      if (validIds.length > 0) setOpenTabIds(validIds);
+      if (validIds.length > 0) {
+        openTabIdsRef.current = validIds;
+        setOpenTabIds(validIds);
+      }
     } catch { /* ignore */ }
   }, [isLoaded, notes]);
 
@@ -304,34 +338,75 @@ export default function App() {
     openTabIdsRef.current = openTabIds;
   }, [openTabIds]);
 
-  useEffect(() => () => {
-    if (pendingNewTabAnimationResetRef.current !== null) {
-      window.clearTimeout(pendingNewTabAnimationResetRef.current);
+  const showTabLimitWarning = useCallback(() => {
+    setTabLimitWarning(true);
+    if (tabLimitWarningTimeoutRef.current !== null) {
+      window.clearTimeout(tabLimitWarningTimeoutRef.current);
     }
+    tabLimitWarningTimeoutRef.current = window.setTimeout(() => {
+      setTabLimitWarning(false);
+      tabLimitWarningTimeoutRef.current = null;
+    }, 3000);
+  }, []);
+
+  const markEnteringTab = useCallback((id: string, fromId: string | null) => {
+    enteringTabIdRef.current = id;
+    setEnteringTabId(id);
+    setEnteringFromTabId(fromId);
+    if (enteringTabResetRef.current !== null) {
+      window.clearTimeout(enteringTabResetRef.current);
+    }
+    enteringTabResetRef.current = window.setTimeout(() => {
+      if (enteringTabIdRef.current === id) {
+        enteringTabIdRef.current = null;
+        setEnteringTabId(null);
+        setEnteringFromTabId(null);
+      }
+      if (enteringTabResetRef.current !== null) {
+        enteringTabResetRef.current = null;
+      }
+    }, 190);
+  }, []);
+
+  const openTabForNote = useCallback((id: string, animate: boolean) => {
+    const wasOpen = openTabIdsRef.current.includes(id);
+    const hadTabs = openTabIdsRef.current.length > 0;
+    if (!wasOpen && openTabIdsRef.current.length >= MAX_OPEN_TABS) {
+      showTabLimitWarning();
+    }
+    setOpenTabIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = prev.length < MAX_OPEN_TABS
+        ? [...prev, id]
+        : (() => {
+            const dropIndex = prev.findIndex((tabId) => tabId !== id);
+            if (dropIndex === -1) return [id];
+            return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), id];
+          })();
+      openTabIdsRef.current = next;
+      return next;
+    });
+    if (animate && !wasOpen && hadTabs) {
+      markEnteringTab(id, activeNoteIdRef.current || null);
+    }
+  }, [markEnteringTab, showTabLimitWarning]);
+
+  useEffect(() => () => {
+    if (enteringTabResetRef.current !== null) {
+      window.clearTimeout(enteringTabResetRef.current);
+    }
+    if (tabLimitWarningTimeoutRef.current !== null) {
+      window.clearTimeout(tabLimitWarningTimeoutRef.current);
+    }
+    closingTabTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    closingTabTimeoutsRef.current.clear();
   }, []);
 
   // Sync activeNoteId into openTabIds
   useEffect(() => {
     if (!activeNoteId) return;
-    // Detect if we are about to exceed the tab limit (before state update).
-    // Use a ref to avoid stale closure issues with openTabIds.
-    const willExceedLimit = openTabIdsRef.current.length >= MAX_OPEN_TABS &&
-      !openTabIdsRef.current.includes(activeNoteId);
-    if (willExceedLimit) {
-      setTabLimitWarning(true);
-    }
-    setOpenTabIds((prev) => {
-      if (prev.includes(activeNoteId)) return prev;
-      if (prev.length < MAX_OPEN_TABS) return [...prev, activeNoteId];
-      const dropIndex = prev.findIndex((id) => id !== activeNoteId);
-      if (dropIndex === -1) return [activeNoteId];
-      return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), activeNoteId];
-    });
-    if (willExceedLimit) {
-      const t = setTimeout(() => setTabLimitWarning(false), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [activeNoteId]);
+    openTabForNote(activeNoteId, false);
+  }, [activeNoteId, openTabForNote]);
 
   // When a note is created with waitingForTemplateRef set, pop the template picker
   useEffect(() => {
@@ -346,34 +421,67 @@ export default function App() {
     [folders]
   );
 
-  const handleTabChange = useCallback(async (id: string) => {
+  const handleTabChange = useCallback((id: string) => {
     if (id === activeNoteId) return;
-    try {
-      await flushAllPendingSaves();
-    } catch (err) {
-      console.error('[Noa] Failed to flush saves on tab change:', err);
-    }
+    // Switch immediately, then persist the outgoing note's pending edits in the
+    // background. The debounce-save timers in useNotes are independent of the
+    // editor unmount, so nothing is lost by not awaiting — and awaiting an
+    // IndexedDB write here is what made tab switches stutter whenever a save
+    // was still pending (i.e. right after typing).
     setActiveNoteId(id);
+    void flushAllPendingSaves().catch(err => {
+      console.error('[Noa] Failed to flush saves on tab change:', err);
+    });
   }, [activeNoteId, setActiveNoteId, flushAllPendingSaves]);
 
   const handleTabClose = useCallback((id: string) => {
+    const current = openTabIdsRef.current;
+    const idx = current.indexOf(id);
+    if (idx === -1 || closingTabIds.has(id)) return;
+
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      closeTabById(id);
+      return;
+    }
+
+    const next = current.filter(t => t !== id);
+    if (id === activeNoteIdRef.current && next.length > 0) {
+      const nextActive = next[idx] ?? next[idx - 1];
+      setActiveNoteId(nextActive);
+    }
+
+    setClosingTabIds((prev) => {
+      if (prev.has(id)) return prev;
+      const nextClosing = new Set(prev);
+      nextClosing.add(id);
+      return nextClosing;
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      closingTabTimeoutsRef.current.delete(id);
+      closeTabById(id);
+    }, 220);
+    closingTabTimeoutsRef.current.set(id, timeoutId);
+  }, [closeTabById, closingTabIds, setActiveNoteId]);
+
+  const handleTabCloseAnimationComplete = useCallback((id: string) => {
     closeTabById(id);
   }, [closeTabById]);
 
   const handleNewTab = useCallback(() => {
-    pendingNewTabAnimationRef.current = true;
-    if (pendingNewTabAnimationResetRef.current !== null) {
-      window.clearTimeout(pendingNewTabAnimationResetRef.current);
-    }
-    pendingNewTabAnimationResetRef.current = window.setTimeout(() => {
-      pendingNewTabAnimationRef.current = false;
-      pendingNewTabAnimationResetRef.current = null;
-    }, 1000);
-    handleCreateNote(primaryNoaFolderId);
-  }, [primaryNoaFolderId, handleCreateNote]);
+    const createdId = handleCreateNote(primaryNoaFolderId);
+    if (createdId) openTabForNote(createdId, true);
+  }, [primaryNoaFolderId, handleCreateNote, openTabForNote]);
 
   const handleTabEnterComplete = useCallback((id: string) => {
-    setEnteringTabId(current => current === id ? null : current);
+    if (enteringTabIdRef.current !== id) return;
+    enteringTabIdRef.current = null;
+    if (enteringTabResetRef.current !== null) {
+      window.clearTimeout(enteringTabResetRef.current);
+      enteringTabResetRef.current = null;
+    }
+    setEnteringTabId(null);
+    setEnteringFromTabId(null);
   }, []);
 
   const openTabs = useMemo(() => {
@@ -383,17 +491,6 @@ export default function App() {
       return n ? [{ id: n.id, title: n.title }] : [];
     });
   }, [openTabIds, notes]);
-
-  useEffect(() => {
-    if (!pendingNewTabAnimationRef.current || !activeNoteId) return;
-    if (!openTabIds.includes(activeNoteId)) return;
-    pendingNewTabAnimationRef.current = false;
-    if (pendingNewTabAnimationResetRef.current !== null) {
-      window.clearTimeout(pendingNewTabAnimationResetRef.current);
-      pendingNewTabAnimationResetRef.current = null;
-    }
-    setEnteringTabId(activeNoteId);
-  }, [activeNoteId, openTabIds]);
 
   const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
@@ -584,11 +681,15 @@ export default function App() {
                 activeNoteId={activeNoteId}
                 recentNoteIds={recentNoteIds}
                 onSelectNote={(id) => {
+                  // Switch + arm the entrance synchronously so the editor build
+                  // and tab animation aren't gated on an IndexedDB write; flush
+                  // the outgoing note's pending saves in the background (timers
+                  // are independent of unmount, so nothing is lost).
+                  openTabForNote(id, true);
+                  setActiveNoteId(id);
+                  if (isMobile) setIsSidebarOpen(false);
                   void flushAllPendingSaves().catch(err => {
                     console.error('[Noa] Failed to flush saves on note select:', err);
-                  }).finally(() => {
-                    setActiveNoteId(id);
-                    if (isMobile) setIsSidebarOpen(false);
                   });
                 }}
                 onCreateNote={handleCreateNote}
@@ -634,10 +735,13 @@ export default function App() {
                 settings={settings}
                 tabs={openTabs}
                 enteringTabId={enteringTabId}
+                enteringFromTabId={enteringFromTabId}
+                closingTabIds={Array.from(closingTabIds)}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}
                 onNewTab={handleNewTab}
                 onTabEnterComplete={handleTabEnterComplete}
+                onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
                 onRestoreSnapshot={restoreSnapshot}
               />
             ) : (

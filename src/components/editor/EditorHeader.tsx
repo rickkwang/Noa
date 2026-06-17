@@ -80,6 +80,8 @@ interface EditorHeaderProps {
   titleInput: string;
   viewMode: 'edit' | 'preview' | 'split';
   enteringTabId?: string | null;
+  enteringFromTabId?: string | null;
+  closingTabIds?: string[];
   onTitleInputChange: (value: string) => void;
   onTitleSubmit: () => void;
   onTitleKeyDown: (e: React.KeyboardEvent) => void;
@@ -88,6 +90,7 @@ interface EditorHeaderProps {
   onTabClose?: (id: string) => void;
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
+  onTabCloseAnimationComplete?: (id: string) => void;
   onClose?: () => void;
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   onExportMd: () => void;
@@ -104,6 +107,8 @@ export function EditorHeader({
   titleInput,
   viewMode,
   enteringTabId,
+  enteringFromTabId,
+  closingTabIds,
   onTitleInputChange,
   onTitleSubmit,
   onTitleKeyDown,
@@ -112,6 +117,7 @@ export function EditorHeader({
   onTabClose,
   onNewTab,
   onTabEnterComplete,
+  onTabCloseAnimationComplete,
   onClose,
   setViewMode,
   onExportMd,
@@ -122,6 +128,7 @@ export function EditorHeader({
 }: EditorHeaderProps) {
   const isDark = useIsDarkLocal();
   const tabStripRef = useRef<HTMLDivElement>(null);
+  const pendingInstantTabScrollRef = useRef(false);
   // Track IME composition so we don't commit a half-typed CJK title when the
   // user presses Enter or blurs mid-selection.
   const isComposingRef = useRef(false);
@@ -143,18 +150,17 @@ export function EditorHeader({
     const scrollEl = tabStripRef.current;
     if (!scrollEl) return;
     // Keep the active tab in view when it changes (e.g. activated via keyboard or
-    // sidebar while scrolled off-screen).
+    // sidebar while scrolled off-screen). Skip during the entrance animation and
+    // snap into view afterward so the tab strip itself doesn't leave a trail.
+    if (enteringTabId && enteringTabId === note.id) {
+      pendingInstantTabScrollRef.current = true;
+      return;
+    }
     const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
-    active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-  }, [tabs, note.id]);
-
-  useEffect(() => {
-    if (!enteringTabId || !shouldAnimateEnteringTab) return;
-    const timeout = window.setTimeout(() => {
-      onTabEnterComplete?.(enteringTabId);
-    }, 210);
-    return () => window.clearTimeout(timeout);
-  }, [enteringTabId, onTabEnterComplete, shouldAnimateEnteringTab]);
+    const behavior = pendingInstantTabScrollRef.current ? 'auto' : 'smooth';
+    pendingInstantTabScrollRef.current = false;
+    active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior });
+  }, [tabs, note.id, enteringTabId]);
 
   return (
     <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#EEEDEA]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
@@ -171,8 +177,13 @@ export function EditorHeader({
                 const isActiveTab = tab.id === note.id;
                 const prevTab = idx > 0 ? tabs[idx - 1] : null;
                 const prevIsActive = prevTab?.id === note.id;
+                const prevIsEntering = Boolean(prevTab && enteringTabId === prevTab.id);
+                const isEnteringFromTab = enteringFromTabId === tab.id;
+                const prevIsEnteringFromTab = Boolean(prevTab && enteringFromTabId === prevTab.id);
                 const showDivider = idx > 0 && !isActiveTab && !prevIsActive;
                 const isEnteringTab = shouldAnimateEnteringTab && enteringTabId === tab.id;
+                const isClosingTab = closingTabIds?.includes(tab.id) ?? false;
+                const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab;
                 const tabStyle = {
                   borderWidth: '1px',
                   borderStyle: 'solid',
@@ -183,13 +194,22 @@ export function EditorHeader({
                 return (
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
-                      <div className={`self-center h-3.5 w-px shrink-0 ${showDivider ? (isDark ? 'bg-[#EEEDEA]/15' : 'bg-[#2D2D2D]/20') : 'bg-transparent'}`} />
+                      <div
+                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#EEEDEA]/15' : 'bg-[#2D2D2D]/20'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        aria-hidden="true"
+                      />
                     )}
                     <div
                       data-tab-id={tab.id}
                       data-active-tab={isActiveTab}
-                      onClick={() => onTabChange?.(tab.id)}
-                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
+                      data-closing-tab={isClosingTab || undefined}
+                      onClick={() => { if (!isClosingTab) onTabChange?.(tab.id); }}
+                      onAnimationEnd={(event) => {
+                        if (event.currentTarget !== event.target) return;
+                        if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
+                        if (isEnteringTab) onTabEnterComplete?.(tab.id);
+                      }}
+                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
                         isActiveTab
                           ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#EEEDEA]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
                           : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#EEEDEA]/40 hover:text-[#EEEDEA]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
@@ -223,7 +243,7 @@ export function EditorHeader({
                         onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
                         className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#D97757]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
-                        title={`Close ${tab.title || 'Untitled'} tab`}
+                        title="Close tab"
                       >
                         <X size={11} />
                       </button>
