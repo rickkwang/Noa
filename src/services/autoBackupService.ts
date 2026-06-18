@@ -105,9 +105,8 @@ export async function runAutoBackup(
     // Pruning failure is non-fatal; the write already succeeded.
   }
 
-  // Update both the automatic-backup timestamp and the shared "last export"
-  // marker so the existing BackupReminderBar and backupHealth helpers see
-  // a successful write regardless of which path (manual or auto) produced it.
+  // Update both timestamps so backup health reflects successful manual and
+  // automatic snapshots consistently.
   lsSet(STORAGE_KEYS.LAST_AUTO_BACKUP_AT, new Date().toISOString());
   lsSet(STORAGE_KEYS.AUTO_BACKUP_LAST_ERROR, '');
   markExported();

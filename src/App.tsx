@@ -7,16 +7,13 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import { STORAGE_KEYS } from './constants/storageKeys';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
-import BackupReminderBar from './components/BackupReminderBar';
 import { parseTasksFromNotes } from './lib/taskParser';
 import { useSettings } from './hooks/useSettings';
 import { useNotes } from './hooks/useNotes';
 import { useLayout } from './hooks/useLayout';
 import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
-import { useBackupReminder } from './hooks/useBackupReminder';
 import { useAutoBackup } from './hooks/useAutoBackup';
-import { exportJsonSnapshot } from './hooks/useDataTransfer';
 import { useCommandPalette } from './hooks/useCommandPalette';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -293,8 +290,6 @@ export default function App() {
     setIsRightPanelOpen,
     activeRightTab,
     setActiveRightTab,
-    sidebarWidth,
-    rightPanelWidth,
     isDraggingSidebar,
     isDraggingRightPanel,
     setIsDraggingSidebar,
@@ -525,18 +520,6 @@ export default function App() {
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
   }, [handleNavigateToNote, navigateById, notes]);
 
-  const {
-    showReminder,
-    daysSinceExport,
-    lastExportAt,
-    backupHealth,
-    dismiss: dismissReminder,
-  } = useBackupReminder(notes.length);
-
-  const exportJsonQuick = useCallback(() => {
-    void exportJsonSnapshot(notes, folders, workspaceName);
-  }, [notes, folders, workspaceName]);
-
   const commandPalette = useCommandPalette({
     notes,
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
@@ -624,15 +607,6 @@ export default function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#B89B5E] selection:text-white">
       <ThemeInjector settings={settings} />
-      {showReminder && (
-        <BackupReminderBar
-          daysSinceExport={daysSinceExport}
-          lastExportAt={lastExportAt}
-          backupHealth={backupHealth}
-          onExportJson={exportJsonQuick}
-          onDismiss={dismissReminder}
-        />
-      )}
       {!isFocusMode && <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -657,7 +631,7 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? sidebarWidth : '0')),
+            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? 'var(--noa-sidebar-width, 280px)' : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
@@ -668,7 +642,7 @@ export default function App() {
         >
           <div
             style={{
-              width: isMobile ? '80vw' : sidebarWidth,
+              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 280px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"
@@ -764,7 +738,7 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? rightPanelWidth : '0')),
+            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? 'var(--noa-right-panel-width, 320px)' : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
@@ -775,7 +749,7 @@ export default function App() {
         >
           <div
             style={{
-              width: isMobile ? '80vw' : rightPanelWidth,
+              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 320px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"

@@ -36,20 +36,28 @@ export function useLayout() {
     return Math.min(window.innerWidth - e.clientX, maxWidth);
   }, []);
 
-  const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
-  const [isDraggingRightPanel, setIsDraggingRightPanel] = useState(false);
-  const { size: sidebarWidth, setIsDragging: _setIsDraggingSidebar } = useResizeDrag(280, 280, 480, getSidebarValue);
-  const { size: rightPanelWidth, setIsDragging: _setIsDraggingRightPanel } = useResizeDrag(320, 320, 480, getRightPanelValue);
+  const previewSidebarWidth = useCallback((size: number) => {
+    document.documentElement.style.setProperty('--noa-sidebar-width', `${size}px`);
+  }, []);
+  const previewRightPanelWidth = useCallback((size: number) => {
+    document.documentElement.style.setProperty('--noa-right-panel-width', `${size}px`);
+  }, []);
 
-  const handleSetIsDraggingSidebar = useCallback((v: boolean) => {
-    setIsDraggingSidebar(v);
-    _setIsDraggingSidebar(v);
-  }, [_setIsDraggingSidebar]);
+  const {
+    size: sidebarWidth,
+    isDragging: isDraggingSidebar,
+    setIsDragging: setIsDraggingSidebar,
+  } = useResizeDrag(280, 280, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
+  const {
+    size: rightPanelWidth,
+    isDragging: isDraggingRightPanel,
+    setIsDragging: setIsDraggingRightPanel,
+  } = useResizeDrag(320, 320, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
 
-  const handleSetIsDraggingRightPanel = useCallback((v: boolean) => {
-    setIsDraggingRightPanel(v);
-    _setIsDraggingRightPanel(v);
-  }, [_setIsDraggingRightPanel]);
+  useEffect(() => {
+    previewSidebarWidth(sidebarWidth);
+    previewRightPanelWidth(rightPanelWidth);
+  }, [previewSidebarWidth, previewRightPanelWidth, rightPanelWidth, sidebarWidth]);
 
   const wasMobileRef = useRef(false);
   useEffect(() => {
@@ -97,8 +105,8 @@ export function useLayout() {
     rightPanelWidth,
     isDraggingSidebar,
     isDraggingRightPanel,
-    setIsDraggingSidebar: handleSetIsDraggingSidebar,
-    setIsDraggingRightPanel: handleSetIsDraggingRightPanel,
+    setIsDraggingSidebar,
+    setIsDraggingRightPanel,
     editorViewMode,
     setEditorViewMode,
     isFocusMode,

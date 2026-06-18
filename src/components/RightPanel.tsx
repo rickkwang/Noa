@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
@@ -78,8 +78,6 @@ export default function RightPanel({
   const [showGraphGuide, setShowGraphGuide] = useState(() => {
     try { return !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN); } catch { return true; }
   });
-  const graphContainerRef = useRef<HTMLDivElement>(null);
-  const [graphDimensions, setGraphDimensions] = useState({ width: 320, height: 400 });
   // Once the graph tab is opened, keep it mounted across tab switches so the
   // force simulation and viewport survive — otherwise switching back replays the
   // "explode and zoom-to-fit" animation every time.
@@ -92,20 +90,6 @@ export default function RightPanel({
   const backlinksCount = useMemo(() => getBacklinks(activeNote, notes).length, [activeNote, notes]);
   const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes);
   const outgoingCount = outgoingResolved.length;
-
-  useEffect(() => {
-    if (activeTab !== 'graph' || !graphContainerRef.current) return;
-    const syncGraphSize = () => {
-      if (!graphContainerRef.current) return;
-      const rect = graphContainerRef.current.getBoundingClientRect();
-      setGraphDimensions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
-    };
-    syncGraphSize();
-    const observer = new ResizeObserver(syncGraphSize);
-    observer.observe(graphContainerRef.current);
-    window.addEventListener('resize', syncGraphSize);
-    return () => { observer.disconnect(); window.removeEventListener('resize', syncGraphSize); };
-  }, [activeTab]);
 
   return (
     <div className={`w-full h-full flex flex-col shrink-0 relative ${isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]'}`}>
@@ -250,11 +234,11 @@ export default function RightPanel({
                 onTagFilterChange={setTagFilter}
               />
             )}
-            <div ref={graphContainerRef} className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden">
               <GraphView notes={notes} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
-                width={graphDimensions.width} height={graphDimensions.height} hideIsolated={hideIsolated}
-                localDepth={localDepth} tagFilter={tagFilter} colorMode={colorMode} sizeByDegree={sizeByDegree} />
+                hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
+                colorMode={colorMode} sizeByDegree={sizeByDegree} />
             </div>
           </div>
           <GraphInfoPanel

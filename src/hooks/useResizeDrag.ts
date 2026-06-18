@@ -5,27 +5,55 @@ export function useResizeDrag(
   min: number,
   max: number,
   getValue: (e: MouseEvent) => number,
-  cursor: string = 'col-resize'
+  cursor: string = 'col-resize',
+  onPreview?: (size: number) => void
 ) {
   const [size, setSize] = useState(initial);
   const [isDragging, setIsDragging] = useState(false);
+  const frameRef = useRef<number | null>(null);
+  const pendingSizeRef = useRef<number | null>(null);
+  const latestSizeRef = useRef(initial);
 
   // Use refs to avoid re-creating listeners on every state change
-  const isDraggingRef = useRef(isDragging);
   const getValueRef = useRef(getValue);
+  const onPreviewRef = useRef(onPreview);
   const minRef = useRef(min);
   const maxRef = useRef(max);
-  useEffect(() => { isDraggingRef.current = isDragging; }, [isDragging]);
   useEffect(() => { getValueRef.current = getValue; }, [getValue]);
+  useEffect(() => { onPreviewRef.current = onPreview; }, [onPreview]);
   useEffect(() => { minRef.current = min; maxRef.current = max; }, [min, max]);
 
   useEffect(() => {
     if (!isDragging) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setSize(Math.max(minRef.current, Math.min(getValueRef.current(e), maxRef.current)));
+    const commitPendingSize = (commitState: boolean) => {
+      frameRef.current = null;
+      const nextSize = pendingSizeRef.current;
+      pendingSizeRef.current = null;
+      if (nextSize !== null) {
+        latestSizeRef.current = nextSize;
+        onPreviewRef.current?.(nextSize);
+        if (commitState || !onPreviewRef.current) {
+          setSize(currentSize => currentSize === nextSize ? currentSize : nextSize);
+        }
+      } else if (commitState) {
+        setSize(currentSize => currentSize === latestSizeRef.current ? currentSize : latestSizeRef.current);
+      }
     };
-    const handleMouseUp = () => setIsDragging(false);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      pendingSizeRef.current = Math.max(minRef.current, Math.min(getValueRef.current(e), maxRef.current));
+      if (frameRef.current === null) {
+        frameRef.current = window.requestAnimationFrame(() => commitPendingSize(false));
+      }
+    };
+    const handleMouseUp = () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+      commitPendingSize(true);
+      setIsDragging(false);
+    };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -33,6 +61,11 @@ export function useResizeDrag(
     document.body.style.userSelect = 'none';
 
     return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      pendingSizeRef.current = null;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = 'default';
@@ -40,5 +73,5 @@ export function useResizeDrag(
     };
   }, [isDragging, cursor]);
 
-  return { size, setSize, setIsDragging };
+  return { size, setSize, isDragging, setIsDragging };
 }

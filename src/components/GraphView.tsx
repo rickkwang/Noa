@@ -1,6 +1,8 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
-import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
+import fromKapsule from 'react-kapsule';
+import ForceGraph2DKapsule from 'force-graph';
+import { type ForceGraphMethods, type ForceGraphProps, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
 import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
@@ -15,8 +17,6 @@ interface GraphViewProps {
   settings: AppSettings;
   searchQuery?: string;
   activeNoteId?: string;
-  width: number;
-  height: number;
   hideIsolated?: boolean;
   localDepth?: number;
   tagFilter?: string[];
@@ -61,6 +61,23 @@ type GraphLinkData = {
 
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
+
+interface ResizableForceGraphMethods extends ForceGraphMethods<GraphNodeData, GraphLinkData> {
+  width(value: number): unknown;
+  height(value: number): unknown;
+}
+
+const ResizableForceGraph2D = fromKapsule<
+  ForceGraphProps<GraphNodeData, GraphLinkData>,
+  ResizableForceGraphMethods
+>(ForceGraph2DKapsule as unknown as Parameters<typeof fromKapsule>[0], {
+  methodNames: [
+    'emitParticle', 'd3Force', 'd3ReheatSimulation', 'stopAnimation',
+    'pauseAnimation', 'resumeAnimation', 'centerAt', 'zoom', 'zoomToFit',
+    'getGraphBbox', 'screen2GraphCoords', 'graph2ScreenCoords', 'width', 'height',
+  ],
+  initPropNames: ['width', 'height'],
+});
 
 type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags'>;
 
@@ -115,8 +132,6 @@ export default function GraphView({
   settings,
   searchQuery = '',
   activeNoteId,
-  width,
-  height,
   hideIsolated = false,
   localDepth = 0,
   tagFilter,
@@ -124,7 +139,20 @@ export default function GraphView({
   sizeByDegree = true,
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
-  const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fgRef = useRef<ResizableForceGraphMethods | undefined>(undefined);
+  const dimensionsRef = useRef({ width: 320, height: 400 });
+  // The canvas backing store is sized to *cover* the widest the panel can get and
+  // is then CSS-centred inside the container, which clips the overflow. This is
+  // deliberate: resizing a canvas reallocates its GPU backing store, and doing
+  // that every frame during a panel drag causes a compositor flicker. By keeping
+  // the backing store fixed during horizontal drags and instead adapting the
+  // graph through the *view* transform (zoom/pan only — no realloc), the graph
+  // fills and re-fits smoothly without any flicker.
+  const [canvasSize, setCanvasSize] = useState(() => ({
+    width: Math.round(Math.min(480, (typeof window === 'undefined' ? 1280 : window.innerWidth) * 0.35)) + 8,
+    height: 400,
+  }));
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -144,6 +172,67 @@ export default function GraphView({
       cancelAnimationFrame(resetAnimationRef.current);
     }
   }, []);
+
+  // Fit the graph into the *visible* area (the container) via the view transform
+  // only — zoom + pan, never a canvas resize. Used on first layout, on reset, and
+  // on every resize frame, so the graph fills and stays centred as the panel is
+  // dragged, without ever reallocating the (flicker-prone) canvas backing store.
+  const fitView = useCallback((duration = 0) => {
+    const fg = fgRef.current;
+    const container = containerRef.current;
+    if (!fg || !container) return;
+    const bbox = fg.getGraphBbox();
+    if (!bbox || !Array.isArray(bbox.x) || !Array.isArray(bbox.y)) return;
+    const bboxW = Math.max(1, bbox.x[1] - bbox.x[0]);
+    const bboxH = Math.max(1, bbox.y[1] - bbox.y[0]);
+    const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const PAD = 24;
+    // Cap at 2 so a small graph doesn't blow up to fill the canvas (matches the
+    // previous zoom-to-fit behaviour).
+    const k = Math.min(2, (rect.width - PAD * 2) / bboxW, (rect.height - PAD * 2) / bboxH);
+    fg.centerAt((bbox.x[0] + bbox.x[1]) / 2, (bbox.y[0] + bbox.y[1]) / 2, duration);
+    fg.zoom(Math.max(0.01, k), duration);
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // The backing store covers the widest the panel can get (+ buffer) so it
+    // always overflows/fills the container — never a gap. Height tracks the
+    // container (only changes on window / vertical layout changes, not during a
+    // horizontal panel drag).
+    const targetBackingWidth = () => Math.round(Math.min(480, window.innerWidth * 0.35)) + 8;
+
+    const apply = () => {
+      const fg = fgRef.current;
+      if (!fg) return;
+      const targetW = targetBackingWidth();
+      const targetH = Math.max(1, Math.ceil(container.getBoundingClientRect().height) + 2);
+      const current = dimensionsRef.current;
+      if (targetW !== current.width || targetH !== current.height) {
+        // Rare (window / vertical resize). A backing resize clears the canvas,
+        // but it isn't happening on every frame here, so no perceptible flicker.
+        if (targetW !== current.width) fg.width(targetW);
+        if (targetH !== current.height) fg.height(targetH);
+        dimensionsRef.current = { width: targetW, height: targetH };
+        setCanvasSize({ width: targetW, height: targetH });
+      }
+      // Re-fit the view to the (possibly new) visible width every time — this is
+      // what makes the graph follow a horizontal drag, and it's transform-only.
+      fitView(0);
+    };
+
+    apply();
+    const observer = new ResizeObserver(() => apply());
+    observer.observe(container);
+    window.addEventListener('resize', apply);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', apply);
+    };
+  }, [fitView]);
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -231,7 +320,7 @@ export default function GraphView({
     if (!fgRef.current) return;
     const n = graphData.nodes.length;
     if (!physicsCenterRef.current) {
-      physicsCenterRef.current = { x: width / 2, y: height / 2 };
+      physicsCenterRef.current = { x: dimensionsRef.current.width / 2, y: dimensionsRef.current.height / 2 };
     }
     const { x: cx, y: cy } = physicsCenterRef.current;
 
@@ -269,18 +358,12 @@ export default function GraphView({
     // Graph identity changed (topology, filter, etc.) — re-anchor physics center
     // to the current viewport so the new layout settles centered.
     physicsCenterRef.current = null;
-    let innerTimer: ReturnType<typeof setTimeout> | undefined;
     let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
     let isActive = true;
     const timer = setTimeout(() => {
       if (!isActive) return;
-      fgRef.current?.zoomToFit(300, 24);
-      // Cap zoom for small graphs so a single node doesn't fill the canvas
-      innerTimer = setTimeout(() => {
-        if (!isActive) return;
-        const cur = fgRef.current?.zoom();
-        if (cur != null && cur > 2) fgRef.current?.zoom(2, 200);
-      }, 350);
+      // Fit to the visible area (zoom cap is built into fitView).
+      fitView(300);
       // Save initial positions after layout has settled
       snapshotTimer = setTimeout(() => {
         if (!isActive) return;
@@ -299,10 +382,9 @@ export default function GraphView({
     return () => {
       isActive = false;
       clearTimeout(timer);
-      clearTimeout(innerTimer);
       clearTimeout(snapshotTimer);
     };
-  }, [graphData]);
+  }, [graphData, fitView]);
 
   const fontFamily = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
                      settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
@@ -342,7 +424,7 @@ export default function GraphView({
       const snapshot = initialPositions.current;
       if (snapshot.size === 0) {
         fgRef.current?.resumeAnimation();
-        fgRef.current?.zoomToFit(300, 24);
+        fitView(300);
         return;
       }
 
@@ -416,16 +498,17 @@ export default function GraphView({
   ];
 
   return (
-    <div className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
       {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
         <div className="absolute top-2 left-2 right-2 z-10 border border-[#B89B5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-[11px] text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
           <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
         </div>
       )}
-      <ForceGraph2D
+      <div style={{ width: canvasSize.width, height: canvasSize.height, flexShrink: 0 }}>
+      <ResizableForceGraph2D
         ref={fgRef}
-        width={width}
-        height={height}
+        width={canvasSize.width}
+        height={canvasSize.height}
         graphData={graphData}
         nodeLabel="name"
         backgroundColor={bgColor}
@@ -578,6 +661,7 @@ export default function GraphView({
           ctx.fill();
         }}
       />
+      </div>
       <div
         className="absolute bottom-2 right-2 flex flex-row gap-px backdrop-blur-sm"
         style={{ background: isDark ? 'rgba(238,237,234,0.07)' : 'rgba(45,45,45,0.06)', border: `1px solid ${isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.15)'}` }}
