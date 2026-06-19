@@ -1,8 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
-import fromKapsule from 'react-kapsule';
-import ForceGraph2DKapsule from 'force-graph';
-import { type ForceGraphMethods, type ForceGraphProps, type LinkObject, type NodeObject } from 'react-force-graph-2d';
+import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
 import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
@@ -61,23 +59,6 @@ type GraphLinkData = {
 
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
-
-interface ResizableForceGraphMethods extends ForceGraphMethods<GraphNodeData, GraphLinkData> {
-  width(value: number): unknown;
-  height(value: number): unknown;
-}
-
-const ResizableForceGraph2D = fromKapsule<
-  ForceGraphProps<GraphNodeData, GraphLinkData>,
-  ResizableForceGraphMethods
->(ForceGraph2DKapsule as unknown as Parameters<typeof fromKapsule>[0], {
-  methodNames: [
-    'emitParticle', 'd3Force', 'd3ReheatSimulation', 'stopAnimation',
-    'pauseAnimation', 'resumeAnimation', 'centerAt', 'zoom', 'zoomToFit',
-    'getGraphBbox', 'screen2GraphCoords', 'graph2ScreenCoords', 'width', 'height',
-  ],
-  initPropNames: ['width', 'height'],
-});
 
 type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags'>;
 
@@ -140,7 +121,7 @@ export default function GraphView({
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<ResizableForceGraphMethods | undefined>(undefined);
+  const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
   const dimensionsRef = useRef({ width: 320, height: 400 });
   // The canvas backing store is sized to *cover* the widest the panel can get and
   // is then CSS-centred inside the container, which clips the overflow. This is
@@ -206,16 +187,12 @@ export default function GraphView({
     const targetBackingWidth = () => Math.round(Math.min(480, window.innerWidth * 0.35)) + 8;
 
     const apply = () => {
-      const fg = fgRef.current;
-      if (!fg) return;
       const targetW = targetBackingWidth();
       const targetH = Math.max(1, Math.ceil(container.getBoundingClientRect().height) + 2);
       const current = dimensionsRef.current;
       if (targetW !== current.width || targetH !== current.height) {
         // Rare (window / vertical resize). A backing resize clears the canvas,
         // but it isn't happening on every frame here, so no perceptible flicker.
-        if (targetW !== current.width) fg.width(targetW);
-        if (targetH !== current.height) fg.height(targetH);
         dimensionsRef.current = { width: targetW, height: targetH };
         setCanvasSize({ width: targetW, height: targetH });
       }
@@ -233,6 +210,12 @@ export default function GraphView({
       window.removeEventListener('resize', apply);
     };
   }, [fitView]);
+
+  useEffect(() => {
+    // The public wrapper applies rare backing-store changes from props. Re-fit
+    // after React commits the new canvas dimensions.
+    fitView(0);
+  }, [canvasSize, fitView]);
 
   const topologyNotes = useMemo(
     () => notes.map((note) => ({
@@ -505,7 +488,7 @@ export default function GraphView({
         </div>
       )}
       <div style={{ width: canvasSize.width, height: canvasSize.height, flexShrink: 0 }}>
-      <ResizableForceGraph2D
+      <ForceGraph2D
         ref={fgRef}
         width={canvasSize.width}
         height={canvasSize.height}

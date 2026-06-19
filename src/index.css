@@ -30,6 +30,10 @@ body {
   --panel-divider: #2D2D2D;
 }
 
+.noa-sidebar-section-surface {
+  background-color: var(--bg-primary, #EAE8E0);
+}
+
 /* ═══════════════════════════════════════════════════════════
    DARK MODE — triggered by data-theme="dark" on <html>
    Uses [data-theme="dark"] for higher specificity than Tailwind

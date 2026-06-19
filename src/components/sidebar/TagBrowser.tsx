@@ -58,7 +58,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
 
   return (
     <div
-      className="flex shrink-0 border-t border-[#2D2D2D] relative flex-col bg-[#DCD9CE]/30"
+      className="noa-sidebar-section-surface flex shrink-0 border-t border-[#2D2D2D] relative flex-col"
       style={{ height: isTagsOpen ? tagsHeight : 'auto' }}
     >
       {isTagsOpen && (

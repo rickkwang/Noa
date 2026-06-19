@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   STORAGE_NOTICE_SEEN: 'redaction-storage-notice-seen',
   RECENT_NOTES: 'redaction-diary-recent-notes',
   DAILY_FOLDER_ID: 'redaction-diary-daily-folder-id',
+  BACKUP_REMINDER: 'redaction-backup-reminder-dismissed-until',
   RIGHT_PANEL_OPEN: 'app-right-panel-open',
   GRAPH_GUIDE_SEEN: 'app-graph-guide-seen',
   LAST_EXPORT_AT:   'redaction-last-export-at',
