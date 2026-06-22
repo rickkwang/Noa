@@ -164,7 +164,7 @@ function createWindow() {
     icon: iconPath,
     backgroundColor: '#EAE8E0',
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 14, y: 16 },
+    trafficLightPosition: { x: 9, y: 8 },
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -188,6 +188,19 @@ function createWindow() {
       void shell.openExternal(url);
     }
   });
+
+  // On macOS Tahoe the constructor's `trafficLightPosition` is often ignored,
+  // so re-apply it at runtime. macOS occasionally resets the position when the
+  // window is shown/restored, hence we also reapply on those events.
+  const applyTrafficLightPosition = () => {
+    if (typeof win.setWindowButtonPosition === 'function') {
+      win.setWindowButtonPosition({ x: 9, y: 8 });
+    }
+  };
+  applyTrafficLightPosition();
+  win.on('show', applyTrafficLightPosition);
+  win.on('enter-full-screen', applyTrafficLightPosition);
+  win.on('leave-full-screen', applyTrafficLightPosition);
 
   if (isDev) {
     void win.loadURL('http://127.0.0.1:3000');

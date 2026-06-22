@@ -19,7 +19,7 @@ interface TopBarProps {
 
 export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, showDailyNote = true, searchInputRef, onOpenDailyNote }: TopBarProps) {
   return (
-    <div className="h-12 border-b grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ ...dragRegion, borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
+    <div className="h-8 border-b grid grid-cols-3 items-center shrink-0 bg-[#EAE8E0] font-redaction" style={{ ...dragRegion, borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
       {/* Left Section: Traffic lights space + icon + title */}
       <div className="flex items-center justify-start pl-[90px] pr-4">
         <div className="flex items-center gap-2" style={noDragRegion}>
@@ -35,7 +35,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
 
       {/* Center Section: Search */}
       <div className="flex items-center justify-center min-w-0 px-4" style={noDragRegion}>
-        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-1 rounded-lg shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-xs transition-all min-w-0">
+        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-0.5 rounded-lg shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-xs transition-all min-w-0">
           <Search size={14} className="text-[#2D2D2D]/50 mr-2 shrink-0" />
           <input
             ref={searchInputRef}
