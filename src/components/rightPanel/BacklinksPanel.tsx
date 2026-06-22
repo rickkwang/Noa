@@ -52,7 +52,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark
               <div key={note.id} className={`border px-3 py-2.5 transition-colors cursor-pointer ${cardBorder} ${cardBg}`}>
                 <button
                   onClick={() => onNavigateToNoteById(note.id)}
-                  className={`font-bold text-sm hover:text-[#B89B5E] transition-colors flex items-center space-x-1.5 w-full text-left ${titleColor}`}
+                  className={`font-bold text-sm hover:text-[#CC7D5E] transition-colors flex items-center space-x-1.5 w-full text-left ${titleColor}`}
                 >
                   <ExternalLink size={12} className="shrink-0" />
                   <span className="truncate">{note.title}</span>

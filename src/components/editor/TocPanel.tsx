@@ -44,7 +44,7 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
           style={{ paddingLeft: `${(h.level - 1) * 10 + 12}px` }}
           title={h.text}
         >
-          <span className="text-[#B89B5E] mr-1 shrink-0 font-bold" style={{ fontSize: '9px' }}>
+          <span className="text-[#CC7D5E] mr-1 shrink-0 font-bold" style={{ fontSize: '9px' }}>
             {'#'.repeat(h.level)}
           </span>
           <span className="truncate">{h.text}</span>

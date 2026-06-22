@@ -65,9 +65,9 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
   const border = isDark ? 'rgba(238,237,234,0.1)' : 'rgba(45,45,45,0.15)';
   const textPrimary = isDark ? '#EEEDEA' : '#2D2D2D';
   const textMuted = isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.55)';
-  const accent = isDark ? '#D97757' : '#B89B5E';
+  const accent = isDark ? '#CC7D5E' : '#CC7D5E';
   const hoverBg = isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)';
-  const selectedBg = isDark ? 'rgba(217,119,87,0.12)' : 'rgba(184,155,94,0.1)';
+  const selectedBg = isDark ? 'rgba(204,125,94,0.12)' : 'rgba(204,125,94,0.1)';
 
   return (
     <div

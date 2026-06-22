@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </pre>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 px-4 py-2 bg-[#2D2D2D] text-[#EAE8E0] font-bold text-sm rounded-sm hover:bg-[#B89B5E] transition-colors"
+            className="mt-6 px-4 py-2 bg-[#2D2D2D] text-[#EAE8E0] font-bold text-sm rounded-sm hover:bg-[#CC7D5E] transition-colors"
           >
             Reload Application
           </button>

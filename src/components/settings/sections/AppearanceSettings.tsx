@@ -31,7 +31,7 @@ function ToggleSwitch({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-14 border-2 border-[#2D2D2D] transition-colors active:translate-x-px active:translate-y-px ${
-        checked ? 'bg-[#B89B5E]' : 'bg-[#EAE8E0]'
+        checked ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'
       }`}
     >
       <span
@@ -154,7 +154,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               max="24"
               value={settings.editor.fontSize}
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: parseInt(e.target.value, 10) } }))}
-              className="w-32 accent-[#B89B5E]"
+              className="w-32 accent-[#CC7D5E]"
             />
           </div>
         </SettingItem>
@@ -168,7 +168,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               step="0.1"
               value={settings.editor.lineHeight}
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, lineHeight: parseFloat(e.target.value) } }))}
-              className="w-32 accent-[#B89B5E]"
+              className="w-32 accent-[#CC7D5E]"
             />
           </div>
         </SettingItem>
@@ -185,7 +185,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               step="50"
               value={settings.appearance.maxWidth}
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, maxWidth: parseInt(e.target.value, 10) } }))}
-              className="w-32 accent-[#B89B5E]"
+              className="w-32 accent-[#CC7D5E]"
             />
           </div>
         </SettingItem>

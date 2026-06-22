@@ -25,7 +25,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
         <div className="flex items-center gap-2" style={noDragRegion}>
           <button
             onClick={onToggleSidebar}
-            className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? 'text-[#B89B5E]' : ''}`}
+            className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? 'text-[#CC7D5E]' : ''}`}
             title="Toggle Sidebar"
           >
             <PanelLeft size={16} />
@@ -35,7 +35,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
 
       {/* Center Section: Search */}
       <div className="flex items-center justify-center min-w-0 px-4" style={noDragRegion}>
-        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-1 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-xs focus-within:ring-1 ring-[#B89B5E] transition-all min-w-0">
+        <div className="flex items-center border border-[#2D2D2D] bg-[#EAE8E0] px-3 py-1 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-xs focus-within:ring-1 ring-[#CC7D5E] transition-all min-w-0">
           <Search size={14} className="text-[#2D2D2D]/50 mr-2 shrink-0" />
           <input
             ref={searchInputRef}
@@ -48,7 +48,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
           {searchQuery && (
             <button
               onClick={() => onSearchChange && onSearchChange('')}
-              className="text-[#2D2D2D]/40 hover:text-[#B89B5E] active:opacity-70 shrink-0 ml-1"
+              className="text-[#2D2D2D]/40 hover:text-[#CC7D5E] active:opacity-70 shrink-0 ml-1"
             >
               <X size={14} />
             </button>
@@ -61,7 +61,7 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
         {showDailyNote && (
           <button
             onClick={onOpenDailyNote}
-            className="p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer"
+            className="p-1.5 text-[#2D2D2D]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
             title="Today's note"
           >
             <Calendar size={16} />
@@ -69,14 +69,14 @@ export default function TopBar({ onOpenSettings, onToggleSidebar, onToggleRightP
         )}
         <button
           onClick={onOpenSettings}
-          className="p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer"
+          className="p-1.5 text-[#2D2D2D]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
           title="Settings"
         >
           <Settings size={16} />
         </button>
         <button
           onClick={onToggleRightPanel}
-          className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#B89B5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? 'text-[#B89B5E]' : ''}`}
+          className={`p-1.5 text-[#2D2D2D]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? 'text-[#CC7D5E]' : ''}`}
           title="Toggle Panel"
         >
           <PanelRight size={16} className="scale-x-[-1]" />

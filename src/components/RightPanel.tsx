@@ -140,7 +140,7 @@ export default function RightPanel({
               {tab.badge !== null && (
                 <span
                   aria-label={`${tab.badge} pending`}
-                  className="absolute top-1 right-1.5 text-[8px] font-bold leading-none tabular-nums text-[#B89B5E]"
+                  className="absolute top-1 right-1.5 text-[8px] font-bold leading-none tabular-nums text-[#CC7D5E]"
                 >
                   {tab.badge > 9 ? '9+' : tab.badge}
                 </span>
@@ -193,7 +193,7 @@ export default function RightPanel({
           )}
           <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.9)' }}>
             <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
-              <Network size={11} className="text-[#B89B5E] shrink-0" />
+              <Network size={11} className="text-[#CC7D5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
               <div className="flex items-center gap-1 h-5 px-1.5"
                 style={{ border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)' }}>
@@ -295,7 +295,7 @@ function GraphInfoPanel({
   return (
     <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
       <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
-        <GitBranch size={11} className="text-[#B89B5E] shrink-0" />
+        <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix Stats</span>
       </div>
       <div className="p-3 space-y-3">
@@ -321,8 +321,8 @@ function GraphInfoPanel({
                   if (!target) return null;
                   return (
                     <button key={id} onClick={() => onNavigateToNoteById(id)}
-                      className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
-                      <Circle size={5} className="shrink-0 fill-[#B89B5E] text-[#B89B5E]" />
+                      className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/70 hover:text-[#CC7D5E]'}`}>
+                      <Circle size={5} className="shrink-0 fill-[#CC7D5E] text-[#CC7D5E]" />
                       <span className="truncate">{target.title}</span>
                       <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
                     </button>
@@ -344,8 +344,8 @@ function GraphInfoPanel({
                 if (!target) return null;
                 return (
                   <button key={id} onClick={() => onNavigateToNoteById(id)}
-                    className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/70 hover:text-[#B89B5E]'}`}>
-                    <div className="shrink-0 bg-[#B89B5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
+                    className={`flex items-center gap-1.5 w-full text-left text-[11px] transition-colors ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/70 hover:text-[#CC7D5E]'}`}>
+                    <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                     <span className="truncate">{target.title}</span>
                     <span className={`ml-auto text-[9px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/40'}`}>{degree}</span>
                   </button>
@@ -411,7 +411,7 @@ function GraphFilterPanel({
           value={localDepth}
           onChange={(e) => onLocalDepthChange(Number(e.target.value))}
           disabled={!hasActiveNote}
-          className="flex-1 h-1 accent-[#B89B5E] disabled:opacity-40"
+          className="flex-1 h-1 accent-[#CC7D5E] disabled:opacity-40"
         />
         <span className={`${valueCls} w-10 text-right`}>{hasActiveNote ? depthLabel : '—'}</span>
       </div>
@@ -462,7 +462,7 @@ function GraphFilterPanel({
             {tagFilter.length > 0 && (
               <button
                 onClick={() => onTagFilterChange([])}
-                className={`text-[9px] uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#B89B5E]' : 'text-[#2D2D2D]/55 hover:text-[#B89B5E]'}`}
+                className={`text-[9px] uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/55 hover:text-[#CC7D5E]'}`}
               >
                 Clear
               </button>
@@ -477,7 +477,7 @@ function GraphFilterPanel({
                   onClick={() => toggleTag(t)}
                   className="text-[9px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors active:opacity-70"
                   style={active
-                    ? { background: '#B89B5E', color: isDark ? '#1E1E1C' : '#FFFFFF', border: '1px solid #B89B5E' }
+                    ? { background: '#CC7D5E', color: isDark ? '#1E1E1C' : '#FFFFFF', border: '1px solid #CC7D5E' }
                     : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }
                   }
                 >

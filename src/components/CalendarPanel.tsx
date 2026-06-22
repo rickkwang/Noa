@@ -98,14 +98,14 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
               const hasNote = hasDailyNote(dateStr);
               const isClickable = hasNote || isToday;
               let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
-              if (isActive) cellClass += 'bg-[#B89B5E] text-white';
-              else if (isToday) cellClass += 'border border-[#B89B5E] text-[#B89B5E] hover:bg-[#DCD9CE]';
+              if (isActive) cellClass += 'bg-[#CC7D5E] text-white';
+              else if (isToday) cellClass += 'border border-[#CC7D5E] text-[#CC7D5E] hover:bg-[#DCD9CE]';
               else if (hasNote) cellClass += 'text-[#2D2D2D] hover:bg-[#DCD9CE]';
               else cellClass += 'text-[#2D2D2D] opacity-40';
               return (
                 <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
                   <span className="leading-none">{cell.day}</span>
-                  {hasNote && !isActive && <span className="w-1 h-1 bg-[#B89B5E] mt-0.5" />}
+                  {hasNote && !isActive && <span className="w-1 h-1 bg-[#CC7D5E] mt-0.5" />}
                 </div>
               );
             })}

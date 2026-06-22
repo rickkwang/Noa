@@ -19,7 +19,7 @@ function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onE
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center p-1.5 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#D97757]' : 'text-[#B89B5E]') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+        className={`flex items-center p-1.5 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
         title="Export"
       >
         <Download size={14} />
@@ -216,7 +216,7 @@ export function EditorHeader({
                       }`}
                       style={tabStyle}
                     >
-                      <FileText size={12} className={isActiveTab ? (isDark ? 'text-[#D97757] shrink-0' : 'text-[#B89B5E] shrink-0') : 'shrink-0'} />
+                      <FileText size={12} className={isActiveTab ? (isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0') : 'shrink-0'} />
                       {isActiveTab && isEditingTitle ? (
                         <input
                           ref={titleInputRef}
@@ -227,7 +227,7 @@ export function EditorHeader({
                           onKeyDown={handleTitleKeyDownGuarded}
                           onCompositionStart={handleCompositionStart}
                           onCompositionEnd={handleCompositionEnd}
-                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#D97757]' : 'text-[#2D2D2D] border-[#B89B5E]'}`}
+                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
                         />
                       ) : (
                         <span
@@ -241,7 +241,7 @@ export function EditorHeader({
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
-                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#D97757]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
+                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -263,7 +263,7 @@ export function EditorHeader({
                   paddingBottom: '6px',
                 }}
               >
-                <FileText size={12} className={isDark ? 'text-[#D97757] shrink-0' : 'text-[#B89B5E] shrink-0'} />
+                <FileText size={12} className={isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0'} />
                 {isEditingTitle ? (
                   <input
                     ref={titleInputRef}
@@ -274,7 +274,7 @@ export function EditorHeader({
                     onKeyDown={handleTitleKeyDownGuarded}
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
-                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#D97757]' : 'text-[#2D2D2D] border-[#B89B5E]'}`}
+                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
                   />
                 ) : (
                   <span
@@ -286,7 +286,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#D97757]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}>
+                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}>
                     <X size={11} />
                   </button>
                 )}
@@ -311,21 +311,21 @@ export function EditorHeader({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setViewMode('edit')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Edit Only"
           >
             <Edit2 size={14} />
           </button>
           <button
             onClick={() => setViewMode('split')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Split View"
           >
             <Columns size={14} />
           </button>
           <button
             onClick={() => setViewMode('preview')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Preview Only"
           >
             <Eye size={14} />
@@ -340,7 +340,7 @@ export function EditorHeader({
           {onToggleHistory && (
             <button
               onClick={onToggleHistory}
-              className={`p-1.5 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#D97757] bg-[#D97757]/15' : 'text-[#B89B5E] bg-[#B89B5E]/15') : (isDark ? 'hover:text-[#D97757]' : 'hover:text-[#B89B5E]')}`}
+              className={`p-1.5 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
               title="Version History"
             >
               <History size={14} />

@@ -222,7 +222,7 @@ export default function SettingsModal({
                 <SettingSection bare title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackMailto}
-                    className="inline-flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
                   >
                     <span>Send Feedback</span>
                   </a>
@@ -259,7 +259,7 @@ export default function SettingsModal({
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
                         <tr key={key} className="border-b border-[#2D2D2D]/15 last:border-0">
-                          <td className="px-4 py-1.5 font-bold text-[#B89B5E] whitespace-nowrap w-48">{key}</td>
+                          <td className="px-4 py-1.5 font-bold text-[#CC7D5E] whitespace-nowrap w-48">{key}</td>
                           <td className="px-4 py-1.5 text-[#2D2D2D]/60">{desc}</td>
                         </tr>
                       ))}

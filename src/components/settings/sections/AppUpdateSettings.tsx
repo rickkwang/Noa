@@ -60,7 +60,7 @@ export default function AppUpdateSettings() {
           <button
             onClick={() => void installUpdate()}
             disabled={installDisabled}
-            className="flex items-center justify-center gap-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
+            className="flex items-center justify-center gap-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
           >
             <InstallIcon size={14} />
             <span>{installLabel}</span>

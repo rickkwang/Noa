@@ -182,8 +182,8 @@ export function exportNoteAsHtml(note: Note): void {
     body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #2D2D2D; background: #EAE8E0; line-height: 1.7; }
     h1,h2,h3,h4,h5,h6 { font-weight: bold; margin-top: 1.5em; }
     pre { background: #DCD9CE; padding: 12px; border: 1px solid #2D2D2D; overflow-x: auto; }
-    code { background: #DCD9CE; padding: 0 4px; font-family: monospace; color: #B89B5E; }
-    a { color: #B89B5E; }
+    code { background: #DCD9CE; padding: 0 4px; font-family: monospace; color: #CC7D5E; }
+    a { color: #CC7D5E; }
     li { margin: 4px 0; }
   </style>
 </head>

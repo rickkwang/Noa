@@ -164,7 +164,7 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
   const text = isDark ? '#EEEDEA' : '#2D2D2D';
   const inputBg = isDark ? '#2A2A28' : '#DCD9CE';
   const mutedText = isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)';
-  const accent = isDark ? '#D97757' : '#B89B5E';
+  const accent = isDark ? '#CC7D5E' : '#CC7D5E';
 
   return (
     <div
@@ -193,8 +193,8 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
           className="flex-1 min-w-0 outline-none px-2 py-0.5 text-xs font-redaction"
           style={{
             background: inputBg,
-            color: regexError ? '#D97757' : text,
-            border: `1px solid ${regexError ? '#D97757' : border}`,
+            color: regexError ? '#CC7D5E' : text,
+            border: `1px solid ${regexError ? '#CC7D5E' : border}`,
           }}
           spellCheck={false}
         />

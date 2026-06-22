@@ -30,8 +30,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--border-primary', '#2D2D2D');
     }
 
-    // Accent is a fixed theme token (gold in light, coral in dark), not user-configurable.
-    root.style.setProperty('--accent-color', isDark ? '#D97757' : '#B89B5E');
+    // Accent is a fixed theme token (coral in both themes), not user-configurable.
+    root.style.setProperty('--accent-color', '#CC7D5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
   }, [isDark, settings.appearance.usePointerCursors]);
 
@@ -46,47 +46,47 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       /* CSS variable-based overrides — work in both light and dark */
       .bg-\\[\\#EAE8E0\\]     { background-color: var(--bg-primary) !important; }
       .bg-\\[\\#DCD9CE\\]     { background-color: var(--bg-secondary) !important; }
-      .bg-\\[\\#B89B5E\\]     { background-color: var(--accent-color) !important; }
+      .bg-\\[\\#CC7D5E\\]     { background-color: var(--accent-color) !important; }
       .bg-\\[\\#EAE8E0\\]\\/50 { background-color: color-mix(in srgb, var(--bg-primary) 50%, transparent) !important; }
       .bg-\\[\\#DCD9CE\\]\\/30 { background-color: color-mix(in srgb, var(--bg-secondary) 30%, transparent) !important; }
       .bg-\\[\\#DCD9CE\\]\\/50 { background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent) !important; }
-      .bg-\\[\\#B89B5E\\]\\/10 { background-color: color-mix(in srgb, var(--accent-color) 10%, transparent) !important; }
+      .bg-\\[\\#CC7D5E\\]\\/10 { background-color: color-mix(in srgb, var(--accent-color) 10%, transparent) !important; }
 
       .text-\\[\\#2D2D2D\\]     { color: var(--text-primary) !important; }
-      .text-\\[\\#B89B5E\\]     { color: var(--accent-color) !important; }
+      .text-\\[\\#CC7D5E\\]     { color: var(--accent-color) !important; }
       .text-\\[\\#2D2D2D\\]\\/50 { color: color-mix(in srgb, var(--text-primary) 50%, transparent) !important; }
       .text-\\[\\#2D2D2D\\]\\/60 { color: color-mix(in srgb, var(--text-primary) 60%, transparent) !important; }
       .text-\\[\\#2D2D2D\\]\\/70 { color: color-mix(in srgb, var(--text-primary) 70%, transparent) !important; }
-      .hover\\:text-\\[\\#B89B5E\\]:hover { color: var(--accent-color) !important; }
+      .hover\\:text-\\[\\#CC7D5E\\]:hover { color: var(--accent-color) !important; }
       .hover\\:text-\\[\\#2D2D2D\\]:hover { color: var(--text-primary) !important; }
-      .group:hover .group-hover\\:text-\\[\\#B89B5E\\] { color: var(--accent-color) !important; }
+      .group:hover .group-hover\\:text-\\[\\#CC7D5E\\] { color: var(--accent-color) !important; }
 
       .border-\\[\\#2D2D2D\\]      { border-color: var(--border-primary) !important; }
-      .border-\\[\\#B89B5E\\]      { border-color: var(--accent-color) !important; }
+      .border-\\[\\#CC7D5E\\]      { border-color: var(--accent-color) !important; }
       .border-\\[\\#2D2D2D\\]\\/10 { border-color: color-mix(in srgb, var(--border-primary) 10%, transparent) !important; }
       .border-\\[\\#2D2D2D\\]\\/20 { border-color: color-mix(in srgb, var(--border-primary) 20%, transparent) !important; }
       .border-\\[\\#2D2D2D\\]\\/30 { border-color: color-mix(in srgb, var(--border-primary) 30%, transparent) !important; }
       .border-\\[\\#2D2D2D\\]\\/40 { border-color: color-mix(in srgb, var(--border-primary) 40%, transparent) !important; }
       .border-\\[\\#2D2D2D\\]\\/50 { border-color: color-mix(in srgb, var(--border-primary) 50%, transparent) !important; }
       .hover\\:border-\\[\\#2D2D2D\\]:hover { border-color: var(--border-primary) !important; }
-      .hover\\:border-\\[\\#B89B5E\\]:hover  { border-color: var(--accent-color) !important; }
-      .focus\\:border-\\[\\#B89B5E\\]:focus  { border-color: var(--accent-color) !important; }
-      .border-\\[\\#B89B5E\\]\\/50 { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent) !important; }
-      .border-\\[\\#B89B5E\\]\\/60 { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent) !important; }
+      .hover\\:border-\\[\\#CC7D5E\\]:hover  { border-color: var(--accent-color) !important; }
+      .focus\\:border-\\[\\#CC7D5E\\]:focus  { border-color: var(--accent-color) !important; }
+      .border-\\[\\#CC7D5E\\]\\/50 { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent) !important; }
+      .border-\\[\\#CC7D5E\\]\\/60 { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent) !important; }
 
       .shadow-\\[8px_8px_0px_0px_rgba\\(45\\,45\\,45\\,1\\)\\] { box-shadow: 8px 8px 0px 0px var(--border-primary) !important; }
       .shadow-\\[4px_4px_0px_0px_rgba\\(45\\,45\\,45\\,1\\)\\] { box-shadow: 4px 4px 0px 0px var(--border-primary) !important; }
       .shadow-\\[2px_2px_0px_0px_rgba\\(45\\,45\\,45\\,1\\)\\] { box-shadow: 2px 2px 0px 0px var(--border-primary) !important; }
       .shadow-\\[4px_4px_0_0_rgba\\(45\\,45\\,45\\,1\\)\\]     { box-shadow: 4px 4px 0px 0px var(--border-primary) !important; }
-      .shadow-\\[inset_4px_0px_0px_0px_\\#B89B5E\\]          { box-shadow: inset 4px 0px 0px 0px var(--accent-color) !important; }
+      .shadow-\\[inset_4px_0px_0px_0px_\\#CC7D5E\\]          { box-shadow: inset 4px 0px 0px 0px var(--accent-color) !important; }
 
-      .selection\\:bg-\\[\\#B89B5E\\] *::selection { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }
-      .selection\\:bg-\\[\\#B89B5E\\]::selection   { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }
+      .selection\\:bg-\\[\\#CC7D5E\\] *::selection { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }
+      .selection\\:bg-\\[\\#CC7D5E\\]::selection   { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }
 
-      .prose-a\\:text-\\[\\#B89B5E\\] a         { color: var(--accent-color) !important; }
+      .prose-a\\:text-\\[\\#CC7D5E\\] a         { color: var(--accent-color) !important; }
       .prose-pre\\:bg-\\[\\#DCD9CE\\] pre        { background-color: var(--bg-secondary) !important; }
       .prose-pre\\:text-\\[\\#2D2D2D\\] pre      { color: var(--text-primary) !important; }
-      .prose-code\\:text-\\[\\#B89B5E\\] code    { color: var(--accent-color) !important; }
+      .prose-code\\:text-\\[\\#CC7D5E\\] code    { color: var(--accent-color) !important; }
       .prose-code\\:bg-\\[\\#DCD9CE\\]\\/50 code { background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent) !important; }
 
       .font-redaction { font-family: ${fontFamilyStyle} !important; }

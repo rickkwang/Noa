@@ -66,7 +66,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
             tabIndex={activeTab === tab.id ? 0 : -1}
             className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2.5 text-left font-bold transition-colors active:opacity-70 text-sm md:w-full md:min-w-0 ${
               activeTab === tab.id
-                ? 'bg-[#DCD9CE] shadow-[inset_0px_-4px_0px_0px_#B89B5E] md:shadow-[inset_4px_0px_0px_0px_#B89B5E]'
+                ? 'bg-[#DCD9CE] shadow-[inset_0px_-4px_0px_0px_#CC7D5E] md:shadow-[inset_4px_0px_0px_0px_#CC7D5E]'
                 : 'hover:bg-[#DCD9CE]/50'
             }`}
           >

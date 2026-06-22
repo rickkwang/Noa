@@ -103,7 +103,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
 
   function priorityRailColor(p: string): string | null {
     if (p === 'high') return 'bg-red-400';
-    if (p === 'medium') return 'bg-[#B89B5E]';
+    if (p === 'medium') return 'bg-[#CC7D5E]';
     if (p === 'low') return lowRail;
     return null;
   }
@@ -125,7 +125,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                 onClick={() => { onChange(opt); setActivePageSize(TASKS_PAGE_SIZE); }}
                 className={`transition-colors active:opacity-70 ${
                   value === opt
-                    ? `${txt} underline decoration-2 underline-offset-[3px] decoration-[#B89B5E]`
+                    ? `${txt} underline decoration-2 underline-offset-[3px] decoration-[#CC7D5E]`
                     : `${dim} hover:opacity-80`
                 }`}
               >
@@ -170,7 +170,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             {(overdueCount > 0 || todayCount > 0) && (
               <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold" style={numFont}>
                 {overdueCount > 0 && <span className="text-red-500">▴ {overdueCount} overdue</span>}
-                {todayCount > 0 && <span className="text-[#B89B5E]">● {todayCount} today</span>}
+                {todayCount > 0 && <span className="text-[#CC7D5E]">● {todayCount} today</span>}
               </div>
             )}
           </div>
@@ -204,7 +204,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                 )}
                 <div className="flex items-center h-[18px] shrink-0">
                   <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Complete task">
-                    <div className={`w-[15px] h-[15px] rounded-[4px] border transition-all hover:border-[#B89B5E] hover:bg-[#B89B5E]/10 ${checkboxBorder}`} />
+                    <div className={`w-[15px] h-[15px] rounded-[4px] border transition-all hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -212,14 +212,14 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                     <span className={`flex-1 text-xs leading-snug ${txt}`}>{task.content}</span>
                     <button onClick={() => onNavigateToNoteById(task.noteId)}
                       title={task.noteTitle}
-                      className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#B89B5E] active:opacity-70 shrink-0 ${noteLink}`}>
+                      className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#CC7D5E] active:opacity-70 shrink-0 ${noteLink}`}>
                       <ExternalLink size={8} />
                       <span className="max-w-[10ch] truncate">{task.noteTitle}</span>
                     </button>
                   </div>
                   {task.dueDate && (
                     <div style={numFont} className={`mt-0.5 text-[10px] tabular-nums font-bold ${
-                      isOverdue ? 'text-red-500' : isToday ? 'text-[#B89B5E]' : isSoon ? 'text-[#D97757]' : dim
+                      isOverdue ? 'text-red-500' : isToday ? 'text-[#CC7D5E]' : isSoon ? 'text-[#CC7D5E]' : dim
                     }`}>
                       {isOverdue ? '⚠ ' : isToday ? '● ' : '→ '}{task.dueDate}
                     </div>
@@ -274,7 +274,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                       <span className={`flex-1 text-xs leading-snug line-through ${txt}`}>{task.content}</span>
                       <button onClick={() => onNavigateToNoteById(task.noteId)}
                         title={task.noteTitle}
-                        className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#B89B5E] active:opacity-70 shrink-0 ${noteLink}`}>
+                        className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#CC7D5E] active:opacity-70 shrink-0 ${noteLink}`}>
                         <ExternalLink size={8} />
                         <span className="max-w-[10ch] truncate">{task.noteTitle}</span>
                       </button>

@@ -339,7 +339,7 @@ export default function Editor({
               { key: '⌘K', desc: 'Command palette' },
             ].map(({ key, desc }) => (
               <div key={key} className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-[#B89B5E]/60 tracking-widest w-7">{key}</span>
+                <span className="text-[10px] font-bold text-[#CC7D5E]/60 tracking-widest w-7">{key}</span>
                 <span className="text-[#2D2D2D]/15">·</span>
                 <span className="text-xs text-[#2D2D2D]/40">{desc}</span>
               </div>
@@ -483,7 +483,7 @@ export default function Editor({
 
         {viewMode === 'split' && (
           <div
-            className="w-px bg-[#2D2D2D]/20 cursor-col-resize hover:bg-[#B89B5E]/60 transition-colors shrink-0 select-none"
+            className="w-px bg-[#2D2D2D]/20 cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
             onMouseDown={handleDividerMouseDown}
           />
         )}

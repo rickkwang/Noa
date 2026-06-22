@@ -25,7 +25,7 @@ const Toggle = ({
     aria-checked={value}
     aria-label={label}
     onClick={() => onChange(!value)}
-    className={`w-12 h-6 border-2 border-[#2D2D2D] relative transition-colors ${value ? 'bg-[#B89B5E]' : 'bg-[#EAE8E0]'}`}
+    className={`w-12 h-6 border-2 border-[#2D2D2D] relative transition-colors ${value ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'}`}
   >
     <div className={`absolute top-0.5 w-4 h-4 bg-[#EAE8E0] border-2 border-[#2D2D2D] transition-transform ${value ? 'translate-x-6' : 'translate-x-0.5'}`} />
   </button>
@@ -102,7 +102,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 onClick={() => setEditorViewMode(mode)}
                 className={`px-3 py-1.5 font-bold border-2 border-[#2D2D2D] text-sm capitalize transition-all ${
                   editorViewMode === mode
-                    ? 'bg-[#B89B5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
+                    ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
                     : 'bg-[#EAE8E0] text-[#2D2D2D]'
                 }`}
               >
@@ -120,7 +120,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             value={settings.dailyNotes.dateFormat}
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
             placeholder="YYYY-MM-DD"
-            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#B89B5E]"
+            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
           />
         </SettingItem>
         <SettingItem label="Template" description="Content pre-filled in each new daily note. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
@@ -129,7 +129,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, template: e.target.value } }))}
             placeholder={"# {{date}}\n\n## Notes\n\n"}
             rows={5}
-            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#B89B5E] resize-none"
+            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E] resize-none"
           />
         </SettingItem>
       </SettingSection>
@@ -180,7 +180,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditName(e.target.value)}
                   maxLength={60}
                   placeholder="Template name"
-                  className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm w-full outline-none focus:border-[#B89B5E]"
+                  className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm w-full outline-none focus:border-[#CC7D5E]"
                   autoFocus
                 />
               </div>
@@ -191,7 +191,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditContent(e.target.value)}
                   rows={7}
                   placeholder={"# {{title}}\n\n{{date}}\n\n"}
-                  className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#B89B5E] resize-none"
+                  className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
                 />
               </div>
               <div className="flex gap-2">

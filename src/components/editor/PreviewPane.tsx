@@ -196,9 +196,9 @@ const CALLOUT_TYPES: Record<string, { color: string; darkBg: string; lightBg: st
   SUCCESS:   { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Success' },
   CHECK:     { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Check' },
   DONE:      { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Done' },
-  WARNING:   { color: '#D97757', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
-  WARN:      { color: '#D97757', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
-  ATTENTION: { color: '#D97757', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Attention' },
+  WARNING:   { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
+  WARN:      { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
+  ATTENTION: { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Attention' },
   IMPORTANT: { color: '#9B7FD4', darkBg: '#221830', lightBg: '#F5F3FF', icon: '❗', label: 'Important' },
   CAUTION:   { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '🔥', label: 'Caution' },
   DANGER:    { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '⚡', label: 'Danger' },
@@ -350,7 +350,7 @@ function getSnippet(content: string, title: string) {
     return (
       <span>
         ...{match[1]}
-        <span className="text-[#B89B5E] font-bold bg-[#B89B5E]/10 px-1 rounded">{match[2]}</span>
+        <span className="text-[#CC7D5E] font-bold bg-[#CC7D5E]/10 px-1 rounded">{match[2]}</span>
         {match[3]}...
       </span>
     );
@@ -441,7 +441,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           const noteId = href.replace('note-internal://id/', '').split('#')[0];
           return (
             <span
-              className={`${isDark ? 'text-[#D97757]' : 'text-[#B89B5E]'} cursor-pointer hover:underline font-bold`}
+              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer hover:underline font-bold`}
               onClick={() => onNavigateToNoteById(noteId)}
             >
               {children}
@@ -453,7 +453,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           const noteTitle = decodeURIComponent(encoded);
           return (
             <span
-              className={`${isDark ? 'text-[#D97757]' : 'text-[#B89B5E]'} cursor-pointer hover:underline font-bold`}
+              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer hover:underline font-bold`}
               onClick={() => onNavigateToNoteLegacy(noteTitle)}
             >
               {children}
@@ -514,7 +514,7 @@ export const PreviewPane = React.memo(function PreviewPane({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mark: ({ children }: { children: React.ReactNode }) => (
         <mark style={{
-          backgroundColor: isDark ? 'rgba(217,119,87,0.25)' : 'rgba(184,155,94,0.25)',
+          backgroundColor: 'rgba(204,125,94,0.25)',
           color: 'inherit',
           borderRadius: '2px',
           padding: '0 2px',
@@ -548,7 +548,7 @@ export const PreviewPane = React.memo(function PreviewPane({
       ),
       // Footnote reference: [^1] inline superscript
       sup: ({ children, ...props }) => (
-        <sup style={{ color: isDark ? '#D97757' : '#B89B5E', fontSize: '0.75em', fontWeight: 'bold', verticalAlign: 'super' }} {...props}>
+        <sup style={{ color: isDark ? '#CC7D5E' : '#CC7D5E', fontSize: '0.75em', fontWeight: 'bold', verticalAlign: 'super' }} {...props}>
           {children}
         </sup>
       ),
@@ -614,7 +614,7 @@ export const PreviewPane = React.memo(function PreviewPane({
                 minWidth: '14px',
                 border: `1.5px solid ${isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.35)'}`,
                 marginTop: '3px',
-                backgroundColor: isChecked ? (isDark ? '#D97757' : '#B89B5E') : 'transparent',
+                backgroundColor: isChecked ? (isDark ? '#CC7D5E' : '#CC7D5E') : 'transparent',
               }}
             >
               {isChecked && (
@@ -644,14 +644,14 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#D97757] prose-pre:bg-[#1E1E1C] prose-pre:text-[#D6D4D1] prose-code:text-[#D97757] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
-              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#B89B5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D]/12 prose-code:text-[#B89B5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
+              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#CC7D5E] prose-pre:bg-[#1E1E1C] prose-pre:text-[#D6D4D1] prose-code:text-[#CC7D5E] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
+              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#CC7D5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D]/12 prose-code:text-[#CC7D5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           <Markdown
             remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
-            rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#D97757' }]]}
+            rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]]}
             components={markdownComponents}
           >
             {previewMarkdown}
@@ -673,7 +673,7 @@ export const PreviewPane = React.memo(function PreviewPane({
                 style={{ border: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}
                 onClick={() => onNavigateToNoteById(backlink.id)}
               >
-                <div className="text-xs font-bold transition-colors group-hover:text-[#B89B5E]" style={{ color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }}>
+                <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }}>
                   {backlink.title}
                 </div>
                 <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.4)' }}>

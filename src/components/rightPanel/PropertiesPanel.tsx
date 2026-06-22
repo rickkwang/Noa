@@ -87,7 +87,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                   tagList.length > 0 ? (
                     <div className="flex flex-wrap gap-1 flex-1 min-w-0">
                       {tagList.map(tag => (
-                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-redaction font-bold border border-[#B89B5E]/40 text-[#B89B5E] bg-[#B89B5E]/10 leading-none">
+                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-redaction font-bold border border-[#CC7D5E]/40 text-[#CC7D5E] bg-[#CC7D5E]/10 leading-none">
                           #{tag}
                         </span>
                       ))}
@@ -104,7 +104,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                       value={value}
                       onChange={(e) => setEditedMeta(prev => ({ ...prev, [key]: e.target.value }))}
                       onBlur={() => { if (onUpdateNote) onUpdateNote(stringifyFrontmatter(editedMetaRef.current, propBodyRef.current)); }}
-                      className={`flex-1 ${inputBg} border ${inputBorder} px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
+                      className={`flex-1 ${inputBg} border ${inputBorder} px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                     />
                     <button
                       onClick={() => {
@@ -127,7 +127,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                 <input
                   type="text" placeholder="key" value={newPropKey}
                   onChange={(e) => setNewPropKey(e.target.value)}
-                  className={`w-20 shrink-0 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
+                  className={`w-20 shrink-0 ${inputBg} border border-[#CC7D5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                   autoFocus
                 />
                 <input
@@ -142,7 +142,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                     }
                     if (e.key === 'Escape') { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }
                   }}
-                  className={`flex-1 ${inputBg} border border-[#B89B5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#B89B5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
+                  className={`flex-1 ${inputBg} border border-[#CC7D5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] min-w-0 ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
                 />
                 <button onClick={() => { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }}
                   className={`${isDark ? 'text-[rgba(238,237,234,0.3)] hover:text-[rgba(238,237,234,0.7)]' : 'text-[#2D2D2D]/30 hover:text-[#2D2D2D]'} active:opacity-70 shrink-0`}>

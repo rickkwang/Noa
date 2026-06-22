@@ -79,7 +79,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
         <div className="flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity h-0 group-hover:h-auto overflow-hidden">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#B89B5E] transition-colors active:opacity-70"
+            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70"
             title="Add Attachment"
           >
             + Attachments
@@ -98,7 +98,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
 
   return (
     <div
-      className={`bg-[#EAE8E0] shrink-0 transition-colors ${isDragOver ? 'bg-[#B89B5E]/10' : ''}`}
+      className={`bg-[#EAE8E0] shrink-0 transition-colors ${isDragOver ? 'bg-[#CC7D5E]/10' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -112,11 +112,11 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
         >
           <span>{isOpen ? '▾' : '▸'}</span>
           <span>Attachments</span>
-          <span className="ml-0.5 text-[#B89B5E]">({attachments.length})</span>
+          <span className="ml-0.5 text-[#CC7D5E]">({attachments.length})</span>
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Add Attachment"
         >
           + Add
@@ -155,7 +155,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                 <span className="text-base leading-none shrink-0">{fileIcon(att.mimeType)}</span>
                   <button
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2D]/70 hover:text-[#B89B5E] truncate transition-colors active:opacity-70"
+                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2D]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}

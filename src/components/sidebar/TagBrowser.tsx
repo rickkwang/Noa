@@ -63,7 +63,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
     >
       {isTagsOpen && (
         <div
-          className="h-3 w-full bg-transparent hover:bg-[#B89B5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
+          className="h-3 w-full bg-transparent hover:bg-[#CC7D5E]/20 cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2 transition-colors"
           onMouseDown={() => setIsDragging(true)}
         />
       )}

@@ -93,7 +93,7 @@ export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
         background: isDark ? 'rgba(217,87,87,0.08)' : 'rgba(200,50,50,0.05)',
       }}>
         <div style={{
-          color: isDark ? '#D97757' : '#c83232',
+          color: isDark ? '#CC7D5E' : '#c83232',
           fontSize: '0.78em',
           fontWeight: 600,
           marginBottom: '0.4rem',

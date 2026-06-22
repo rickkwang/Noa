@@ -97,7 +97,7 @@ export default function WorkspaceSection({
                 {onRetryFsSync && (
                   <button
                     onClick={onRetryFsSync}
-                    className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -108,7 +108,7 @@ export default function WorkspaceSection({
               <button
                 onClick={onConnectFolder}
                 disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#B89B5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
               >
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>
@@ -130,7 +130,7 @@ export default function WorkspaceSection({
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
             </p>
             {fsSyncError && (
-              <p className="text-xs text-[#2D2D2D] border border-[#B89B5E]/50 bg-[#EAE8E0] px-2 py-1">
+              <p className="text-xs text-[#2D2D2D] border border-[#CC7D5E]/50 bg-[#EAE8E0] px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

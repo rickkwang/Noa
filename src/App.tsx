@@ -605,7 +605,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#B89B5E] selection:text-white">
+    <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
       <ThemeInjector settings={settings} />
       {!isFocusMode && <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -859,7 +859,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => recoveryImportInputRef.current?.click()}
-                className="px-3 py-1 text-xs font-bold bg-[#B89B5E] text-white border-2 border-[#2D2D2D] hover:opacity-90"
+                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2D] hover:opacity-90"
               >
                 Import Backup
               </button>
@@ -912,7 +912,7 @@ export default function App() {
                   }
                 }}
                 placeholder="Type a command or note title..."
-                className="w-full bg-[#EAE8E0] border border-[#2D2D2D] px-3 py-2 text-sm font-redaction outline-none focus:border-[#B89B5E]"
+                className="w-full bg-[#EAE8E0] border border-[#2D2D2D] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
               />
             </div>
             <div className="max-h-80 overflow-y-auto p-2 space-y-1">

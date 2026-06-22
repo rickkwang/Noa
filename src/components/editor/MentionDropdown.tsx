@@ -111,7 +111,7 @@ function renderHighlighted(title: string, matchIndices: number[]) {
   for (let i = 0; i < title.length; i++) chars.push(title[i]);
   return chars.map((ch, i) =>
     set.has(i)
-      ? <span key={i} className="text-[#B89B5E] font-bold">{ch}</span>
+      ? <span key={i} className="text-[#CC7D5E] font-bold">{ch}</span>
       : <span key={i}>{ch}</span>
   );
 }
@@ -199,7 +199,7 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[#EAE8E0]/70' : 'text-[#B89B5E]'}`}>New</span>
+                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[#EAE8E0]/70' : 'text-[#CC7D5E]'}`}>New</span>
                 <span className="text-xs">{item.title}</span>
               </>
             ) : (

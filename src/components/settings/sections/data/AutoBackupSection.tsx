@@ -76,7 +76,7 @@ export default function AutoBackupSection({
               <button
                 onClick={() => { void onRunNow(); }}
                 disabled={busy}
-                className="px-3 py-1.5 text-xs font-bold bg-[#B89B5E] text-white border-2 border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
               >
                 {busy ? <Loader2 size={12} className="animate-spin" /> : null}
                 Run backup now
@@ -93,7 +93,7 @@ export default function AutoBackupSection({
             <button
               onClick={() => { void onChooseDirectory(); }}
               disabled={busy}
-              className="px-3 py-1.5 text-xs font-bold bg-[#B89B5E] text-white border-2 border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
             >
               <FolderOpen size={12} />
               Choose folder

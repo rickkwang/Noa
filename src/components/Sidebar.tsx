@@ -214,7 +214,7 @@ export default function Sidebar({
               }}
               onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
               onRename={(newName: string) => onRenameNote(note.id, newName)}
-              iconColor="#B89B5E"
+              iconColor="#CC7D5E"
               draggable
               onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
               onDragEnd={handleDragEndItem}
@@ -312,15 +312,15 @@ export default function Sidebar({
       onDrop={handleDrop}
     >
       {isDragOver && (
-        <div className="absolute inset-0 bg-[#B89B5E]/10 border-2 border-dashed border-[#B89B5E] z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-[#EAE8E0] px-4 py-2 border border-[#B89B5E] shadow-lg font-redaction font-bold text-[#B89B5E] flex items-center">
+        <div className="absolute inset-0 bg-[#CC7D5E]/10 border-2 border-dashed border-[#CC7D5E] z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-[#EAE8E0] px-4 py-2 border border-[#CC7D5E] shadow-lg font-redaction font-bold text-[#CC7D5E] flex items-center">
             <Plus size={16} className="mr-2" />
             Drop files to import
           </div>
         </div>
       )}
           {pendingDelete && (
-        <div className="slide-down border-b-2 border-[#B89B5E] bg-[#B89B5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
+        <div className="slide-down border-b-2 border-[#CC7D5E] bg-[#CC7D5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
           <p className="text-xs text-[#2D2D2D]">
             Delete "<span className="font-bold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
@@ -370,14 +370,14 @@ export default function Sidebar({
       <div className="h-8 border-b border-[#2D2D2D] flex items-center px-2 gap-0.5 shrink-0 bg-[#DCD9CE] z-10 overflow-hidden">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New note"
         >
           <SquarePen size={14} />
         </button>
         <button
           onClick={() => onCreateFolder()}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New folder"
         >
           <FolderPlus size={14} />
@@ -387,14 +387,14 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
           {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
         </button>
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open today's daily note"
         >
           <Calendar size={14} />
@@ -405,15 +405,15 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#B89B5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open random note"
         >
           <Dices size={14} />
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2D]/50 hover:text-[#B89B5E]"
-          style={{ color: noteSortOrder !== 'updatedAt' ? '#B89B5E' : undefined }}
+          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2D]/50 hover:text-[#CC7D5E]"
+          style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
           title="Click to cycle sort order"
         >
           <ArrowUpDown size={14} />
@@ -425,7 +425,7 @@ export default function Sidebar({
       
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
-        <div className="border-b border-[#2D2D2D]/20 bg-[#B89B5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
+        <div className="border-b border-[#2D2D2D]/20 bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
           <span className="text-xs text-[#2D2D2D]/70">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
@@ -478,7 +478,7 @@ export default function Sidebar({
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="text-[#2D2D2D]/40 hover:text-[#B89B5E] active:opacity-70 flex items-center gap-1"
+                      className="text-[#2D2D2D]/40 hover:text-[#CC7D5E] active:opacity-70 flex items-center gap-1"
                       title="Close search"
                     >
                       <X size={11} />
@@ -489,11 +489,11 @@ export default function Sidebar({
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#B89B5E]/10 border-l-[#B89B5E]' : 'border-l-transparent hover:bg-[#DCD9CE]/50'} transition-colors`}
+                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#DCD9CE]/50'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2D] mb-1 flex items-center">
-                      <FileText size={12} className="mr-1.5 text-[#B89B5E] shrink-0" />
+                      <FileText size={12} className="mr-1.5 text-[#CC7D5E] shrink-0" />
                       <span className="truncate">
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
@@ -504,7 +504,7 @@ export default function Sidebar({
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {result.note.tags.map(tag => (
-                          <span key={tag} className="text-[10px] font-redaction text-[#B89B5E] bg-[#B89B5E]/10 px-1">
+                          <span key={tag} className="text-[10px] font-redaction text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
                             #{tag}
                           </span>
                         ))}
@@ -527,7 +527,7 @@ export default function Sidebar({
                   onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
                   onDrop={(e) => handleDropItem(null, e)}
                   onDragLeave={() => handleDragEndItem()}
-                  className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'ring-1 ring-inset ring-[#B89B5E]/50' : ''}
+                  className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'ring-1 ring-inset ring-[#CC7D5E]/50' : ''}
                 >
                   {noaFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
                   {sortNotes((notesByFolderId.get('') || []).filter((note) => (note.source ?? 'noa') === 'noa')).map((note) => (
@@ -551,7 +551,7 @@ export default function Sidebar({
                       }}
                       onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
                       onRename={(newName: string) => onRenameNote(note.id, newName)}
-                      iconColor="#B89B5E"
+                      iconColor="#CC7D5E"
                       draggable
                       onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
                       onDragEnd={handleDragEndItem}
@@ -600,7 +600,7 @@ export default function Sidebar({
                           }}
                           onDelete={() => setPendingDelete({ type: 'note', id: note.id, name: note.title || 'Untitled' })}
                           onRename={(newName: string) => onRenameNote(note.id, newName)}
-                          iconColor="#B89B5E"
+                          iconColor="#CC7D5E"
                           draggable
                           onDragStart={handleDragStartItem('note', note.id, note.title || 'Untitled')}
                           onDragEnd={handleDragEndItem}

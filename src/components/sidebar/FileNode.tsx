@@ -125,9 +125,9 @@ export const FileNode = React.memo(({
       <div
         className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
           isDropTarget
-            ? 'bg-[#B89B5E]/16 ring-2 ring-inset ring-[#B89B5E] shadow-[inset_0_0_0_1px_rgba(184,155,94,0.45)]'
+            ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
             : isSelected
-              ? 'bg-[#B89B5E]/20 border-l-2 border-[#B89B5E]'
+              ? 'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'
               : (isActive ? 'bg-[#DCD9CE]' : 'hover:bg-[#DCD9CE]/50')
         }`}
         style={{ paddingLeft: `${depth === 0 ? 4 : 2}px` }}
@@ -147,7 +147,7 @@ export const FileNode = React.memo(({
           <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2D]/50">
             {isFolder ? <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} /> : null}
           </span>
-          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#B89B5E]' : (isActive ? 'text-[#B89B5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
+          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#CC7D5E]' : (isActive ? 'text-[#CC7D5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
               return <RenderIcon size={14} weight="regular" />;
@@ -176,7 +176,7 @@ export const FileNode = React.memo(({
           {isFolder && onAddFolder && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddFolder(); }}
-              className="hover:text-[#B89B5E] p-1"
+              className="hover:text-[#CC7D5E] p-1"
               title="Add subfolder"
             >
               <FolderPlus size={14} />
@@ -186,7 +186,7 @@ export const FileNode = React.memo(({
             <button
               {...addButtonProps}
               onClick={(e) => { e.stopPropagation(); onAdd(); }}
-              className="hover:text-[#B89B5E] p-1"
+              className="hover:text-[#CC7D5E] p-1"
               title="Add"
             >
               <Plus size={14} />
