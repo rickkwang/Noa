@@ -563,7 +563,7 @@ export default function Sidebar({
                 {/* Obsidian Vault section — only shown when imported content exists */}
                 {(importedFolderTree.length > 0 || (notesByFolderId.get('') || []).some((note) => (note.source ?? 'noa') === 'obsidian-import')) && (
                   <>
-                    <div className="flex items-center gap-2 px-2 py-1.5 mt-1">
+                    <div className="flex items-center gap-2 px-2 py-1.5 mt-1 -mr-2">
                       <div className="flex-1 border-t border-[#2D2D2D]/20" />
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 font-redaction shrink-0">Obsidian Vault</span>
                       <div className="flex-1 border-t border-[#2D2D2D]/20" />

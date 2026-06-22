@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
@@ -222,7 +222,28 @@ async function doCheckForUpdates() {
   }
 }
 
+// Re-affirm File System Access grants for the user's already-chosen vault/backup
+// folders. The packaged app runs from a file:// origin, which Chromium treats as
+// opaque and so cannot persist File System Access permissions across relaunches —
+// without this the restored directory handle reads back as 'prompt' on every
+// launch, the bootstrap scan fails with NotAllowedError, and the "reconnect vault"
+// error surfaces each time. Folders are only ever obtained through the native
+// directory picker, so granting 'fileSystem' here re-authorizes a path the user
+// already chose; it cannot reach arbitrary paths. All other permissions keep
+// Electron's default (grant) behavior — this window only ever loads Noa's own
+// content (navigation is locked by setWindowOpenHandler/will-navigate).
+function installPermissionHandlers() {
+  // 'fileSystem' is the permission we must affirmatively re-grant (see above);
+  // every other permission keeps Electron's existing permissive default, so this
+  // changes nothing for them.
+  session.defaultSession.setPermissionCheckHandler(() => true);
+  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
+    callback(true);
+  });
+}
+
 app.whenReady().then(() => {
+  installPermissionHandlers();
   setupAutoUpdater();
   buildMenu();
   createWindow();

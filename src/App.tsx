@@ -797,7 +797,7 @@ export default function App() {
         </div>
       )}
       {fsSyncError && fsHandle && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction rounded-md">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
           <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
             {needsReauth
@@ -810,7 +810,7 @@ export default function App() {
             <button
               disabled={syncStatus === 'syncing'}
               onClick={needsReauth ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
             >
               {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
             </button>
@@ -818,7 +818,7 @@ export default function App() {
               <button
                 disabled={syncStatus === 'syncing'}
                 onClick={handleDisconnectFolder}
-                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 Disconnect
               </button>
