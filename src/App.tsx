@@ -7,16 +7,13 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import { STORAGE_KEYS } from './constants/storageKeys';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
-import BackupReminderBar from './components/BackupReminderBar';
 import { parseTasksFromNotes } from './lib/taskParser';
 import { useSettings } from './hooks/useSettings';
 import { useNotes } from './hooks/useNotes';
 import { useLayout } from './hooks/useLayout';
 import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
-import { useBackupReminder } from './hooks/useBackupReminder';
 import { useAutoBackup } from './hooks/useAutoBackup';
-import { exportJsonSnapshot } from './hooks/useDataTransfer';
 import { useCommandPalette } from './hooks/useCommandPalette';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -523,18 +520,6 @@ export default function App() {
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
   }, [handleNavigateToNote, navigateById, notes]);
 
-  const {
-    showReminder,
-    daysSinceExport,
-    lastExportAt,
-    backupHealth,
-    dismiss: dismissReminder,
-  } = useBackupReminder(notes.length);
-
-  const exportJsonQuick = useCallback(() => {
-    void exportJsonSnapshot(notes, folders, workspaceName);
-  }, [notes, folders, workspaceName]);
-
   const commandPalette = useCommandPalette({
     notes,
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
@@ -622,15 +607,6 @@ export default function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#B89B5E] selection:text-white">
       <ThemeInjector settings={settings} />
-      {showReminder && (
-        <BackupReminderBar
-          daysSinceExport={daysSinceExport}
-          lastExportAt={lastExportAt}
-          backupHealth={backupHealth}
-          onExportJson={exportJsonQuick}
-          onDismiss={dismissReminder}
-        />
-      )}
       {!isFocusMode && <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
