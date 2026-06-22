@@ -183,6 +183,12 @@ body {
 [data-theme="dark"] .prose a[data-footnote-ref]  { color: #CC7D5E !important; }
 [data-theme="dark"] .prose a[data-footnote-backref] { color: #CC7D5E !important; }
 
+/* ── List markers (bullets / numbers) ──
+   Typography's --tw-prose-bullets/counters default to grays that wash out on
+   the light cream background; pin markers to the body text color per theme. */
+.prose li::marker { color: #2D2D2D; }
+[data-theme="dark"] .prose li::marker { color: #D6D4D1 !important; }
+
 /* ── Scrollbar ── */
 [data-theme="dark"] ::-webkit-scrollbar-thumb       { background: rgba(238,237,234,0) !important; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(238,237,234,0.20) !important; }
