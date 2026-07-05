@@ -41,10 +41,11 @@ body {
 
 /* Warm dark palette:
    bg-primary   #262624  (main content bg)
-   bg-secondary #1A1A18  (sidebar / panels / code blocks — darker for clearer panel separation)
+   bg-secondary #1E1E1C  (sidebar / panels / code blocks — darker for clearer panel separation)
    text-primary #D6D4D1  (warm gray)
    accent       #CC7D5E  (Anthropic coral)
-   border       #4A4A46  (structural dividers — lifted for visibility on #262624)
+   border       #3A3A37  (structural dividers — lifted for visibility on #262624)
+   shadow       #1A1A18  (hard offset shadows only)
 */
 
 [data-theme="dark"] body {
@@ -63,10 +64,18 @@ body {
 [data-theme="dark"] .bg-\[\#CC7D5E\]\/10 { background-color: rgba(204,125,94,0.12) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2D\]\/10 { background-color: rgba(238,237,234,0.06) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2D\]\/20 { background-color: rgba(238,237,234,0.10) !important; }
+[data-theme="dark"] .bg-\[\#EAE8E0\]\/80 { background-color: rgba(38,38,36,0.80) !important; }
+[data-theme="dark"] .bg-\[\#EAE8E0\]\/90 { background-color: rgba(38,38,36,0.90) !important; }
+
+/* Inverted fills (selected rows, inverted buttons): flip to light-on-dark */
+[data-theme="dark"] .bg-\[\#2D2D2D\]       { background-color: #EEEDEA !important; }
+[data-theme="dark"] .text-\[\#EAE8E0\]      { color: #262624 !important; }
+[data-theme="dark"] .text-\[\#EAE8E0\]\/70  { color: rgba(38,38,36,0.70) !important; }
 
 /* ── Text ── */
 [data-theme="dark"] .text-\[\#2D2D2D\]      { color: #D6D4D1 !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/10  { color: rgba(238,237,234,0.10) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/15  { color: rgba(238,237,234,0.15) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/20  { color: rgba(238,237,234,0.20) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/30  { color: rgba(238,237,234,0.30) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/35  { color: rgba(238,237,234,0.35) !important; }
@@ -74,6 +83,7 @@ body {
 [data-theme="dark"] .text-\[\#2D2D2D\]\/50  { color: rgba(238,237,234,0.50) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/60  { color: rgba(238,237,234,0.60) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/70  { color: rgba(215,210,197,0.70) !important; }
+[data-theme="dark"] .text-\[\#2D2D2D\]\/75  { color: rgba(215,210,197,0.75) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/80  { color: rgba(215,210,197,0.80) !important; }
 [data-theme="dark"] .text-\[\#2D2D2D\]\/90  { color: rgba(215,210,197,0.90) !important; }
 [data-theme="dark"] .text-\[\#CC7D5E\]      { color: #CC7D5E !important; }
@@ -85,6 +95,7 @@ body {
 [data-theme="dark"] .group:hover .group-hover\:text-\[\#CC7D5E\] { color: #CC7D5E !important; }
 
 /* ── Hover backgrounds ── */
+[data-theme="dark"] .hover\:bg-\[\#DCD9CE\]:hover     { background-color: rgba(238,237,234,0.10) !important; }
 [data-theme="dark"] .hover\:bg-\[\#DCD9CE\]\/50:hover { background-color: rgba(238,237,234,0.07) !important; }
 [data-theme="dark"] .hover\:bg-\[\#DCD9CE\]\/30:hover { background-color: rgba(238,237,234,0.05) !important; }
 
@@ -98,12 +109,18 @@ body {
 [data-theme="dark"] .border-\[\#2D2D2D\]\/90  { border-color: rgba(238,237,234,0.12) !important; }
 [data-theme="dark"] .border-\[\#CC7D5E\]       { border-color: #CC7D5E !important; }
 [data-theme="dark"] .hover\:border-\[\#2D2D2D\]:hover { border-color: #3A3A37 !important; }
+[data-theme="dark"] .hover\:border-\[\#2D2D2D\]\/30:hover { border-color: rgba(238,237,234,0.22) !important; }
+[data-theme="dark"] .hover\:border-\[\#2D2D2D\]\/40:hover { border-color: rgba(238,237,234,0.30) !important; }
+[data-theme="dark"] .hover\:border-\[\#2D2D2D\]\/50:hover { border-color: rgba(238,237,234,0.38) !important; }
+[data-theme="dark"] .hover\:border-\[\#2D2D2D\]\/60:hover { border-color: rgba(238,237,234,0.45) !important; }
 [data-theme="dark"] .hover\:border-\[\#CC7D5E\]:hover { border-color: #CC7D5E !important; }
+[data-theme="dark"] .divide-\[\#2D2D2D\] > :not(:last-child) { border-color: #3A3A37 !important; }
 
 /* ── Shadows ── */
 [data-theme="dark"] .shadow-\[8px_8px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 8px 8px 0px 0px #1A1A18 !important; }
 [data-theme="dark"] .shadow-\[4px_4px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 4px 4px 0px 0px #1A1A18 !important; }
 [data-theme="dark"] .shadow-\[2px_2px_0px_0px_rgba\(45\,45\,45\,1\)\] { box-shadow: 2px 2px 0px 0px #1A1A18 !important; }
+[data-theme="dark"] .shadow-\[2px_2px_0_0_rgba\(45\,45\,45\,1\)\]     { box-shadow: 2px 2px 0px 0px #1A1A18 !important; }
 [data-theme="dark"] .shadow-\[4px_4px_0_0_rgba\(45\,45\,45\,1\)\]     { box-shadow: 4px 4px 0px 0px #1A1A18 !important; }
 [data-theme="dark"] .shadow-\[inset_4px_0px_0px_0px_\#CC7D5E\]        { box-shadow: inset 4px 0px 0px 0px #CC7D5E !important; }
 
@@ -147,14 +164,17 @@ body {
 
 /* ── Prose (Markdown preview) ── */
 [data-theme="dark"] .prose-a\:text-\[\#CC7D5E\] a            { color: #CC7D5E !important; }
-[data-theme="dark"] .prose-pre\:bg-\[\#DCD9CE\] pre          { background-color: #1E1E1C !important; }
 [data-theme="dark"] .prose-pre\:text-\[\#2D2D2D\] pre        { color: #D6D4D1 !important; }
-[data-theme="dark"] .prose-pre\:border-\[\#2D2D2D\] pre      { border-color: transparent !important; }
 [data-theme="dark"] .prose-code\:text-\[\#CC7D5E\] code      { color: #CC7D5E !important; }
 
-/* ── highlight.js code blocks ── */
-[data-theme="dark"] .hljs                   { background: #1E1E1C !important; color: #D6D4D1 !important; border: none !important; border-radius: 0 !important; }
-[data-theme="dark"] pre:has(.hljs)          { background: #1E1E1C !important; border: none !important; border-radius: 0 !important; }
+/* ── highlight.js code blocks ──
+   Backgrounds stay transparent in BOTH themes: the injected github/github-dark
+   stylesheets (Editor.tsx) each set an .hljs background, but the pre's coral
+   tint is owned by the CodeBlock component in PreviewPane.tsx (matching the
+   editor's .cm-code-line look). */
+.hljs                                       { background: transparent !important; }
+[data-theme="dark"] .hljs                   { background: transparent !important; color: #D6D4D1 !important; border: none !important; border-radius: 0 !important; }
+[data-theme="dark"] pre:has(.hljs)          { border: none !important; border-radius: 0 !important; }
 [data-theme="dark"] .hljs-keyword,
 [data-theme="dark"] .hljs-selector-tag,
 [data-theme="dark"] .hljs-type             { color: #CC7D5E !important; }
@@ -244,11 +264,11 @@ body {
 }
 
 /* ── Editor tab strip ── */
-/* Animate compositor-only properties (transform/opacity) rather than width/
-   padding. Opening a tab reconfigures CodeMirror on the main thread; a layout-
-   bound animation would drop frames against that work, while a composited one
-   keeps running smoothly off-thread. The tab takes its final width immediately
-   (one cheap reflow) and fades/slides into place. */
+/* Enter/exit animate the slot itself (max-width + padding) alongside
+   opacity/transform, so neighboring tabs slide smoothly into place instead of
+   snapping when the flex row redistributes. max-width bounds match the tab's
+   max-w-[9rem]/px-3 classes; min-width is forced to 0 during the animation so
+   the slot can actually collapse below min-w-[4.5rem]. */
 .editor-tab {
   backface-visibility: hidden;
   will-change: transform, opacity;
@@ -261,36 +281,63 @@ body {
   from {
     opacity: 0;
     transform: translateX(-8px) scale(0.96);
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
+    max-width: 9rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
 .editor-tab-enter {
   transform-origin: left center;
   animation: editor-tab-slot-enter 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  min-width: 0 !important;
+  overflow: hidden;
 }
 
+/* --noa-tab-w is stamped inline by the close button with the tab's measured
+   width, so the collapse starts exactly at the current width. Without it,
+   squeezed tabs (actual width < 9rem) would sit still while max-width burns
+   down from 9rem to the real width, then collapse at double speed. */
 @keyframes editor-tab-slot-exit {
   from {
     opacity: 1;
     transform: translateX(0) scale(1);
+    max-width: var(--noa-tab-w, 9rem);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
   to {
     opacity: 0;
     transform: translateX(-8px) scale(0.96);
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 .editor-tab-exit {
   pointer-events: none;
   transform-origin: left center;
   animation: editor-tab-slot-exit 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  min-width: 0 !important;
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .editor-tab-enter,
-  .editor-tab-exit {
+  .editor-tab-exit,
+  .tab-fade-in,
+  .slide-down {
+    animation: none;
+  }
+  ::-webkit-scrollbar-thumb,
+  .is-scrolling::-webkit-scrollbar-thumb,
+  .is-scrolling-out::-webkit-scrollbar-thumb {
     animation: none;
   }
 }
@@ -302,4 +349,30 @@ body {
 }
 .slide-down {
   animation: slide-down 150ms ease-out both;
+}
+
+/* ── PDF export via system print dialog ──
+   The print root is a portal on <body> holding a light-themed PreviewPane
+   copy of the note being exported. On screen it stays hidden; during print
+   it replaces the app entirely. */
+#noa-print-root {
+  display: none;
+}
+@media print {
+  body > #root {
+    display: none !important;
+  }
+  #noa-print-root {
+    display: block !important;
+    background: #fff !important;
+  }
+  #noa-print-root pre,
+  #noa-print-root table,
+  #noa-print-root blockquote,
+  #noa-print-root img {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 18mm 15mm;
+  }
 }

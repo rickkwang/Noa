@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
@@ -78,6 +79,7 @@ export default function Editor({
   const [slashQuery, setSlashQuery] = useState<{ query: string; index: number; x: number; y: number } | null>(null);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [printNote, setPrintNote] = useState<Note | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -321,6 +323,65 @@ export default function Editor({
     margin: '0 auto',
   };
 
+  // PDF export: force the light theme so the printed page is white regardless
+  // of the app theme.
+  const printSettings = useMemo(
+    (): AppSettings => ({
+      ...settings,
+      appearance: { ...settings.appearance, theme: 'light' },
+    }),
+    [settings]
+  );
+
+  // PDF export flow: mount the hidden print root, wait for fonts/images (and a
+  // beat for async blocks like Mermaid), then hand off to the system print
+  // dialog where the user picks "Save as PDF".
+  useEffect(() => {
+    if (!printNote) return;
+    let cancelled = false;
+    const previousTitle = document.title;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      document.title = previousTitle;
+      setPrintNote(null);
+    };
+    const run = async () => {
+      try {
+        await document.fonts.ready;
+      } catch {
+        // fonts API unavailable — print anyway
+      }
+      const root = document.getElementById('noa-print-root');
+      const images = root ? Array.from(root.querySelectorAll('img')) : [];
+      await Promise.all(
+        images.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              })
+        )
+      );
+      // Mermaid diagrams render asynchronously with no completion signal here.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (cancelled) return;
+      // The document title becomes the default PDF filename.
+      document.title = printNote.title || 'Untitled';
+      window.addEventListener('afterprint', finish, { once: true });
+      // window.print() blocks until the dialog closes in Chromium/Electron;
+      // the timeout covers engines where afterprint never fires.
+      window.print();
+      setTimeout(finish, 1000);
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [printNote]);
+
   if (!note) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#EAE8E0] font-redaction select-none">
@@ -377,6 +438,7 @@ export default function Editor({
         setViewMode={setViewMode}
         onExportMd={() => exportNoteAsMd(note)}
         onExportHtml={() => exportNoteAsHtml(note)}
+        onExportPdf={() => setPrintNote(note)}
         titleInputRef={titleInputRef}
         enteringTabId={enteringTabId}
         enteringFromTabId={enteringFromTabId}
@@ -413,7 +475,7 @@ export default function Editor({
       )}
 
       {(imageError || attachmentLoadError) && (
-        <div className="px-4 py-1.5 bg-red-50 border-b border-red-400 text-red-700 text-xs font-redaction flex items-center justify-between shrink-0 z-20">
+        <div className="px-4 py-1.5 bg-[#D45555]/10 border-b border-[#D45555]/60 text-[#A93B3B] text-xs font-redaction flex items-center justify-between shrink-0 z-20">
           <span>{imageError || attachmentLoadError}</span>
           <button onClick={() => setImageError(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
         </div>
@@ -503,6 +565,23 @@ export default function Editor({
           />
         )}
       </div>
+
+      {printNote && createPortal(
+        <div id="noa-print-root">
+          <PreviewPane
+            note={printNote}
+            allNotes={allNotes}
+            settings={printSettings}
+            onNavigateToNoteLegacy={() => {}}
+            onNavigateToNoteById={() => {}}
+            editorStyle={editorStyle}
+            contentMaxWidthStyle={{ maxWidth: '100%' }}
+            objectUrls={objectUrls}
+            printMode
+          />
+        </div>,
+        document.body
+      )}
 
       {onNoteUpdate && (
         <AttachmentPanel

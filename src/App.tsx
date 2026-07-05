@@ -112,6 +112,7 @@ export default function App() {
     syncNoteOnRename,
     syncFolderOnRename,
     syncNoteOnDelete,
+    externalUpdateNotice,
   } = useFileSync({
     isLoaded,
     notes,
@@ -397,10 +398,12 @@ export default function App() {
     closingTabTimeoutsRef.current.clear();
   }, []);
 
-  // Sync activeNoteId into openTabIds
+  // Sync activeNoteId into openTabIds. Animate: openTabForNote only marks the
+  // tab as entering when it's genuinely new and other tabs already exist, so
+  // sidebar/search-opened notes get the same entrance as the "+" button.
   useEffect(() => {
     if (!activeNoteId) return;
-    openTabForNote(activeNoteId, false);
+    openTabForNote(activeNoteId, true);
   }, [activeNoteId, openTabForNote]);
 
   // When a note is created with waitingForTemplateRef set, pop the template picker
@@ -608,6 +611,7 @@ export default function App() {
     <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
       <ThemeInjector settings={settings} />
       {!isFocusMode && <TopBar
+        settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
@@ -785,21 +789,27 @@ export default function App() {
         </div>
       </div>
       {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-amber-400 bg-amber-50 px-4 py-3 max-w-sm shadow-lg">
-          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Warning · Save</div>
-          <div className="text-[11px] text-amber-700 leading-relaxed mb-3">{saveError}</div>
+        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C] bg-[#EC9A3C]/10 px-4 py-3 max-w-sm shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]">
+          <div className="text-xs font-bold text-[#8A571C] uppercase tracking-wider mb-1">Warning · Save</div>
+          <div className="text-xs text-[#A26721] leading-relaxed mb-3">{saveError}</div>
           <button
             onClick={clearSaveError}
-            className="text-[10px] uppercase tracking-wider font-bold border border-amber-500 px-2 py-0.5 text-amber-700 hover:bg-amber-100 transition-colors active:opacity-70"
+            className="text-[10px] uppercase tracking-wider font-bold border border-[#EC9A3C] px-2 py-0.5 text-[#A26721] hover:bg-[#EC9A3C]/20 transition-colors active:opacity-70"
           >
             Dismiss
           </button>
         </div>
       )}
+      {externalUpdateNotice && (
+        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#EAE8E0] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,45,0.15)]">
+          <div className="text-xs font-bold text-[#CC7D5E] uppercase tracking-wider mb-0.5">Vault Sync</div>
+          <div className="text-xs text-[#2D2D2D]/70 leading-relaxed">{externalUpdateNotice}</div>
+        </div>
+      )}
       {fsSyncError && fsHandle && (
         <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction rounded-md">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
-          <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
+          <div className="text-xs text-[#2D2D2D]/60 leading-relaxed mb-3">
             {needsReauth
               ? 'Vault sync is paused — changes will NOT sync to your folder until reconnected. Notes are saved locally only.'
               : autoRetryExhausted
@@ -827,9 +837,9 @@ export default function App() {
         </div>
       )}
       {showStorageNotice && (
-        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-lg">
+        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]">
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Local Storage Only</div>
-          <div className="text-[11px] text-[#2D2D2D]/60 leading-relaxed mb-3">
+          <div className="text-xs text-[#2D2D2D]/60 leading-relaxed mb-3">
             {LOCAL_DATA_BOUNDARY_COPY}
           </div>
           <button
@@ -845,7 +855,7 @@ export default function App() {
       )}
       {loadError && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] p-4 font-redaction space-y-3">
+          <div className="w-full max-w-xl bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] p-4 font-redaction space-y-3 slide-down">
             <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
             <p className="text-sm text-[#2D2D2D]/80">{loadError.message}</p>
             <p className="text-xs text-[#2D2D2D]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
@@ -867,7 +877,7 @@ export default function App() {
                 onClick={() => {
                   void resetWorkspaceFromRecovery();
                 }}
-                className="px-3 py-1 text-xs font-bold bg-red-100 text-red-800 border-2 border-red-400 hover:bg-red-200"
+                className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border-2 border-[#D45555]/60 hover:bg-[#D45555]/30"
               >
                 New Empty Workspace
               </button>
@@ -891,7 +901,7 @@ export default function App() {
       {commandPalette.isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
           <div
-            className="w-full max-w-xl border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]"
+            className="w-full max-w-xl border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[#2D2D2D] p-3 bg-[#DCD9CE]">
@@ -958,7 +968,7 @@ export default function App() {
       )}
       {navigationConflict && (
         <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
-          <div className="w-full max-w-lg border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE]">
               <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Duplicate Title</div>
               <div className="text-sm text-[#2D2D2D] mt-1">
@@ -979,7 +989,7 @@ export default function App() {
                     className="w-full text-left border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 px-3 py-2 bg-[#EAE8E0] hover:bg-[#DCD9CE]/40"
                   >
                     <div className="text-sm font-bold text-[#2D2D2D] truncate">{note.title}</div>
-                    <div className="text-[11px] text-[#2D2D2D]/60 mt-0.5">
+                    <div className="text-xs text-[#2D2D2D]/60 mt-0.5">
                       {folderNameById.get(note.folder) ?? 'No Folder'} · Created {new Date(note.createdAt).toLocaleString()}
                     </div>
                   </button>
@@ -1005,7 +1015,7 @@ export default function App() {
         const dateFormat = settings.dailyNotes.dateFormat;
         return (
           <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
-            <div className="w-full max-w-sm border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-sm border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
               <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE] flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Choose Template</div>
@@ -1027,7 +1037,7 @@ export default function App() {
                   >
                     <div className="text-sm font-bold text-[#2D2D2D]">{t.name}</div>
                     {t.content && (
-                      <div className="text-[11px] text-[#2D2D2D]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                      <div className="text-xs text-[#2D2D2D]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
                     )}
                   </button>
                 ))}
@@ -1046,7 +1056,7 @@ export default function App() {
         </button>
       )}
       {tabLimitWarning && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-white text-xs px-3 py-1.5 font-redaction pointer-events-none">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-[#EAE8E0] text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)
         </div>
       )}

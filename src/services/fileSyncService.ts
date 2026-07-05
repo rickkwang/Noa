@@ -7,6 +7,7 @@ import {
   removeEmptyFolderTree,
   requestDirectoryAccess,
   scanDirectory,
+  scanNoteFileStats,
   writeNote,
 } from '../lib/fileSystemStorage';
 
@@ -40,9 +41,8 @@ export async function connectDirectoryAndSeed(
 ): Promise<FileSystemDirectoryHandle> {
   const handle = await requestDirectoryAccess();
   await persistHandle(handle);
-  // Do NOT write notes on connect — the vault is the source of truth.
-  // mergeScannedNotes (called by the caller) will read the vault and
-  // bring Noa in sync without touching any existing files.
+  // No writes here: the caller first merges the vault's contents (newest wins),
+  // then seeds the vault with the merged result via retryFullSync.
   return handle;
 }
 
@@ -65,16 +65,22 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-export async function mergeScannedNotes(
-  handle: FileSystemDirectoryHandle,
+/**
+ * Pure newest-wins merge of Noa's in-memory notes against a vault scan.
+ * Exported for unit tests; production callers use mergeScannedNotes.
+ *
+ * Rules:
+ *  - Note on both sides: the side with the newer updatedAt wins (a scanned
+ *    note's updatedAt is the file's mtime). Noa-owned linkRefs are preserved.
+ *  - Note only in Noa: kept, unless the manifest tracked it (its file was
+ *    deleted externally) — then it is dropped and reported in deletedNoteIds.
+ *  - Note only on disk: added.
+ */
+export function mergeVaultNotes(
   notes: Note[],
-  folders: Folder[],
-): Promise<{ notes: Note[]; newFolders: Folder[] }> {
-  const { notes: scanned, newFolders } = await withTimeout(
-    scanDirectory(handle, folders),
-    SCAN_TIMEOUT_MS,
-    'Vault directory scan'
-  );
+  scanned: Note[],
+  manifestIds: ReadonlySet<string>,
+): { notes: Note[]; deletedNoteIds: string[]; updatedNoteIds: string[] } {
   const scannedById = new Map<string, Note>();
   for (const n of scanned) {
     if (scannedById.has(n.id)) {
@@ -85,26 +91,131 @@ export async function mergeScannedNotes(
     }
     scannedById.set(n.id, n);
   }
-  // Update existing obsidian-import notes with fresh data from disk;
-  // keep Noa-native notes untouched.
-  // Drop obsidian-import notes that no longer exist on disk — they were deleted
-  // externally (e.g. in Obsidian) and should not be resurrected.
+  const deletedNoteIds: string[] = [];
+  // Notes whose visible content actually changed by taking the disk version —
+  // used for the "vault changes merged" notice. A disk win with identical
+  // content (routine mtime drift after Noa's own writes) doesn't count.
+  const updatedNoteIds: string[] = [];
   const merged = notes.flatMap((n) => {
     const fresh = scannedById.get(n.id);
     if (!fresh) {
-      // Noa-native notes always kept; obsidian-import notes missing from disk are removed.
-      if ((n.source ?? 'noa') === 'obsidian-import') return [];
+      // The manifest tracked this note's file and it is gone from disk — it was
+      // deleted externally (e.g. in Obsidian/Finder) and must not be resurrected.
+      if (manifestIds.has(n.id)) {
+        deletedNoteIds.push(n.id);
+        return [];
+      }
+      // Never written to the vault yet (e.g. created while disconnected) — keep.
       return [n];
     }
-    // Preserve Noa fields that the vault file doesn't own (e.g. linkRefs computed
-    // by Noa's link engine), but take everything the vault file does own.
-    return [{ ...fresh, linkRefs: n.linkRefs }];
+    // Newest wins: the vault file's mtime vs Noa's updatedAt. Preserve Noa
+    // fields the vault file doesn't own (linkRefs) either way.
+    const diskMtime = new Date(fresh.updatedAt).getTime();
+    const noaMtime = new Date(n.updatedAt).getTime();
+    if (diskMtime > noaMtime) {
+      if (fresh.content !== n.content || fresh.title !== n.title) {
+        updatedNoteIds.push(n.id);
+      }
+      return [{ ...fresh, linkRefs: n.linkRefs }];
+    }
+    return [n];
   });
   // Add notes found in vault that don't exist in Noa yet.
   for (const sn of scanned) {
-    if (!merged.find((n) => n.id === sn.id)) merged.push(sn);
+    if (!merged.find((n) => n.id === sn.id)) {
+      merged.push(sn);
+      updatedNoteIds.push(sn.id);
+    }
   }
-  return { notes: merged, newFolders };
+  return { notes: merged, deletedNoteIds, updatedNoteIds };
+}
+
+export async function mergeScannedNotes(
+  handle: FileSystemDirectoryHandle,
+  notes: Note[],
+  folders: Folder[],
+): Promise<{ notes: Note[]; newFolders: Folder[]; deletedNoteIds: string[]; updatedNoteIds: string[] }> {
+  // Prime the poller's stat snapshot BEFORE reading contents: any external write
+  // that lands mid-scan keeps an older mtime in the snapshot and is re-detected
+  // on the next poll instead of being silently missed.
+  const stats = await withTimeout(scanNoteFileStats(handle), SCAN_TIMEOUT_MS, 'Vault stat scan');
+  const { notes: scanned, newFolders, manifestIds } = await withTimeout(
+    scanDirectory(handle, folders),
+    SCAN_TIMEOUT_MS,
+    'Vault directory scan'
+  );
+  _vaultStatSnapshot = stats;
+  const { notes: merged, deletedNoteIds, updatedNoteIds } = mergeVaultNotes(notes, scanned, manifestIds);
+  return { notes: merged, newFolders, deletedNoteIds, updatedNoteIds };
+}
+
+// ---------------------------------------------------------------------------
+// External-change polling
+//
+// The File System Access API has no watch/observer primitive, so runtime
+// detection of edits made by other apps (Obsidian, VS Code, iCloud sync…)
+// works by comparing a cheap path→mtime sweep against the last known state.
+// Self-writes update the snapshot at write time so they never register as
+// external changes.
+// ---------------------------------------------------------------------------
+
+let _vaultStatSnapshot: Map<string, number> | null = null;
+
+export function resetVaultStatSnapshot(): void {
+  _vaultStatSnapshot = null;
+}
+
+function statsDiffer(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a.size !== b.size) return true;
+  for (const [path, mtime] of a) {
+    if (b.get(path) !== mtime) return true;
+  }
+  return false;
+}
+
+/**
+ * Cheap poll: returns true when the vault's note files changed on disk since
+ * the last scan/write. Never mutates the snapshot on a positive result — the
+ * follow-up mergeScannedNotes refreshes it after the changes are ingested.
+ * Returns false when no baseline exists yet (first call primes it instead).
+ */
+export async function checkExternalVaultChanges(
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  // Serialise against writes so a mid-write file is never stat'ed torn.
+  return withVaultLock(async () => {
+    const stats = await scanNoteFileStats(handle);
+    if (!_vaultStatSnapshot) {
+      _vaultStatSnapshot = stats;
+      return false;
+    }
+    return statsDiffer(stats, _vaultStatSnapshot);
+  });
+}
+
+// Self-write suppression: every write/delete refreshes its own snapshot entry
+// so the poller does not mistake Noa's writes for external changes.
+async function writeNoteTracked(
+  handle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+): Promise<void> {
+  const written = await writeNote(handle, note, folders);
+  if (written && _vaultStatSnapshot) {
+    _vaultStatSnapshot.set(written.path, written.lastModified);
+  }
+}
+
+async function deleteNoteFileTracked(
+  handle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+  options?: { keepAttachments?: boolean },
+): Promise<void> {
+  const removedPath = await deleteNoteFile(handle, note, folders, options);
+  if (removedPath && _vaultStatSnapshot) {
+    _vaultStatSnapshot.delete(removedPath);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +307,7 @@ export async function syncNoteUpdate(
 ): Promise<void> {
   // Use per-note debounce: rapid typing collapses into one write.
   await debouncedNoteWrite(note.id, () =>
-    writeNote(handle, { ...note, content, updatedAt: new Date().toISOString() }, folders)
+    writeNoteTracked(handle, { ...note, content, updatedAt: new Date().toISOString() }, folders)
   );
 }
 
@@ -210,8 +321,8 @@ export async function syncNoteRename(
     // keepAttachments: the note continues to exist — its attachments/{noteId}
     // directory must survive the rename (writeNote does not recreate it for
     // obsidian-import notes).
-    await deleteNoteFile(handle, note, folders, { keepAttachments: true });
-    await writeNote(handle, { ...note, title: newTitle, updatedAt: new Date().toISOString() }, folders);
+    await deleteNoteFileTracked(handle, note, folders, { keepAttachments: true });
+    await writeNoteTracked(handle, { ...note, title: newTitle, updatedAt: new Date().toISOString() }, folders);
   });
 }
 
@@ -220,7 +331,7 @@ export async function syncNoteDelete(
   note: Note,
   folders: Folder[],
 ): Promise<void> {
-  await withVaultLock(() => deleteNoteFile(handle, note, folders));
+  await withVaultLock(() => deleteNoteFileTracked(handle, note, folders));
 }
 
 export async function syncNoteMove(
@@ -230,8 +341,8 @@ export async function syncNoteMove(
   folders: Folder[],
 ): Promise<void> {
   await withVaultLock(async () => {
-    await deleteNoteFile(handle, previousNote, folders, { keepAttachments: true });
-    await writeNote(handle, nextNote, folders);
+    await deleteNoteFileTracked(handle, previousNote, folders, { keepAttachments: true });
+    await writeNoteTracked(handle, nextNote, folders);
   });
 }
 
@@ -268,8 +379,8 @@ export async function syncFolderRename(
     // Move managed notes one by one instead of deleting the directory tree —
     // vault folders may contain files Noa does not track, and those must survive.
     for (const note of notes.filter((n) => affectedFolderIds.has(n.folder))) {
-      await deleteNoteFile(handle, note, previousFolders, { keepAttachments: true });
-      await writeNote(handle, note, currentFolders);
+      await deleteNoteFileTracked(handle, note, previousFolders, { keepAttachments: true });
+      await writeNoteTracked(handle, note, currentFolders);
     }
     await removeEmptyFolderTree(handle, previousName);
   });
@@ -282,7 +393,7 @@ export async function retryFullSync(
 ): Promise<void> {
   await withVaultLock(async () => {
     for (const note of notes) {
-      await writeNote(handle, note, folders);
+      await writeNoteTracked(handle, note, folders);
     }
   });
 }

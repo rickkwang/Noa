@@ -779,7 +779,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave, syncLinkRefs]);
 
-  const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false) => {
+  const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false, deletedNoteIds?: string[]) => {
     const savedAttachmentIds: string[] = [];
     // Acquire import lock BEFORE flushing pending saves so any concurrent
     // debounceSave calls that arrive mid-flush get queued instead of racing.
@@ -859,8 +859,12 @@ Export regularly: use Settings → Data → Export Backup.`,
           });
         };
         if (!shouldPrune) return overlayEdits(normalizedNotes);
+        // deletedNoteIds marks notes the vault merge dropped because their
+        // file was deleted externally — never rescue those or external
+        // deletions would resurrect on every sync.
+        const externallyDeleted = new Set(deletedNoteIds ?? []);
         const rescued = notesRef.current.filter(
-          n => (n.source ?? 'noa') === 'noa' && !importedIds.has(n.id)
+          n => (n.source ?? 'noa') === 'noa' && !importedIds.has(n.id) && !externallyDeleted.has(n.id)
         );
         const base = rescued.length > 0 ? [...normalizedNotes, ...rescued] : normalizedNotes;
         return overlayEdits(base);

@@ -27,6 +27,37 @@ export const extractLinks = (content: string): string[] => {
   }).filter(Boolean)));
 };
 
+/**
+ * Slice the section of `content` under the heading whose text matches `heading`
+ * (case-insensitive), from that heading line up to (excluding) the next heading
+ * of the same or higher level. Returns null when the heading is not found.
+ * Used by note embeds: ![[Note#Heading]].
+ */
+export const sliceHeadingSection = (content: string, heading: string): string | null => {
+  const wanted = heading.trim().toLowerCase();
+  const lines = content.split('\n');
+  let start = -1;
+  let level = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s+(.+?)\s*$/);
+    if (m && m[2].trim().toLowerCase() === wanted) {
+      start = i;
+      level = m[1].length;
+      break;
+    }
+  }
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s+/);
+    if (m && m[1].length <= level) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
+};
+
 // CJK Unified Ideographs + CJK Ext-A + Hiragana + Katakana + Hangul Syllables.
 // Broader than before which only covered basic CJK (\u4e00-\u9fa5).
 const TAG_CHAR = '\\w\\u3040-\\u309f\\u30a0-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';

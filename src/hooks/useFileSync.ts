@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Folder, Note, SyncStatus } from '../types';
 import {
+  checkExternalVaultChanges,
   classifySyncError,
   connectDirectoryAndSeed,
   disconnectDirectory,
   mergeScannedNotes,
+  resetVaultStatSnapshot,
   restorePersistedFsHandle,
   retryFullSync,
   syncFolderRename,
@@ -23,7 +25,7 @@ interface UseFileSyncOptions {
   workspaceName: string;
   activeNoteId: string;
   ensureInitialNote: () => void;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[]) => Promise<void>;
 }
 
 interface UseFileSyncResult {
@@ -43,6 +45,8 @@ interface UseFileSyncResult {
   syncNoteOnRename: (id: string, newTitle: string) => void;
   syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[]) => void;
   syncNoteOnDelete: (id: string) => void;
+  /** Transient notice after external vault changes were merged in; auto-clears. */
+  externalUpdateNotice: string | null;
 }
 
 const AUTO_RETRY_INITIAL_DELAY_MS = 400;
@@ -50,9 +54,9 @@ const AUTO_RETRY_MULTIPLIER = 2;
 const AUTO_RETRY_MAX_DELAY_MS = 15_000;
 const AUTO_RETRY_MAX_ATTEMPTS = 5;
 
-function isObsidianImportedNote(note: Note): boolean {
-  return (note.source ?? 'noa') === 'obsidian-import';
-}
+// External-change polling cadence. The FSA API has no watcher; window focus is
+// the primary signal (returning from Obsidian/Finder), the interval the backstop.
+const EXTERNAL_POLL_INTERVAL_MS = 60_000;
 
 export function useFileSync({
   isLoaded,
@@ -155,8 +159,7 @@ export function useFileSync({
       const handle = fsHandleRef.current;
       if (!handle) return;
       setSyncStatus('syncing');
-      const managedNotes = notesRef.current.filter(isObsidianImportedNote);
-      void retryFullSync(handle, managedNotes, foldersRef.current)
+      void retryFullSync(handle, notesRef.current, foldersRef.current)
         .then(() => {
           if (generation !== retryGeneration.current) return;
           recordSuccess();
@@ -179,8 +182,7 @@ export function useFileSync({
     // escape hatch stays visible if this manual retry also fails.
     // recordSuccess clears it on the happy path.
     setSyncStatus('syncing');
-    const managedNotes = notesRef.current.filter(isObsidianImportedNote);
-    void retryFullSync(fsHandle, managedNotes, foldersRef.current)
+    void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
       .then(recordSuccess)
       .catch(recordFailure);
   }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState]);
@@ -202,13 +204,11 @@ export function useFileSync({
       setFsSyncError(null);
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const { notes: merged, newFolders } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
+      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
       const mergedFolders = [...currentFolders, ...newFolders];
       // Always prune so vault deletions are removed from storage.
-      await onImportData(merged, mergedFolders, workspaceNameRef.current, true);
-      // Use post-merge managed notes so deleted vault files are not resurrected.
-      const managedNotes = merged.filter(isObsidianImportedNote);
-      await retryFullSync(fsHandle, managedNotes, mergedFolders);
+      await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
+      await retryFullSync(fsHandle, merged, mergedFolders);
       recordSuccess();
     } catch (error) {
       recordFailure(error);
@@ -251,19 +251,19 @@ export function useFileSync({
         setFsHandle(handle);
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+        const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(handle, currentNotes, currentFolders);
         const mergedFolders = [...currentFolders, ...newFolders];
         try {
           // Always prune so vault deletions are removed from storage.
-          await onImportData(merged, mergedFolders, workspaceNameRef.current, true);
+          await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
         } catch (importError) {
           recordFailure(importError);
           return;
         }
         // Write back any Noa edits made while the app was closed (e.g. offline edits
-        // from a previous session that never flushed to disk).
-        const managedNotes = merged.filter(isObsidianImportedNote);
-        await retryFullSync(handle, managedNotes, mergedFolders);
+        // from a previous session that never flushed to disk). This also performs
+        // the one-time migration of Noa-native notes onto disk.
+        await retryFullSync(handle, merged, mergedFolders);
         recordSuccess();
       } catch (error) {
         recordFailure(error);
@@ -279,21 +279,77 @@ export function useFileSync({
     resetRetryState,
   ]);
 
+  // Runtime external-change detection: poll the vault's file mtimes on window
+  // focus and on an interval, and re-merge when another app changed something.
+  const pollInFlight = useRef(false);
+  const [externalUpdateNotice, setExternalUpdateNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showExternalUpdateNotice = useCallback((updated: number, removed: number) => {
+    if (updated === 0 && removed === 0) return;
+    const parts: string[] = [];
+    if (updated > 0) parts.push(`${updated} note${updated === 1 ? '' : 's'} updated from disk`);
+    if (removed > 0) parts.push(`${removed} removed`);
+    setExternalUpdateNotice(parts.join(', '));
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setExternalUpdateNotice(null), 6_000);
+  }, []);
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
+  useEffect(() => {
+    if (!fsHandle || !isLoaded) return;
+    let disposed = false;
+
+    const poll = async () => {
+      if (disposed || pollInFlight.current || document.hidden) return;
+      pollInFlight.current = true;
+      try {
+        const changed = await checkExternalVaultChanges(fsHandle);
+        if (!changed || disposed) return;
+        setSyncStatus('syncing');
+        const currentNotes = notesRef.current;
+        const currentFolders = foldersRef.current;
+        const { notes: merged, newFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
+        if (disposed) return;
+        const mergedFolders = [...currentFolders, ...newFolders];
+        await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
+        showExternalUpdateNotice(updatedNoteIds.length, deletedNoteIds.length);
+        recordSuccess();
+      } catch (error) {
+        if (!disposed) recordFailure(error);
+      } finally {
+        pollInFlight.current = false;
+      }
+    };
+
+    const interval = setInterval(() => { void poll(); }, EXTERNAL_POLL_INTERVAL_MS);
+    const onFocus = () => { void poll(); };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      disposed = true;
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [fsHandle, isLoaded, onImportData, recordFailure, recordSuccess, showExternalUpdateNotice]);
+
   const connect = useCallback(async () => {
     setSyncStatus('syncing');
     try {
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const managedNotes = currentNotes.filter(isObsidianImportedNote);
-      const handle = await connectDirectoryAndSeed(managedNotes, currentFolders);
-      const { notes: merged, newFolders } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+      const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
+      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+      const mergedFolders = [...currentFolders, ...newFolders];
       setFsHandle(handle);
       try {
-        await onImportData(merged, [...currentFolders, ...newFolders], workspaceNameRef.current, true);
+        await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
       } catch (importError) {
         recordFailure(importError);
         throw importError;
       }
+      // Seed the vault with everything Noa holds (existing vault files were
+      // already merged above, so this only fills in what's missing/stale).
+      await retryFullSync(handle, merged, mergedFolders);
       recordSuccess();
     } catch (error) {
       recordFailure(error);
@@ -303,6 +359,7 @@ export function useFileSync({
 
   const disconnect = useCallback(async () => {
     await disconnectDirectory();
+    resetVaultStatSnapshot();
     resetRetryState();
     setFsHandle(null);
     setSyncStatus('idle');
@@ -315,7 +372,7 @@ export function useFileSync({
     (id: string, content: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note || !isObsidianImportedNote(note)) return;
+      if (!note) return;
 
       setSyncStatus('syncing');
       void syncNoteUpdate(fsHandle, note, content, foldersRef.current)
@@ -332,20 +389,9 @@ export function useFileSync({
     (id: string, previousFolderId: string, nextFolderId: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note || !isObsidianImportedNote(note)) return;
-      const nextFolder = foldersRef.current.find((folder) => folder.id === nextFolderId);
+      if (!note) return;
       const previousNote = { ...note, folder: previousFolderId };
       setSyncStatus('syncing');
-      if ((nextFolder?.source ?? 'noa') !== 'obsidian-import') {
-        // Moving out of Vault: delete the old file, no new file to write.
-        void syncNoteDelete(fsHandle, previousNote, foldersRef.current)
-          .then(recordSuccess)
-          .catch((error) => {
-            recordFailure(error);
-            scheduleRetry();
-          });
-        return;
-      }
       const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       void syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current)
         .then(recordSuccess)
@@ -361,7 +407,7 @@ export function useFileSync({
     (id: string, newTitle: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note || !isObsidianImportedNote(note)) return;
+      if (!note) return;
 
       setSyncStatus('syncing');
       void syncNoteRename(fsHandle, note, newTitle, foldersRef.current)
@@ -378,7 +424,7 @@ export function useFileSync({
     (id: string) => {
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
-      if (!note || !isObsidianImportedNote(note)) return;
+      if (!note) return;
 
       setSyncStatus('syncing');
       void syncNoteDelete(fsHandle, note, foldersRef.current)
@@ -395,7 +441,7 @@ export function useFileSync({
     (folderId: string, previousName: string, nextFolders: Folder[]) => {
       if (!fsHandle) return;
       const targetFolder = foldersRef.current.find((folder) => folder.id === folderId);
-      if ((targetFolder?.source ?? 'noa') !== 'obsidian-import') return;
+      if (!targetFolder) return;
       setSyncStatus('syncing');
       void syncFolderRename(fsHandle, folderId, previousName, nextFolders, notesRef.current)
         .then(recordSuccess)
@@ -424,5 +470,6 @@ export function useFileSync({
     syncNoteOnRename,
     syncFolderOnRename,
     syncNoteOnDelete,
+    externalUpdateNotice,
   };
 }

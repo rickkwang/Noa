@@ -15,9 +15,10 @@ import 'katex/dist/contrib/mhchem.min.js';
 import { visit } from 'unist-util-visit';
 import type { Root, Text, Parent, RootContent } from 'mdast';
 import { Note, AppSettings } from '../../types';
-import { buildTitleToIdsMap } from '../../lib/noteUtils';
+import { buildTitleToIdsMap, sliceHeadingSection } from '../../lib/noteUtils';
+import { useAttachments } from '../../hooks/useAttachments';
 import { MermaidBlock } from './MermaidBlock';
-import { Copy, Check } from '@/src/lib/icons';
+import { Copy, Check, FileText } from '@/src/lib/icons';
 
 function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -31,7 +32,16 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
   }, []);
   return (
     <div style={{ position: 'relative' }}>
-      <pre ref={preRef}>{children}</pre>
+      {/* Match the editor's fenced-code treatment (.cm-code-line in
+          useCodeMirror.ts): coral tint + coral left rule, same in both panes
+          of split view. */}
+      <pre
+        ref={preRef}
+        style={{
+          background: isDark ? 'rgba(204,125,94,0.06)' : 'rgba(204,125,94,0.09)',
+          borderLeft: `2px solid ${isDark ? 'rgba(204,125,94,0.45)' : 'rgba(204,125,94,0.6)'}`,
+        }}
+      >{children}</pre>
       <button
         onClick={handleCopy}
         title={copied ? 'Copied' : 'Copy'}
@@ -108,7 +118,7 @@ const SAFE_HREF_PROTOCOLS = ['http:', 'https:', 'mailto:', 'note-internal:', 'no
 // embeds before the custom a/img components ever see them. Let our internal
 // schemes through untouched; everything else keeps the default sanitization.
 const urlTransform = (url: string): string =>
-  url.startsWith('note-internal://') || url.startsWith('note-attachment://')
+  url.startsWith('note-internal://') || url.startsWith('note-attachment://') || url.startsWith('note-embed://')
     ? url
     : defaultUrlTransform(url);
 
@@ -193,6 +203,8 @@ interface PreviewPaneProps {
   contentMaxWidthStyle: React.CSSProperties;
   objectUrls?: Map<string, string>;
   style?: React.CSSProperties;
+  /** PDF export: render as a plain static document — no scroll container, no backlinks. */
+  printMode?: boolean;
 }
 
 // Callout type config — matches Obsidian's full callout spec
@@ -295,7 +307,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
   if (!config) {
     return (
-      <blockquote style={{ borderLeft: `3px solid ${isDark ? '#F5F0EB30' : '#2D2D2D40'}`, paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
+      <blockquote style={{ borderLeft: `3px solid ${isDark ? '#EEEDEA30' : '#2D2D2D40'}`, paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
         {children}
       </blockquote>
     );
@@ -367,21 +379,35 @@ function getSnippet(content: string, title: string) {
   return content.slice(0, 80) + '...';
 }
 
-export const PreviewPane = React.memo(function PreviewPane({
+// Note embeds (![[Note]]) render recursively; cap nesting and detect cycles.
+const MAX_EMBED_DEPTH = 3;
+
+interface NoteMarkdownBodyProps {
+  note: Note;
+  allNotes: Note[];
+  isDark: boolean;
+  objectUrls?: Map<string, string>;
+  onNavigateToNoteLegacy: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
+  /** Scroll container for in-document anchors; embeds fall back to document. */
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  /** Embed nesting depth: 0 for the top-level note. */
+  depth: number;
+  /** Note ids along the current embed chain (incl. the top-level note). */
+  visitedIds: ReadonlySet<string>;
+}
+
+const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   note,
   allNotes,
-  settings,
+  isDark,
+  objectUrls,
   onNavigateToNoteLegacy,
   onNavigateToNoteById,
-  editorStyle,
-  contentMaxWidthStyle,
-  objectUrls,
-  style,
-}: PreviewPaneProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useScrollingClass(scrollRef);
-  const isDark = useIsDark(settings.appearance.theme);
-
+  scrollContainerRef,
+  depth,
+  visitedIds,
+}: NoteMarkdownBodyProps) {
   const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
 
   const previewMarkdown = useMemo(() => {
@@ -397,18 +423,37 @@ export const PreviewPane = React.memo(function PreviewPane({
     // literal %% inside a fenced code block is not special-cased.
     const withoutComments = note.content.replace(/%%[\s\S]*?%%/g, '');
 
-    // Step 1: rewrite ![[filename]] attachment embeds into safe Markdown image syntax
-    // Uses note-attachment://id/<id> scheme — intercepted by the img component below.
-    // Missing attachments use note-attachment://missing to render a placeholder.
-    const withAttachments = withoutComments.replace(/!\[\[(.*?)\]\]/g, (_, filename) => {
-      const safeFilename = String(filename ?? '').trim();
-      const att = findAttachment(safeFilename);
-      if (!att) return `![${safeFilename}](note-attachment://missing)`;
-      return `![${safeFilename}](note-attachment://id/${encodeURIComponent(att.id)})`;
-    });
+    // Steps 1–2 must not touch code: a literal [[x]] inside a fenced block or
+    // inline code span is code, not a link. Split on code segments (odd indices
+    // after a capturing split) and only rewrite the prose in between.
+    const CODE_SEGMENT_RE = /(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|``[^`]*``|`[^`\n]*`)/g;
+    const transformProse = (src: string, transform: (segment: string) => string): string =>
+      src.split(CODE_SEGMENT_RE).map((part, i) => (i % 2 === 1 ? part : transform(part))).join('');
+
+    // Step 1: rewrite ![[...]] embeds into safe Markdown image syntax.
+    // Resolution order: attachment (note-attachment://id/<id>, existing behavior)
+    // → note title (note-embed://id/<id>#anchor, rendered as a transclusion by the
+    // img component below) → missing placeholder.
+    const withAttachments = transformProse(withoutComments, (seg) => seg.replace(/!\[\[(.*?)\]\]/g, (_, rawTarget) => {
+      const raw = String(rawTarget ?? '').trim();
+      // Strip alias: ![[Target|alias]] → Target
+      const pipeIdx = raw.indexOf('|');
+      const target = pipeIdx >= 0 ? raw.slice(0, pipeIdx).trim() : raw;
+      const att = findAttachment(target);
+      if (att) return `![${target}](note-attachment://id/${encodeURIComponent(att.id)})`;
+      // Note transclusion: ![[Title]] or ![[Title#Heading]]
+      const hashIdx = target.indexOf('#');
+      const embedTitle = hashIdx >= 0 ? target.slice(0, hashIdx).trim() : target;
+      const embedAnchor = hashIdx >= 0 ? target.slice(hashIdx + 1).trim() : '';
+      const ids = titleToIds.get(embedTitle);
+      if (ids && ids.length > 0) {
+        return `![${target}](note-embed://id/${ids[0]}${embedAnchor ? `#${encodeURIComponent(embedAnchor)}` : ''})`;
+      }
+      return `![${target}](note-attachment://missing)`;
+    }));
 
     // Step 2: rewrite [[title]] and [[title|alias]] wiki-links
-    return withAttachments.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
+    return transformProse(withAttachments, (seg) => seg.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
       const safeRaw = String(raw ?? '').trim();
       const pipeIdx = safeRaw.indexOf('|');
       const target = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
@@ -439,7 +484,7 @@ export const PreviewPane = React.memo(function PreviewPane({
       }
       const encoded = encodeURIComponent(realTitle);
       return `[${displayText}](note-internal://title/${encoded}${anchorSuffix})`;
-    });
+    }));
   }, [note.id, note.content, note.attachments, titleToIds]);
 
   const markdownComponents = useMemo((): Components => {
@@ -480,7 +525,8 @@ export const PreviewPane = React.memo(function PreviewPane({
               onClick={(e) => {
                 e.preventDefault();
                 const id = decodeURIComponent(href.slice(1));
-                const el = id ? scrollRef.current?.querySelector(`#${CSS.escape(id)}`) : null;
+                const root = scrollContainerRef?.current ?? document;
+                const el = id ? root.querySelector(`#${CSS.escape(id)}`) : null;
                 el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
               {...props}
@@ -500,9 +546,27 @@ export const PreviewPane = React.memo(function PreviewPane({
         );
       },
       img: ({ src, alt }) => {
+        if (src?.startsWith('note-embed://id/')) {
+          const rest = src.replace('note-embed://id/', '');
+          const hashIdx = rest.indexOf('#');
+          const embedNoteId = hashIdx >= 0 ? rest.slice(0, hashIdx) : rest;
+          const embedAnchor = hashIdx >= 0 ? decodeURIComponent(rest.slice(hashIdx + 1)) : undefined;
+          return (
+            <NoteEmbed
+              noteId={embedNoteId}
+              anchor={embedAnchor}
+              allNotes={allNotes}
+              isDark={isDark}
+              onNavigateToNoteLegacy={onNavigateToNoteLegacy}
+              onNavigateToNoteById={onNavigateToNoteById}
+              depth={depth}
+              visitedIds={visitedIds}
+            />
+          );
+        }
         if (!src || src === 'note-attachment://missing') {
           return (
-            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(245,240,235,0.35)' : 'rgba(45,45,45,0.4)', border: `1px dashed ${isDark ? 'rgba(245,240,235,0.15)' : 'rgba(45,45,45,0.2)'}` }}>
+            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(238,237,234,0.35)' : 'rgba(45,45,45,0.4)', border: `1px dashed ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}` }}>
               [{alt ?? 'Attachment not found'}]
             </span>
           );
@@ -511,7 +575,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           const attachmentId = decodeURIComponent(src.replace('note-attachment://id/', ''));
           const url = objectUrls?.get(attachmentId) ?? '';
           if (!url) {
-            return <span className="text-xs italic" style={{ color: isDark ? 'rgba(245,240,235,0.35)' : 'rgba(45,45,45,0.4)' }}>[Loading attachment...]</span>;
+            return <span className="text-xs italic" style={{ color: isDark ? 'rgba(238,237,234,0.35)' : 'rgba(45,45,45,0.4)' }}>[Loading attachment...]</span>;
           }
           return <ZoomableImage src={url} alt={alt ?? ''} />;
         }
@@ -637,7 +701,142 @@ export const PreviewPane = React.memo(function PreviewPane({
         );
       },
     };
-  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy]);
+  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, allNotes, depth, visitedIds, scrollContainerRef]);
+
+  return (
+    <Markdown
+      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
+      rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]]}
+      components={markdownComponents}
+      urlTransform={urlTransform}
+    >
+      {previewMarkdown}
+    </Markdown>
+  );
+});
+
+interface NoteEmbedProps {
+  noteId: string;
+  anchor?: string;
+  allNotes: Note[];
+  isDark: boolean;
+  onNavigateToNoteLegacy: (title: string) => void;
+  onNavigateToNoteById: (id: string) => void;
+  depth: number;
+  visitedIds: ReadonlySet<string>;
+}
+
+// Renders ![[Note]] / ![[Note#Heading]] as an embedded block. Uses spans with
+// display:block because react-markdown mounts it where an <img> would sit
+// (inside a <p>), where a <div> would be invalid HTML.
+function NoteEmbed({
+  noteId,
+  anchor,
+  allNotes,
+  isDark,
+  onNavigateToNoteLegacy,
+  onNavigateToNoteById,
+  depth,
+  visitedIds,
+}: NoteEmbedProps) {
+  const target = useMemo(() => allNotes.find((n) => n.id === noteId) ?? null, [allNotes, noteId]);
+  const handleNoteUpdate = useCallback(() => {}, []);
+  // Loads (and revokes on unmount) object URLs for the embedded note's own attachments.
+  const { objectUrls } = useAttachments(target, handleNoteUpdate);
+
+  const embeddedNote = useMemo(() => {
+    if (!target) return null;
+    if (!anchor || anchor.startsWith('^')) return target; // block refs (^id) fall back to whole note
+    const sliced = sliceHeadingSection(target.content, anchor);
+    return sliced === null ? target : { ...target, content: sliced };
+  }, [target, anchor]);
+
+  const nextVisited = useMemo(() => {
+    const next = new Set(visitedIds);
+    next.add(noteId);
+    return next;
+  }, [visitedIds, noteId]);
+
+  const mutedColor = isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.45)';
+  const borderColor = isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)';
+
+  if (!target || !embeddedNote) {
+    return (
+      <span className="text-xs italic px-2 py-1" style={{ color: mutedColor, border: `1px dashed ${borderColor}` }}>
+        [Note not found{anchor ? `: #${anchor}` : ''}]
+      </span>
+    );
+  }
+
+  const blocked = visitedIds.has(noteId)
+    ? 'Circular embed'
+    : depth >= MAX_EMBED_DEPTH
+      ? 'Max embed depth reached'
+      : null;
+
+  return (
+    <span
+      className="noa-note-embed"
+      style={{
+        display: 'block',
+        borderLeft: '2px solid rgba(204,125,94,0.55)',
+        background: isDark ? 'rgba(204,125,94,0.05)' : 'rgba(204,125,94,0.07)',
+        margin: '0.75rem 0',
+        padding: '0.4rem 0.9rem 0.5rem',
+      }}
+    >
+      <span
+        onClick={() => onNavigateToNoteById(noteId)}
+        className="cursor-pointer hover:underline"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          fontSize: '0.75em',
+          fontWeight: 700,
+          color: '#CC7D5E',
+          userSelect: 'none',
+        }}
+        title="Open note"
+      >
+        <FileText size={12} />
+        <span>{target.title || 'Untitled'}{anchor && !anchor.startsWith('^') ? ` › ${anchor}` : ''}</span>
+      </span>
+      {blocked ? (
+        <span className="text-xs italic" style={{ color: mutedColor, display: 'block', marginTop: '0.25rem' }}>
+          [{blocked}]
+        </span>
+      ) : (
+        <NoteMarkdownBody
+          note={embeddedNote}
+          allNotes={allNotes}
+          isDark={isDark}
+          objectUrls={objectUrls}
+          onNavigateToNoteLegacy={onNavigateToNoteLegacy}
+          onNavigateToNoteById={onNavigateToNoteById}
+          depth={depth + 1}
+          visitedIds={nextVisited}
+        />
+      )}
+    </span>
+  );
+}
+
+export const PreviewPane = React.memo(function PreviewPane({
+  note,
+  allNotes,
+  settings,
+  onNavigateToNoteLegacy,
+  onNavigateToNoteById,
+  editorStyle,
+  contentMaxWidthStyle,
+  objectUrls,
+  style,
+  printMode,
+}: PreviewPaneProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useScrollingClass(scrollRef);
+  const isDark = useIsDark(settings.appearance.theme);
 
   const backlinks: BacklinkItem[] = useMemo(
     () => allNotes.filter((n) =>
@@ -647,29 +846,38 @@ export const PreviewPane = React.memo(function PreviewPane({
     [allNotes, note.id, note.title]
   );
 
+  const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
+
   return (
-    <div ref={scrollRef} className="flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50" style={{ paddingRight: '2rem', ...style }}>
+    <div
+      ref={scrollRef}
+      className={printMode ? 'block' : 'flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50'}
+      style={printMode ? style : { paddingRight: '2rem', ...style }}
+    >
       <div className="flex-1">
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#CC7D5E] prose-pre:bg-[#1E1E1C] prose-pre:text-[#D6D4D1] prose-code:text-[#CC7D5E] prose-code:bg-[#3A3A37]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
-              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#CC7D5E] prose-pre:bg-[#DCD9CE] prose-pre:text-[#2D2D2D] prose-pre:border prose-pre:border-[#2D2D2D]/12 prose-code:text-[#CC7D5E] prose-code:bg-[#DCD9CE]/50 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
+              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#CC7D5E] prose-pre:text-[#D6D4D1] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
+              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2D] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
-          <Markdown
-            remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
-            rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]]}
-            components={markdownComponents}
-            urlTransform={urlTransform}
-          >
-            {previewMarkdown}
-          </Markdown>
+          <NoteMarkdownBody
+            note={note}
+            allNotes={allNotes}
+            isDark={isDark}
+            objectUrls={objectUrls}
+            onNavigateToNoteLegacy={onNavigateToNoteLegacy}
+            onNavigateToNoteById={onNavigateToNoteById}
+            scrollContainerRef={scrollRef}
+            depth={0}
+            visitedIds={visitedIds}
+          />
         </div>
       </div>
 
-      {backlinks.length > 0 && (
+      {!printMode && backlinks.length > 0 && (
         <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}>
           <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.35)' }}>
             <span>{backlinks.length}</span>

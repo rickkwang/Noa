@@ -300,17 +300,22 @@ function rewriteAttachmentEmbedsForVault(note: Note): string {
   });
 }
 
+export interface WrittenNoteFile {
+  path: string;
+  lastModified: number;
+}
+
 export async function writeNote(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[]
-): Promise<void> {
+): Promise<WrittenNoteFile | null> {
   const manifest = await readVaultManifest(rootHandle);
   const folder = folders.find(f => f.id === note.folder);
   const dirHandle = folder
     ? await getFolderHandle(rootHandle, folder.name)
     : rootHandle;
-  if (!dirHandle) return;
+  if (!dirHandle) return null;
 
   const baseName = sanitizeFilename(note.title || 'Untitled');
   const defaultFilename = `${baseName}.md`;
@@ -336,6 +341,10 @@ export async function writeNote(
   };
   await writeVaultManifest(rootHandle, manifest);
   await syncAttachmentsForNote(rootHandle, note);
+  // Report the written file's path+mtime so the external-change poller can
+  // tell self-writes apart from edits made by other apps.
+  const writtenFile = await fileHandle.getFile();
+  return { path: nextPath, lastModified: writtenFile.lastModified };
 }
 
 export async function deleteNoteFile(
@@ -343,13 +352,14 @@ export async function deleteNoteFile(
   note: Note,
   folders: Folder[],
   options?: { keepAttachments?: boolean }
-): Promise<void> {
+): Promise<string | null> {
   const manifest = await readVaultManifest(rootHandle);
   const manifestEntry = manifestEntryForId(manifest, note.id);
 
   // The manifest records which file this note id owns — use it so duplicate
   // titles never cause a sibling note's file to be removed.
   let deleted = false;
+  let removedPath: string | null = null;
   if (manifestEntry) {
     const segments = manifestEntry[0].split('/').filter(Boolean);
     const parentHandle = segments.length > 1
@@ -359,6 +369,7 @@ export async function deleteNoteFile(
       try {
         await parentHandle.removeEntry(segments[segments.length - 1]);
         deleted = true;
+        removedPath = manifestEntry[0];
       } catch {
         // Stale manifest path — fall through to title heuristics.
       }
@@ -378,6 +389,7 @@ export async function deleteNoteFile(
         if (owner && owner.id !== note.id) continue;
         try {
           await dirHandle.removeEntry(filename);
+          removedPath = relativeNotePath(folder?.name, filename);
           break;
         } catch {
           // try next variant
@@ -400,6 +412,7 @@ export async function deleteNoteFile(
     delete manifest.notes[manifestEntry[0]];
     await writeVaultManifest(rootHandle, manifest);
   }
+  return removedPath;
 }
 
 async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): Promise<void> {
@@ -444,10 +457,38 @@ export async function removeEmptyFolderTree(
   }
 }
 
+/**
+ * Lightweight vault walk for external-change polling: collects path → mtime for
+ * every markdown note file without reading any file contents. Attachments and
+ * hidden/config directories are skipped — polling only watches note files.
+ */
+export async function scanNoteFileStats(
+  rootHandle: FileSystemDirectoryHandle
+): Promise<Map<string, number>> {
+  const stats = new Map<string, number>();
+  const MAX_DIR_DEPTH = 50;
+  async function walk(dirHandle: FileSystemDirectoryHandle, pathSegments: string[], depth: number): Promise<void> {
+    if (depth > MAX_DIR_DEPTH) return;
+    for await (const [name, handle] of dirHandle.entries()) {
+      if (handle.kind === 'file') {
+        if (!name.endsWith('.md')) continue;
+        if (pathSegments.length === 0 && name === 'README.md') continue;
+        const file = await (handle as FileSystemFileHandle).getFile();
+        stats.set([...pathSegments, name].join('/'), file.lastModified);
+      } else if (handle.kind === 'directory') {
+        if (name === 'attachments' || name === '.obsidian' || name === '.DS_Store') continue;
+        await walk(handle as FileSystemDirectoryHandle, [...pathSegments, name], depth + 1);
+      }
+    }
+  }
+  await walk(rootHandle, [], 0);
+  return stats;
+}
+
 export async function scanDirectory(
   rootHandle: FileSystemDirectoryHandle,
   folders: Folder[]
-): Promise<{ notes: Note[]; newFolders: Folder[] }> {
+): Promise<{ notes: Note[]; newFolders: Folder[]; manifestIds: Set<string> }> {
   const manifest = await readVaultManifest(rootHandle);
   const notes: Note[] = [];
   const newFolders: Folder[] = [];
@@ -552,5 +593,8 @@ export async function scanDirectory(
       note.attachments = noteAttachments;
     }
   });
-  return { notes, newFolders };
+  // Note ids the manifest tracked when the scan started: any of these whose
+  // file is now missing was deleted externally (see mergeScannedNotes).
+  const manifestIds = new Set(Object.values(manifest.notes).map((entry) => entry.id));
+  return { notes, newFolders, manifestIds };
 }

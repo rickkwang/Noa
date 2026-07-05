@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTitleToIdsMap, computeTopologySignature, extractLinks, extractTags, recomputeLinkRefsForNotes } from '../../src/lib/noteUtils';
+import { buildTitleToIdsMap, computeTopologySignature, extractLinks, extractTags, recomputeLinkRefsForNotes, sliceHeadingSection } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -96,5 +96,51 @@ describe('extractTags', () => {
 
   it('still extracts separated tags at line start and after whitespace', () => {
     expect(extractTags('#tag1 #tag2\n中文 #标签')).toEqual(['tag1', 'tag2', '标签']);
+  });
+});
+
+describe('sliceHeadingSection', () => {
+  const content = [
+    'intro line',
+    '# Top',
+    'top body',
+    '## Section A',
+    'a body 1',
+    'a body 2',
+    '### Sub A1',
+    'sub body',
+    '## Section B',
+    'b body',
+  ].join('\n');
+
+  it('slices from the heading to the next same-level heading', () => {
+    expect(sliceHeadingSection(content, 'Section A')).toEqual(
+      ['## Section A', 'a body 1', 'a body 2', '### Sub A1', 'sub body'].join('\n')
+    );
+  });
+
+  it('includes deeper subsections but stops at higher-level headings', () => {
+    expect(sliceHeadingSection(content, 'Sub A1')).toEqual(
+      ['### Sub A1', 'sub body'].join('\n')
+    );
+  });
+
+  it('runs to end of content when no later boundary exists', () => {
+    expect(sliceHeadingSection(content, 'Section B')).toEqual(
+      ['## Section B', 'b body'].join('\n')
+    );
+  });
+
+  it('matches case-insensitively and trims whitespace', () => {
+    expect(sliceHeadingSection(content, '  section a ')).toContain('a body 1');
+  });
+
+  it('returns null when the heading does not exist', () => {
+    expect(sliceHeadingSection(content, 'Missing')).toBeNull();
+  });
+
+  it('supports CJK headings', () => {
+    const zh = '# 概述\n正文\n# 结论\n结尾';
+    expect(sliceHeadingSection(zh, '概述')).toEqual('# 概述\n正文');
   });
 });

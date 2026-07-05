@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from '@/src/lib/icons';
 import { Note } from '../../types';
 
-function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void }) {
+function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void; onExportPdf: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,6 +37,12 @@ function ExportMenu({ isDark, onExportMd, onExportHtml }: { isDark: boolean; onE
             className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#EEEDEA]/08 text-[#EEEDEA]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
           >
             HTML (.html)
+          </button>
+          <button
+            onClick={() => { onExportPdf(); setOpen(false); }}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#EEEDEA]/08 text-[#EEEDEA]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+          >
+            PDF (.pdf)
           </button>
         </div>
       )}
@@ -85,6 +91,7 @@ interface EditorHeaderProps {
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   onExportMd: () => void;
   onExportHtml: () => void;
+  onExportPdf: () => void;
   titleInputRef: React.RefObject<HTMLInputElement | null>;
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
@@ -113,6 +120,7 @@ export function EditorHeader({
   setViewMode,
   onExportMd,
   onExportHtml,
+  onExportPdf,
   titleInputRef,
   onToggleHistory,
   isHistoryOpen,
@@ -174,7 +182,8 @@ export function EditorHeader({
                 const showDivider = idx > 0 && !isActiveTab && !prevIsActive;
                 const isEnteringTab = shouldAnimateEnteringTab && enteringTabId === tab.id;
                 const isClosingTab = closingTabIds?.includes(tab.id) ?? false;
-                const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab;
+                const prevIsClosing = Boolean(prevTab && (closingTabIds?.includes(prevTab.id) ?? false));
+                const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab && !isClosingTab && !prevIsClosing;
                 const tabStyle = {
                   borderWidth: '1px',
                   borderStyle: 'solid',
@@ -203,7 +212,7 @@ export function EditorHeader({
                       className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
                         isActiveTab
                           ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#EEEDEA]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
-                          : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#EEEDEA]/40 hover:text-[#EEEDEA]/70' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
+                          : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#EEEDEA]/55 hover:text-[#EEEDEA]/80' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
                       }`}
                       style={tabStyle}
                     >
@@ -231,8 +240,17 @@ export function EditorHeader({
                       )}
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); onTabClose?.(tab.id); }}
-                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Capture the tab's real width before the exit animation
+                          // starts, so the collapse begins from the actual width
+                          // instead of the 9rem max — otherwise squeezed tabs
+                          // stall for the first half of the animation.
+                          const tabEl = e.currentTarget.closest<HTMLElement>('[data-tab-id]');
+                          if (tabEl) tabEl.style.setProperty('--noa-tab-w', `${tabEl.offsetWidth}px`);
+                          onTabClose?.(tab.id);
+                        }}
+                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-[#D45555]'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -277,7 +295,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-red-500'}`}>
+                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-[#D45555]'}`}>
                     <X size={11} />
                   </button>
                 )}
@@ -327,7 +345,7 @@ export function EditorHeader({
 
         {/* Group 2: actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} />
+          <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} onExportPdf={onExportPdf} />
           {onToggleHistory && (
             <button
               onClick={onToggleHistory}
