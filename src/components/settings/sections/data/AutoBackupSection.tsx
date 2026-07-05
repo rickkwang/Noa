@@ -113,13 +113,13 @@ export default function AutoBackupSection({
       </SettingItem>
 
       {status === 'needs-reauth' && hasBackupHandle && (
-        <div className="px-3 py-2 border-2 border-amber-500 bg-amber-50 flex items-center justify-between gap-3 text-xs">
-          <span className="text-amber-900 flex items-center gap-1.5">
+        <div className="px-3 py-2 border-2 border-[#EC9A3C] bg-[#EC9A3C]/10 flex items-center justify-between gap-3 text-xs">
+          <span className="text-[#74491A] flex items-center gap-1.5">
             <AlertTriangle size={12} /> Folder permission was revoked.
           </span>
           <button
             onClick={() => { void onReconnect(); }}
-            className="px-3 py-1 text-xs font-bold bg-amber-500 text-white border-2 border-[#2D2D2D] hover:opacity-90"
+            className="px-3 py-1 text-xs font-bold bg-[#EC9A3C] text-white border-2 border-[#2D2D2D] hover:opacity-90"
           >
             Reconnect
           </button>
@@ -127,13 +127,13 @@ export default function AutoBackupSection({
       )}
 
       {status === 'error' && error && !bannerDismissed && (
-        <div className="px-3 py-2 border-2 border-red-400 bg-red-50 flex items-center gap-1.5 text-xs text-red-700">
+        <div className="px-3 py-2 border-2 border-[#D45555]/60 bg-[#D45555]/10 flex items-center gap-1.5 text-xs text-[#A93B3B]">
           <AlertTriangle size={12} /> {error}
         </div>
       )}
 
       {status === 'success' && !bannerDismissed && (
-        <div className="px-3 py-2 border-2 border-emerald-500 bg-emerald-50 flex items-center gap-1.5 text-xs text-emerald-800">
+        <div className="px-3 py-2 border-2 border-[#4CAF8A] bg-[#4CAF8A]/10 flex items-center gap-1.5 text-xs text-[#2C6E57]">
           <CheckCircle2 size={12} /> Backup written · {formatRelative(lastAutoBackupAt)}
         </div>
       )}

@@ -257,7 +257,7 @@ export default function GraphView({
 
   const bgColor   = isDark ? '#262624' : '#EAE8E0';
   const linkColor = isDark ? '#8A8070' : '#9A9080';
-  const textColor = isDark ? '#E8E0D0' : '#2D2D2D';
+  const textColor = isDark ? '#EEEDEA' : '#2D2D2D';
 
   const nodeColor = isDark ? '#CC7D5E' : '#CC7D5E';
 
@@ -502,7 +502,7 @@ export default function GraphView({
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
       {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
-        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-[11px] text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-xs text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
           <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
         </div>
       )}
@@ -646,7 +646,7 @@ export default function GraphView({
             ctx.globalAlpha = alpha * labelAlpha;
             ctx.shadowColor = bgColor;
             ctx.shadowBlur = 4;
-            ctx.fillStyle = isDark ? '#E8E0D0' : '#2D2D2D';
+            ctx.fillStyle = isDark ? '#EEEDEA' : '#2D2D2D';
             ctx.fillText(label, labelX, labelY);
             ctx.shadowBlur = 0;
           }

@@ -73,10 +73,10 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
       >
         <Tag size={12} className="mr-1.5 shrink-0" />
         Tags Explorer
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isTagsOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ease-in-out ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>
       {isTagsOpen && (
-        <div className="flex-1 overflow-y-auto p-2.5" style={{ scrollbarGutter: 'stable' }}>
+        <div className="flex-1 overflow-y-auto p-2.5 slide-down" style={{ scrollbarGutter: 'stable' }}>
           {tags.length === 0 ? (
             <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
           ) : (
@@ -89,7 +89,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
                     onClick={() => onSearchTag?.(tag.name)}
                     data-active={isActive}
                     style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}
-                    className="noa-tag-pill inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-redaction leading-none active:opacity-70"
+                    className="noa-tag-pill inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-redaction leading-none active:opacity-70"
                     title={`#${tag.name}`}
                   >
                     <span className="opacity-50">#</span>

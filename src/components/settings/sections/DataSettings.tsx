@@ -168,7 +168,7 @@ export default function DataSettings({
                           setImportStrategy(s);
                           confirmState.onStrategyChange?.(s);
                         }}
-                        className="mt-0.5"
+                        className="mt-0.5 accent-[#CC7D5E]"
                       />
                       <span className="text-xs text-[#2D2D2D]">
                         <span className="font-bold">{labels[s]}</span>
@@ -204,7 +204,7 @@ export default function DataSettings({
           className={`border-2 p-3 flex items-center justify-between font-redaction text-sm ${
             message.type === 'success'
               ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2D]'
-              : 'border-red-400 bg-red-50 text-red-700'
+              : 'border-[#D45555]/60 bg-[#D45555]/10 text-[#A93B3B]'
           }`}
         >
           <span>

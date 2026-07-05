@@ -84,10 +84,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .selection\\:bg-\\[\\#CC7D5E\\]::selection   { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }
 
       .prose-a\\:text-\\[\\#CC7D5E\\] a         { color: var(--accent-color) !important; }
-      .prose-pre\\:bg-\\[\\#DCD9CE\\] pre        { background-color: var(--bg-secondary) !important; }
       .prose-pre\\:text-\\[\\#2D2D2D\\] pre      { color: var(--text-primary) !important; }
       .prose-code\\:text-\\[\\#CC7D5E\\] code    { color: var(--accent-color) !important; }
-      .prose-code\\:bg-\\[\\#DCD9CE\\]\\/50 code { background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent) !important; }
 
       .font-redaction { font-family: ${fontFamilyStyle} !important; }
       body {

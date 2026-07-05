@@ -87,7 +87,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
           <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileInput} />
         </div>
         {error && (
-          <div className="mx-4 mb-2 px-3 py-1.5 bg-red-50 border border-red-300 text-red-700 text-xs font-redaction flex items-center justify-between">
+          <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-redaction flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
           </div>
@@ -133,7 +133,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
 
       {/* Error banner */}
       {error && (
-        <div className="mx-4 mb-2 px-3 py-1.5 bg-red-50 border border-red-300 text-red-700 text-xs font-redaction flex items-center justify-between">
+        <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-redaction flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
         </div>
@@ -143,7 +143,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
       {isOpen && (
         <div className="px-4 pb-2 space-y-0.5">
           {attachments.length === 0 ? (
-            <div className="text-[11px] text-[#2D2D2D]/30 font-redaction py-1">
+            <div className="text-xs text-[#2D2D2D]/30 font-redaction py-1">
               Drag files here, or click "+ Add" to upload images.
             </div>
           ) : (
@@ -176,7 +176,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                         }
                       }}
                       disabled={deletingId === att.id}
-                      className="text-[10px] text-red-500 hover:text-red-700 active:opacity-70"
+                      className="text-[10px] text-[#D45555] hover:text-[#A93B3B] active:opacity-70"
                     >
                       {deletingId === att.id ? '…' : 'Confirm'}
                     </button>
@@ -190,7 +190,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-[10px] text-[#2D2D2D]/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all active:opacity-70 shrink-0"
+                    className="text-[10px] text-[#2D2D2D]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0"
                     title="Delete Attachment"
                   >
                     ✕

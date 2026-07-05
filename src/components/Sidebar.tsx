@@ -354,7 +354,7 @@ export default function Sidebar({
           <div className="flex gap-1.5">
             <button
               onClick={() => { pendingDelete.type === 'note' ? onDeleteNote(pendingDelete.id) : onDeleteFolder(pendingDelete.id); setPendingDelete(null); }}
-              className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+              className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
             >
               Delete
             </button>
@@ -432,7 +432,7 @@ export default function Sidebar({
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
                 >
                   Delete
                 </button>
@@ -445,14 +445,14 @@ export default function Sidebar({
               </>
             ) : (
               <>
-                <span className="text-xs text-red-600">Delete {selectedNoteIds.size} note{selectedNoteIds.size !== 1 ? 's' : ''}?</span>
+                <span className="text-xs text-[#C24444]">Delete {selectedNoteIds.size} note{selectedNoteIds.size !== 1 ? 's' : ''}?</span>
                 <button
                   onClick={() => {
                     selectedNoteIds.forEach(id => onDeleteNote(id));
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
                 >
                   Confirm
                 </button>

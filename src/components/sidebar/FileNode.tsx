@@ -195,7 +195,7 @@ export const FileNode = React.memo(({
           {onDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="hover:text-red-500 p-1"
+              className="hover:text-[#D45555] p-1"
               title="Delete"
             >
               <Trash2 size={14} />
@@ -204,7 +204,7 @@ export const FileNode = React.memo(({
         </div>
       </div>
       {isEditing && renameError && (
-        <div className="px-2 pt-1 text-[10px] text-red-600 font-redaction leading-snug">
+        <div className="px-2 pt-1 text-[10px] text-[#C24444] font-redaction leading-snug">
           {renameError}
         </div>
       )}

@@ -8,8 +8,8 @@ export default function AppUpdateSettings() {
   const { isDesktop, version, status, busy, checkForUpdates, installUpdate } = useDesktopUpdater();
 
   const statusColor =
-    status.state === 'error' ? 'text-red-600' :
-    status.state === 'available' || status.state === 'downloaded' || status.state === 'ready' ? 'text-emerald-700' :
+    status.state === 'error' ? 'text-[#C24444]' :
+    status.state === 'available' || status.state === 'downloaded' || status.state === 'ready' ? 'text-[#37876B]' :
     'text-[#2D2D2D]/70';
 
   const installLabel =

@@ -132,15 +132,15 @@ export default function SettingsModal({
 
   return (
     <div
-      className="absolute inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
-      style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)' }}
+      className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
+      style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0)' }}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-2 border-[#2D2D2D] flex flex-col font-redaction transition-all duration-150 md:max-h-[650px]"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -154,7 +154,7 @@ export default function SettingsModal({
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="hover:bg-red-500 hover:text-white p-1 border border-transparent hover:border-[#2D2D2D] transition-colors"
+            className="hover:bg-[#D45555] hover:text-white p-1 border border-transparent hover:border-[#2D2D2D] transition-colors"
           >
             <X size={18} />
           </button>
@@ -240,7 +240,7 @@ export default function SettingsModal({
                       <p className="text-xs text-[#2D2D2D]/70">Diagnostics exported locally.</p>
                     )}
                     {diagnosticsState === 'error' && (
-                      <p className="text-xs text-red-700">Diagnostics export failed. Try again.</p>
+                      <p className="text-xs text-[#A93B3B]">Diagnostics export failed. Try again.</p>
                     )}
                   </div>
                 </SettingSection>

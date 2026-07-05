@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       return (
         <div className="flex flex-col items-center justify-center h-full w-full bg-[#EAE8E0] text-[#2D2D2D] font-redaction p-8 text-center">
-          <AlertTriangle size={48} className="text-red-500 mb-4" />
+          <AlertTriangle size={48} className="text-[#D45555] mb-4" />
           <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
           <p className="text-sm text-[#2D2D2D]/70 mb-4 max-w-md">
             An error occurred while rendering this component. Try reloading the application.

@@ -25,9 +25,9 @@ const Toggle = ({
     aria-checked={value}
     aria-label={label}
     onClick={() => onChange(!value)}
-    className={`w-12 h-6 border-2 border-[#2D2D2D] relative transition-colors ${value ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'}`}
+    className={`relative h-7 w-14 border-2 border-[#2D2D2D] transition-colors active:translate-x-px active:translate-y-px ${value ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'}`}
   >
-    <div className={`absolute top-0.5 w-4 h-4 bg-[#EAE8E0] border-2 border-[#2D2D2D] transition-transform ${value ? 'translate-x-6' : 'translate-x-0.5'}`} />
+    <span className={`absolute left-1 top-1 h-4 w-4 border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[2px_2px_0_0_rgba(45,45,45,1)] transition-transform ${value ? 'translate-x-7' : 'translate-x-0'}`} />
   </button>
 );
 
@@ -100,7 +100,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
               <button
                 key={mode}
                 onClick={() => setEditorViewMode(mode)}
-                className={`px-3 py-1.5 font-bold border-2 border-[#2D2D2D] text-sm capitalize transition-all ${
+                className={`px-3 py-1.5 font-bold border-2 border-[#2D2D2D] text-sm capitalize transition-colors ${
                   editorViewMode === mode
                     ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
                     : 'bg-[#EAE8E0] text-[#2D2D2D]'
@@ -154,7 +154,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 {confirmDeleteId === t.id ? (
                   <button
                     onClick={() => deleteTemplate(t.id)}
-                    className="border border-red-600 text-red-600 px-2 py-1 text-xs active:opacity-70"
+                    className="border border-[#C24444] text-[#C24444] px-2 py-1 text-xs active:opacity-70"
                   >
                     Confirm?
                   </button>

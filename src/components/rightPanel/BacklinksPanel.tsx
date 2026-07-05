@@ -30,11 +30,11 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark
     return map;
   }, [activeNote, backlinks]);
 
-  const txtMuted = isDark ? 'text-[rgba(232,224,208,0.45)]' : 'text-[#2D2D2D]/50';
-  const cardBorder = isDark ? 'border-[rgba(232,224,208,0.25)]' : 'border-[#2D2D2D]';
+  const txtMuted = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/50';
+  const cardBorder = isDark ? 'border-[rgba(238,237,234,0.25)]' : 'border-[#2D2D2D]';
   const cardBg = isDark ? 'bg-[#1E1E1C] hover:bg-[#2C2C28]' : 'bg-[#DCD9CE]/40 hover:bg-[#DCD9CE]/70';
-  const titleColor = isDark ? 'text-[#E8E0D0]' : 'text-[#2D2D2D]';
-  const snippetColor = isDark ? 'text-[rgba(232,224,208,0.45)]' : 'text-[#2D2D2D]/60';
+  const titleColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
+  const snippetColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/60';
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 font-redaction">

@@ -41,10 +41,10 @@ export default function BackupSection({
       ? 'Warning'
       : 'Risk';
   const healthColor = backupHealth === 'healthy'
-    ? 'text-emerald-700'
+    ? 'text-[#37876B]'
     : backupHealth === 'warning'
-      ? 'text-amber-700'
-      : 'text-red-700';
+      ? 'text-[#A26721]'
+      : 'text-[#A93B3B]';
   return (
     <SettingSection title="Backup" description="Export your data for safekeeping.">
       <div className="px-1 pb-2 space-y-1 text-xs">
@@ -63,15 +63,15 @@ export default function BackupSection({
           </div>
           <div className="h-1 w-full bg-[#2D2D2D]/10 overflow-hidden">
             <div
-              className="h-full transition-all"
+              className="h-full transition-[width]"
               style={{
                 width: `${storageEstimate.ratio * 100}%`,
-                backgroundColor: storageEstimate.ratio > 0.8 ? '#F59E0B' : '#CC7D5E',
+                backgroundColor: storageEstimate.ratio > 0.8 ? '#EC9A3C' : '#CC7D5E',
               }}
             />
           </div>
           {storageEstimate.ratio > 0.8 && (
-            <p className="text-xs text-amber-600 font-redaction">
+            <p className="text-xs text-[#D9862B] font-redaction">
               Storage is over 80% full. Consider exporting and clearing old data.
             </p>
           )}

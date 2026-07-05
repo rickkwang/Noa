@@ -30,14 +30,14 @@ export function OutgoingLinksPanel({ activeNote, notes, onNavigateToNoteById, is
     return map;
   }, [activeNote, resolved]);
 
-  const txtMuted = isDark ? 'text-[rgba(232,224,208,0.45)]' : 'text-[#2D2D2D]/50';
-  const cardBorder = isDark ? 'border-[rgba(232,224,208,0.25)]' : 'border-[#2D2D2D]';
+  const txtMuted = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/50';
+  const cardBorder = isDark ? 'border-[rgba(238,237,234,0.25)]' : 'border-[#2D2D2D]';
   const cardBg = isDark ? 'bg-[#1E1E1C] hover:bg-[#2C2C28]' : 'bg-[#DCD9CE]/40 hover:bg-[#DCD9CE]/70';
-  const titleColor = isDark ? 'text-[#E8E0D0]' : 'text-[#2D2D2D]';
-  const snippetColor = isDark ? 'text-[rgba(232,224,208,0.45)]' : 'text-[#2D2D2D]/60';
-  const unresolvedBorder = isDark ? 'border-[rgba(232,224,208,0.12)]' : 'border-[#2D2D2D]/30';
+  const titleColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
+  const snippetColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/60';
+  const unresolvedBorder = isDark ? 'border-[rgba(238,237,234,0.12)]' : 'border-[#2D2D2D]/30';
   const unresolvedBg = isDark ? 'bg-transparent' : 'bg-transparent';
-  const unresolvedTitleColor = isDark ? 'text-[rgba(232,224,208,0.45)]' : 'text-[#2D2D2D]/50';
+  const unresolvedTitleColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/50';
 
   const hasAny = resolved.length > 0 || unresolvedTitles.length > 0;
 

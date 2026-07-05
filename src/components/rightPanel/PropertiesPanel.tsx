@@ -32,7 +32,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
   const keyColor = isDark ? 'text-[rgba(238,237,234,0.4)]' : 'text-[#2D2D2D]/40';
   const inputBg = isDark ? 'bg-[#2C2C28]' : 'bg-[#DCD9CE]/50';
   const inputBorder = isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[#2D2D2D]/20';
-  const deleteBtn = isDark ? 'text-[rgba(238,237,234,0.3)] hover:text-red-400' : 'text-[#2D2D2D]/30 hover:text-red-500';
+  const deleteBtn = isDark ? 'text-[rgba(238,237,234,0.3)] hover:text-[#D45555]' : 'text-[#2D2D2D]/30 hover:text-[#D45555]';
 
   useEffect(() => {
     let meta: Record<string, string> = {};

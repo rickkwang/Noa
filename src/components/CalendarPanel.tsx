@@ -63,11 +63,11 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
       >
         <Calendar size={12} className="mr-1.5 shrink-0" />
         Calendar
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ease-in-out ${isOpen ? '' : '-rotate-90'}`} />
       </button>
 
       {isOpen && (
-        <div>
+        <div className="slide-down">
           {/* Month navigation */}
           <div className="flex items-center justify-between px-3 pb-1">
             <button onClick={prevMonth} className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer">

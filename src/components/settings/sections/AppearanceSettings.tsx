@@ -87,7 +87,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
           <select
             value={settings.appearance.theme}
             onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
-            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none"
+            className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
           >
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -104,7 +104,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               onChange={(e) => {
                 updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: e.target.value } }));
               }}
-              className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none"
+              className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
             >
               {/* Built-in bundled fonts */}
               <option value="font-iosevka">Iosevka Nerd Font Mono (Default)</option>
