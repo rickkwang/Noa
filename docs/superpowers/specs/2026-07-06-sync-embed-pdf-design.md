@@ -13,13 +13,18 @@ Three features, implemented in order of ascending risk:
 
 ## 1. PDF export
 
-- New `exportNoteAsPdf(note, attachmentDataUrls?)` in `src/lib/export.ts`.
-- Reuses `mdToHtml`. Builds a complete HTML document with print CSS, sets
-  `<title>` to the note title (becomes the default PDF filename), writes it to a
-  hidden iframe via `srcdoc`, calls `contentWindow.print()` on load, removes the
-  iframe after `afterprint` (with a timeout fallback).
-- Attachment images are inlined as data URLs so they survive printing.
-- UI entry point sits next to the existing Export MD / Export HTML actions.
+Implementation note: `mdToHtml` supports only a minimal markdown subset, so the
+iframe approach was dropped in favor of printing the full preview pipeline.
+
+- `Editor.tsx` mounts a hidden `#noa-print-root` portal on `<body>` holding a
+  light-themed `PreviewPane` (new `printMode` prop: static block, no backlinks).
+- Print CSS in `index.css` hides `#root` and shows the portal during
+  `@media print`; the flow waits for `document.fonts.ready` + image loads,
+  temporarily sets `document.title` to the note title (default PDF filename),
+  then calls `window.print()`. Cleanup on `afterprint` with a timeout fallback.
+- Full fidelity for KaTeX, code highlighting, tables, callouts, wikilinks and
+  attachments (same-document render keeps all global styles).
+- UI entry: "PDF (.pdf)" in the existing export menu.
 - No new dependencies; identical behavior on web and Electron.
 
 ## 2. Note embeds (transclusion)
