@@ -23,7 +23,27 @@ interface GraphViewProps {
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
+// 480px right-panel max + 8px buffer.
+const GRAPH_CANVAS_MAX_WIDTH = 488;
+const GRAPH_CANVAS_MIN_HEIGHT = 400;
 const PINNED_POSITIONS_KEY = 'noa-graph-pinned-positions-v1';
+
+function getStableCanvasSize() {
+  if (typeof window === 'undefined') {
+    return { width: GRAPH_CANVAS_MAX_WIDTH, height: GRAPH_CANVAS_MIN_HEIGHT };
+  }
+
+  const screenHeight =
+    window.screen?.availHeight ||
+    window.screen?.height ||
+    window.innerHeight ||
+    GRAPH_CANVAS_MIN_HEIGHT;
+
+  return {
+    width: GRAPH_CANVAS_MAX_WIDTH,
+    height: Math.max(GRAPH_CANVAS_MIN_HEIGHT, Math.ceil(screenHeight)) + 2,
+  };
+}
 
 function clearPinnedPositions() {
   if (typeof localStorage === 'undefined') return;
@@ -122,18 +142,13 @@ export default function GraphView({
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
-  const dimensionsRef = useRef({ width: 320, height: 400 });
-  // The canvas backing store is sized to *cover* the widest the panel can get and
-  // is then CSS-centred inside the container, which clips the overflow. This is
-  // deliberate: resizing a canvas reallocates its GPU backing store, and doing
-  // that every frame during a panel drag causes a compositor flicker. By keeping
-  // the backing store fixed during horizontal drags and instead adapting the
-  // graph through the *view* transform (zoom/pan only — no realloc), the graph
-  // fills and re-fits smoothly without any flicker.
-  const [canvasSize, setCanvasSize] = useState(() => ({
-    width: Math.round(Math.min(480, (typeof window === 'undefined' ? 1280 : window.innerWidth) * 0.35)) + 8,
-    height: 400,
-  }));
+  // The canvas backing store is sized to cover the largest right panel and is
+  // CSS-centred inside the visible container, which clips the overflow. Resizing
+  // a canvas reallocates its GPU backing store and clears a frame, so the graph
+  // should adapt to window/panel changes through zoom/pan only.
+  const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
+  const dimensionsRef = useRef(canvasSize);
+  const visibleSizeRef = useRef({ width: 0, height: 0 });
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -156,8 +171,8 @@ export default function GraphView({
 
   // Fit the graph into the *visible* area (the container) via the view transform
   // only — zoom + pan, never a canvas resize. Used on first layout, on reset, and
-  // on every resize frame, so the graph fills and stays centred as the panel is
-  // dragged, without ever reallocating the (flicker-prone) canvas backing store.
+  // whenever the visible container changes, so the graph fills and stays centred
+  // without reallocating the flicker-prone canvas backing store.
   const fitView = useCallback((duration = 0) => {
     const fg = fgRef.current;
     const container = containerRef.current;
@@ -180,25 +195,29 @@ export default function GraphView({
     const container = containerRef.current;
     if (!container) return;
 
-    // The backing store covers the widest the panel can get (+ buffer) so it
-    // always overflows/fills the container — never a gap. Height tracks the
-    // container (only changes on window / vertical layout changes, not during a
-    // horizontal panel drag).
-    const targetBackingWidth = () => Math.round(Math.min(480, window.innerWidth * 0.35)) + 8;
-
     const apply = () => {
-      const targetW = targetBackingWidth();
-      const targetH = Math.max(1, Math.ceil(container.getBoundingClientRect().height) + 2);
+      const rect = container.getBoundingClientRect();
+      const stableSize = getStableCanvasSize();
+      const targetW = stableSize.width;
+      const targetH = Math.max(stableSize.height, Math.ceil(rect.height) + 2);
       const current = dimensionsRef.current;
+      const visibleWidth = Math.round(rect.width);
+      const visibleHeight = Math.round(rect.height);
+      const visibleSizeChanged =
+        visibleWidth !== visibleSizeRef.current.width ||
+        visibleHeight !== visibleSizeRef.current.height;
+
       if (targetW !== current.width || targetH !== current.height) {
-        // Rare (window / vertical resize). A backing resize clears the canvas,
-        // but it isn't happening on every frame here, so no perceptible flicker.
         dimensionsRef.current = { width: targetW, height: targetH };
         setCanvasSize({ width: targetW, height: targetH });
       }
-      // Re-fit the view to the (possibly new) visible width every time — this is
-      // what makes the graph follow a horizontal drag, and it's transform-only.
-      fitView(0);
+      visibleSizeRef.current = { width: visibleWidth, height: visibleHeight };
+
+      // Re-fit only when the visible container changes. This keeps panel drags
+      // smooth without resetting the graph on unrelated window resize events.
+      if (visibleSizeChanged) {
+        fitView(0);
+      }
     };
 
     apply();

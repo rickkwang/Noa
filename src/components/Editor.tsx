@@ -361,6 +361,7 @@ export default function Editor({
     >
       <EditorHeader
         note={note}
+        isDark={isDark}
         tabs={tabs}
         isEditingTitle={isEditingTitle}
         titleInput={titleInput}

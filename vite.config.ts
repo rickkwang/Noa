@@ -16,7 +16,6 @@ export default defineConfig(() => {
         '/node_modules/remark-math/',
         '/node_modules/rehype-highlight/',
         '/node_modules/rehype-katex/',
-        '/node_modules/rehype-raw/',
       ],
     },
     {

@@ -65,6 +65,38 @@ test('search returns a note by title and content', async ({ page }) => {
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
+test('graph canvas backing size remains stable during horizontal window resize', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 760 });
+  await page.addInitScript(() => {
+    localStorage.setItem('app-right-panel-open', 'true');
+    localStorage.setItem('app-right-tab', 'graph');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-graph-guide-seen', '1');
+  });
+
+  await page.goto('/');
+  await page.waitForSelector('canvas');
+
+  const samples: Array<{ panelWidth: number; canvasWidth: number }> = [];
+  for (const width of [1100, 1060, 1020, 980, 940, 900, 880]) {
+    await page.setViewportSize({ width, height: 760 });
+    await page.waitForTimeout(35);
+    samples.push(await page.evaluate(() => {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement | null;
+      const panel = document.querySelector('[aria-label="Graph"]')?.closest('.w-full.h-full');
+      return {
+        panelWidth: Math.round(panel?.getBoundingClientRect().width ?? 0),
+        canvasWidth: canvas?.width ?? 0,
+      };
+    }));
+  }
+
+  expect([...new Set(samples.map((sample) => sample.canvasWidth))]).toHaveLength(1);
+  expect(Math.min(...samples.map((sample) => sample.canvasWidth))).toBeGreaterThanOrEqual(
+    Math.max(...samples.map((sample) => sample.panelWidth)),
+  );
+});
+
 test('export json downloads a valid backup file', async ({ page }) => {
   await page.goto('/');
   await openDataSettings(page);

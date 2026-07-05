@@ -4,10 +4,17 @@ import { GlobalTask } from '../../types';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
 
+// Parse 'YYYY-MM-DD' as LOCAL midnight. `new Date('YYYY-MM-DD')` parses as UTC
+// midnight, which shifts the date a day earlier for users west of UTC.
+function parseLocalDueDate(dueDate: string): Date {
+  const [y, m, d] = dueDate.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function getDueDateStatus(dueDate: string | undefined): 'overdue' | 'today' | 'soon' | null {
   if (!dueDate) return null;
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate); due.setHours(0, 0, 0, 0);
+  const due = parseLocalDueDate(dueDate);
   if (due < today) return 'overdue';
   if (due.getTime() === today.getTime()) return 'today';
   const diff = (due.getTime() - today.getTime()) / 86_400_000;
@@ -62,7 +69,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
       if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
       if (dueDateFilter !== 'all') {
         if (!task.dueDate) return false;
-        const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
+        const due = parseLocalDueDate(task.dueDate);
         if (dueDateFilter === 'today' && due.getTime() !== today.getTime()) return false;
         if (dueDateFilter === 'week') {
           const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
@@ -92,14 +99,17 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const checkboxBgDone = isDark ? 'bg-[rgba(238,237,234,0.15)]' : 'bg-[#2D2D2D]/20';
   const checkmarkColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
   const noteLink = isDark ? 'text-[rgba(232,224,208,0.3)]' : 'text-[#2D2D2D]/35';
+  // Opaque panel bg for the hover-reveal source chip so it stays readable when it
+  // floats over the end of a long task line. Matches RightPanel container bg.
+  const chipBg = isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]';
   const showMoreBtn = isDark
     ? 'border-[rgba(238,237,234,0.15)] text-[rgba(238,237,234,0.3)] hover:border-[rgba(238,237,234,0.4)] hover:text-[rgba(238,237,234,0.6)]'
     : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]';
   const lowRail = isDark ? 'bg-[rgba(232,224,208,0.25)]' : 'bg-[#2D2D2D]/25';
 
-  // Numeric/UI-data font — locked to the monospace stack so counters and dates
-  // stay crisp and tabular regardless of the user's chosen prose font.
-  const numFont: React.CSSProperties = { fontFamily: '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' };
+  // Task body & note titles → clean sans CJK (PingFang/system) instead of the
+  // panel's Redaction→serif fallback, which renders Chinese thin and dated at 13px.
+  const contentFont: React.CSSProperties = { fontFamily: '-apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif' };
 
   function priorityRailColor(p: string): string | null {
     if (p === 'high') return 'bg-red-400';
@@ -153,7 +163,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
               <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
-              <div className="flex items-baseline gap-1 tabular-nums text-[10px] font-semibold" style={numFont}>
+              <div className="flex items-baseline gap-1 tabular-nums text-[10px] font-semibold">
                 <span className={txt}>{completedTasks.length}</span>
                 <span className={dimmer}>/</span>
                 <span className={dim}>{total}</span>
@@ -168,7 +178,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
               />
             </div>
             {(overdueCount > 0 || todayCount > 0) && (
-              <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold" style={numFont}>
+              <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold">
                 {overdueCount > 0 && <span className="text-red-500">▴ {overdueCount} overdue</span>}
                 {todayCount > 0 && <span className="text-[#CC7D5E]">● {todayCount} today</span>}
               </div>
@@ -198,27 +208,25 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             const railColor = priorityRailColor(task.priority);
             return (
               <div key={task.id}
-                className={`group relative flex items-start gap-2.5 pl-3 pr-1 py-2 border-b transition-colors ${rowHover} ${rowBorder}`}>
+                className={`group relative flex items-start gap-2.5 pl-3 pr-3 py-2 border-b transition-colors ${rowHover} ${rowBorder}`}>
                 {railColor && (
                   <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
-                <div className="flex items-center h-[18px] shrink-0">
+                <div className="flex items-center h-[19px] shrink-0">
                   <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Complete task">
                     <div className={`w-[15px] h-[15px] rounded-[4px] border transition-all hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className={`flex-1 text-xs leading-snug ${txt}`}>{task.content}</span>
-                    <button onClick={() => onNavigateToNoteById(task.noteId)}
-                      title={task.noteTitle}
-                      className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#CC7D5E] active:opacity-70 shrink-0 ${noteLink}`}>
-                      <ExternalLink size={8} />
-                      <span className="max-w-[10ch] truncate">{task.noteTitle}</span>
-                    </button>
-                  </div>
+                  <span style={contentFont} className={`block text-[13px] leading-[1.5] ${txt}`}>{task.content}</span>
+                  <button onClick={() => onNavigateToNoteById(task.noteId)}
+                    title={task.noteTitle}
+                    className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[10px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
+                    <ExternalLink size={9} />
+                    <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                  </button>
                   {task.dueDate && (
-                    <div style={numFont} className={`mt-0.5 text-[10px] tabular-nums font-bold ${
+                    <div className={`mt-0.5 text-[10px] tabular-nums font-bold ${
                       isOverdue ? 'text-red-500' : isToday ? 'text-[#CC7D5E]' : isSoon ? 'text-[#CC7D5E]' : dim
                     }`}>
                       {isOverdue ? '⚠ ' : isToday ? '● ' : '→ '}{task.dueDate}
@@ -249,8 +257,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
               size={11}
               className={`shrink-0 transition-transform ${dimmer} ${completedExpanded ? 'rotate-90' : ''}`}
             />
-            <span className={`text-[9px] uppercase tracking-[0.3em] font-bold shrink-0 ${dimmer}`}>Completed</span>
-            <span style={numFont} className={`text-[9px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
+            <span className={`text-[10px] uppercase tracking-[0.25em] font-bold shrink-0 ${dimmer}`}>Completed</span>
+            <span className={`text-[10px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
             <div className={`flex-1 h-px ${sectionLine}`} />
           </button>
           {completedExpanded && (
@@ -258,11 +266,11 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             {completedTasks.slice(0, completedPageSize).map(task => {
               const railColor = priorityRailColor(task.priority);
               return (
-                <div key={task.id} className={`group relative flex items-start gap-2.5 pl-3 pr-1 py-2 border-b opacity-50 hover:opacity-80 transition-opacity ${rowBorder}`}>
+                <div key={task.id} className={`group relative flex items-start gap-2.5 pl-3 pr-3 py-2 border-b opacity-50 hover:opacity-80 transition-opacity ${rowBorder}`}>
                   {railColor && (
                     <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
-                  <div className="flex items-center h-[18px] shrink-0">
+                  <div className="flex items-center h-[19px] shrink-0">
                     <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Reopen task">
                       <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
                         <Check size={10} weight="bold" className={checkmarkColor} />
@@ -270,17 +278,15 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className={`flex-1 text-xs leading-snug line-through ${txt}`}>{task.content}</span>
-                      <button onClick={() => onNavigateToNoteById(task.noteId)}
-                        title={task.noteTitle}
-                        className={`flex items-center gap-0.5 text-[9px] transition-colors hover:text-[#CC7D5E] active:opacity-70 shrink-0 ${noteLink}`}>
-                        <ExternalLink size={8} />
-                        <span className="max-w-[10ch] truncate">{task.noteTitle}</span>
-                      </button>
-                    </div>
+                    <span style={contentFont} className={`block text-[13px] leading-[1.5] line-through ${txt}`}>{task.content}</span>
+                    <button onClick={() => onNavigateToNoteById(task.noteId)}
+                      title={task.noteTitle}
+                      className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[10px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
+                      <ExternalLink size={9} />
+                      <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                    </button>
                     {task.dueDate && (
-                      <div style={numFont} className={`mt-0.5 text-[10px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
+                      <div className={`mt-0.5 text-[10px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
                     )}
                   </div>
                 </div>

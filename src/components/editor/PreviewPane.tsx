@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import { useScrollingClass } from '../../hooks/useScrollingClass';
 import { useIsDark } from '../../hooks/useIsDark';
-import Markdown from 'react-markdown';
+import Markdown, { defaultUrlTransform } from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -102,6 +102,15 @@ function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
 }
 
 const SAFE_HREF_PROTOCOLS = ['http:', 'https:', 'mailto:', 'note-internal:', 'note-attachment:'];
+
+// react-markdown's default urlTransform strips unknown protocols (href/src become
+// ''), which silently kills note-internal:// wikilinks and note-attachment://
+// embeds before the custom a/img components ever see them. Let our internal
+// schemes through untouched; everything else keeps the default sanitization.
+const urlTransform = (url: string): string =>
+  url.startsWith('note-internal://') || url.startsWith('note-attachment://')
+    ? url
+    : defaultUrlTransform(url);
 
 function isSafeHref(href: string | undefined): boolean {
   if (!href) return false;
@@ -512,7 +521,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
       ),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mark: ({ children }: { children: React.ReactNode }) => (
+      mark: ({ children }: { children?: React.ReactNode }) => (
         <mark style={{
           backgroundColor: 'rgba(204,125,94,0.25)',
           color: 'inherit',
@@ -653,6 +662,7 @@ export const PreviewPane = React.memo(function PreviewPane({
             remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
             rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]]}
             components={markdownComponents}
+            urlTransform={urlTransform}
           >
             {previewMarkdown}
           </Markdown>

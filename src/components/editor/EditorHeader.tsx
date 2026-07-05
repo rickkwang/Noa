@@ -58,16 +58,6 @@ function formatRelativeTime(timestamp: string | number | Date): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-function useIsDarkLocal(): boolean {
-  const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark');
-  useEffect(() => {
-    const obs = new MutationObserver(() => setIsDark(document.documentElement.dataset.theme === 'dark'));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-  return isDark;
-}
-
 interface EditorTab {
   id: string;
   title: string;
@@ -98,6 +88,7 @@ interface EditorHeaderProps {
   titleInputRef: React.RefObject<HTMLInputElement | null>;
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
+  isDark: boolean;
 }
 
 export function EditorHeader({
@@ -125,8 +116,8 @@ export function EditorHeader({
   titleInputRef,
   onToggleHistory,
   isHistoryOpen,
+  isDark,
 }: EditorHeaderProps) {
-  const isDark = useIsDarkLocal();
   const tabStripRef = useRef<HTMLDivElement>(null);
   const pendingInstantTabScrollRef = useRef(false);
   // Track IME composition so we don't commit a half-typed CJK title when the

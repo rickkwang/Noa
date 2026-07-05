@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { AppErrorCode, AppSettings, Attachment, Folder, GlobalTask, Note, NoteSnapshot } from '../types';
 import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
@@ -26,7 +27,7 @@ import {
 } from '../lib/attachmentUtils';
 import { prepareImportedNotes } from '../lib/importUtils';
 
-const LAST_ACTIVE_NOTE_KEY = 'redaction-last-active-note-id';
+const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
 
 export function useNotes(settings?: AppSettings) {

@@ -1,7 +1,9 @@
 import { Note } from '../types';
 
-// Replaces fenced code blocks (``` ... ```), indented code blocks, and inline
-// code spans (`...`) with spaces of equal length. Keeping byte length stable
+// Replaces fenced code blocks (``` ... ```) and inline code spans (`...`)
+// with spaces of equal length. Indented (4-space) code blocks are NOT stripped —
+// they're indistinguishable from nested list content without a full parse.
+// Keeping byte length stable
 // means downstream regex match indices (unused here, but useful for future
 // callers) remain valid. Links/tags inside code must not pollute refs.
 const stripCodeSpans = (content: string): string => {

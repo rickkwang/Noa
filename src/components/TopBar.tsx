@@ -13,7 +13,7 @@ interface TopBarProps {
   searchQuery: string;
   onSearchChange?: (query: string) => void;
   showDailyNote?: boolean;
-  searchInputRef?: React.RefObject<HTMLInputElement>;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
   onOpenDailyNote?: () => void;
 }
 

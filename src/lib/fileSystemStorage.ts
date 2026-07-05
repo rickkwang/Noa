@@ -486,7 +486,7 @@ export async function scanDirectory(
           id: manifestEntry?.id || metaId || crypto.randomUUID(),
           title: name.replace(/(_[0-9a-f]{8})?\.md$/, ''),
           content,
-          folder: folderId,
+          folder: folderId ?? '',
           tags: metaTags,
           links: metaLinks,
           linkRefs: metaLinkRefs,
