@@ -62,3 +62,65 @@ describe('mergeVaultNotes (newest wins)', () => {
     expect(notes[0].content).toBe('first');
   });
 });
+
+describe('mergeVaultNotes (vault authoritative)', () => {
+  it('takes the disk version even when the cached Noa version is newer', () => {
+    const local = note({ id: 'n1', content: 'cached edit', updatedAt: '2024-01-03T00:00:00.000Z', linkRefs: ['r1'] });
+    const disk = note({ id: 'n1', content: 'disk version', updatedAt: '2024-01-02T00:00:00.000Z' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [disk],
+      new Set(),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].content).toBe('disk version');
+    expect(notes[0].linkRefs).toEqual(['r1']);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
+  it('drops cached notes that are not present in a non-empty vault', () => {
+    const local = note({ id: 'local-only', title: 'Cached' });
+    const disk = note({ id: 'disk-only', title: 'Disk' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [disk],
+      new Set(),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes.map(n => n.id)).toEqual(['disk-only']);
+    expect(deletedNoteIds).toEqual(['local-only']);
+  });
+
+  it('keeps cached notes when connecting a fresh empty vault with no manifest', () => {
+    const local = note({ id: 'local-only', title: 'Cached' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [],
+      new Set(),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes.map(n => n.id)).toEqual(['local-only']);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
+  it('drops manifest-tracked notes when their files were removed from disk', () => {
+    const local = note({ id: 'n1', title: 'Deleted on disk' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [],
+      new Set(['n1']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toEqual([]);
+    expect(deletedNoteIds).toEqual(['n1']);
+  });
+});

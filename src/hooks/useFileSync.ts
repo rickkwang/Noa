@@ -57,6 +57,7 @@ const AUTO_RETRY_MAX_ATTEMPTS = 5;
 // External-change polling cadence. The FSA API has no watcher; window focus is
 // the primary signal (returning from Obsidian/Finder), the interval the backstop.
 const EXTERNAL_POLL_INTERVAL_MS = 60_000;
+const VAULT_AUTHORITATIVE_MERGE = { mode: 'vault-authoritative' as const };
 
 export function useFileSync({
   isLoaded,
@@ -204,7 +205,12 @@ export function useFileSync({
       setFsSyncError(null);
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
+      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+        fsHandle,
+        currentNotes,
+        currentFolders,
+        VAULT_AUTHORITATIVE_MERGE,
+      );
       const mergedFolders = [...currentFolders, ...newFolders];
       // Always prune so vault deletions are removed from storage.
       await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
@@ -233,13 +239,12 @@ export function useFileSync({
     // signalling that we should abandon the in-flight restore.
     const bootstrapToken = bootstrapped;
 
-    if (!activeNoteId) {
-      ensureInitialNote();
-    }
-
     void restorePersistedFsHandle().then(async (handle) => {
       if (!bootstrapToken.current) return;
       if (!handle) {
+        if (!activeNoteId) {
+          ensureInitialNote();
+        }
         setSyncStatus('idle');
         setNeedsReauth(false);
         setAutoRetryExhausted(false);
@@ -251,7 +256,12 @@ export function useFileSync({
         setFsHandle(handle);
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+        const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+          handle,
+          currentNotes,
+          currentFolders,
+          VAULT_AUTHORITATIVE_MERGE,
+        );
         const mergedFolders = [...currentFolders, ...newFolders];
         try {
           // Always prune so vault deletions are removed from storage.
@@ -260,9 +270,10 @@ export function useFileSync({
           recordFailure(importError);
           return;
         }
-        // Write back any Noa edits made while the app was closed (e.g. offline edits
-        // from a previous session that never flushed to disk). This also performs
-        // the one-time migration of Noa-native notes onto disk.
+        // Refresh vault-managed files from the authoritative merge result. For a
+        // fresh empty vault this seeds local notes; for an existing vault this
+        // rewrites only the scanned disk state, so stale IndexedDB notes do not
+        // reappear.
         await retryFullSync(handle, merged, mergedFolders);
         recordSuccess();
       } catch (error) {
@@ -309,7 +320,12 @@ export function useFileSync({
         setSyncStatus('syncing');
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const { notes: merged, newFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(fsHandle, currentNotes, currentFolders);
+        const { notes: merged, newFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(
+          fsHandle,
+          currentNotes,
+          currentFolders,
+          VAULT_AUTHORITATIVE_MERGE,
+        );
         if (disposed) return;
         const mergedFolders = [...currentFolders, ...newFolders];
         await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
@@ -338,7 +354,12 @@ export function useFileSync({
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
       const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
-      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(handle, currentNotes, currentFolders);
+      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+        handle,
+        currentNotes,
+        currentFolders,
+        VAULT_AUTHORITATIVE_MERGE,
+      );
       const mergedFolders = [...currentFolders, ...newFolders];
       setFsHandle(handle);
       try {
@@ -347,8 +368,7 @@ export function useFileSync({
         recordFailure(importError);
         throw importError;
       }
-      // Seed the vault with everything Noa holds (existing vault files were
-      // already merged above, so this only fills in what's missing/stale).
+      // Seed a fresh empty vault, or refresh files from the scanned disk state.
       await retryFullSync(handle, merged, mergedFolders);
       recordSuccess();
     } catch (error) {
