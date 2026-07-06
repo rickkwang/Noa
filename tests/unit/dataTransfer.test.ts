@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { createMemRoot } from './helpers/memfs';
 import {
   analyzeConflicts,
   applyImportStrategy,
   buildVaultImportPayload,
+  collectVaultDirectoryEntries,
   classifyFolderImportFile,
   countImportedNotes,
   getFolderImportPath,
@@ -433,5 +435,50 @@ describe('uniqueExportFilename', () => {
     const used = new Set<string>();
     expect(uniqueExportFilename(used, 'a/b:c', 'a1a1a1a1-x', '.html')).toBe('a_b_c.html');
     expect(uniqueExportFilename(used, '', 'a1a1a1a1-x', '.md')).toBe('Untitled.md');
+  });
+});
+
+describe('vault folder import ignores hidden entries', () => {
+  it('buildVaultImportPayload skips files inside dot-directories like .noa', async () => {
+    const files = [
+      {
+        pathSegments: ['MyVault', '.noa', 'internal.md'],
+        file: new File(['internal'], 'internal.md', { type: 'text/markdown' }),
+      },
+      {
+        pathSegments: ['MyVault', 'Docs', 'real.md'],
+        file: new File(['# Real'], 'real.md', { type: 'text/markdown' }),
+      },
+    ];
+    const folderIdByPath = new Map([
+      ['MyVault', 'root-folder'],
+      ['MyVault/Docs', 'docs-folder'],
+    ]);
+
+    const result = await buildVaultImportPayload(files, folderIdByPath);
+
+    expect(result.notes.map((n) => n.title)).toEqual(['real']);
+  });
+
+  it('collectVaultDirectoryEntries ignores dot-directories and dot-files', async () => {
+    const root = createMemRoot('MyVault');
+    const noaDir = await root.getDirectoryHandle('.noa', { create: true });
+    const manifest = await noaDir.getFileHandle('manifest.json', { create: true });
+    const writable = await manifest.createWritable();
+    await writable.write('{}');
+    await writable.close();
+    const docs = await root.getDirectoryHandle('Docs', { create: true });
+    const note = await docs.getFileHandle('real.md', { create: true });
+    const noteWritable = await note.createWritable();
+    await noteWritable.write('# Real');
+    await noteWritable.close();
+
+    const { folderPaths, files } = await collectVaultDirectoryEntries(
+      root as unknown as FileSystemDirectoryHandle,
+      ['MyVault'],
+    );
+
+    expect([...folderPaths].some((path) => path.includes('.noa'))).toBe(false);
+    expect(files.map((f) => f.pathSegments.join('/'))).toEqual(['MyVault/Docs/real.md']);
   });
 });

@@ -761,12 +761,12 @@ Export regularly: use Settings → Data → Export Backup.`,
     setActiveNoteIdWithRecent,
   });
 
-  const handleToggleTask = useCallback((task: GlobalTask) => {
+  const handleToggleTask = useCallback((task: GlobalTask): { noteId: string; content: string } | undefined => {
+    const targetNote = notesRef.current.find(n => n.id === task.noteId);
+    if (!targetNote) return undefined;
+    const { updatedContent, updated: didUpdate } = toggleTaskInNoteContent(targetNote.content, task);
+    if (!didUpdate) return undefined;
     setNotes(prev => {
-      const targetNote = prev.find(n => n.id === task.noteId);
-      if (!targetNote) return prev;
-      const { updatedContent, updated: didUpdate } = toggleTaskInNoteContent(targetNote.content, task);
-      if (!didUpdate) return prev;
       const updated = prev.map(n =>
         n.id === task.noteId
           ? { ...n, content: updatedContent, updatedAt: new Date().toISOString(),
@@ -778,6 +778,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (updatedNote) debounceSave(updatedNote);
       return withRefs;
     });
+    // Returned so the caller can write the toggle through to the vault —
+    // storage-only mutations get reverted by the next disk-authoritative scan.
+    return { noteId: task.noteId, content: updatedContent };
   }, [debounceSave, syncLinkRefs]);
 
   const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false, deletedNoteIds?: string[]) => {

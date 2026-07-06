@@ -40,7 +40,7 @@ import {
 } from '../lib/importUtils';
 
 export type { ConflictSummary };
-export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, classifyFolderImportFile, countImportedNotes, getFolderImportPath, parseZipAttachmentPath, prepareImportedNotes, resolveImportedFolders, resolveImportedWorkspaceName, uniqueExportFilename, validateAttachmentPayloads, zipAttachmentPath };
+export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, collectVaultDirectoryEntries, classifyFolderImportFile, countImportedNotes, getFolderImportPath, parseZipAttachmentPath, prepareImportedNotes, resolveImportedFolders, resolveImportedWorkspaceName, uniqueExportFilename, validateAttachmentPayloads, zipAttachmentPath };
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
@@ -167,7 +167,8 @@ async function collectVaultDirectoryEntries(
 
   for await (const [entryName, handle] of dirHandle.entries()) {
     const isVaultRootArtifact = relativeSegments.length <= 1 && (entryName === 'manifest.json' || entryName === 'README.md');
-    if (entryName === '.obsidian' || entryName === '.DS_Store' || isVaultRootArtifact) continue;
+    // Hidden entries (.noa, .obsidian, .DS_Store, ...) are never vault content.
+    if (entryName.startsWith('.') || isVaultRootArtifact) continue;
     if (handle.kind === 'directory') {
       await collectVaultDirectoryEntries(
         handle as FileSystemDirectoryHandle,
@@ -262,7 +263,7 @@ async function buildVaultImportPayload(
   const stagedAttachments: StagedAttachment[] = [];
 
   for (const entry of files) {
-    if (entry.pathSegments.some((segment) => segment === '.obsidian')) continue;
+    if (entry.pathSegments.some((segment) => segment.startsWith('.'))) continue;
     const file = entry.file;
     const fullFolderPath = sanitizeFolderPath(entry.pathSegments.slice(0, -1).join('/'));
     const folderId = fullFolderPath ? folderIdByPath.get(fullFolderPath) ?? '' : '';

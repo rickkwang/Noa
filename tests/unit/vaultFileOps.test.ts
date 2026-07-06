@@ -297,9 +297,11 @@ describe('manifest path consistency for folders with spaces', () => {
     );
 
     expect(result.folders.map((folder) => folder.name)).toEqual(['Keep Folder']);
-    expect(result.deletedNoteIds).toEqual(['local-only']);
-    expect(result.notes).toHaveLength(1);
-    expect(result.notes[0].folder).toBe('keep');
+    // local-only was never manifest-tracked → kept for the next full sync.
+    expect(result.deletedNoteIds).toEqual([]);
+    expect(result.notes).toHaveLength(2);
+    expect(result.notes.some((n) => n.id === 'local-only')).toBe(true);
+    expect(result.notes.find((n) => n.id !== 'local-only')?.folder).toBe('keep');
   });
 });
 
@@ -408,5 +410,23 @@ describe('vault manifest location and hidden entries', () => {
 
     const stats = await scanNoteFileStats(asFsHandle(root));
     expect([...stats.keys()]).toEqual(['README.md']);
+  });
+});
+
+describe('writeNote churn avoidance', () => {
+  it('keeps mtime of note file and manifest when nothing changed', async () => {
+    const root = createMemRoot();
+    const n = makeNote({ id: 'a1a1a1a1-0000-4000-8000-0000000000c7', source: 'noa' as const });
+
+    const first = await writeNote(asFsHandle(root), n, []);
+    const manifestBefore = await (resolvePath(root, '.noa/manifest.json') as { getFile(): Promise<File> }).getFile();
+    await new Promise((r) => setTimeout(r, 10));
+
+    const second = await writeNote(asFsHandle(root), n, []);
+    const manifestAfter = await (resolvePath(root, '.noa/manifest.json') as { getFile(): Promise<File> }).getFile();
+
+    expect(second?.path).toBe(first?.path);
+    expect(second?.lastModified).toBe(first?.lastModified);
+    expect(manifestAfter.lastModified).toBe(manifestBefore.lastModified);
   });
 });

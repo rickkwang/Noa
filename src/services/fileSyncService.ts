@@ -72,6 +72,21 @@ export interface MergeVaultNotesOptions {
   mode?: VaultMergeMode;
 }
 
+/**
+ * Attachments without a vaultPath were added in Noa and have not been
+ * confirmed on disk yet — dropping them would lose the upload. Ones whose
+ * vaultPath vanished from the scan were deleted externally and stay dropped.
+ */
+function mergePendingAttachments(previous: Note, fresh: Note): Pick<Note, 'attachments'> | Record<string, never> {
+  const diskAttachments = fresh.attachments ?? [];
+  const diskIds = new Set(diskAttachments.map((attachment) => attachment.id));
+  const pending = (previous.attachments ?? []).filter(
+    (attachment) => !attachment.vaultPath && !diskIds.has(attachment.id)
+  );
+  const merged = [...diskAttachments, ...pending];
+  return merged.length ? { attachments: merged } : {};
+}
+
 function mergeFreshVaultFolders(current: Folder[], scanned: Folder[]): Folder[] {
   const merged = [...current];
   const names = new Set(current.map((folder) => folder.name));
@@ -95,10 +110,12 @@ function mergeFreshVaultFolders(current: Folder[], scanned: Folder[]): Folder[] 
  *  - Note only on disk: added.
  *
  * Vault-authoritative rules:
- *  - A non-empty vault replaces the IndexedDB cache.
- *  - Notes missing from disk are reported as deleted so import rescue logic
- *    does not resurrect stale cached notes.
- *  - A fresh empty vault with no manifest keeps local notes so it can be seeded.
+ *  - Notes present on disk replace the IndexedDB cache (linkRefs and pending
+ *    local attachments are preserved — both are Noa-owned state).
+ *  - A local note missing from disk is deleted ONLY when the manifest tracked
+ *    it: its file existed once and was removed externally. Local notes the
+ *    manifest never saw (just created/imported in Noa, fresh-vault seeding)
+ *    are kept and land on disk at the next full sync.
  */
 export function mergeVaultNotes(
   notes: Note[],
@@ -120,18 +137,12 @@ export function mergeVaultNotes(
   }
 
   if (options.mode === 'vault-authoritative') {
-    // A completely fresh vault has no files and no manifest yet. Keep the local
-    // notes so retryFullSync can seed the selected directory. If a manifest
-    // exists, an empty scan means the tracked files were removed on disk.
-    if (uniqueScanned.length === 0 && manifestIds.size === 0) {
-      return { notes, deletedNoteIds: [], updatedNoteIds: [] };
-    }
-
     const localById = new Map(notes.map((note) => [note.id, note]));
     const scannedIds = new Set(uniqueScanned.map((note) => note.id));
     const deletedNoteIds = notes
-      .filter((note) => !scannedIds.has(note.id))
+      .filter((note) => !scannedIds.has(note.id) && manifestIds.has(note.id))
       .map((note) => note.id);
+    const keptLocal = notes.filter((note) => !scannedIds.has(note.id) && !manifestIds.has(note.id));
     const updatedNoteIds: string[] = [];
     const merged = uniqueScanned.map((fresh) => {
       const previous = localById.get(fresh.id);
@@ -142,10 +153,10 @@ export function mergeVaultNotes(
       if (fresh.content !== previous.content || fresh.title !== previous.title) {
         updatedNoteIds.push(fresh.id);
       }
-      return { ...fresh, linkRefs: previous.linkRefs };
+      return { ...fresh, linkRefs: previous.linkRefs, ...mergePendingAttachments(previous, fresh) };
     });
 
-    return { notes: merged, deletedNoteIds, updatedNoteIds };
+    return { notes: [...merged, ...keptLocal], deletedNoteIds, updatedNoteIds };
   }
 
   const deletedNoteIds: string[] = [];

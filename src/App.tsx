@@ -206,13 +206,19 @@ export default function App() {
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
     if (blockVaultCacheWrite()) return;
-    handleToggleTask(task);
-  }, [blockVaultCacheWrite, handleToggleTask]);
+    const toggled = handleToggleTask(task);
+    // Write through to the vault — a storage-only toggle would be reverted by
+    // the next disk-authoritative scan.
+    if (toggled) syncNoteOnUpdate(toggled.noteId, toggled.content);
+  }, [blockVaultCacheWrite, handleToggleTask, syncNoteOnUpdate]);
 
   const restoreSnapshotGuarded = useCallback(async (snapshot: Parameters<typeof restoreSnapshot>[0]) => {
     if (blockVaultCacheWrite()) return;
     await restoreSnapshot(snapshot);
-  }, [blockVaultCacheWrite, restoreSnapshot]);
+    // Write through to the vault — a storage-only restore would be reverted by
+    // the next disk-authoritative scan.
+    syncNoteOnUpdate(snapshot.noteId, snapshot.content);
+  }, [blockVaultCacheWrite, restoreSnapshot, syncNoteOnUpdate]);
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);

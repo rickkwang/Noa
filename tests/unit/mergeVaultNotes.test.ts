@@ -81,7 +81,7 @@ describe('mergeVaultNotes (vault authoritative)', () => {
     expect(deletedNoteIds).toEqual([]);
   });
 
-  it('drops cached notes that are not present in a non-empty vault', () => {
+  it('keeps untracked local notes even when the vault is non-empty', () => {
     const local = note({ id: 'local-only', title: 'Cached' });
     const disk = note({ id: 'disk-only', title: 'Disk' });
 
@@ -92,8 +92,8 @@ describe('mergeVaultNotes (vault authoritative)', () => {
       { mode: 'vault-authoritative' },
     );
 
-    expect(notes.map(n => n.id)).toEqual(['disk-only']);
-    expect(deletedNoteIds).toEqual(['local-only']);
+    expect(notes.map(n => n.id).sort()).toEqual(['disk-only', 'local-only']);
+    expect(deletedNoteIds).toEqual([]);
   });
 
   it('keeps cached notes when connecting a fresh empty vault with no manifest', () => {
@@ -122,5 +122,68 @@ describe('mergeVaultNotes (vault authoritative)', () => {
 
     expect(notes).toEqual([]);
     expect(deletedNoteIds).toEqual(['n1']);
+  });
+});
+
+describe('mergeVaultNotes (vault authoritative) — unsynced local state', () => {
+  const attachment = (overrides: Partial<import('../../src/types').Attachment> = {}) => ({
+    id: 'att-1',
+    noteId: 'n1',
+    filename: 'img.png',
+    mimeType: 'image/png',
+    size: 10,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    ...overrides,
+  });
+
+  it('keeps local notes the manifest never tracked (created in Noa, not yet on disk)', () => {
+    const justCreated = note({ id: 'new-local', title: 'Daily note' });
+    const disk = note({ id: 'disk-1', title: 'Disk' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [justCreated],
+      [disk],
+      new Set(['disk-1']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes.map((n) => n.id).sort()).toEqual(['disk-1', 'new-local']);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
+  it('still drops manifest-tracked notes whose files were removed from a non-empty vault', () => {
+    const trackedGone = note({ id: 'tracked', title: 'Deleted in Obsidian' });
+    const disk = note({ id: 'disk-1', title: 'Disk' });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [trackedGone],
+      [disk],
+      new Set(['tracked', 'disk-1']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes.map((n) => n.id)).toEqual(['disk-1']);
+    expect(deletedNoteIds).toEqual(['tracked']);
+  });
+
+  it('preserves local attachments that have not reached the vault yet', () => {
+    const syncedOnDisk = attachment({ id: 'att-synced', vaultPath: 'attachments/n1/att-synced-img.png' });
+    const pendingLocal = attachment({ id: 'att-pending', filename: 'new.png' });
+    const local = note({ id: 'n1', attachments: [syncedOnDisk, pendingLocal] });
+    const disk = note({ id: 'n1', attachments: [syncedOnDisk] });
+
+    const { notes } = mergeVaultNotes([local], [disk], new Set(['n1']), { mode: 'vault-authoritative' });
+
+    expect(notes[0].attachments?.map((a) => a.id).sort()).toEqual(['att-pending', 'att-synced']);
+  });
+
+  it('drops local attachments that were synced before but disappeared from disk', () => {
+    const removedOnDisk = attachment({ id: 'att-removed', vaultPath: 'attachments/n1/att-removed-img.png' });
+    const local = note({ id: 'n1', attachments: [removedOnDisk] });
+    const disk = note({ id: 'n1', attachments: [] });
+
+    const { notes } = mergeVaultNotes([local], [disk], new Set(['n1']), { mode: 'vault-authoritative' });
+
+    expect(notes[0].attachments ?? []).toEqual([]);
   });
 });

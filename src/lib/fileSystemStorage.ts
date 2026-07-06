@@ -318,11 +318,18 @@ async function writeAttachment(
   note: Note,
   attachment: Attachment
 ): Promise<void> {
-  const blob = await storage.getAttachmentBlob(attachment.id);
-  if (!blob) return;
   const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(note.id)]);
   if (!dirHandle) return;
   const fileName = attachmentVaultFileName(note, attachment);
+  // Attachment blobs are immutable per id — an existing file is already correct.
+  try {
+    await dirHandle.getFileHandle(fileName);
+    return;
+  } catch {
+    // Not on disk yet — write it below.
+  }
+  const blob = await storage.getAttachmentBlob(attachment.id);
+  if (!blob) return;
   const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(blob);
@@ -397,11 +404,35 @@ export async function writeNote(
     ? `${baseName}_${note.id.slice(0, 8)}.md`
     : defaultFilename;
 
+  const payload = buildFrontMatter(note) + rewriteAttachmentEmbedsForVault(note);
+  const nextPath = relativeNotePath(folder?.name, filename);
+
+  // Full syncs rewrite every note — skip the write when nothing changed so
+  // unchanged files keep their mtime (git/iCloud/Obsidian treat mtime as
+  // "modified", and a scanned note's updatedAt IS the file mtime).
+  const currentEntry = manifest.notes[nextPath];
+  const manifestUnchanged =
+    currentEntry?.id === note.id &&
+    currentEntry.createdAt === note.createdAt &&
+    currentEntry.source === note.source &&
+    (!existingManifestEntry || existingManifestEntry[0] === nextPath);
+  if (manifestUnchanged) {
+    try {
+      const existingFile = await (await dirHandle.getFileHandle(filename)).getFile();
+      if ((await existingFile.text()) === payload) {
+        // Attachments may still be pending even when the text is unchanged.
+        await syncAttachmentsForNote(rootHandle, note);
+        return { path: nextPath, lastModified: existingFile.lastModified };
+      }
+    } catch {
+      // File missing despite the manifest entry — fall through and write it.
+    }
+  }
+
   const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
-  await writable.write(buildFrontMatter(note) + rewriteAttachmentEmbedsForVault(note));
+  await writable.write(payload);
   await writable.close();
-  const nextPath = relativeNotePath(folder?.name, filename);
   if (existingManifestEntry && existingManifestEntry[0] !== nextPath) {
     delete manifest.notes[existingManifestEntry[0]];
   }
