@@ -334,6 +334,17 @@ export default function App() {
     openTabIdsRef.current = openTabIds;
   }, [openTabIds]);
 
+  // Warm the lazy settings chunk while idle so the first open doesn't spend a
+  // beat fetching it before anything renders (its Suspense fallback is null).
+  useEffect(() => {
+    if (typeof window.requestIdleCallback !== 'function') return;
+    const id = window.requestIdleCallback(
+      () => { void import('./components/settings/SettingsModal'); },
+      { timeout: 5000 }
+    );
+    return () => window.cancelIdleCallback(id);
+  }, []);
+
   const showTabLimitWarning = useCallback(() => {
     setTabLimitWarning(true);
     if (tabLimitWarningTimeoutRef.current !== null) {

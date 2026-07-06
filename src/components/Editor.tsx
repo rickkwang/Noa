@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { Note, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
@@ -125,6 +125,15 @@ export default function Editor({
   );
 
   useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
+
+  // Markdown preview parsing is expensive for large notes. Feeding the preview
+  // deferred values keeps NoteMarkdownBody's memo props stable during the
+  // urgent render, so keystrokes and note switches paint first and the
+  // re-parse runs in a follow-up low-priority render. The undefined
+  // initialValue extends this to PreviewPane's mount (edit → preview/split):
+  // the pane paints empty for a frame instead of blocking on the first parse.
+  const deferredNote = useDeferredValue<Note | undefined>(note, undefined);
+  const deferredAllNotes = useDeferredValue(allNotes);
 
   const { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
@@ -551,10 +560,10 @@ export default function Editor({
           />
         )}
 
-        {viewMode !== 'edit' && (
+        {viewMode !== 'edit' && deferredNote && (
           <PreviewPane
-            note={note}
-            allNotes={allNotes}
+            note={deferredNote}
+            allNotes={deferredAllNotes}
             settings={settings}
             onNavigateToNoteLegacy={onNavigateToNoteLegacy}
             onNavigateToNoteById={onNavigateToNoteById}
