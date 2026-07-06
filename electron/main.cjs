@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
 const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
+const { resolveBackgroundColor } = require('./windowBackground.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
@@ -162,6 +163,10 @@ function createWindow() {
     minHeight: 700,
     title: 'Noa',
     icon: iconPath,
+    // Light-theme default; the renderer re-syncs this to the active theme via
+    // 'window:set-background-color'. macOS paints this color at the window
+    // edges while renderer frames lag during live resize, so a mismatch with
+    // the page background shows as bright ghosting along the frame.
     backgroundColor: '#EAE8E0',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 9, y: 8 },
@@ -249,6 +254,12 @@ app.whenReady().then(() => {
   createWindow();
 
   ipcMain.handle('app-info:get-version', () => app.getVersion());
+  ipcMain.handle('window:set-background-color', (_event, color) => {
+    const resolved = resolveBackgroundColor(color);
+    if (!resolved || !win || win.isDestroyed()) return false;
+    win.setBackgroundColor(resolved);
+    return true;
+  });
   ipcMain.handle('app-updater:get-status', () => updateState);
   ipcMain.handle('app-updater:check', async () => {
     await doCheckForUpdates();

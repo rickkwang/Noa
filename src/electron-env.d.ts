@@ -13,6 +13,9 @@ declare global {
         getStatus: () => Promise<UpdateStatus>;
         onStatusChange: (listener: (status: UpdateStatus) => void) => () => void;
       };
+      appearance: {
+        setWindowBackgroundColor: (color: string) => Promise<boolean>;
+      };
       lifecycle: {
         onBeforeQuit: (listener: () => void) => () => void;
       };

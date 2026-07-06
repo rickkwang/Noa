@@ -33,6 +33,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     // Accent is a fixed theme token (coral in both themes), not user-configurable.
     root.style.setProperty('--accent-color', '#CC7D5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
+
+    // Keep the native window background on the same token as --bg-primary —
+    // macOS paints it at the window edges during live resize, and a mismatch
+    // shows as light ghost bands along the frame in dark mode.
+    void window.noaDesktop?.appearance?.setWindowBackgroundColor(isDark ? '#262624' : '#EAE8E0')
+      ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
   }, [isDark, settings.appearance.usePointerCursors]);
 
   const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :

@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('noaDesktop', {
       return () => ipcRenderer.removeListener('app-updater:status', handler);
     },
   },
+  appearance: {
+    setWindowBackgroundColor: (color) => ipcRenderer.invoke('window:set-background-color', color),
+  },
   lifecycle: {
     onBeforeQuit: (listener) => {
       const handler = () => listener();
