@@ -10,8 +10,9 @@ const fsHandleStore = localforage.createInstance({
   storeName: 'fs-handle'
 });
 
-const NOA_FRONTMATTER_KEYS = new Set(['id', 'folder', 'links', 'linkRefs', 'createdAt']);
+const NOA_FRONTMATTER_KEYS = new Set(['id', 'folder', 'links', 'linkRefs', 'createdAt', 'noaSource']);
 const VAULT_MANIFEST_FILENAME = 'manifest.json';
+const NOA_DATA_DIRNAME = '.noa';
 
 interface VaultManifestNoteEntry {
   id: string;
@@ -157,41 +158,99 @@ function yamlScalar(value: string): string {
   return value;
 }
 
+function frontmatterLine(key: string, value: string): string {
+  return `${key}: ${yamlScalar(value)}`;
+}
+
+function rawFrontmatterHasTopLevelKey(rawBlock: string, key: string): boolean {
+  return rawBlock.split('\n').some((line) => line.match(/^([A-Za-z0-9_-]+)\s*:/)?.[1] === key);
+}
+
+function buildNoaFrontmatterLines(note: Note, includeTags = true): string[] {
+  const lines = [
+    frontmatterLine('id', note.id),
+    frontmatterLine('createdAt', note.createdAt),
+    'noaSource: noa',
+  ];
+  if (includeTags && note.tags?.length) {
+    lines.push('tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`));
+  }
+  return lines;
+}
+
+function stableVaultId(path: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < path.length; i += 1) {
+    const code = path.charCodeAt(i);
+    h1 ^= code;
+    h1 = Math.imul(h1, 0x01000193);
+    h2 ^= code + i;
+    h2 = Math.imul(h2, 0x85ebca6b);
+  }
+  return `vault-${(h1 >>> 0).toString(16).padStart(8, '0')}${(h2 >>> 0).toString(16).padStart(8, '0')}`;
+}
+
 /**
  * Rebuild the frontmatter block for writing back to the vault.
  *
- * Strategy: start from the original rawBlock (preserving all Obsidian fields,
- * comments, multi-line values, nested YAML, etc.), then replace only the 6
- * Noa-owned lines in place. If a Noa field doesn't exist yet in rawBlock, it
- * is appended. Everything else is left byte-for-byte identical.
+ * Strategy: imported notes keep their sanitized Obsidian frontmatter. Native
+ * Noa notes always write enough metadata for a Markdown-only restore.
  */
 function buildFrontMatter(note: Note): string {
   const sanitized = sanitizeRawFrontmatter(note.rawFrontmatter ?? '');
-  if (sanitized) return `---\n${sanitized}\n---\n`;
-  if (!note.tags?.length) return '';
-  const lines = ['tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`)];
+  if ((note.source ?? 'noa') !== 'noa') {
+    if (sanitized) return `---\n${sanitized}\n---\n`;
+    if (!note.tags?.length) return '';
+    const lines = ['tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`)];
+    return `---\n${lines.join('\n')}\n---\n`;
+  }
+
+  const lines = sanitized
+    ? [...sanitized.split('\n'), ...buildNoaFrontmatterLines(note, !rawFrontmatterHasTopLevelKey(sanitized, 'tags'))]
+    : buildNoaFrontmatterLines(note);
   return `---\n${lines.join('\n')}\n---\n`;
 }
 
+function parseManifestText(text: string): VaultManifest {
+  const parsed = JSON.parse(text) as Partial<VaultManifest>;
+  if (parsed.version !== 1 || !parsed.notes || typeof parsed.notes !== 'object') {
+    return { version: 1, notes: {} };
+  }
+  return { version: 1, notes: parsed.notes as Record<string, VaultManifestNoteEntry> };
+}
+
+// Noa's app data lives in a hidden .noa/ directory — the Obsidian convention
+// (.obsidian/): never place app files where they show up as vault content.
+// Older versions wrote manifest.json at the vault root; reads fall back to it
+// and the next manifest write removes it.
 async function readVaultManifest(rootHandle: FileSystemDirectoryHandle): Promise<VaultManifest> {
   try {
+    const noaDir = await rootHandle.getDirectoryHandle(NOA_DATA_DIRNAME);
+    const fileHandle = await noaDir.getFileHandle(VAULT_MANIFEST_FILENAME);
+    return parseManifestText(await (await fileHandle.getFile()).text());
+  } catch {
+    // Fall through to the legacy root location.
+  }
+  try {
     const fileHandle = await rootHandle.getFileHandle(VAULT_MANIFEST_FILENAME);
-    const text = await (await fileHandle.getFile()).text();
-    const parsed = JSON.parse(text) as Partial<VaultManifest>;
-    if (parsed.version !== 1 || !parsed.notes || typeof parsed.notes !== 'object') {
-      return { version: 1, notes: {} };
-    }
-    return { version: 1, notes: parsed.notes as Record<string, VaultManifestNoteEntry> };
+    return parseManifestText(await (await fileHandle.getFile()).text());
   } catch {
     return { version: 1, notes: {} };
   }
 }
 
 async function writeVaultManifest(rootHandle: FileSystemDirectoryHandle, manifest: VaultManifest): Promise<void> {
-  const fileHandle = await rootHandle.getFileHandle(VAULT_MANIFEST_FILENAME, { create: true });
+  const noaDir = await rootHandle.getDirectoryHandle(NOA_DATA_DIRNAME, { create: true });
+  const fileHandle = await noaDir.getFileHandle(VAULT_MANIFEST_FILENAME, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(manifest, null, 2));
   await writable.close();
+  try {
+    await rootHandle.removeEntry(VAULT_MANIFEST_FILENAME);
+  } catch {
+    // No legacy root manifest to migrate away.
+  }
 }
 
 function relativeNotePath(folderName: string | undefined, filename: string): string {
@@ -240,6 +299,18 @@ async function getFolderHandle(
   const segments = folderName.split('/').filter(Boolean).map((segment) => sanitizeFilename(segment));
   if (segments.length === 0) return rootHandle;
   return ensureDirectory(rootHandle, segments, create);
+}
+
+/**
+ * Materialise a folder as a real directory on disk. Folders are first-class
+ * vault objects (as in Obsidian): an empty folder must exist as a directory,
+ * otherwise disk-authoritative scans would drop it.
+ */
+export async function createFolderDirectory(
+  rootHandle: FileSystemDirectoryHandle,
+  folderPath: string,
+): Promise<void> {
+  await getFolderHandle(rootHandle, folderPath, true);
 }
 
 async function writeAttachment(
@@ -470,13 +541,15 @@ export async function scanNoteFileStats(
   async function walk(dirHandle: FileSystemDirectoryHandle, pathSegments: string[], depth: number): Promise<void> {
     if (depth > MAX_DIR_DEPTH) return;
     for await (const [name, handle] of dirHandle.entries()) {
+      // Hidden entries (.noa, .obsidian, .DS_Store, ...) are never vault
+      // content — same convention as Obsidian.
+      if (name.startsWith('.')) continue;
       if (handle.kind === 'file') {
         if (!name.endsWith('.md')) continue;
-        if (pathSegments.length === 0 && name === 'README.md') continue;
         const file = await (handle as FileSystemFileHandle).getFile();
         stats.set([...pathSegments, name].join('/'), file.lastModified);
       } else if (handle.kind === 'directory') {
-        if (name === 'attachments' || name === '.obsidian' || name === '.DS_Store') continue;
+        if (name === 'attachments') continue;
         await walk(handle as FileSystemDirectoryHandle, [...pathSegments, name], depth + 1);
       }
     }
@@ -488,9 +561,10 @@ export async function scanNoteFileStats(
 export async function scanDirectory(
   rootHandle: FileSystemDirectoryHandle,
   folders: Folder[]
-): Promise<{ notes: Note[]; newFolders: Folder[]; manifestIds: Set<string> }> {
+): Promise<{ notes: Note[]; folders: Folder[]; newFolders: Folder[]; manifestIds: Set<string> }> {
   const manifest = await readVaultManifest(rootHandle);
   const notes: Note[] = [];
+  const scannedFolders: Folder[] = [];
   const newFolders: Folder[] = [];
   const attachmentsByNoteId = new Map<string, Attachment[]>();
   // Combined folder lookup: existing + newly created during this scan
@@ -509,10 +583,9 @@ export async function scanDirectory(
     for await (const [name, handle] of dirHandle.entries()) {
       const currentPath = [...pathSegments, name];
       const currentPathKey = currentPath.join('/');
+      // Hidden entries are never vault content — same convention as Obsidian.
+      if (name.startsWith('.')) continue;
       if (isFileHandle(handle) && name.endsWith('.md')) {
-        if (pathSegments.length === 0 && (name === 'README.md' || name === 'manifest.json')) {
-          continue;
-        }
         const file = await handle.getFile();
         const text = await file.text();
         const { meta, rawBlock, content } = parseFrontMatter(text);
@@ -523,8 +596,9 @@ export async function scanDirectory(
         const metaLinks = extractLinks(content);
         const metaLinkRefs = Array.isArray(meta.linkRefs) ? meta.linkRefs : [];
         const metaCreatedAt = extractObsidianCreatedAt(text) ?? (typeof meta.createdAt === 'string' ? meta.createdAt : undefined);
+        const metaSource = meta.noaSource === 'noa' ? 'noa' : undefined;
         notes.push({
-          id: manifestEntry?.id || metaId || crypto.randomUUID(),
+          id: manifestEntry?.id || metaId || stableVaultId(notePath),
           title: name.replace(/(_[0-9a-f]{8})?\.md$/, ''),
           content,
           folder: folderId ?? '',
@@ -533,7 +607,7 @@ export async function scanDirectory(
           linkRefs: metaLinkRefs,
           createdAt: manifestEntry?.createdAt || metaCreatedAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
-          source: manifestEntry?.source ?? 'obsidian-import',
+          source: manifestEntry?.source ?? metaSource ?? 'obsidian-import',
           // rawBlock preserves all original YAML verbatim for safe round-trip write-back.
           ...(rawBlock ? { rawFrontmatter: rawBlock } : {}),
         });
@@ -572,13 +646,16 @@ export async function scanDirectory(
             }
             if (noteAttachments.length > 0) attachmentsByNoteId.set(noteId, noteAttachments);
           }
-        } else if (name !== '.obsidian' && name !== '.DS_Store') {
+        } else {
           let matchedFolder = allFolders.find((folder) => sanitizeFolderPath(folder.name) === currentPathKey);
           if (!matchedFolder) {
             // Directory exists in vault but not in Noa — create it on the fly
             matchedFolder = { id: crypto.randomUUID(), name: currentPath.join('/'), source: 'obsidian-import' as const };
             newFolders.push(matchedFolder);
             allFolders.push(matchedFolder);
+          }
+          if (!scannedFolders.some((folder) => folder.id === matchedFolder.id)) {
+            scannedFolders.push(matchedFolder);
           }
           await readDir(handle, matchedFolder.id, currentPath, depth + 1);
         }
@@ -596,5 +673,5 @@ export async function scanDirectory(
   // Note ids the manifest tracked when the scan started: any of these whose
   // file is now missing was deleted externally (see mergeScannedNotes).
   const manifestIds = new Set(Object.values(manifest.notes).map((entry) => entry.id));
-  return { notes, newFolders, manifestIds };
+  return { notes, folders: scannedFolders, newFolders, manifestIds };
 }

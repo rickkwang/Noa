@@ -103,6 +103,11 @@ const buildWidthTheme = (w: number) => EditorView.theme({
   '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box' },
 });
 
+const buildReadOnlyExtensions = (readOnly: boolean) => [
+  EditorState.readOnly.of(readOnly),
+  EditorView.editable.of(!readOnly),
+];
+
 interface UseCodeMirrorOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
   note: Note | undefined;
@@ -112,6 +117,7 @@ interface UseCodeMirrorOptions {
   onSlashTrigger: (query: { query: string; index: number; x: number; y: number } | null) => void;
   editPaneRef: React.RefObject<HTMLDivElement | null>;
   maxWidth: number;
+  readOnly?: boolean;
 }
 
 export function useCodeMirror({
@@ -123,6 +129,7 @@ export function useCodeMirror({
   onSlashTrigger,
   editPaneRef,
   maxWidth,
+  readOnly = false,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -133,6 +140,8 @@ export function useCodeMirror({
   const cursorByNoteIdRef = useRef<Map<string, number>>(new Map());
   const widthCompartmentRef = useRef(new Compartment());
   const maxWidthRef = useRef(maxWidth);
+  const readOnlyCompartmentRef = useRef(new Compartment());
+  const readOnlyRef = useRef(readOnly);
 
   // Keep callback refs stable so the CodeMirror instance never captures stale closures
   const onUpdateRef = useRef(onUpdate);
@@ -230,6 +239,7 @@ export function useCodeMirror({
       insertMentionKeymap,
       keymap.of([...defaultKeymap]),
       cmPlaceholder('Start typing...'),
+      readOnlyCompartmentRef.current.of(buildReadOnlyExtensions(readOnlyRef.current)),
       EditorView.lineWrapping,
       isDark ? darkTheme : lightTheme,
       widthCompartmentRef.current.of(buildWidthTheme(maxWidthRef.current)),
@@ -279,6 +289,15 @@ export function useCodeMirror({
     view.dispatch({ effects: widthCompartmentRef.current.reconfigure(buildWidthTheme(maxWidth)) });
   }, [maxWidth]);
 
+  // Toggle readOnly without rebuilding the editor — a rebuild would drop the
+  // cursor, scroll position and undo history on every sync-status flip.
+  useEffect(() => {
+    readOnlyRef.current = readOnly;
+    const view = editorViewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: readOnlyCompartmentRef.current.reconfigure(buildReadOnlyExtensions(readOnly)) });
+  }, [readOnly]);
+
   // Sync external content changes without destroying undo history
   useEffect(() => {
     const view = editorViewRef.current;
@@ -295,7 +314,7 @@ export function useCodeMirror({
 
   const insertFormatting = useCallback((before: string, after: string = '') => {
     const view = editorViewRef.current;
-    if (!view) return;
+    if (!view || view.state.readOnly) return;
     const { state } = view;
     const { from, to } = state.selection.main;
     const selected = state.doc.sliceString(from, to);
@@ -316,7 +335,7 @@ export function useCodeMirror({
 
   const insertMention = useCallback((title: string, mentionIndex: number) => {
     const view = editorViewRef.current;
-    if (!view) return;
+    if (!view || view.state.readOnly) return;
     const { state } = view;
     const cursor = state.selection.main.head;
     view.dispatch({
@@ -329,7 +348,7 @@ export function useCodeMirror({
   // Insert a slash command at slashIndex (the position of `/`)
   const insertSlashCommand = useCallback((insertTemplate: string, slashIndex: number) => {
     const view = editorViewRef.current;
-    if (!view) return;
+    if (!view || view.state.readOnly) return;
     const { state } = view;
     const cursor = state.selection.main.head;
     const cursorOffset = insertTemplate.indexOf('{cursor}');

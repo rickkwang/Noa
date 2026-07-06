@@ -46,6 +46,7 @@ interface EditorProps {
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export default function Editor({
@@ -70,6 +71,7 @@ export default function Editor({
   onTabEnterComplete,
   onTabCloseAnimationComplete,
   onRestoreSnapshot,
+  readOnly = false,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -145,6 +147,7 @@ export default function Editor({
     onMentionTrigger: setMentionQuery,
     onSlashTrigger: setSlashQuery,
     editPaneRef,
+    readOnly,
   });
 
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
@@ -219,7 +222,7 @@ export default function Editor({
   // Paste/drop file support (images only → attachment system)
   useEffect(() => {
     const container = editorContainerRef.current;
-    if (!container || viewMode === 'preview') return;
+    if (!container || viewMode === 'preview' || readOnly) return;
 
     const handleFiles = async (files: File[]) => {
       for (const file of files) {
@@ -286,7 +289,7 @@ export default function Editor({
       container.removeEventListener('paste', handlePaste);
       container.removeEventListener('drop', handleDrop);
     };
-  }, [viewMode, insertFormatting, onNoteUpdate, uploadFile]);
+  }, [viewMode, insertFormatting, onNoteUpdate, readOnly, uploadFile]);
 
   const tocHeadings = useMemo(() => {
     if (!note) return [];
@@ -457,6 +460,7 @@ export default function Editor({
         onTabCloseAnimationComplete={onTabCloseAnimationComplete}
         onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
         isHistoryOpen={isHistoryOpen}
+        readOnly={readOnly}
       />
 
       {viewMode !== 'preview' && (
@@ -602,6 +606,7 @@ export default function Editor({
             const syntax = `![[${filename}]]`;
             insertFormatting(syntax);
           }}
+          readOnly={readOnly}
         />
       )}
     </div>

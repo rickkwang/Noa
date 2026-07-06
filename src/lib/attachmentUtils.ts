@@ -3,16 +3,17 @@ import { Attachment, Note } from '../types';
 export type ImportedAttachment = Attachment & { dataBase64?: string };
 export type ImportedNote = Note & { attachments?: ImportedAttachment[] };
 
-export function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read attachment blob.'));
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      resolve(result.split(',')[1] ?? '');
-    };
-    reader.readAsDataURL(blob);
-  });
+export async function blobToBase64(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(buffer).toString('base64');
+  }
+  const bytes = new Uint8Array(buffer);
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + 0x8000)));
+  }
+  return btoa(chunks.join(''));
 }
 
 export function inferAttachmentMimeType(file: Pick<File, 'name' | 'type'>): string {

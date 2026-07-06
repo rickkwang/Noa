@@ -676,6 +676,7 @@ Export regularly: use Settings → Data → Export Backup.`,
 
     const newFolder: Folder = { id: crypto.randomUUID(), name: nextPath, source: 'noa' };
     setFolders(prev => [...prev, newFolder]);
+    return newFolder.name;
   }, [folders]);
 
   const handleRenameFolder = useCallback((id: string, name: string) => {

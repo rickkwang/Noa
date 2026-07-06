@@ -9,6 +9,8 @@ import {
   resetVaultStatSnapshot,
   restorePersistedFsHandle,
   retryFullSync,
+  syncFolderCreate,
+  syncFolderDelete,
   syncFolderRename,
   syncNoteMove,
   syncNoteDelete,
@@ -36,6 +38,7 @@ interface UseFileSyncResult {
   permissionRevoked: boolean;
   needsReauth: boolean;
   autoRetryExhausted: boolean;
+  vaultCacheReadOnly: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   retry: () => void;
@@ -44,6 +47,8 @@ interface UseFileSyncResult {
   syncNoteOnMove: (id: string, previousFolderId: string, nextFolderId: string) => void;
   syncNoteOnRename: (id: string, newTitle: string) => void;
   syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[]) => void;
+  syncFolderOnCreate: (folderName: string) => void;
+  syncFolderOnDelete: (folderName: string) => void;
   syncNoteOnDelete: (id: string) => void;
   /** Transient notice after external vault changes were merged in; auto-clears. */
   externalUpdateNotice: string | null;
@@ -74,7 +79,10 @@ export function useFileSync({
   const [fsSyncError, setFsSyncError] = useState<string | null>(null);
   const [needsReauth, setNeedsReauth] = useState(false);
   const [autoRetryExhausted, setAutoRetryExhausted] = useState(false);
+  const [vaultHydrated, setVaultHydrated] = useState(false);
+  const [vaultHydrationPending, setVaultHydrationPending] = useState(true);
   const permissionRevoked = needsReauth || autoRetryExhausted;
+  const vaultCacheReadOnly = Boolean(isLoaded && (vaultHydrationPending || (fsHandle && (!vaultHydrated || fsSyncError))));
   const autoRetryAttempts = useRef(0);
   const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapped = useRef(false);
@@ -114,6 +122,8 @@ export function useFileSync({
     setFsSyncError(null);
     setNeedsReauth(false);
     setAutoRetryExhausted(false);
+    setVaultHydrated(true);
+    setVaultHydrationPending(false);
     resetRetryState();
   }, [resetRetryState]);
 
@@ -122,6 +132,8 @@ export function useFileSync({
     const appError = fromSyncError(error);
     setSyncStatus('error');
     setFsSyncError(appError.userMessage || normalized.message);
+    setVaultHydrated(false);
+    setVaultHydrationPending(false);
     if (normalized.code === 'permission_denied') {
       setNeedsReauth(true);
     }
@@ -160,7 +172,18 @@ export function useFileSync({
       const handle = fsHandleRef.current;
       if (!handle) return;
       setSyncStatus('syncing');
-      void retryFullSync(handle, notesRef.current, foldersRef.current)
+      void (async () => {
+        const currentNotes = notesRef.current;
+        const currentFolders = foldersRef.current;
+        const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
+          handle,
+          currentNotes,
+          currentFolders,
+          VAULT_AUTHORITATIVE_MERGE,
+        );
+        await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
+        await retryFullSync(handle, merged, mergedFolders);
+      })()
         .then(() => {
           if (generation !== retryGeneration.current) return;
           recordSuccess();
@@ -174,7 +197,7 @@ export function useFileSync({
           scheduleRetry();
         });
     }, delay);
-  }, [recordFailure, recordSuccess]); // fsHandleRef is a ref, not reactive — read inside callback
+  }, [onImportData, recordFailure, recordSuccess]); // fsHandleRef is a ref, not reactive — read inside callback
 
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
@@ -183,10 +206,21 @@ export function useFileSync({
     // escape hatch stays visible if this manual retry also fails.
     // recordSuccess clears it on the happy path.
     setSyncStatus('syncing');
-    void retryFullSync(fsHandle, notesRef.current, foldersRef.current)
+    void (async () => {
+      const currentNotes = notesRef.current;
+      const currentFolders = foldersRef.current;
+      const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
+        fsHandle,
+        currentNotes,
+        currentFolders,
+        VAULT_AUTHORITATIVE_MERGE,
+      );
+      await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
+      await retryFullSync(fsHandle, merged, mergedFolders);
+    })()
       .then(recordSuccess)
       .catch(recordFailure);
-  }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState]);
+  }, [fsHandle, syncStatus, onImportData, recordFailure, recordSuccess, resetRetryState]);
 
   const reconnect = useCallback(async () => {
     if (!fsHandle || syncStatus === 'syncing') return;
@@ -205,13 +239,12 @@ export function useFileSync({
       setFsSyncError(null);
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+      const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
         fsHandle,
         currentNotes,
         currentFolders,
         VAULT_AUTHORITATIVE_MERGE,
       );
-      const mergedFolders = [...currentFolders, ...newFolders];
       // Always prune so vault deletions are removed from storage.
       await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
       await retryFullSync(fsHandle, merged, mergedFolders);
@@ -230,6 +263,8 @@ export function useFileSync({
       bootstrapped.current = false;
       resetRetryState();
       setSyncStatus('idle');
+      setVaultHydrated(false);
+      setVaultHydrationPending(true);
       return;
     }
     if (bootstrapped.current) return;
@@ -248,21 +283,23 @@ export function useFileSync({
         setSyncStatus('idle');
         setNeedsReauth(false);
         setAutoRetryExhausted(false);
+        setVaultHydrated(true);
+        setVaultHydrationPending(false);
         return;
       }
       try {
         if (!bootstrapToken.current) return;
         setSyncStatus('syncing');
+        setVaultHydrated(false);
         setFsHandle(handle);
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+        const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
           handle,
           currentNotes,
           currentFolders,
           VAULT_AUTHORITATIVE_MERGE,
         );
-        const mergedFolders = [...currentFolders, ...newFolders];
         try {
           // Always prune so vault deletions are removed from storage.
           await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
@@ -320,14 +357,13 @@ export function useFileSync({
         setSyncStatus('syncing');
         const currentNotes = notesRef.current;
         const currentFolders = foldersRef.current;
-        const { notes: merged, newFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(
+        const { notes: merged, folders: mergedFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(
           fsHandle,
           currentNotes,
           currentFolders,
           VAULT_AUTHORITATIVE_MERGE,
         );
         if (disposed) return;
-        const mergedFolders = [...currentFolders, ...newFolders];
         await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
         showExternalUpdateNotice(updatedNoteIds.length, deletedNoteIds.length);
         recordSuccess();
@@ -350,18 +386,19 @@ export function useFileSync({
 
   const connect = useCallback(async () => {
     setSyncStatus('syncing');
+    setVaultHydrated(false);
+    setVaultHydrationPending(true);
     try {
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
       const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
-      const { notes: merged, newFolders, deletedNoteIds } = await mergeScannedNotes(
+      setFsHandle(handle);
+      const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
         handle,
         currentNotes,
         currentFolders,
         VAULT_AUTHORITATIVE_MERGE,
       );
-      const mergedFolders = [...currentFolders, ...newFolders];
-      setFsHandle(handle);
       try {
         await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
       } catch (importError) {
@@ -386,6 +423,8 @@ export function useFileSync({
     setFsSyncError(null);
     setNeedsReauth(false);
     setAutoRetryExhausted(false);
+    setVaultHydrated(true);
+    setVaultHydrationPending(false);
   }, [resetRetryState]);
 
   const syncNoteOnUpdate = useCallback(
@@ -457,6 +496,34 @@ export function useFileSync({
     [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
+  const syncFolderOnCreate = useCallback(
+    (folderName: string) => {
+      if (!fsHandle) return;
+      setSyncStatus('syncing');
+      void syncFolderCreate(fsHandle, folderName)
+        .then(recordSuccess)
+        .catch((error) => {
+          recordFailure(error);
+          scheduleRetry();
+        });
+    },
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
+  );
+
+  const syncFolderOnDelete = useCallback(
+    (folderName: string) => {
+      if (!fsHandle) return;
+      setSyncStatus('syncing');
+      void syncFolderDelete(fsHandle, folderName)
+        .then(recordSuccess)
+        .catch((error) => {
+          recordFailure(error);
+          scheduleRetry();
+        });
+    },
+    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
+  );
+
   const syncFolderOnRename = useCallback(
     (folderId: string, previousName: string, nextFolders: Folder[]) => {
       if (!fsHandle) return;
@@ -481,6 +548,7 @@ export function useFileSync({
     permissionRevoked,
     needsReauth,
     autoRetryExhausted,
+    vaultCacheReadOnly,
     connect,
     disconnect,
     retry,
@@ -489,6 +557,8 @@ export function useFileSync({
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
+    syncFolderOnCreate,
+    syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,
   };

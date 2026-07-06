@@ -7,6 +7,7 @@ interface AttachmentPanelProps {
   onUpload: (file: File) => Promise<AttachmentError | null>;
   onDelete: (attachmentId: string) => void | Promise<void>;
   onInsertReference: (filename: string, mimeType: string) => void;
+  readOnly?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -27,7 +28,7 @@ const ERROR_MESSAGES: Record<AttachmentError, string> = {
   upload_failed: 'Upload failed, please try again',
 };
 
-export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertReference }: AttachmentPanelProps) {
+export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertReference, readOnly = false }: AttachmentPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | File[]) => {
+    if (readOnly) return;
     setError(null);
     for (const file of Array.from(files)) {
       const err = await onUpload(file);
@@ -49,6 +51,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setIsDragOver(true);
   };
 
@@ -56,6 +59,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setIsDragOver(false);
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   };
@@ -78,8 +82,9 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
       >
         <div className="flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity h-0 group-hover:h-auto overflow-hidden">
           <button
+            disabled={readOnly}
             onClick={() => fileInputRef.current?.click()}
-            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Add Attachment"
           >
             + Attachments
@@ -115,8 +120,9 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
           <span className="ml-0.5 text-[#CC7D5E]">({attachments.length})</span>
         </button>
         <button
+          disabled={readOnly}
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
           title="Add Attachment"
         >
           + Add
@@ -154,8 +160,9 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
               >
                 <span className="text-base leading-none shrink-0">{fileIcon(att.mimeType)}</span>
                   <button
+                  disabled={readOnly}
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2D]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70"
+                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2D]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2D]/70 disabled:cursor-default"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}
@@ -189,8 +196,9 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                   </div>
                 ) : (
                   <button
+                    disabled={readOnly}
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-[10px] text-[#2D2D2D]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0"
+                    className="text-[10px] text-[#2D2D2D]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
                     title="Delete Attachment"
                   >
                     ✕

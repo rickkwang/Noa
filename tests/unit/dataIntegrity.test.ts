@@ -24,6 +24,7 @@ const noteWithAttachment = {
       mimeType: 'image/png',
       size: 123,
       createdAt: '2024-01-01T00:00:00.000Z',
+      vaultPath: 'attachments/abc/att-1-image.png',
     },
   ],
 };
@@ -80,6 +81,7 @@ describe('normalizeAndValidateNotes', () => {
     expect(report.ok).toBe(true);
     expect(notes[0].attachments).toHaveLength(1);
     expect(notes[0].attachments?.[0].filename).toBe('image.png');
+    expect(notes[0].attachments?.[0].vaultPath).toBe('attachments/abc/att-1-image.png');
   });
 
   it('preserves note source when provided', () => {

@@ -1,6 +1,7 @@
 import { Folder, Note } from '../types';
 import {
   clearPersistedHandle,
+  createFolderDirectory,
   deleteNoteFile,
   getPersistedHandle,
   persistHandle,
@@ -69,6 +70,17 @@ export type VaultMergeMode = 'newest-wins' | 'vault-authoritative';
 
 export interface MergeVaultNotesOptions {
   mode?: VaultMergeMode;
+}
+
+function mergeFreshVaultFolders(current: Folder[], scanned: Folder[]): Folder[] {
+  const merged = [...current];
+  const names = new Set(current.map((folder) => folder.name));
+  for (const folder of scanned) {
+    if (names.has(folder.name)) continue;
+    merged.push(folder);
+    names.add(folder.name);
+  }
+  return merged;
 }
 
 /**
@@ -180,19 +192,26 @@ export async function mergeScannedNotes(
   notes: Note[],
   folders: Folder[],
   options: MergeVaultNotesOptions = {},
-): Promise<{ notes: Note[]; newFolders: Folder[]; deletedNoteIds: string[]; updatedNoteIds: string[] }> {
+): Promise<{ notes: Note[]; folders: Folder[]; newFolders: Folder[]; deletedNoteIds: string[]; updatedNoteIds: string[] }> {
+  // Land any in-flight debounced edits on disk first — the merge below treats
+  // disk as authoritative, so scanning past a pending write would revert the
+  // note to its stale on-disk content.
+  await flushAllPendingNoteWrites();
   // Prime the poller's stat snapshot BEFORE reading contents: any external write
   // that lands mid-scan keeps an older mtime in the snapshot and is re-detected
   // on the next poll instead of being silently missed.
   const stats = await withTimeout(scanNoteFileStats(handle), SCAN_TIMEOUT_MS, 'Vault stat scan');
-  const { notes: scanned, newFolders, manifestIds } = await withTimeout(
+  const { notes: scanned, folders: scannedFolders, newFolders, manifestIds } = await withTimeout(
     scanDirectory(handle, folders),
     SCAN_TIMEOUT_MS,
     'Vault directory scan'
   );
   _vaultStatSnapshot = stats;
   const { notes: merged, deletedNoteIds, updatedNoteIds } = mergeVaultNotes(notes, scanned, manifestIds, options);
-  return { notes: merged, newFolders, deletedNoteIds, updatedNoteIds };
+  const mergedFolders = options.mode === 'vault-authoritative'
+    ? (scanned.length === 0 && manifestIds.size === 0 ? mergeFreshVaultFolders(folders, scannedFolders) : scannedFolders)
+    : [...folders, ...newFolders];
+  return { notes: merged, folders: mergedFolders, newFolders, deletedNoteIds, updatedNoteIds };
 }
 
 // ---------------------------------------------------------------------------
@@ -280,16 +299,17 @@ async function deleteNoteFileTracked(
 
 let _vaultWriteQueue: Promise<void> = Promise.resolve();
 
-// Per-note pending timers: noteId → { timer, resolve/reject }
-const _noteDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Per-note pending timers: noteId → { timer, fn } — fn is kept so pending
+// writes can be flushed synchronously before a vault scan reads the disk.
+const _noteDebounceTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; fn: () => Promise<void> }>();
 const _notePendingSettlers = new Map<string, Array<{ resolve: () => void; reject: (err: unknown) => void }>>();
 
 /** Flush a note write immediately, skipping the debounce. */
 function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> {
   // Cancel any pending debounce for this note.
-  const t = _noteDebounceTimers.get(noteId);
-  if (t !== undefined) {
-    clearTimeout(t);
+  const pending = _noteDebounceTimers.get(noteId);
+  if (pending !== undefined) {
+    clearTimeout(pending.timer);
     _noteDebounceTimers.delete(noteId);
   }
 
@@ -325,14 +345,27 @@ function debouncedNoteWrite(noteId: string, fn: () => Promise<void>, delayMs = 3
 
     // Reset the debounce timer — only the last fn wins.
     const existing = _noteDebounceTimers.get(noteId);
-    if (existing !== undefined) clearTimeout(existing);
+    if (existing !== undefined) clearTimeout(existing.timer);
 
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       _noteDebounceTimers.delete(noteId);
       flushNoteWrite(noteId, fn);
     }, delayMs);
-    _noteDebounceTimers.set(noteId, t);
+    _noteDebounceTimers.set(noteId, { timer, fn });
   });
+}
+
+/**
+ * Flush every pending debounced note write to disk and wait for the queue to
+ * drain. Called before vault scans: the disk is authoritative, so a scan must
+ * never read a file that is about to be overwritten by an in-flight edit —
+ * the stale disk content would clobber the newer in-memory note.
+ */
+async function flushAllPendingNoteWrites(): Promise<void> {
+  for (const [noteId, pending] of Array.from(_noteDebounceTimers.entries())) {
+    flushNoteWrite(noteId, pending.fn);
+  }
+  await _vaultWriteQueue;
 }
 
 /** For structural operations (rename, delete, move, folder ops) that must run immediately. */
@@ -392,6 +425,22 @@ export async function syncNoteMove(
   });
 }
 
+export async function syncFolderCreate(
+  handle: FileSystemDirectoryHandle,
+  folderName: string,
+): Promise<void> {
+  await withVaultLock(() => createFolderDirectory(handle, folderName));
+}
+
+export async function syncFolderDelete(
+  handle: FileSystemDirectoryHandle,
+  folderName: string,
+): Promise<void> {
+  // Only empty parts of the tree are removed — untracked files (PDFs,
+  // .canvas, ...) and their parent directories survive.
+  await withVaultLock(() => removeEmptyFolderTree(handle, folderName));
+}
+
 export async function syncFolderRename(
   handle: FileSystemDirectoryHandle,
   folderId: string,
@@ -427,6 +476,13 @@ export async function syncFolderRename(
     for (const note of notes.filter((n) => affectedFolderIds.has(n.folder))) {
       await deleteNoteFileTracked(handle, note, previousFolders, { keepAttachments: true });
       await writeNoteTracked(handle, note, currentFolders);
+    }
+    // Empty (sub)folders have no note writes to materialise their new
+    // directories — create them explicitly so the rename survives on disk.
+    for (const folder of currentFolders) {
+      if (affectedFolderIds.has(folder.id)) {
+        await createFolderDirectory(handle, folder.name);
+      }
     }
     await removeEmptyFolderTree(handle, previousName);
   });

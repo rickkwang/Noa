@@ -26,6 +26,7 @@ describe('fileSystemStorage frontmatter write-back', () => {
       'links: []',
       'linkRefs: []',
       'createdAt: 2026-04-09T12:00:00.000Z',
+      'noaSource: noa',
       'created: 2026-04-05',
     ].join('\n');
 
@@ -39,6 +40,7 @@ describe('fileSystemStorage frontmatter write-back', () => {
 
   it('does not inject Noa metadata when writing back an imported note', () => {
     const note = makeNote({
+      source: 'obsidian-import',
       tags: ['work'],
       rawFrontmatter: ['title: Keep me', 'tags:', '  - work', 'created: 2026-04-05'].join('\n'),
     });
@@ -51,15 +53,38 @@ describe('fileSystemStorage frontmatter write-back', () => {
     expect(frontmatter).not.toContain('links:');
     expect(frontmatter).not.toContain('linkRefs:');
     expect(frontmatter).not.toContain('createdAt:');
+    expect(frontmatter).not.toContain('noaSource:');
   });
 
-  it('writes only tags for notes without existing frontmatter', () => {
+  it('writes recoverable Noa identity metadata for native notes without existing frontmatter', () => {
     const note = makeNote({ tags: ['work', 'project/x'] });
     expect(__test__.buildFrontMatter(note)).toBe([
       '---',
+      'id: note-1',
+      'createdAt: "2026-04-09T12:00:00.000Z"',
+      'noaSource: noa',
       'tags:',
       '  - work',
       '  - project/x',
+      '---',
+      '',
+    ].join('\n'));
+  });
+
+  it('does not duplicate existing tags when adding native Noa identity metadata', () => {
+    const note = makeNote({
+      tags: ['work'],
+      rawFrontmatter: ['title: Keep me', 'tags:', '  - work'].join('\n'),
+    });
+
+    expect(__test__.buildFrontMatter(note)).toBe([
+      '---',
+      'title: Keep me',
+      'tags:',
+      '  - work',
+      'id: note-1',
+      'createdAt: "2026-04-09T12:00:00.000Z"',
+      'noaSource: noa',
       '---',
       '',
     ].join('\n'));

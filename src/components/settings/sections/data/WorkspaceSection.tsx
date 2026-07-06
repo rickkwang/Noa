@@ -81,7 +81,7 @@ export default function WorkspaceSection({
       {isFileSystemSupported && (
         <SettingItem
           label="Vault Folder"
-          description={fsHandle ? `Two-way syncing all notes with: ${fsHandle.name} (${syncStatusLabel})` : 'Connect a folder to keep all notes two-way synced as Markdown files on disk.'}
+          description={fsHandle ? `Using ${fsHandle.name} as the Markdown vault (${syncStatusLabel})` : 'Connect a folder to make Markdown files on disk the source of truth.'}
           stacked
         >
           <div className="space-y-2">
@@ -121,10 +121,10 @@ export default function WorkspaceSection({
               </p>
             )}
             <p className="text-xs text-[#2D2D2D]/60">
-              Sync status: {syncStatusLabel}. Sync is two-way: edits, renames and deletions made in other apps (Obsidian, VS Code, Finder) are picked up automatically. When both sides change the same note, the newer version wins — version history keeps the other side.
+              Sync status: {syncStatusLabel}. When a vault is connected, Noa refreshes its local cache from the Markdown files on disk. Edits, renames and deletions made in other apps are picked up automatically.
             </p>
             <p className="text-xs text-[#2D2D2D]/60">
-              All notes — including ones created in Noa — are written to the connected folder as Markdown files on connect.
+              Notes created in Noa are written to the connected folder as Markdown with recoverable Noa identity metadata.
             </p>
             <p className="text-xs text-[#2D2D2D]/60">
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.

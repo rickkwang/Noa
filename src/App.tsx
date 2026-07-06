@@ -103,6 +103,7 @@ export default function App() {
     permissionRevoked,
     needsReauth,
     autoRetryExhausted,
+    vaultCacheReadOnly,
     connect,
     disconnect,
     retry,
@@ -111,6 +112,8 @@ export default function App() {
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
+    syncFolderOnCreate,
+    syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,
   } = useFileSync({
@@ -122,6 +125,12 @@ export default function App() {
     ensureInitialNote,
     onImportData: handleImportData,
   });
+
+  const blockVaultCacheWrite = useCallback(() => {
+    if (!vaultCacheReadOnly) return false;
+    setSaveError('Vault is the source of truth. Reconnect or retry sync before making changes.');
+    return true;
+  }, [setSaveError, vaultCacheReadOnly]);
 
   const autoBackup = useAutoBackup({
     notes,
@@ -158,16 +167,19 @@ export default function App() {
   }, [isLoaded, fsHandle, syncStatus]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
+    if (blockVaultCacheWrite()) return;
     _handleUpdateNote(id, content);
     syncNoteOnUpdate(id, content);
-  }, [_handleUpdateNote, syncNoteOnUpdate]);
+  }, [_handleUpdateNote, blockVaultCacheWrite, syncNoteOnUpdate]);
 
   const handleRenameNote = useCallback((id: string, newTitle: string) => {
+    if (blockVaultCacheWrite()) return;
     _handleRenameNote(id, newTitle);
     syncNoteOnRename(id, newTitle);
-  }, [_handleRenameNote, syncNoteOnRename]);
+  }, [_handleRenameNote, blockVaultCacheWrite, syncNoteOnRename]);
 
   const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
+    if (blockVaultCacheWrite()) return '';
     const createdId = _handleCreateNote(folderId, initialContent);
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
     const userTemplates = settings.templates?.userTemplates ?? [];
@@ -175,24 +187,56 @@ export default function App() {
       waitingForTemplateRef.current = true;
     }
     return createdId;
-  }, [_handleCreateNote, settings.templates?.userTemplates]);
+  }, [_handleCreateNote, blockVaultCacheWrite, settings.templates?.userTemplates]);
+
+  const handleSaveNoteGuarded = useCallback((note: Parameters<typeof handleSaveNote>[0]) => {
+    if (blockVaultCacheWrite()) return;
+    handleSaveNote(note);
+  }, [blockVaultCacheWrite, handleSaveNote]);
+
+  const handleImportNoteGuarded = useCallback((...args: Parameters<typeof handleImportNote>) => {
+    if (blockVaultCacheWrite()) return;
+    handleImportNote(...args);
+  }, [blockVaultCacheWrite, handleImportNote]);
+
+  const handleOpenDailyNoteGuarded = useCallback(() => {
+    if (blockVaultCacheWrite()) return;
+    handleOpenDailyNote();
+  }, [blockVaultCacheWrite, handleOpenDailyNote]);
+
+  const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
+    if (blockVaultCacheWrite()) return;
+    handleToggleTask(task);
+  }, [blockVaultCacheWrite, handleToggleTask]);
+
+  const restoreSnapshotGuarded = useCallback(async (snapshot: Parameters<typeof restoreSnapshot>[0]) => {
+    if (blockVaultCacheWrite()) return;
+    await restoreSnapshot(snapshot);
+  }, [blockVaultCacheWrite, restoreSnapshot]);
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
   useEffect(() => { activeNoteIdRef.current = activeNoteId; }, [activeNoteId]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
+    if (blockVaultCacheWrite()) return;
     const note = notesRef.current.find((item) => item.id === id);
     if (!note || note.folder === folderId) return;
     _handleMoveNote(id, folderId);
     syncNoteOnMove(id, note.folder, folderId);
-  }, [_handleMoveNote, syncNoteOnMove]);
+  }, [_handleMoveNote, blockVaultCacheWrite, syncNoteOnMove]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
-    _handleCreateFolder(parentFolderId);
-  }, [_handleCreateFolder]);
+    if (blockVaultCacheWrite()) return;
+    const createdName = _handleCreateFolder(parentFolderId);
+    // Materialise the directory on disk immediately (Obsidian-style): an
+    // empty folder that only lives in IndexedDB would be dropped by the next
+    // disk-authoritative scan.
+    if (createdName) syncFolderOnCreate(createdName);
+  }, [_handleCreateFolder, blockVaultCacheWrite, syncFolderOnCreate]);
 
   const handleRenameFolder = useCallback((id: string, newName: string) => {
+    if (blockVaultCacheWrite()) return;
     const oldFolder = folders.find((folder) => folder.id === id);
     if (!oldFolder) return;
     _handleRenameFolder(id, newName);
@@ -208,7 +252,7 @@ export default function App() {
     });
 
     syncFolderOnRename(id, previousName, nextFolders);
-  }, [_handleRenameFolder, folders, syncFolderOnRename]);
+  }, [_handleRenameFolder, blockVaultCacheWrite, folders, syncFolderOnRename]);
 
   const closeTabById = useCallback((id: string) => {
     const current = openTabIdsRef.current;
@@ -250,25 +294,31 @@ export default function App() {
   }, [setActiveNoteId]);
 
   const handleDeleteNote = useCallback((id: string) => {
+    if (blockVaultCacheWrite()) return;
     void deleteNoteWithLocalFirst({
       id,
       deleteLocal: _handleDeleteNote,
       closeTab: closeTabById,
       syncDelete: syncNoteOnDelete,
     });
-  }, [_handleDeleteNote, closeTabById, syncNoteOnDelete]);
+  }, [_handleDeleteNote, blockVaultCacheWrite, closeTabById, syncNoteOnDelete]);
 
   const handleDeleteFolder = useCallback((id: string) => {
+    if (blockVaultCacheWrite()) return;
+    const folderName = folders.find((folder) => folder.id === id)?.name;
     void (async () => {
       try {
         const deletedNoteIds = await _handleDeleteFolder(id);
         deletedNoteIds.forEach((noteId) => closeTabById(noteId));
         deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
+        // Remove the (now empty) directory tree so the next disk-authoritative
+        // scan does not resurrect the deleted folder. Untracked files survive.
+        if (folderName) syncFolderOnDelete(folderName);
       } catch (err) {
         console.error('[App] handleDeleteFolder failed:', err);
       }
     })();
-  }, [_handleDeleteFolder, closeTabById, syncNoteOnDelete]);
+  }, [_handleDeleteFolder, blockVaultCacheWrite, closeTabById, folders, syncFolderOnDelete, syncNoteOnDelete]);
 
   const handleDisconnectFolder = useCallback(async () => {
     try {
@@ -537,7 +587,7 @@ export default function App() {
   const commandPalette = useCommandPalette({
     notes,
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
-    onOpenDailyNote: () => handleOpenDailyNote(),
+    onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenSettings: () => setIsSettingsOpen(true),
     onFocusSearch: () => {
       searchInputRef.current?.focus();
@@ -569,7 +619,7 @@ export default function App() {
     searchQuery,
     searchInputRef,
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
-    onOpenDailyNote: () => handleOpenDailyNote(),
+    onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenCommandPalette: () => commandPalette.setIsOpen(true),
     onFocusSearch: () => {
       searchInputRef.current?.focus();
@@ -632,7 +682,7 @@ export default function App() {
         onSearchChange={setSearchQuery}
         showDailyNote={settings.corePlugins.dailyNotes}
         searchInputRef={searchInputRef}
-        onOpenDailyNote={() => handleOpenDailyNote()}
+        onOpenDailyNote={handleOpenDailyNoteGuarded}
       />}
       <div className="flex-1 flex overflow-hidden relative">
         {isMobile && isSidebarOpen && (
@@ -689,8 +739,8 @@ export default function App() {
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
                 onUpdateNoteContent={handleUpdateNote}
-                onOpenDailyNote={handleOpenDailyNote}
-                onImportNote={handleImportNote}
+                onOpenDailyNote={handleOpenDailyNoteGuarded}
+                onImportNote={handleImportNoteGuarded}
                 onSearchTag={(tag) => setSearchQuery(`tag:${tag}`)}
                 onClearSearch={() => setSearchQuery('')}
                 caseSensitive={settings.search.caseSensitive}
@@ -714,7 +764,7 @@ export default function App() {
                 note={activeNote}
                 allNotes={notes}
                 onUpdate={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
-                onNoteUpdate={handleSaveNote}
+                onNoteUpdate={handleSaveNoteGuarded}
                 onRename={(title) => { if (activeNoteId) handleRenameNote(activeNoteId, title); }}
                 onClose={() => handleTabClose(activeNoteId)}
                 onNavigateToNoteLegacy={navigateByTitle}
@@ -731,7 +781,8 @@ export default function App() {
                 onNewTab={handleNewTab}
                 onTabEnterComplete={handleTabEnterComplete}
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
-                onRestoreSnapshot={restoreSnapshot}
+                onRestoreSnapshot={restoreSnapshotGuarded}
+                readOnly={vaultCacheReadOnly}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2D]/30 font-redaction select-none">
@@ -780,7 +831,7 @@ export default function App() {
               <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading panel…</div>}>
                 <RightPanel
                   tasks={globalTasks}
-                  onToggleTask={handleToggleTask}
+                  onToggleTask={handleToggleTaskGuarded}
                   onNavigateToNoteById={(id) => {
                     navigateById(id);
                     if (isMobile) setIsRightPanelOpen(false);
@@ -822,9 +873,9 @@ export default function App() {
           <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
           <div className="text-xs text-[#2D2D2D]/60 leading-relaxed mb-3">
             {needsReauth
-              ? 'Vault sync is paused — changes will NOT sync to your folder until reconnected. Notes are saved locally only.'
+              ? 'Vault access is paused. Reconnect the folder before editing; cached notes are read-only.'
               : autoRetryExhausted
-                ? 'Vault sync failed after several attempts. Notes are saved locally only until the next sync succeeds.'
+                ? 'Vault sync failed after several attempts. Retry or disconnect before editing; cached notes are read-only.'
                 : fsSyncError}
           </div>
           <div className="flex gap-2">

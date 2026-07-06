@@ -96,6 +96,7 @@ interface EditorHeaderProps {
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
   isDark: boolean;
+  readOnly?: boolean;
 }
 
 export function EditorHeader({
@@ -125,6 +126,7 @@ export function EditorHeader({
   onToggleHistory,
   isHistoryOpen,
   isDark,
+  readOnly = false,
 }: EditorHeaderProps) {
   const tabStripRef = useRef<HTMLDivElement>(null);
   const pendingInstantTabScrollRef = useRef(false);
@@ -227,13 +229,14 @@ export function EditorHeader({
                           onKeyDown={handleTitleKeyDownGuarded}
                           onCompositionStart={handleCompositionStart}
                           onCompositionEnd={handleCompositionEnd}
+                          disabled={readOnly}
                           className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
                         />
                       ) : (
                         <span
                           className="text-xs font-bold truncate min-w-0 flex-1"
-                          onDoubleClick={isActiveTab ? () => onSetEditingTitle(true) : undefined}
-                          title={isActiveTab ? 'Double-click to rename' : tab.title}
+                          onDoubleClick={isActiveTab && !readOnly ? () => onSetEditingTitle(true) : undefined}
+                          title={isActiveTab && !readOnly ? 'Double-click to rename' : tab.title}
                         >
                           {tab.title || 'Untitled'}
                         </span>
@@ -283,13 +286,14 @@ export function EditorHeader({
                     onKeyDown={handleTitleKeyDownGuarded}
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
+                    disabled={readOnly}
                     className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
                   />
                 ) : (
                   <span
                     className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
-                    onClick={() => onSetEditingTitle(true)}
-                    title="Click to rename"
+                    onClick={readOnly ? undefined : () => onSetEditingTitle(true)}
+                    title={readOnly ? note.title : 'Click to rename'}
                   >
                     {note.title || 'Untitled'}
                   </span>

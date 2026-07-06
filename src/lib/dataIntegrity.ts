@@ -40,6 +40,7 @@ function normalizeAttachment(
   const size = typeof obj.size === 'number' ? obj.size : Number(obj.size ?? 0);
   const createdAt = isString(obj.createdAt) ? obj.createdAt : new Date().toISOString();
   const attachmentNoteId = isString(obj.noteId) ? obj.noteId : noteId;
+  const vaultPath = isString(obj.vaultPath) ? obj.vaultPath : undefined;
 
   if (!id.trim() || !filename.trim()) {
     issues.push({
@@ -56,6 +57,7 @@ function normalizeAttachment(
     mimeType,
     size: Number.isFinite(size) ? size : 0,
     createdAt,
+    ...(vaultPath ? { vaultPath } : {}),
   };
 }
 
