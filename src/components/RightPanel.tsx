@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 import { GlobalTask, Note, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
@@ -6,7 +6,7 @@ import { buildGraphModel } from '../lib/graphModel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { useOutgoingLinks } from '../hooks/useOutgoingLinks';
-import { getBacklinks } from '../lib/noteUtils';
+import { computeTopologySignature, getBacklinks } from '../lib/noteUtils';
 import { TasksPanel } from './rightPanel/TasksPanel';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
@@ -280,13 +280,21 @@ function GraphInfoPanel({
   tagFilter,
   searchQuery,
 }: GraphInfoPanelProps) {
-  const graphModel = useMemo(() => buildGraphModel(notes, {
+  // Same guard as GraphView: topologyKey stands in for `notes`, so content-only
+  // edits (which change the notes array identity on every debounced save) don't
+  // rebuild the whole graph model — only id/title/link/tag changes do.
+  const topologyKey = useMemo(() => computeTopologySignature(notes), [notes]);
+  const stableNotesRef = useRef<{ key: string; notes: Note[] }>({ key: '', notes: [] });
+  if (stableNotesRef.current.key !== topologyKey) {
+    stableNotesRef.current = { key: topologyKey, notes };
+  }
+  const graphModel = useMemo(() => buildGraphModel(stableNotesRef.current.notes, {
     activeNoteId,
     hideIsolated,
     localDepth,
     tagFilter,
     searchQuery,
-  }), [notes, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery]);
+  }), [topologyKey, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery]);
   const { stats, activeConnections } = graphModel;
   // Lookup map so per-row title resolution is O(1) instead of scanning `notes`
   // for every connection / ranked entry on each render.

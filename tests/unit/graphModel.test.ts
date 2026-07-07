@@ -50,6 +50,20 @@ describe('buildGraphModel', () => {
     expect(model.stats.isolated).toBe(1);
   });
 
+  it('hides nodes whose only links point at filtered-out notes when hideIsolated is on', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'Alpha', tags: ['keep'], links: ['Beta'], linkRefs: ['b'] }),
+      note({ id: 'b', title: 'Beta', tags: ['keep'], links: [], linkRefs: [] }),
+      note({ id: 'c', title: 'Caro', tags: ['keep'], links: ['Delta'], linkRefs: ['d'] }),
+      note({ id: 'd', title: 'Delta', tags: ['drop'], links: [], linkRefs: [] }),
+    ], { tagFilter: ['keep'], hideIsolated: true });
+
+    // c's only neighbour (d) is filtered out, so c is isolated in the visible
+    // graph and must be hidden — and stats.isolated must agree with the toggle.
+    expect(model.nodes.map((node) => node.id).sort()).toEqual(['a', 'b']);
+    expect(model.stats.isolated).toBe(0);
+  });
+
   it('filters stats and active connections with the same visible graph rules', () => {
     const model = buildGraphModel([
       note({ id: 'a', title: 'Alpha', tags: ['keep'], links: ['Beta', 'Gamma'], linkRefs: ['b', 'g'] }),

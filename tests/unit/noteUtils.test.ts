@@ -55,6 +55,28 @@ describe('computeTopologySignature', () => {
 
     expect(after).not.toBe(before);
   });
+
+  it('distinguishes the same value appearing in different fields', () => {
+    const asLink = computeTopologySignature([
+      note({ id: 'a', title: 'A', links: ['x'], linkRefs: [] }),
+    ]);
+    const asLinkRef = computeTopologySignature([
+      note({ id: 'a', title: 'A', links: [], linkRefs: ['x'] }),
+    ]);
+
+    expect(asLinkRef).not.toBe(asLink);
+  });
+
+  it('distinguishes values split differently across adjacent fields', () => {
+    const first = computeTopologySignature([
+      note({ id: 'ab', title: 'c' }),
+    ]);
+    const second = computeTopologySignature([
+      note({ id: 'a', title: 'bc' }),
+    ]);
+
+    expect(second).not.toBe(first);
+  });
 });
 
 describe('extractLinks', () => {

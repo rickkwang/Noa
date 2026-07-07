@@ -154,21 +154,29 @@ export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOpti
   }
 
   let visibleNodes = keepIds ? nodes.filter((node) => keepIds!.has(node.id)) : nodes;
-  if (options.hideIsolated) {
-    visibleNodes = visibleNodes.filter((node) =>
-      node.degree > 0 || (options.localDepth ?? 0) > 0 && node.id === options.activeNoteId
-    );
-  }
 
-  const visibleIds = new Set(visibleNodes.map((node) => node.id));
+  let visibleIds = new Set(visibleNodes.map((node) => node.id));
   const visibleLinks = allLinks.filter((link) => visibleIds.has(link.source) && visibleIds.has(link.target));
-  const visibleDegreeMap = new Map(visibleNodes.map((node) => [node.id, 0]));
+  let visibleDegreeMap = new Map(visibleNodes.map((node) => [node.id, 0]));
   visibleLinks.forEach((link) => {
     visibleDegreeMap.set(link.source, (visibleDegreeMap.get(link.source) ?? 0) + 1);
     if (link.target !== link.source) {
       visibleDegreeMap.set(link.target, (visibleDegreeMap.get(link.target) ?? 0) + 1);
     }
   });
+
+  if (options.hideIsolated) {
+    // Isolation is judged on the *visible* subgraph, not the full graph — a node
+    // whose neighbours are all filtered out is hidden too, so the toggle and
+    // stats.isolated can't contradict each other.
+    visibleNodes = visibleNodes.filter((node) =>
+      (visibleDegreeMap.get(node.id) ?? 0) > 0 ||
+      ((options.localDepth ?? 0) > 0 && node.id === options.activeNoteId)
+    );
+    // Dropped nodes had no visible links, so visibleLinks stays consistent.
+    visibleIds = new Set(visibleNodes.map((node) => node.id));
+    visibleDegreeMap = new Map(visibleNodes.map((node) => [node.id, visibleDegreeMap.get(node.id) ?? 0]));
+  }
   visibleNodes = visibleNodes.map((node) => ({
     ...node,
     degree: visibleDegreeMap.get(node.id) ?? 0,

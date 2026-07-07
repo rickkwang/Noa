@@ -154,6 +154,10 @@ export default function GraphView({
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
   const initialView = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const resetAnimationRef = useRef<number | null>(null);
+  // Set when a scheduled fit ran while the tab was hidden (rect 0 → fitView
+  // bails). The next visible apply() performs the missed fit; without this the
+  // graph can stay at the unfitted default camera forever.
+  const pendingFitRef = useRef(false);
   // Stable world-coord center for forceX/forceY — pinned per graph, not per
   // resize. Tracking width/height here would yank nodes toward a moving target
   // on every sidebar drag (visible as a viewport jump when grabbing a node).
@@ -173,22 +177,23 @@ export default function GraphView({
   // only — zoom + pan, never a canvas resize. Used on first layout, on reset, and
   // whenever the visible container changes, so the graph fills and stays centred
   // without reallocating the flicker-prone canvas backing store.
-  const fitView = useCallback((duration = 0) => {
+  const fitView = useCallback((duration = 0): boolean => {
     const fg = fgRef.current;
     const container = containerRef.current;
-    if (!fg || !container) return;
+    if (!fg || !container) return false;
     const bbox = fg.getGraphBbox();
-    if (!bbox || !Array.isArray(bbox.x) || !Array.isArray(bbox.y)) return;
+    if (!bbox || !Array.isArray(bbox.x) || !Array.isArray(bbox.y)) return false;
     const bboxW = Math.max(1, bbox.x[1] - bbox.x[0]);
     const bboxH = Math.max(1, bbox.y[1] - bbox.y[0]);
     const rect = container.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
+    if (rect.width <= 0 || rect.height <= 0) return false;
     const PAD = 24;
     // Cap at 2 so a small graph doesn't blow up to fill the canvas (matches the
     // previous zoom-to-fit behaviour).
     const k = Math.min(2, (rect.width - PAD * 2) / bboxW, (rect.height - PAD * 2) / bboxH);
     fg.centerAt((bbox.x[0] + bbox.x[1]) / 2, (bbox.y[0] + bbox.y[1]) / 2, duration);
     fg.zoom(Math.max(0.01, k), duration);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -197,6 +202,10 @@ export default function GraphView({
 
     const apply = () => {
       const rect = container.getBoundingClientRect();
+      // Hidden behind another tab (display:none) collapses the rect to 0. Bail
+      // so the 0-size doesn't register as a size change — otherwise returning
+      // to the tab re-fits and discards the user's pan/zoom.
+      if (rect.width <= 0 || rect.height <= 0) return;
       const stableSize = getStableCanvasSize();
       const targetW = stableSize.width;
       const targetH = Math.max(stableSize.height, Math.ceil(rect.height) + 2);
@@ -213,9 +222,20 @@ export default function GraphView({
       }
       visibleSizeRef.current = { width: visibleWidth, height: visibleHeight };
 
-      // Re-fit only when the visible container changes. This keeps panel drags
-      // smooth without resetting the graph on unrelated window resize events.
-      if (visibleSizeChanged) {
+      // Run a fit that was missed while the tab was hidden, then record the
+      // fitted camera so reset-view targets it instead of the unfitted one.
+      if (pendingFitRef.current) {
+        pendingFitRef.current = false;
+        if (fitView(0)) {
+          const center = fgRef.current?.centerAt();
+          const zoom = fgRef.current?.zoom();
+          if (center && zoom != null) {
+            initialView.current = { x: center.x, y: center.y, zoom };
+          }
+        }
+      } else if (visibleSizeChanged) {
+        // Re-fit only when the visible container changes. This keeps panel drags
+        // smooth without resetting the graph on unrelated window resize events.
         fitView(0);
       }
     };
@@ -274,13 +294,19 @@ export default function GraphView({
     return map;
   }, [topologyNotes]);
 
+  // activeNoteId only shapes the model in local mode (localDepth > 0). Keying
+  // graphData on it otherwise would mint fresh node objects on every note
+  // switch, and d3-force re-seeds positionless nodes — the whole layout would
+  // explode every time a node is clicked.
+  const localAnchorId = localDepth > 0 ? activeNoteId : undefined;
+
   const graphData = useMemo(() => {
     const topNotes = stableTopologyRef.current.notes;
 
     const model = buildGraphModel(topNotes, {
       hideIsolated,
       localDepth,
-      activeNoteId,
+      activeNoteId: localAnchorId,
       tagFilter,
       searchQuery,
     });
@@ -302,7 +328,7 @@ export default function GraphView({
     }));
 
     return { nodes, links };
-  }, [hideIsolated, topologyKey, localDepth, activeNoteId, tagFilter, searchQuery]);
+  }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery]);
 
   // Build neighbour set for hovered node
   const hoveredNeighbours = useMemo(() => {
@@ -352,11 +378,25 @@ export default function GraphView({
     // Reheat so updated forces actually move existing nodes; otherwise the
     // simulation sits at alpha≈0 and parameter changes are invisible.
     fgRef.current.d3ReheatSimulation();
-  }, [graphData.nodes.length, sizeByDegree]);
+    // Depend on graphData identity, not just node count: an in-flight reset
+    // animation zeroes charge/link strengths, so every rebuild must reapply
+    // them even when the node count is unchanged.
+  }, [graphData, sizeByDegree]);
 
   useEffect(() => {
     if (!fgRef.current) return;
+    // A reset-view animation still running against the previous graph would
+    // keep writing stale positions and, on finish, restore force strengths
+    // computed for the old node count. Cancel it — the physics effect above
+    // has already reapplied the correct strengths for this graph.
+    if (resetAnimationRef.current != null) {
+      cancelAnimationFrame(resetAnimationRef.current);
+      resetAnimationRef.current = null;
+    }
     initialPositions.current = new Map();
+    // The hovered node may not exist in the rebuilt graph; a stale id would
+    // dim every node and link with no way to recover until the next hover.
+    setHoveredNodeId(null);
     // Graph identity changed (topology, filter, etc.) — re-anchor physics center
     // to the current viewport so the new layout settles centered.
     physicsCenterRef.current = null;
@@ -364,8 +404,10 @@ export default function GraphView({
     let isActive = true;
     const timer = setTimeout(() => {
       if (!isActive) return;
-      // Fit to the visible area (zoom cap is built into fitView).
-      fitView(300);
+      // Fit to the visible area (zoom cap is built into fitView). While the tab
+      // is hidden the container rect is 0 and the fit is skipped — flag it so
+      // the next visible apply() performs it.
+      pendingFitRef.current = !fitView(300);
       // Save initial positions after layout has settled
       snapshotTimer = setTimeout(() => {
         if (!isActive) return;
@@ -374,10 +416,15 @@ export default function GraphView({
           if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
         });
         initialPositions.current = snapshot;
-        const center = fgRef.current?.centerAt();
-        const zoom = fgRef.current?.zoom();
-        if (center && zoom != null) {
-          initialView.current = { x: center.x, y: center.y, zoom };
+        // With a fit still pending the current camera is the unfitted one —
+        // don't record it, or reset-view would restore a bad viewport. The
+        // deferred fit records the camera instead.
+        if (!pendingFitRef.current) {
+          const center = fgRef.current?.centerAt();
+          const zoom = fgRef.current?.zoom();
+          if (center && zoom != null) {
+            initialView.current = { x: center.x, y: center.y, zoom };
+          }
         }
       }, 1000);
     }, 600);
@@ -515,13 +562,14 @@ export default function GraphView({
         nodeLabel="name"
         backgroundColor={bgColor}
         linkColor={(link: GraphLink) => {
-          const src = readLinkEndpointId(link.source);
-          const tgt = readLinkEndpointId(link.target);
-          if (hoveredNeighbours) {
-            // Only emphasise links whose BOTH endpoints are in the hovered set — i.e.
-            // direct connections of the hovered node. Links sharing just one endpoint
-            // (a neighbour's other spokes) dim like everything else. Matches linkWidth.
-            if (hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt)) {
+          if (hoveredNodeId) {
+            // Only emphasise links touching the hovered node itself — links
+            // between two of its neighbours dim like everything else. (A
+            // both-endpoints-in-neighbour-set check would wrongly light up
+            // neighbour↔neighbour edges in triangles.) Matches linkWidth.
+            const src = readLinkEndpointId(link.source);
+            const tgt = readLinkEndpointId(link.target);
+            if (src === hoveredNodeId || tgt === hoveredNodeId) {
               return link.bidirectional ? nodeColor : linkColor;
             }
             return `${linkColor}20`;
@@ -529,10 +577,10 @@ export default function GraphView({
           return link.bidirectional ? nodeColor : linkColor;
         }}
         linkWidth={(link: GraphLink) => {
-          if (hoveredNeighbours) {
+          if (hoveredNodeId) {
             const src = readLinkEndpointId(link.source);
             const tgt = readLinkEndpointId(link.target);
-            if (hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt)) {
+            if (src === hoveredNodeId || tgt === hoveredNodeId) {
               return link.bidirectional ? 3 : 2;
             }
             return 0.5;
@@ -542,10 +590,12 @@ export default function GraphView({
         linkDirectionalArrowLength={(link: GraphLink) => link.bidirectional ? 0 : 4}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link: GraphLink) => {
-          const src = readLinkEndpointId(link.source);
-          const tgt = readLinkEndpointId(link.target);
-          if (hoveredNeighbours && !(hoveredNeighbours.has(src) && hoveredNeighbours.has(tgt))) {
-            return `${linkColor}20`;
+          if (hoveredNodeId) {
+            const src = readLinkEndpointId(link.source);
+            const tgt = readLinkEndpointId(link.target);
+            if (src !== hoveredNodeId && tgt !== hoveredNodeId) {
+              return `${linkColor}20`;
+            }
           }
           return linkColor;
         }}

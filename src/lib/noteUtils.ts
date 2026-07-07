@@ -125,12 +125,25 @@ export const computeTopologySignature = (
     }
   };
 
+  // Terminate every value with \u0000 and every list field with \u0001 so
+  // boundaries stay unambiguous — otherwise id "ab" + title "c" hashes
+  // identically to id "a" + title "bc", and a value moving between
+  // links/linkRefs/tags is invisible to the signature.
+  const addValue = (value: string) => {
+    addString(value);
+    addString('\u0000');
+  };
+  const endField = () => addString('\u0001');
+
   notes.forEach((note) => {
-    addString(note.id);
-    addString(note.title);
-    (note.links ?? []).forEach(addString);
-    (note.linkRefs ?? []).forEach(addString);
-    (note.tags ?? []).forEach(addString);
+    addValue(note.id);
+    addValue(note.title);
+    (note.links ?? []).forEach(addValue);
+    endField();
+    (note.linkRefs ?? []).forEach(addValue);
+    endField();
+    (note.tags ?? []).forEach(addValue);
+    endField();
     hash ^= 0x9e3779b9;
   });
 
