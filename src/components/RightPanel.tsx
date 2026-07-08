@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
-import { GlobalTask, Note, AppSettings } from '../types';
+import { GlobalTask, Note, Folder, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
 import { buildGraphModel } from '../lib/graphModel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -45,6 +45,7 @@ interface RightPanelProps {
   activeTab: RightPanelTab;
   onTabChange: (tab: RightPanelTab) => void;
   notes: Note[];
+  folders?: Folder[];
   settings: AppSettings;
   activeNoteId?: string;
   onUpdateNote?: (content: string) => void;
@@ -52,10 +53,11 @@ interface RightPanelProps {
 
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
-  activeTab, onTabChange, notes, settings, activeNoteId, onUpdateNote,
+  activeTab, onTabChange, notes, folders, settings, activeNoteId, onUpdateNote,
 }: RightPanelProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const [hideIsolated, setHideIsolated] = useState(false);
+  const [showUnresolved, setShowUnresolved] = useState(true);
   const [graphSearch, setGraphSearch] = useState('');
   const deferredGraphSearch = useDeferredValue(graphSearch);
   const [showFilters, setShowFilters] = useState(false);
@@ -88,7 +90,7 @@ export default function RightPanel({
 
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
   const backlinksCount = useMemo(() => getBacklinks(activeNote, notes).length, [activeNote, notes]);
-  const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes);
+  const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes, folders);
   const outgoingCount = outgoingResolved.length;
 
   return (
@@ -163,7 +165,7 @@ export default function RightPanel({
       )}
       {activeTab === 'outgoing' && (
         <div key="outgoing" className="tab-fade-in flex flex-col flex-1 min-h-0">
-          <OutgoingLinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+          <OutgoingLinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
       {activeTab === 'properties' && (
@@ -229,20 +231,23 @@ export default function RightPanel({
                 onColorModeChange={setColorMode}
                 sizeByDegree={sizeByDegree}
                 onSizeByDegreeChange={setSizeByDegree}
+                showUnresolved={showUnresolved}
+                onShowUnresolvedChange={setShowUnresolved}
                 allTags={allTags}
                 tagFilter={tagFilter}
                 onTagFilterChange={setTagFilter}
               />
             )}
             <div className="flex-1 overflow-hidden">
-              <GraphView notes={notes} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
+              <GraphView notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                 hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
-                colorMode={colorMode} sizeByDegree={sizeByDegree} />
+                colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved} />
             </div>
           </div>
           <GraphInfoPanel
             notes={notes}
+            folders={folders}
             activeNoteId={activeNoteId}
             onNavigateToNoteById={onNavigateToNoteById}
             isDark={isDark}
@@ -250,6 +255,7 @@ export default function RightPanel({
             localDepth={localDepth}
             tagFilter={tagFilter}
             searchQuery={deferredGraphSearch}
+            showUnresolved={showUnresolved}
           />
         </div>
       )}
@@ -261,6 +267,7 @@ export default function RightPanel({
 
 interface GraphInfoPanelProps {
   notes: Note[];
+  folders?: Folder[];
   activeNoteId?: string;
   onNavigateToNoteById: (id: string) => void;
   isDark?: boolean;
@@ -268,10 +275,12 @@ interface GraphInfoPanelProps {
   localDepth?: number;
   tagFilter?: string[];
   searchQuery?: string;
+  showUnresolved?: boolean;
 }
 
 function GraphInfoPanel({
   notes,
+  folders,
   activeNoteId,
   onNavigateToNoteById,
   isDark = false,
@@ -279,14 +288,15 @@ function GraphInfoPanel({
   localDepth = 0,
   tagFilter,
   searchQuery,
+  showUnresolved = true,
 }: GraphInfoPanelProps) {
   // Same guard as GraphView: topologyKey stands in for `notes`, so content-only
   // edits (which change the notes array identity on every debounced save) don't
-  // rebuild the whole graph model — only id/title/link/tag changes do.
-  const topologyKey = useMemo(() => computeTopologySignature(notes), [notes]);
-  const stableNotesRef = useRef<{ key: string; notes: Note[] }>({ key: '', notes: [] });
+  // rebuild the whole graph model — only id/title/link/tag/folder changes do.
+  const topologyKey = useMemo(() => computeTopologySignature(notes, folders), [notes, folders]);
+  const stableNotesRef = useRef<{ key: string; notes: Note[]; folders: Folder[] }>({ key: '', notes: [], folders: [] });
   if (stableNotesRef.current.key !== topologyKey) {
-    stableNotesRef.current = { key: topologyKey, notes };
+    stableNotesRef.current = { key: topologyKey, notes, folders: folders ?? [] };
   }
   const graphModel = useMemo(() => buildGraphModel(stableNotesRef.current.notes, {
     activeNoteId,
@@ -294,11 +304,19 @@ function GraphInfoPanel({
     localDepth,
     tagFilter,
     searchQuery,
-  }), [topologyKey, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery]);
-  const { stats, activeConnections } = graphModel;
+    folders: stableNotesRef.current.folders,
+    showUnresolved,
+  }), [topologyKey, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery, showUnresolved]);
+  const { stats } = graphModel;
   // Lookup map so per-row title resolution is O(1) instead of scanning `notes`
   // for every connection / ranked entry on each render.
   const notesById = useMemo(() => new Map(notes.map(n => [n.id, n])), [notes]);
+  // Ghost connections have no note to list — drop them BEFORE slicing so the
+  // rendered rows and the "+N more" count agree.
+  const activeConnections = useMemo(
+    () => graphModel.activeConnections.filter((id) => notesById.has(id)),
+    [graphModel.activeConnections, notesById]
+  );
 
   return (
     <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
@@ -378,6 +396,8 @@ interface GraphFilterPanelProps {
   onColorModeChange: (v: GraphColorMode) => void;
   sizeByDegree: boolean;
   onSizeByDegreeChange: (v: boolean) => void;
+  showUnresolved: boolean;
+  onShowUnresolvedChange: (v: boolean) => void;
   allTags: string[];
   tagFilter: string[];
   onTagFilterChange: (v: string[]) => void;
@@ -392,6 +412,8 @@ function GraphFilterPanel({
   onColorModeChange,
   sizeByDegree,
   onSizeByDegreeChange,
+  showUnresolved,
+  onShowUnresolvedChange,
   allTags,
   tagFilter,
   onTagFilterChange,
@@ -459,6 +481,22 @@ function GraphFilterPanel({
           }
         >
           {sizeByDegree ? 'By Degree' : 'Uniform'}
+        </button>
+      </div>
+
+      {/* Unresolved link targets (ghost nodes) */}
+      <div className="flex items-center gap-2">
+        <span className={`${labelCls} w-12 shrink-0`}>Ghosts</span>
+        <button
+          onClick={() => onShowUnresolvedChange(!showUnresolved)}
+          title="Show links to notes that don't exist yet"
+          className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+          style={showUnresolved
+            ? { background: isDark ? '#EEEDEA' : '#2D2D2D', color: isDark ? '#262624' : '#EAE8E0', border: `1px solid ${isDark ? '#EEEDEA' : '#2D2D2D'}` }
+            : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.6)' }
+          }
+        >
+          {showUnresolved ? 'Shown' : 'Hidden'}
         </button>
       </div>
 

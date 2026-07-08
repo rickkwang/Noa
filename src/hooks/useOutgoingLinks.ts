@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Note } from '../types';
-import { buildTitleToIdsMap } from '../lib/noteUtils';
+import { Folder, Note } from '../types';
+import { buildLinkIndex, resolveLinkTarget } from '../lib/noteUtils';
 
 export interface OutgoingLinks {
   resolved: Note[];
@@ -10,51 +10,35 @@ export interface OutgoingLinks {
 /**
  * Single source of truth for a note's outgoing [[wikilinks]].
  *
- * `links` (extracted from content) is authoritative for which titles the
- * author currently references. `linkRefs` is only consulted to disambiguate
- * when the same title maps to multiple notes (title collisions). Any id in
- * `linkRefs` whose note's title is no longer in `links` is discarded — that
- * is the "ghost link" case we want to avoid.
+ * `links` (extracted from content) is authoritative for which targets the
+ * author currently references. Each target resolves to at most ONE note via
+ * the shared Obsidian-aligned resolver, so this panel always agrees with the
+ * knowledge graph's edges.
  */
 export function computeOutgoingLinks(
   activeNote: Note | undefined,
   notes: Note[],
+  folders: Folder[] = [],
 ): OutgoingLinks {
   if (!activeNote) return { resolved: [], unresolvedTitles: [] };
 
-  const titleToIds = buildTitleToIdsMap(notes);
+  const index = buildLinkIndex(notes, folders);
   const idToNote = new Map(notes.map((n) => [n.id, n]));
-  const linkTitles = activeNote.links ?? [];
-  const linkTitleSet = new Set(linkTitles);
   const seen = new Set<string>();
   const resolved: Note[] = [];
   const unresolvedTitles: string[] = [];
 
-  linkTitles.forEach((title) => {
-    const ids = titleToIds.get(title);
-    if (!ids || ids.length === 0) {
-      unresolvedTitles.push(title);
+  (activeNote.links ?? []).forEach((target) => {
+    const id = resolveLinkTarget(target, index, activeNote.folder ?? '');
+    if (!id) {
+      unresolvedTitles.push(target);
       return;
     }
-    ids.forEach((id) => {
-      if (id === activeNote.id || seen.has(id)) return;
-      const target = idToNote.get(id);
-      if (!target) return;
-      seen.add(id);
-      resolved.push(target);
-    });
-  });
-
-  // linkRefs supplements for title-collision disambiguation (a ref id whose
-  // title is still in links but was not picked up above). Ids whose titles
-  // have been removed from links are intentionally dropped.
-  (activeNote.linkRefs ?? []).forEach((id) => {
     if (id === activeNote.id || seen.has(id)) return;
-    const target = idToNote.get(id);
-    if (!target) return;
-    if (!linkTitleSet.has(target.title)) return;
+    const note = idToNote.get(id);
+    if (!note) return;
     seen.add(id);
-    resolved.push(target);
+    resolved.push(note);
   });
 
   return { resolved, unresolvedTitles };
@@ -63,6 +47,7 @@ export function computeOutgoingLinks(
 export function useOutgoingLinks(
   activeNote: Note | undefined,
   notes: Note[],
+  folders: Folder[] = [],
 ): OutgoingLinks {
-  return useMemo(() => computeOutgoingLinks(activeNote, notes), [activeNote, notes]);
+  return useMemo(() => computeOutgoingLinks(activeNote, notes, folders), [activeNote, notes, folders]);
 }

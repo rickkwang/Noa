@@ -769,6 +769,7 @@ export default function App() {
               <Editor
                 note={activeNote}
                 allNotes={notes}
+                folders={folders}
                 onUpdate={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
                 onNoteUpdate={handleSaveNoteGuarded}
                 onRename={(title) => { if (activeNoteId) handleRenameNote(activeNoteId, title); }}
@@ -846,6 +847,7 @@ export default function App() {
                   activeTab={activeRightTab}
                   onTabChange={setActiveRightTab}
                   notes={notes}
+                  folders={folders}
                   settings={settings}
                   activeNoteId={activeNote?.id}
                   onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}

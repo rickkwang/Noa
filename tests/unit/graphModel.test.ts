@@ -77,4 +77,84 @@ describe('buildGraphModel', () => {
     expect(model.stats.totalLinks).toBe(1);
     expect(model.activeConnections).toEqual(['b']);
   });
+
+  it('ignores stored linkRefs — edges come only from resolving links', () => {
+    // Stale frontmatter linkRefs used to union into the edge set, producing
+    // edges Obsidian doesn't have.
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', links: [], linkRefs: ['b'] }),
+      note({ id: 'b', title: 'B', links: [], linkRefs: [] }),
+    ]);
+    expect(model.links).toEqual([]);
+  });
+
+  it('shows unresolved links as ghost nodes with degree, deduped case-insensitively', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', links: ['Missing'] }),
+      note({ id: 'b', title: 'B', links: ['missing.MD'] }),
+    ]);
+    const ghost = model.nodes.find((n) => n.ghost);
+    expect(ghost?.id).toBe('ghost:missing');
+    expect(ghost?.degree).toBe(2);
+    expect(model.links).toHaveLength(2);
+    // "Your notes" stats skip ghosts.
+    expect(model.stats.totalNotes).toBe(2);
+    expect(model.stats.ranked.every(([id]) => !id.startsWith('ghost:'))).toBe(true);
+  });
+
+  it('keeps ghosts from distinct unresolved paths separate', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', links: ['x/Note', 'y/Note'] }),
+    ], { folders: [] });
+    expect(model.nodes.filter((n) => n.ghost).map((n) => n.id).sort()).toEqual(['ghost:x/note', 'ghost:y/note']);
+  });
+
+  it('does not create ghosts for attachment embeds', () => {
+    // ![[image.png]] lands in note.links; Obsidian hides attachments in the
+    // graph by default, so these must not paint ghost nodes.
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', links: ['screenshot.png', 'paper.PDF', 'Missing Note'] }),
+    ]);
+    expect(model.nodes.filter((n) => n.ghost).map((n) => n.id)).toEqual(['ghost:missing note']);
+  });
+
+  it('hides ghost nodes when showUnresolved is off', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', links: ['Missing'] }),
+    ], { showUnresolved: false });
+    expect(model.nodes.map((n) => n.id)).toEqual(['a']);
+    expect(model.links).toEqual([]);
+  });
+
+  it('resolves duplicate titles to a single edge (root wins)', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', folder: '', links: ['Dup'] }),
+      note({ id: 'root', title: 'Dup', folder: '' }),
+      note({ id: 'nested', title: 'Dup', folder: 'f1' }),
+    ], { folders: [{ id: 'f1', name: 'Projects' }] });
+    expect(model.links).toEqual([{ source: 'a', target: 'root', bidirectional: false }]);
+  });
+
+  it('draws edges for markdown-style relative links (Obsidian vault shape)', () => {
+    // Mirrors a real vault: an index note in "04-Writing" linking to notes in
+    // "04-Writing/Excerpts" via [text](./Excerpts/Note.md) markdown links.
+    const model = buildGraphModel([
+      note({ id: 'index', title: '一些摘抄', folder: 'w', links: ['./Excerpts/Vibe-Coding-Skill.md', 'Self-Reflection.md'] }),
+      note({ id: 'v', title: 'Vibe-Coding-Skill', folder: 'we' }),
+      note({ id: 'sr', title: 'Self-Reflection', folder: 'w' }),
+    ], { folders: [{ id: 'w', name: '04-Writing' }, { id: 'we', name: '04-Writing/Excerpts' }] });
+    expect(model.links).toEqual([
+      { source: 'index', target: 'v', bidirectional: false },
+      { source: 'index', target: 'sr', bidirectional: false },
+    ]);
+  });
+
+  it('resolves path links via folder names', () => {
+    const model = buildGraphModel([
+      note({ id: 'a', title: 'A', folder: '', links: ['Projects/Dup'] }),
+      note({ id: 'root', title: 'Dup', folder: '' }),
+      note({ id: 'nested', title: 'Dup', folder: 'f1' }),
+    ], { folders: [{ id: 'f1', name: 'Projects' }] });
+    expect(model.links).toEqual([{ source: 'a', target: 'nested', bidirectional: false }]);
+  });
 });

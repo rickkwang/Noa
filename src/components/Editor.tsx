@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
-import { Note, AppSettings } from '../types';
+import { Note, Folder, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { useCodeMirror } from './editor/useCodeMirror';
@@ -27,6 +27,7 @@ interface EditorTab {
 interface EditorProps {
   note?: Note;
   allNotes: Note[];
+  folders?: Folder[];
   onUpdate: (content: string) => void;
   onNoteUpdate?: (note: Note) => void;
   onRename?: (title: string) => void;
@@ -52,6 +53,7 @@ interface EditorProps {
 export default function Editor({
   note,
   allNotes,
+  folders,
   onUpdate,
   onNoteUpdate,
   onRename,
@@ -569,6 +571,7 @@ export default function Editor({
           <PreviewPane
             note={previewNote}
             allNotes={deferredAllNotes}
+            folders={folders}
             settings={settings}
             onNavigateToNoteLegacy={onNavigateToNoteLegacy}
             onNavigateToNoteById={onNavigateToNoteById}
@@ -585,6 +588,7 @@ export default function Editor({
           <PreviewPane
             note={printNote}
             allNotes={allNotes}
+            folders={folders}
             settings={printSettings}
             onNavigateToNoteLegacy={() => {}}
             onNavigateToNoteById={() => {}}

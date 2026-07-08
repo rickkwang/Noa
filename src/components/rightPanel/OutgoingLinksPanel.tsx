@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { ExternalLink } from '@/src/lib/icons';
-import { Note } from '../../types';
+import { Note, Folder } from '../../types';
+import { decodeLinkPath } from '../../lib/noteUtils';
 import { useOutgoingLinks } from '../../hooks/useOutgoingLinks';
 
 interface OutgoingLinksPanelProps {
   activeNote?: Note;
   notes: Note[];
+  folders?: Folder[];
   onNavigateToNoteById: (id: string) => void;
   isDark?: boolean;
 }
@@ -14,14 +16,20 @@ function getSnippet(content: string, targetTitle: string): string {
   if (!targetTitle) return '';
   const lines = content.split('\n');
   const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`\\[\\[${escaped}(?:\\|[^\\]]+)?\\]\\]`);
-  const idx = lines.findIndex(l => re.test(l));
+  // Match the ways the resolver accepts this target being written:
+  // case-insensitive, optional folder path prefix, optional .md suffix,
+  // optional #anchor, optional |alias (incl. table-escaped \|).
+  const re = new RegExp(`\\[\\[(?:[^\\]|#]*/)?${escaped}(?:\\.md)?(?:#[^\\]|]*)?(?:\\\\?\\|[^\\]]+)?\\]\\]`, 'i');
+  // Markdown-style internal link to the same note: [text](path/Title.md).
+  // Lines are %-decoded before testing so encoded targets still match.
+  const mdRe = new RegExp(`\\]\\((?:[^)]*/)?${escaped}\\.md(?:#[^)]*)?\\)`, 'i');
+  const idx = lines.findIndex(l => re.test(l) || mdRe.test(decodeLinkPath(l)));
   if (idx === -1) return '';
   return lines.slice(Math.max(0, idx - 1), idx + 2).join('\n').trim();
 }
 
-export function OutgoingLinksPanel({ activeNote, notes, onNavigateToNoteById, isDark = false }: OutgoingLinksPanelProps) {
-  const { resolved, unresolvedTitles } = useOutgoingLinks(activeNote, notes);
+export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNoteById, isDark = false }: OutgoingLinksPanelProps) {
+  const { resolved, unresolvedTitles } = useOutgoingLinks(activeNote, notes, folders);
 
   const snippets = useMemo(() => {
     const map = new Map<string, string>();

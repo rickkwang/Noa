@@ -14,8 +14,8 @@ import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
 import { visit } from 'unist-util-visit';
 import type { Root, Text, Parent, RootContent } from 'mdast';
-import { Note, AppSettings } from '../../types';
-import { buildTitleToIdsMap, sliceHeadingSection } from '../../lib/noteUtils';
+import { Note, Folder, AppSettings } from '../../types';
+import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
 import { useAttachments } from '../../hooks/useAttachments';
 import { MermaidBlock } from './MermaidBlock';
 import { Copy, Check, FileText } from '@/src/lib/icons';
@@ -196,6 +196,7 @@ interface BacklinkItem {
 interface PreviewPaneProps {
   note: Note;
   allNotes: Note[];
+  folders?: Folder[];
   settings: AppSettings;
   onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
@@ -385,6 +386,7 @@ const MAX_EMBED_DEPTH = 3;
 interface NoteMarkdownBodyProps {
   note: Note;
   allNotes: Note[];
+  folders?: Folder[];
   isDark: boolean;
   objectUrls?: Map<string, string>;
   onNavigateToNoteLegacy: (title: string) => void;
@@ -400,6 +402,7 @@ interface NoteMarkdownBodyProps {
 const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   note,
   allNotes,
+  folders,
   isDark,
   objectUrls,
   onNavigateToNoteLegacy,
@@ -408,7 +411,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   depth,
   visitedIds,
 }: NoteMarkdownBodyProps) {
-  const titleToIds = useMemo(() => buildTitleToIdsMap(allNotes), [allNotes]);
+  const linkIndex = useMemo(() => buildLinkIndex(allNotes, folders ?? []), [allNotes, folders]);
 
   const previewMarkdown = useMemo(() => {
     const findAttachment = (ref: string) => {
@@ -436,18 +439,18 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
     // img component below) → missing placeholder.
     const withAttachments = transformProse(withoutComments, (seg) => seg.replace(/!\[\[(.*?)\]\]/g, (_, rawTarget) => {
       const raw = String(rawTarget ?? '').trim();
-      // Strip alias: ![[Target|alias]] → Target
+      // Strip alias: ![[Target|alias]] → Target (tolerate table-escaped \|)
       const pipeIdx = raw.indexOf('|');
-      const target = pipeIdx >= 0 ? raw.slice(0, pipeIdx).trim() : raw;
+      const target = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).replace(/\\+$/, '').trim();
       const att = findAttachment(target);
       if (att) return `![${target}](note-attachment://id/${encodeURIComponent(att.id)})`;
       // Note transclusion: ![[Title]] or ![[Title#Heading]]
       const hashIdx = target.indexOf('#');
       const embedTitle = hashIdx >= 0 ? target.slice(0, hashIdx).trim() : target;
       const embedAnchor = hashIdx >= 0 ? target.slice(hashIdx + 1).trim() : '';
-      const ids = titleToIds.get(embedTitle);
-      if (ids && ids.length > 0) {
-        return `![${target}](note-embed://id/${ids[0]}${embedAnchor ? `#${encodeURIComponent(embedAnchor)}` : ''})`;
+      const embedId = resolveLinkTarget(embedTitle, linkIndex, note.folder ?? '');
+      if (embedId) {
+        return `![${target}](note-embed://id/${embedId}${embedAnchor ? `#${encodeURIComponent(embedAnchor)}` : ''})`;
       }
       return `![${target}](note-attachment://missing)`;
     }));
@@ -456,7 +459,8 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
     return transformProse(withAttachments, (seg) => seg.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
       const safeRaw = String(raw ?? '').trim();
       const pipeIdx = safeRaw.indexOf('|');
-      const target = pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx).trim() : safeRaw;
+      // Tolerate table-escaped pipes: [[Note\|display]] → target "Note".
+      const target = (pipeIdx >= 0 ? safeRaw.slice(0, pipeIdx) : safeRaw).replace(/\\+$/, '').trim();
       const rawDisplay = pipeIdx >= 0 ? safeRaw.slice(pipeIdx + 1).trim() : safeRaw;
       // Escape [ and ] so the display text doesn't break Markdown link syntax
       const displayText = rawDisplay.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
@@ -471,12 +475,11 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       if (realTitle === '' && anchor) {
         return `[${displayText}](note-internal://id/${note.id}${anchorSuffix})`;
       }
-      const ids = titleToIds.get(realTitle);
-      if (ids && ids.length > 0) {
-        // When multiple notes share the same title, link to the first one.
-        // All of them will appear in the knowledge graph because computeLinkRefs
-        // now includes all matching IDs.
-        return `[${displayText}](note-internal://id/${ids[0]}${anchorSuffix})`;
+      const targetId = resolveLinkTarget(realTitle, linkIndex, note.folder ?? '');
+      if (targetId) {
+        // Obsidian-aligned resolution: one target per link (case-insensitive,
+        // .md-tolerant, path-aware) — matches the knowledge graph's edges.
+        return `[${displayText}](note-internal://id/${targetId}${anchorSuffix})`;
       }
       const legacyAttachment = findAttachment(realTitle);
       if (legacyAttachment) {
@@ -485,7 +488,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       const encoded = encodeURIComponent(realTitle);
       return `[${displayText}](note-internal://title/${encoded}${anchorSuffix})`;
     }));
-  }, [note.id, note.content, note.attachments, titleToIds]);
+  }, [note.id, note.folder, note.content, note.attachments, linkIndex]);
 
   const markdownComponents = useMemo((): Components => {
     return {
@@ -510,6 +513,29 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
               className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer hover:underline font-bold`}
               onClick={() => onNavigateToNoteLegacy(noteTitle)}
             >
+              {children}
+            </span>
+          );
+        }
+        // Markdown-style internal link ([text](path/Note.md)) — resolve like
+        // Obsidian and navigate in-app instead of letting the browser follow a
+        // relative URL that goes nowhere.
+        const mdTarget = href ? parseMarkdownLinkTarget(href) : null;
+        if (mdTarget) {
+          const mdTargetId = resolveLinkTarget(mdTarget, linkIndex, note.folder ?? '');
+          if (mdTargetId) {
+            return (
+              <span
+                className="text-[#CC7D5E] cursor-pointer hover:underline font-bold"
+                onClick={() => onNavigateToNoteById(mdTargetId)}
+              >
+                {children}
+              </span>
+            );
+          }
+          // Unresolved note link: render inert instead of a dead browser nav.
+          return (
+            <span style={{ color: isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)' }} title={`Unresolved link: ${mdTarget}`}>
               {children}
             </span>
           );
@@ -556,6 +582,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
               noteId={embedNoteId}
               anchor={embedAnchor}
               allNotes={allNotes}
+              folders={folders}
               isDark={isDark}
               onNavigateToNoteLegacy={onNavigateToNoteLegacy}
               onNavigateToNoteById={onNavigateToNoteById}
@@ -701,7 +728,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         );
       },
     };
-  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, allNotes, depth, visitedIds, scrollContainerRef]);
+  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, allNotes, folders, linkIndex, note.folder, depth, visitedIds, scrollContainerRef]);
 
   return (
     <Markdown
@@ -719,6 +746,7 @@ interface NoteEmbedProps {
   noteId: string;
   anchor?: string;
   allNotes: Note[];
+  folders?: Folder[];
   isDark: boolean;
   onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
@@ -733,6 +761,7 @@ function NoteEmbed({
   noteId,
   anchor,
   allNotes,
+  folders,
   isDark,
   onNavigateToNoteLegacy,
   onNavigateToNoteById,
@@ -810,6 +839,7 @@ function NoteEmbed({
         <NoteMarkdownBody
           note={embeddedNote}
           allNotes={allNotes}
+          folders={folders}
           isDark={isDark}
           objectUrls={objectUrls}
           onNavigateToNoteLegacy={onNavigateToNoteLegacy}
@@ -825,6 +855,7 @@ function NoteEmbed({
 export const PreviewPane = React.memo(function PreviewPane({
   note,
   allNotes,
+  folders,
   settings,
   onNavigateToNoteLegacy,
   onNavigateToNoteById,
@@ -839,11 +870,8 @@ export const PreviewPane = React.memo(function PreviewPane({
   const isDark = useIsDark(settings.appearance.theme);
 
   const backlinks: BacklinkItem[] = useMemo(
-    () => allNotes.filter((n) =>
-      n.id !== note.id &&
-      ((n.linkRefs ?? []).includes(note.id) || (n.links ?? []).includes(note.title))
-    ),
-    [allNotes, note.id, note.title]
+    () => getBacklinks(note, allNotes),
+    [allNotes, note]
   );
 
   const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
@@ -866,6 +894,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           <NoteMarkdownBody
             note={note}
             allNotes={allNotes}
+            folders={folders}
             isDark={isDark}
             objectUrls={objectUrls}
             onNavigateToNoteLegacy={onNavigateToNoteLegacy}

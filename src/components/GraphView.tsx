@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
-import { Note, AppSettings } from '../types';
+import { Note, Folder, AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
 import { computeTopologySignature } from '../lib/noteUtils';
 import { buildGraphModel } from '../lib/graphModel';
@@ -11,6 +11,7 @@ export type GraphColorMode = 'tag' | 'none';
 
 interface GraphViewProps {
   notes: Note[];
+  folders?: Folder[];
   onNavigateToNoteById: (id: string) => void;
   settings: AppSettings;
   searchQuery?: string;
@@ -20,6 +21,7 @@ interface GraphViewProps {
   tagFilter?: string[];
   colorMode?: GraphColorMode;
   sizeByDegree?: boolean;
+  showUnresolved?: boolean;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -71,6 +73,7 @@ type GraphNodeData = {
   name: string;
   degree: number;
   tags: string[];
+  ghost?: boolean;
 };
 
 type GraphLinkData = {
@@ -80,7 +83,7 @@ type GraphLinkData = {
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
 
-type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags'>;
+type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags' | 'folder'>;
 
 function readLinkEndpointId(endpoint: GraphLink['source'] | GraphLink['target']): string {
   if (typeof endpoint === 'string' || typeof endpoint === 'number') return String(endpoint);
@@ -129,6 +132,7 @@ function nodeRadius(degree: number, sizeByDegree: boolean): number {
 
 export default function GraphView({
   notes,
+  folders,
   onNavigateToNoteById,
   settings,
   searchQuery = '',
@@ -138,6 +142,7 @@ export default function GraphView({
   tagFilter,
   colorMode = 'tag',
   sizeByDegree = true,
+  showUnresolved = true,
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -263,16 +268,20 @@ export default function GraphView({
       links: note.links ?? [],
       linkRefs: note.linkRefs ?? [],
       tags: note.tags ?? [],
+      folder: note.folder ?? '',
     })),
     [notes]
   );
   const topologyKey = useMemo(
-    () => computeTopologySignature(topologyNotes),
-    [topologyNotes]
+    () => computeTopologySignature(topologyNotes, folders),
+    [topologyNotes, folders]
   );
-  const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[] }>({ key: '', notes: [] });
+  // Folders ride along in the same key-guarded snapshot: a new folders array
+  // identity with identical content must not rebuild graphData (d3 would
+  // re-seed and explode the layout).
+  const stableTopologyRef = useRef<{ key: string; notes: TopologyNote[]; folders: Folder[] }>({ key: '', notes: [], folders: [] });
   if (stableTopologyRef.current.key !== topologyKey) {
-    stableTopologyRef.current = { key: topologyKey, notes: topologyNotes };
+    stableTopologyRef.current = { key: topologyKey, notes: topologyNotes, folders: folders ?? [] };
   }
 
   const bgColor   = isDark ? '#262624' : '#EAE8E0';
@@ -309,6 +318,8 @@ export default function GraphView({
       activeNoteId: localAnchorId,
       tagFilter,
       searchQuery,
+      folders: stableTopologyRef.current.folders,
+      showUnresolved,
     });
 
     const nodes: GraphNode[] = model.nodes.map((modelNode) => {
@@ -317,6 +328,7 @@ export default function GraphView({
         name: modelNode.title,
         degree: modelNode.degree,
         tags: modelNode.tags,
+        ghost: modelNode.ghost,
       };
       return node;
     });
@@ -328,7 +340,7 @@ export default function GraphView({
     }));
 
     return { nodes, links };
-  }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery]);
+  }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery, showUnresolved]);
 
   // Build neighbour set for hovered node
   const hoveredNeighbours = useMemo(() => {
@@ -441,8 +453,9 @@ export default function GraphView({
                      settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
                      settings.appearance.fontFamily;
 
-  // Pick node fill color: tag color > accent (connected) > grey (isolated)
+  // Pick node fill color: ghost (muted) > tag color > accent (connected) > grey (isolated)
   const getNodeColor = useCallback((node: GraphNode): string => {
+    if (node.ghost) return isDark ? '#8A8070' : '#9A9080';
     if (colorMode === 'tag') {
       const tags: string[] = node.tags ?? [];
       for (const tag of tags) {
@@ -599,7 +612,11 @@ export default function GraphView({
           }
           return linkColor;
         }}
-        onNodeClick={(node: GraphNode) => onNavigateToNoteById(String(node.id))}
+        onNodeClick={(node: GraphNode) => {
+          // Ghost nodes are unresolved links — there is no note to open.
+          if (node.ghost) return;
+          onNavigateToNoteById(String(node.id));
+        }}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
         // Disable pan whenever a node is hovered. Hover state is set before
@@ -641,7 +658,8 @@ export default function GraphView({
 
           const dimByHover = hoveredNeighbours && !inHoverNeighbour;
 
-          const alpha = dimByHover ? 0.08 : 1;
+          // Ghosts render faded (Obsidian's unresolved-node treatment).
+          const alpha = dimByHover ? 0.08 : (node.ghost ? 0.35 : 1);
 
           ctx.save();
           ctx.globalAlpha = alpha;

@@ -89,7 +89,7 @@ export function useDailyNotes({
       void storage.saveNote(newNote).catch((err) => {
         console.error('[Noa] Failed to save daily note:', err);
       });
-      return recomputeLinkRefsForNotes([...prev, newNote]);
+      return recomputeLinkRefsForNotes([...prev, newNote], foldersRef.current);
     });
     } finally {
       // Release after current microtask so nested synchronous re-entry is

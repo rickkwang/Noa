@@ -43,12 +43,22 @@ describe('computeOutgoingLinks', () => {
     expect(unresolvedTitles).toEqual(['B']);
   });
 
-  it('returns both notes when two share a title (collision)', () => {
+  it('resolves a title collision to a single note, matching the graph', () => {
+    // Obsidian picks one target per link; root-level notes win, remaining ties
+    // break by stable (folder name, id) order.
     const b1 = mk({ id: 'b1', title: 'B' });
     const b2 = mk({ id: 'b2', title: 'B' });
     const a = mk({ id: 'a', title: 'A', links: ['B'], linkRefs: ['b1', 'b2'] });
     const { resolved } = computeOutgoingLinks(a, [a, b1, b2]);
-    expect(new Set(resolved.map(n => n.id))).toEqual(new Set(['b1', 'b2']));
+    expect(resolved.map(n => n.id)).toEqual(['b1']);
+  });
+
+  it('resolves path links via folder names', () => {
+    const inFolder = mk({ id: 'pf', title: 'B', folder: 'f1' });
+    const atRoot = mk({ id: 'root', title: 'B' });
+    const a = mk({ id: 'a', title: 'A', links: ['Projects/B'] });
+    const { resolved } = computeOutgoingLinks(a, [a, inFolder, atRoot], [{ id: 'f1', name: 'Projects' }]);
+    expect(resolved.map(n => n.id)).toEqual(['pf']);
   });
 
   it('filters self-references', () => {

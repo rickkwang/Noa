@@ -53,6 +53,9 @@ export function useNotes(settings?: AppSettings) {
   const notesRef = useRef<Note[]>([]);
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
+  const foldersRef = useRef(folders);
+  useEffect(() => { foldersRef.current = folders; }, [folders]);
+
   // Import mutex: while a vault/backup import is running, debounceSave defers
   // its writes into a queue instead of firing timers. This prevents:
   //  (1) concurrent writes to the same note from user edits and import batch
@@ -143,10 +146,13 @@ export function useNotes(settings?: AppSettings) {
     });
   }, [sameStringArray]);
 
-  const syncLinkRefs = useCallback((nextNotes: Note[], previousNotes?: Note[], changedIds?: Set<string>) => {
+  const syncLinkRefs = useCallback((nextNotes: Note[], previousNotes?: Note[], changedIds?: Set<string>, foldersOverride?: Folder[]) => {
+    // Folder names participate in [[folder/Note]] resolution; the override lets
+    // folder-mutating handlers recompute against the not-yet-committed list.
+    const activeFolders = foldersOverride ?? foldersRef.current;
     const withRefs = changedIds
-      ? recomputeLinkRefsForSubset(nextNotes, changedIds)
-      : recomputeLinkRefsForNotes(nextNotes);
+      ? recomputeLinkRefsForSubset(nextNotes, changedIds, activeFolders)
+      : recomputeLinkRefsForNotes(nextNotes, activeFolders);
     if (!previousNotes) return withRefs;
     const previousById = new Map(previousNotes.map((note) => [note.id, note]));
     withRefs.forEach((note) => {
@@ -239,14 +245,13 @@ export function useNotes(settings?: AppSettings) {
 
         if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
-        if (savedFolders && savedFolders.length > 0) {
-          setFolders(savedFolders);
-        } else {
-          setFolders([
+        const loadedFolders: Folder[] = savedFolders && savedFolders.length > 0
+          ? savedFolders
+          : [
             { id: 'diary', name: 'diaries', source: 'noa' },
             { id: 'essay', name: 'essays', source: 'noa' }
-          ]);
-        }
+          ];
+        setFolders(loadedFolders);
 
         if (savedNotes && savedNotes.length > 0) {
           const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes);
@@ -256,7 +261,9 @@ export function useNotes(settings?: AppSettings) {
               'Data integrity check failed while loading notes.',
             );
           }
-          const withRefs = syncLinkRefsRef.current(normalized);
+          // foldersRef hasn't committed yet at this point — pass the loaded
+          // folders explicitly or [[folder/Note]] path links resolve against [].
+          const withRefs = syncLinkRefsRef.current(normalized, undefined, undefined, loadedFolders);
           const changedForPersist = collectChangedRef.current(withRefs, normalized);
           if (changedForPersist.length > 0) {
             await storage.saveNotes(changedForPersist);
@@ -329,7 +336,7 @@ Export regularly: use Settings → Data → Export Backup.`,
             { id: dailyFolderId, name: 'Daily Notes', source: 'noa' as const }
           ];
           setFolders(initialFolders);
-          setNotes(syncLinkRefsRef.current([welcomeNote, dailyNote]));
+          setNotes(syncLinkRefsRef.current([welcomeNote, dailyNote], undefined, undefined, initialFolders));
           setActiveNoteId(welcomeNote.id);
           await storage.saveFolders(initialFolders);
           await storage.saveNote(welcomeNote);
@@ -472,7 +479,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       source: 'noa',
     };
     setNotes(prev => {
-      const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+      const next = syncLinkRefs([...prev, newNote], prev);
       const created = next.find((n) => n.id === newNote.id) ?? newNote;
       void storage.saveNote(created).catch(() => {
         setSaveError('Failed to save note. Storage may be full.');
@@ -500,7 +507,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       void storage.saveNote(nextNote).catch(() => {
         setSaveError('Failed to move note. Storage may be full.');
       });
-      return syncLinkRefs(updated, prev, new Set([id]));
+      // Full recompute: moving a note between folders changes which
+      // [[folder/Note]] path links resolve in OTHER notes, not just this one.
+      return syncLinkRefs(updated, prev);
     });
   }, [folders, syncLinkRefs]);
 
@@ -526,7 +535,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     if (!attachmentFile) {
       let created: Note = newNote;
       setNotes(prev => {
-        const next = syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+        const next = syncLinkRefs([...prev, newNote], prev);
         created = next.find((n) => n.id === newNote.id) ?? newNote;
         return next;
       });
@@ -561,7 +570,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         // Complete all storage ops before updating state — prevents note appearing then disappearing on error
         await storage.saveAttachmentBlob(attachmentId, attachmentFile);
         await storage.saveNote(noteWithAttachment);
-        setNotes(prev => syncLinkRefs([...prev, noteWithAttachment], prev, new Set([noteWithAttachment.id])));
+        setNotes(prev => syncLinkRefs([...prev, noteWithAttachment], prev));
         setActiveNoteIdWithRecent(noteWithAttachment.id);
       } catch {
         // Rollback blob if it was saved before note save failed
@@ -574,9 +583,6 @@ Export regularly: use Settings → Data → Export Backup.`,
   const handleNavigateToNoteById = useCallback((id: string) => {
     setActiveNoteIdWithRecent(id);
   }, [setActiveNoteIdWithRecent]);
-
-  const foldersRef = useRef(folders);
-  useEffect(() => { foldersRef.current = folders; }, [folders]);
 
   const handleNavigateToNote = useCallback((title: string) => {
     // Always read from notesRef so we see the latest state even during rapid updates.
@@ -613,7 +619,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         return prev;
       }
       resolvedRef.id = newNote.id;
-      return syncLinkRefs([...prev, newNote], prev, new Set([newNote.id]));
+      return syncLinkRefs([...prev, newNote], prev);
     });
     // Read the final id from the updater — guaranteed set synchronously inside setNotes.
     setActiveNoteIdWithRecent(resolvedRef.id);
@@ -680,20 +686,23 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [folders]);
 
   const handleRenameFolder = useCallback((id: string, name: string) => {
-    setFolders(prev => {
-      const target = prev.find((folder) => folder.id === id);
-      if (!target) return prev;
-      const oldPath = target.name;
-      const nextPath = name.trim() || 'Untitled Folder';
-      return prev.map((folder) => {
-        if (folder.id === id) return { ...folder, name: nextPath };
-        if (isDescendantPath(folder.name, oldPath)) {
-          return { ...folder, name: nextPath + folder.name.slice(oldPath.length) };
-        }
-        return folder;
-      });
+    const prev = foldersRef.current;
+    const target = prev.find((folder) => folder.id === id);
+    if (!target) return;
+    const oldPath = target.name;
+    const nextPath = name.trim() || 'Untitled Folder';
+    const nextFolders = prev.map((folder) => {
+      if (folder.id === id) return { ...folder, name: nextPath };
+      if (isDescendantPath(folder.name, oldPath)) {
+        return { ...folder, name: nextPath + folder.name.slice(oldPath.length) };
+      }
+      return folder;
     });
-  }, []);
+    setFolders(nextFolders);
+    // Folder names participate in [[folder/Note]] resolution — refresh refs
+    // against the renamed list (foldersRef only updates after commit).
+    setNotes(notesPrev => syncLinkRefs(notesPrev, notesPrev, undefined, nextFolders));
+  }, [syncLinkRefs]);
 
   const handleDeleteFolder = useCallback(async (id: string): Promise<string[]> => {
     const currentFolders = foldersRef.current;
@@ -882,7 +891,9 @@ Export regularly: use Settings → Data → Export Backup.`,
           tags: extractTags(note.content),
           links: extractLinks(note.content),
         };
-      }));
+      // setFolders(importedFolders) only lands after this runs — resolve
+      // path links against the incoming folder list, not foldersRef.
+      }), undefined, undefined, importedFolders ?? undefined);
       await storage.saveNotes(withRefs);
       if (shouldPrune) {
         await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
@@ -995,7 +1006,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     const nextNotes = currentNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
 
     if (deletedNoteIds.length > 0 || importedFolderIds.size > 0) {
-      const nextNotesWithRefs = syncLinkRefs(nextNotes, currentNotes);
+      const nextNotesWithRefs = syncLinkRefs(nextNotes, currentNotes, undefined, nextFolders);
       setFolders(nextFolders);
       setNotes(nextNotesWithRefs);
       setRecentNoteIds((prev) => {
