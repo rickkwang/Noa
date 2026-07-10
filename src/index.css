@@ -30,6 +30,17 @@ body {
   --panel-divider: #2D2D2D;
 }
 
+.noa-app-shell {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.noa-selectable,
+.noa-app-shell :where(input, textarea, [contenteditable]:not([contenteditable="false"]), .cm-editor) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .noa-sidebar-section-surface {
   background-color: var(--bg-primary, #EAE8E0);
 }

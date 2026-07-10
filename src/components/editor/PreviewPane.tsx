@@ -937,7 +937,7 @@ export const PreviewPane = React.memo(function PreviewPane({
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'block' : 'flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50'}
+      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50'}
       style={printMode ? style : {
         paddingRight: '2rem',
         // Preview mode has no toolbar below the tab bar, so scrolled content

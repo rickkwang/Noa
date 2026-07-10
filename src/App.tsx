@@ -695,7 +695,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
+    <div className="noa-app-shell h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
       <ThemeInjector settings={settings} />
       {!isFocusMode && <TopBar
         settings={settings}

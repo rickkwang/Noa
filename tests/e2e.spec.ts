@@ -65,6 +65,26 @@ test('search returns a note by title and content', async ({ page }) => {
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
+test('app chrome prevents accidental text selection while content remains selectable', async ({ page }) => {
+  await page.goto('/');
+
+  const userSelect = async (locator: import('@playwright/test').Locator) =>
+    locator.evaluate((element) => getComputedStyle(element).userSelect);
+
+  await expect(page.locator('.noa-app-shell')).toBeVisible();
+  expect(await userSelect(page.locator('.noa-app-shell'))).toBe('none');
+  expect(await userSelect(page.getByTitle('Double-click to rename'))).toBe('none');
+  expect(await userSelect(page.getByPlaceholder('Search notes, tags...'))).toBe('text');
+  expect(await userSelect(page.locator('.cm-content').last())).toBe('text');
+  expect(await userSelect(page.locator('.noa-selectable').first())).toBe('text');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Editor' }).click();
+  expect(await userSelect(page.getByPlaceholder('# {{date}}\n\n## Notes\n\n'))).toBe('text');
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  expect(await userSelect(page.getByRole('heading', { name: 'Theme' }))).toBe('none');
+});
+
 test('graph canvas backing size remains stable during horizontal window resize', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.addInitScript(() => {
