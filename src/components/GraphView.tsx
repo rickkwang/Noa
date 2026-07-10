@@ -733,15 +733,18 @@ export default function GraphView({
       />
       </div>
       <div
-        className="absolute bottom-2 right-2 flex flex-row gap-px backdrop-blur-sm"
-        style={{ background: isDark ? 'rgba(238,237,234,0.07)' : 'rgba(45,45,45,0.06)', border: `1px solid ${isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.15)'}` }}
+        className="absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md"
+        style={{
+          background: isDark ? 'rgba(238,237,234,0.04)' : 'rgba(45,45,45,0.03)',
+          border: `1px solid ${isDark ? 'rgba(238,237,234,0.07)' : 'rgba(45,45,45,0.08)'}`,
+        }}
       >
         {zoomControls.map(({ icon, title, action }) => (
           <button
             key={title}
             onClick={action}
             title={title}
-            className="w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors"
+            className="w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E]"
             style={{ color: isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)' }}
           >
             {icon}

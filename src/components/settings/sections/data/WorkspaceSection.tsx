@@ -39,7 +39,7 @@ export default function WorkspaceSection({
   return (
     <SettingSection title="Workspace" description="Manage your current working directory.">
       <SettingItem label="Workspace Name" description="The label used for this local workspace and exports.">
-        <div className="bg-[#EAE8E0] border-2 border-[#2D2D2D] px-3 py-1.5 text-sm font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)]">
+        <div className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-sm font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)]">
           {workspaceName}
         </div>
       </SettingItem>
@@ -53,14 +53,14 @@ export default function WorkspaceSection({
             }
             folderInputRef.current?.click();
           }}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
         >
           <FolderOpen size={14} />
           <span>Import Vault Folder</span>
         </button>
         <button
           onClick={onCreateWorkspace}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
         >
           <PlusSquare size={14} />
           <span>New Workspace</span>
@@ -89,7 +89,7 @@ export default function WorkspaceSection({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onDisconnectFolder}
-                  className="flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                  className="flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
                 >
                   <Unlink size={14} />
                   <span>Disconnect</span>
@@ -97,7 +97,7 @@ export default function WorkspaceSection({
                 {onRetryFsSync && (
                   <button
                     onClick={onRetryFsSync}
-                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -108,7 +108,7 @@ export default function WorkspaceSection({
               <button
                 onClick={onConnectFolder}
                 disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
               >
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>
@@ -130,7 +130,7 @@ export default function WorkspaceSection({
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
             </p>
             {fsSyncError && (
-              <p className="text-xs text-[#2D2D2D] border border-[#CC7D5E]/50 bg-[#EAE8E0] px-2 py-1">
+              <p className="text-xs text-[#2D2D2D] border-[1.75px] border-[#CC7D5E]/50 bg-[#EAE8E0] px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

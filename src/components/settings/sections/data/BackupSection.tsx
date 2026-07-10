@@ -80,7 +80,7 @@ export default function BackupSection({
       <SettingItem label="Export JSON Backup" description="Complete backup including metadata and settings.">
         <button
           onClick={onExportJson}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
         >
           <Download size={14} />
           <span>Export JSON</span>
@@ -91,7 +91,7 @@ export default function BackupSection({
         <button
           onClick={onExportZip}
           disabled={exportingZip}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingZip ? <Loader2 size={14} className="animate-spin" /> : <FileArchive size={14} />}
           <span>{exportingZip ? 'Exporting…' : 'Export Vault'}</span>
@@ -102,7 +102,7 @@ export default function BackupSection({
         <button
           onClick={onExportHtmlZip}
           disabled={exportingHtml}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingHtml ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
           <span>{exportingHtml ? 'Exporting…' : 'Export HTML'}</span>

@@ -140,12 +140,12 @@ export default function SettingsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title Bar */}
-        <div className="h-10 border-b-2 border-[#2D2D2D] flex items-center justify-between px-4 bg-[#DCD9CE] shrink-0">
+        <div className="h-10 border-b-[1.75px] border-[#2D2D2D] flex items-center justify-between px-4 bg-[#DCD9CE] shrink-0">
           <div className="flex items-center space-x-2">
             <Settings size={16} className="text-[#2D2D2D]" />
             <span id="settings-dialog-title" className="font-bold tracking-widest uppercase text-sm">SETTINGS</span>
@@ -154,7 +154,7 @@ export default function SettingsModal({
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="hover:bg-[#D45555] hover:text-white p-1 border border-transparent hover:border-[#2D2D2D] transition-colors"
+            className="hover:bg-[#D45555] hover:text-white p-1 border-[1.75px] border-transparent hover:border-[#2D2D2D] transition-colors"
           >
             <X size={18} />
           </button>
@@ -222,7 +222,7 @@ export default function SettingsModal({
                 <SettingSection bare title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackMailto}
-                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
                   >
                     <span>Send Feedback</span>
                   </a>
@@ -231,7 +231,7 @@ export default function SettingsModal({
                   <div className="space-y-2">
                     <button
                       onClick={handleExportDiagnostics}
-                      className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-2 border-[#2D2D2D] transition-colors text-sm"
+                      className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
                       disabled={diagnosticsState === 'exporting'}
                     >
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
@@ -244,8 +244,8 @@ export default function SettingsModal({
                     )}
                   </div>
                 </SettingSection>
-                <div className="border-2 border-[#2D2D2D] overflow-hidden">
-                  <div className="bg-[#DCD9CE] px-4 py-1.5 border-b border-[#2D2D2D]">
+                <div className="border-[1.75px] border-[#2D2D2D] overflow-hidden">
+                  <div className="bg-[#DCD9CE] px-4 py-1.5 border-b-[1.75px] border-[#2D2D2D]">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70">Keyboard Shortcuts</span>
                   </div>
                   <table className="w-full text-xs font-redaction">
@@ -258,7 +258,7 @@ export default function SettingsModal({
                         ['Cmd/Ctrl + S', 'Force save pending edits'],
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
-                        <tr key={key} className="border-b border-[#2D2D2D]/15 last:border-0">
+                        <tr key={key} className="border-b-[1.75px] border-[#2D2D2D]/15 last:border-0">
                           <td className="px-4 py-1.5 font-bold text-[#CC7D5E] whitespace-nowrap w-48">{key}</td>
                           <td className="px-4 py-1.5 text-[#2D2D2D]/60">{desc}</td>
                         </tr>

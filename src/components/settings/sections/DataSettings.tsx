@@ -100,8 +100,8 @@ export default function DataSettings({
   return (
     <div className="space-y-8">
       {isWorking && (
-        <div className="border-2 border-[#CC7D5E] bg-[#EAE8E0] px-3 py-2 font-redaction text-sm text-[#2D2D2D] flex items-center gap-2">
-          <span className="inline-block w-3 h-3 border-2 border-[#2D2D2D] border-t-transparent animate-spin shrink-0" />
+        <div className="border-[1.75px] border-[#CC7D5E] bg-[#EAE8E0] px-3 py-2 font-redaction text-sm text-[#2D2D2D] flex items-center gap-2">
+          <span className="inline-block w-3 h-3 border-[1.75px] border-[#2D2D2D] border-t-transparent animate-spin shrink-0" />
           <span>
             {transfer.importingData
               ? (transfer.importStatusText ?? 'Importing data...')
@@ -111,12 +111,12 @@ export default function DataSettings({
           </span>
         </div>
       )}
-      <div className="border border-[#2D2D2D]/20 bg-[#DCD9CE] px-3 py-2 text-xs text-[#2D2D2D]/70">
+      <div className="border-[1.75px] border-[#2D2D2D]/20 bg-[#DCD9CE] px-3 py-2 text-xs text-[#2D2D2D]/70">
         {LOCAL_DATA_BOUNDARY_COPY}
         <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
       </div>
       {confirmState && (
-        <div className="border-2 border-[#CC7D5E] bg-[#CC7D5E]/10 p-3 flex flex-col gap-2 font-redaction">
+        <div className="border-[1.75px] border-[#CC7D5E] bg-[#CC7D5E]/10 p-3 flex flex-col gap-2 font-redaction">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-[#2D2D2D] flex-1">{confirmState.message}</p>
             <div className="flex gap-2 shrink-0">
@@ -125,13 +125,13 @@ export default function DataSettings({
                   confirmState.onConfirm(confirmState.inputValue);
                   setConfirmState(null);
                 }}
-                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2D] hover:opacity-90"
+                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-[1.75px] border-[#2D2D2D] hover:opacity-90"
               >
                 Confirm
               </button>
               <button
                 onClick={() => setConfirmState(null)}
-                className="px-3 py-1 text-xs font-bold bg-[#EAE8E0] border-2 border-[#2D2D2D] hover:bg-[#DCD9CE]"
+                className="px-3 py-1 text-xs font-bold bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] hover:bg-[#DCD9CE]"
               >
                 Cancel
               </button>
@@ -191,7 +191,7 @@ export default function DataSettings({
                 onChange={(e) =>
                   setConfirmState((prev) => (prev ? { ...prev, inputValue: e.target.value } : null))
                 }
-                className="flex-1 bg-[#EAE8E0] border-2 border-[#2D2D2D] px-2 py-1 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
+                className="flex-1 bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-2 py-1 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
                 autoFocus
               />
             </div>
@@ -201,7 +201,7 @@ export default function DataSettings({
 
       {message && (
         <div
-          className={`border-2 p-3 flex items-center justify-between font-redaction text-sm ${
+          className={`border-[1.75px] p-3 flex items-center justify-between font-redaction text-sm ${
             message.type === 'success'
               ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2D]'
               : 'border-[#D45555]/60 bg-[#D45555]/10 text-[#A93B3B]'

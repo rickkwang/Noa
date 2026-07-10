@@ -143,8 +143,8 @@ export default function RightPanel({
                   background: isDark ? '#3A3A37' : '#FBFAF6',
                   color: isDark ? '#EEEDEA' : '#2D2D2D',
                   boxShadow: isDark
-                    ? '0 1px 2px rgba(0,0,0,0.3)'
-                    : '0 1px 2px rgba(45,45,45,0.12)',
+                    ? '0 0 2px rgba(0,0,0,0.3)'
+                    : '0 0 2px rgba(45,45,45,0.12)',
                 }
               : {
                   color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
@@ -223,29 +223,26 @@ export default function RightPanel({
             <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
               <Network size={11} className="text-[#CC7D5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix</span>
-              <div className={`flex items-center gap-1 h-5 px-1.5 rounded-md border focus-within:border-[#CC7D5E] transition-colors ${isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[rgba(45,45,45,0.2)]'}`}
-                style={{ background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)' }}>
-                <Search size={9} style={{ color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
-                <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
-                  placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-12 min-w-0"
-                  style={{ color: isDark ? '#EEEDEA' : '#2D2D2D' }} />
+              <div className={`flex items-center h-5 rounded-md border transition-colors ${isDark ? 'border-[rgba(238,237,234,0.07)]' : 'border-[rgba(45,45,45,0.1)]'}`}
+                style={{ background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.04)' }}>
+                <div className="flex items-center gap-1 pl-1.5 pr-1">
+                  <Search size={9} style={{ color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }} className="shrink-0" />
+                  <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
+                    placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-12 min-w-0"
+                    style={{ color: isDark ? '#EEEDEA' : '#2D2D2D' }} />
+                </div>
+                <div className="w-px self-stretch my-1" style={{ background: isDark ? 'rgba(238,237,234,0.08)' : 'rgba(45,45,45,0.1)' }} />
+                <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
+                  className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors shrink-0"
+                  style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)') }}>
+                  <Network size={10} />
+                </button>
+                <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
+                  className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors shrink-0"
+                  style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)') }}>
+                  <Filter size={10} />
+                </button>
               </div>
-              <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
-                className="flex items-center justify-center w-5 h-5 rounded-md active:opacity-70 transition-colors shrink-0"
-                style={hideIsolated
-                  ? { background: '#CC7D5E', color: '#FFFFFF', border: '1px solid #CC7D5E' }
-                  : { border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }
-                }>
-                <Network size={10} />
-              </button>
-              <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
-                className="flex items-center justify-center w-5 h-5 rounded-md active:opacity-70 transition-colors shrink-0"
-                style={showFilters
-                  ? { background: '#CC7D5E', color: '#FFFFFF', border: '1px solid #CC7D5E' }
-                  : { border: `1px solid ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}`, background: isDark ? 'rgba(238,237,234,0.05)' : 'rgba(45,45,45,0.05)', color: isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.5)' }
-                }>
-                <Filter size={10} />
-              </button>
             </div>
             {showFilters && (
               <GraphFilterPanel

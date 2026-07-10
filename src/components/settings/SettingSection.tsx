@@ -17,7 +17,7 @@ export default function SettingSection({ title, description, children, bare = fa
         )}
       </div>
       {bare ? children : (
-        <div className="bg-[#DCD9CE] border-2 border-[#2D2D2D] p-4">
+        <div className="bg-[#DCD9CE] border-[1.75px] border-[#2D2D2D] p-4">
           {children}
         </div>
       )}

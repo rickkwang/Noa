@@ -10,7 +10,7 @@ interface SettingItemProps {
 export default function SettingItem({ label, description, children, stacked = false }: SettingItemProps) {
   if (stacked) {
     return (
-      <div className="py-4 border-b border-[#2D2D2D]/20 last:border-0">
+      <div className="py-4 border-b-[1.75px] border-[#2D2D2D]/20 last:border-0">
         <div className="font-bold text-sm text-[#2D2D2D]">{label}</div>
         {description && (
           <div className="text-xs text-[#2D2D2D]/70 mt-1 leading-relaxed">
@@ -25,7 +25,7 @@ export default function SettingItem({ label, description, children, stacked = fa
   }
 
   return (
-    <div className="flex flex-col gap-3 py-4 border-b border-[#2D2D2D]/20 last:border-0 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 py-4 border-b-[1.75px] border-[#2D2D2D]/20 last:border-0 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0 md:flex-1 md:pr-8">
         <div className="font-bold text-sm text-[#2D2D2D]">{label}</div>
         {description && (

@@ -48,9 +48,9 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
   };
 
   return (
-    <div className="w-full border-b-2 border-[#2D2D2D] bg-[#EAE8E0] shrink-0 overflow-x-auto md:w-56 md:border-b-0 md:border-r-2 md:overflow-y-auto">
+    <div className="w-full border-b-[1.75px] border-[#2D2D2D] bg-[#EAE8E0] shrink-0 overflow-x-auto md:w-56 md:border-b-0 md:border-r-[1.75px] md:overflow-y-auto">
       <div
-        className="flex min-w-max flex-row divide-x divide-[#2D2D2D] md:min-w-0 md:flex-col md:divide-x-0 md:divide-y md:border-b md:border-[#2D2D2D]"
+        className="flex min-w-max flex-row gap-0.5 p-1 pt-1.5 md:min-w-0 md:flex-col"
         role="tablist"
       >
         {SETTINGS_TABS.map((tab, index) => (
@@ -64,9 +64,9 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
             aria-controls={`settings-panel-${tab.id}`}
             aria-selected={activeTab === tab.id}
             tabIndex={activeTab === tab.id ? 0 : -1}
-            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2.5 text-left font-bold transition-colors active:opacity-70 text-sm md:w-full md:min-w-0 ${
+            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2 rounded-md text-left font-bold transition-colors active:opacity-70 text-sm md:w-full md:min-w-0 ${
               activeTab === tab.id
-                ? 'bg-[#DCD9CE] shadow-[inset_0px_-4px_0px_0px_#CC7D5E] md:shadow-[inset_4px_0px_0px_0px_#CC7D5E]'
+                ? 'bg-[#DCD9CE] shadow-[0_1px_2px_rgba(45,45,45,0.12)]'
                 : 'hover:bg-[#DCD9CE]/50'
             }`}
           >
