@@ -178,7 +178,7 @@ export function MentionDropdown({
 
   return (
     <div
-      className={`absolute z-50 bg-[#EAE8E0] border border-[#2D2D2D] shadow-[4px_4px_0_0_rgba(45,45,45,1)] font-redaction w-64 max-h-48 overflow-y-auto transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#EAE8E0] border border-[#2D2D2D] shadow-[4px_4px_0_0_rgba(45,45,45,1)] font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
       <div className="px-3 py-1 bg-[#DCD9CE] border-b border-[#2D2D2D] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">

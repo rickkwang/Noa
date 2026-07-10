@@ -522,7 +522,7 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         <div className="py-2">
           {searchQuery ? (
               <div className="px-2">

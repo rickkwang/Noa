@@ -345,7 +345,7 @@ function GraphInfoPanel({
   );
 
   return (
-    <div className={`flex-1 overflow-y-auto border font-redaction min-h-0 ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
+    <div className={`flex-1 overflow-y-auto [scrollbar-gutter:stable] border font-redaction min-h-0 ${isDark ? 'border-[rgba(238,237,234,0.15)] bg-[#262624]' : 'border-[#2D2D2D]/90 bg-[#EAE8E0]'}`}>
       <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#222220] border-[rgba(238,237,234,0.1)]' : 'bg-[#DCD9CE] border-[#2D2D2D]/50'}`}>
         <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(238,237,234,0.75)]' : 'text-[#2D2D2D]/70'}`}>Knowledge Matrix Stats</span>
@@ -540,7 +540,7 @@ function GraphFilterPanel({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto [scrollbar-gutter:stable]">
             {allTags.map((t) => {
               const active = tagFilter.includes(t);
               return (

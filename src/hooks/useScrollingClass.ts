@@ -1,48 +1,55 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 const HIDE_DELAY = 1200;
-const FADEOUT_DURATION = 1400;
+const FADEOUT_DURATION = 600; // matches the 0.6s scrollbar-fadeout animation in index.css
 
-export function useScrollingClass(
-  ref: React.RefObject<HTMLElement | null>,
-  options: { capture?: boolean; filterClass?: string } = {}
-) {
-  const { capture = false, filterClass } = options;
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+interface ScrollTimers {
+  hide: ReturnType<typeof setTimeout>;
+  fade?: ReturnType<typeof setTimeout>;
+}
 
+/**
+ * Tags whichever element is scrolling with `.is-scrolling` (then
+ * `.is-scrolling-out` after an idle delay) so the overlay scrollbar thumb in
+ * index.css fades in and out. Mount once at the app root: scroll events don't
+ * bubble, but a capturing listener on document sees them for every element.
+ */
+export function useGlobalScrollingClass() {
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const timers = new Map<HTMLElement, ScrollTimers>();
 
     const onScroll = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (filterClass && !target.classList.contains(filterClass)) return;
-      const scrollingEl = filterClass ? target : el;
+      const el = e.target;
+      if (!(el instanceof HTMLElement)) return;
 
-      // Cancel any pending fade-out
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-      scrollingEl.classList.remove('is-scrolling-out');
-      scrollingEl.classList.add('is-scrolling');
+      const pending = timers.get(el);
+      if (pending) {
+        clearTimeout(pending.hide);
+        if (pending.fade) clearTimeout(pending.fade);
+      }
+      el.classList.remove('is-scrolling-out');
+      el.classList.add('is-scrolling');
 
-      // After idle delay, swap to fade-out animation class
-      hideTimerRef.current = setTimeout(() => {
-        scrollingEl.classList.remove('is-scrolling');
-        scrollingEl.classList.add('is-scrolling-out');
-
-        // Remove fade-out class after animation completes
-        fadeTimerRef.current = setTimeout(() => {
-          scrollingEl.classList.remove('is-scrolling-out');
+      const hide = setTimeout(() => {
+        el.classList.remove('is-scrolling');
+        el.classList.add('is-scrolling-out');
+        const fade = setTimeout(() => {
+          el.classList.remove('is-scrolling-out');
+          timers.delete(el);
         }, FADEOUT_DURATION);
+        timers.set(el, { hide, fade });
       }, HIDE_DELAY);
+      timers.set(el, { hide });
     };
 
-    el.addEventListener('scroll', onScroll, { capture, passive: true });
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     return () => {
-      el.removeEventListener('scroll', onScroll, { capture } as EventListenerOptions);
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      document.removeEventListener('scroll', onScroll, { capture: true });
+      timers.forEach(({ hide, fade }) => {
+        clearTimeout(hide);
+        if (fade) clearTimeout(fade);
+      });
+      timers.clear();
     };
-  }, [ref, capture, filterClass]);
+  }, []);
 }

@@ -168,7 +168,7 @@ export default function SettingsModal({
             id={`settings-panel-${activeTab}`}
             role="tabpanel"
             aria-labelledby={`settings-tab-${activeTab}`}
-            className="flex-1 p-4 bg-[#EAE8E0] overflow-y-auto sm:p-6 md:p-8"
+            className="flex-1 p-4 bg-[#EAE8E0] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 md:p-8"
           >
             {activeTab === 'appearance' && (
               <AppearanceSettings settings={settings} updateSettings={updateSettings} />

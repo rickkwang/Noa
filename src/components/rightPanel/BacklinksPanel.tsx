@@ -37,7 +37,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark
   const snippetColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/60';
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 font-redaction">
+    <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable] p-4 space-y-4 font-redaction">
       {!activeNote ? (
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>Open a note to see backlinks.</div>
       ) : backlinks.length === 0 ? (

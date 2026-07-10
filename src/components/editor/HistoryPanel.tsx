@@ -109,7 +109,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
       </div>
 
       {/* Snapshot list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable' }}>
         {loadError ? (
           <div style={{ padding: '1rem', fontSize: '0.75rem', color: accent }}>{loadError}</div>
         ) : snapshots.length === 0 ? (
@@ -171,6 +171,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
             color: textMuted,
             maxHeight: '80px',
             overflowY: 'auto',
+            scrollbarGutter: 'stable',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             lineHeight: 1.5,

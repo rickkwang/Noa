@@ -50,7 +50,7 @@ export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNot
   const hasAny = resolved.length > 0 || unresolvedTitles.length > 0;
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 font-redaction">
+    <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable] p-4 space-y-4 font-redaction">
       {!activeNote ? (
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>Open a note to see outgoing links.</div>
       ) : !hasAny ? (

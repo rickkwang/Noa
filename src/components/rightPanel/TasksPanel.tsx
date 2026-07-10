@@ -151,7 +151,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   }
 
   return (
-    <div className={`flex-1 overflow-y-auto p-4 font-redaction ${txt}`}>
+    <div className={`flex-1 overflow-y-auto [scrollbar-gutter:stable] p-4 font-redaction ${txt}`}>
       {tasks.length === 0 && (
         <div className={`text-center mt-10 text-sm ${dim}`}>
           No tasks found.<br />Add &quot;- [ ] task&quot; in any note!

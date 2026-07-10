@@ -13,7 +13,6 @@ import { SlashCommandDropdown, SLASH_COMMANDS, type SlashCommand } from './edito
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { HistoryPanel } from './editor/HistoryPanel';
 import { FindReplacePanel } from './editor/FindReplacePanel';
-import { useScrollingClass } from '../hooks/useScrollingClass';
 import { useAttachments } from '../hooks/useAttachments';
 import { NoteSnapshot } from '../types';
 
@@ -128,7 +127,6 @@ export default function Editor({
     handleNoteUpdate
   );
 
-  useScrollingClass(editorContainerRef, { capture: true, filterClass: 'cm-scroller' });
 
   // Markdown preview parsing is expensive for large notes. Feeding the preview
   // deferred values keeps NoteMarkdownBody's memo props stable during the

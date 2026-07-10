@@ -15,6 +15,7 @@ import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useAutoBackup } from './hooks/useAutoBackup';
 import { useCommandPalette } from './hooks/useCommandPalette';
+import { useGlobalScrollingClass } from './hooks/useScrollingClass';
 import ThemeInjector from './components/ThemeInjector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
@@ -30,6 +31,7 @@ const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
 const MAX_OPEN_TABS = 20;
 
 export default function App() {
+  useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1001,7 +1003,7 @@ export default function App() {
                 className="w-full bg-[#EAE8E0] border border-[#2D2D2D] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
               />
             </div>
-            <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+            <div className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
               {commandPalette.items.length === 0 ? (
                 <div className="px-2 py-3 text-xs text-[#2D2D2D]/60">No matching commands.</div>
               ) : (
@@ -1051,7 +1053,7 @@ export default function App() {
                 Multiple notes match "<span className="font-bold">{navigationConflict.title}</span>". Select one:
               </div>
             </div>
-            <div className="max-h-72 overflow-y-auto p-2 space-y-1">
+            <div className="max-h-72 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
               {navigationConflict.noteIds.map((id) => {
                 const note = notes.find((item) => item.id === id);
                 if (!note) return null;
@@ -1099,7 +1101,7 @@ export default function App() {
                 </div>
                 <button onClick={() => setPendingTemplateNoteId(null)} className="text-[#2D2D2D]/50 hover:text-[#2D2D2D] text-lg leading-none active:opacity-70">×</button>
               </div>
-              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
                 {allTemplates.map(t => (
                   <button
                     key={t.id}
