@@ -5,7 +5,7 @@ import GraphView, { type GraphColorMode } from './GraphView';
 import { buildGraphModel } from '../lib/graphModel';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
-import { useOutgoingLinks } from '../hooks/useOutgoingLinks';
+import { computeOutgoingLinks } from '../hooks/useOutgoingLinks';
 import { computeTopologySignature, getBacklinks } from '../lib/noteUtils';
 import { TasksPanel } from './rightPanel/TasksPanel';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
@@ -66,17 +66,32 @@ export default function RightPanel({
   const [colorMode, setColorMode] = useState<GraphColorMode>('tag');
   const [sizeByDegree, setSizeByDegree] = useState(true);
 
+  // Topology-stable snapshot of notes/folders. The notes array gets a new
+  // identity on every keystroke (debounce only guards storage writes, not
+  // state), but the tab badges, tag chips and graph only depend on structural
+  // data (titles/links/linkRefs/tags/folders). Key their inputs on the
+  // topology signature so content-only edits skip every downstream recompute
+  // — including GraphView/GraphInfoPanel's own signature guards, which now
+  // see a stable array identity and bail before hashing.
+  const topologyKey = useMemo(() => computeTopologySignature(notes, folders), [notes, folders]);
+  const stableTopologyRef = useRef<{ key: string; notes: Note[]; folders?: Folder[] }>({ key: '', notes: [], folders: undefined });
+  if (stableTopologyRef.current.key !== topologyKey) {
+    stableTopologyRef.current = { key: topologyKey, notes, folders };
+  }
+  const topologyNotes = stableTopologyRef.current.notes;
+  const topologyFolders = stableTopologyRef.current.folders;
+
   // All tags across notes (ordered by first appearance for stable chip order).
   const allTags = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
-    for (const n of notes) {
+    for (const n of topologyNotes) {
       for (const t of n.tags ?? []) {
         if (!seen.has(t)) { seen.add(t); out.push(t); }
       }
     }
     return out;
-  }, [notes]);
+  }, [topologyNotes]);
   const [showGraphGuide, setShowGraphGuide] = useState(() => {
     try { return !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN); } catch { return true; }
   });
@@ -89,67 +104,78 @@ export default function RightPanel({
   }, [activeTab]);
 
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
-  const backlinksCount = useMemo(() => getBacklinks(activeNote, notes).length, [activeNote, notes]);
-  const { resolved: outgoingResolved } = useOutgoingLinks(activeNote, notes, folders);
-  const outgoingCount = outgoingResolved.length;
+  // Badge counts only read structural fields (linkRefs/links/titles), so
+  // resolve the active note inside the topology snapshot — keying on the
+  // fresh activeNote object would recompute per keystroke.
+  const backlinksCount = useMemo(() => {
+    const active = activeNoteId ? topologyNotes.find((n) => n.id === activeNoteId) : undefined;
+    return getBacklinks(active, topologyNotes).length;
+  }, [topologyNotes, activeNoteId]);
+  const outgoingCount = useMemo(() => {
+    const active = activeNoteId ? topologyNotes.find((n) => n.id === activeNoteId) : undefined;
+    return computeOutgoingLinks(active, topologyNotes, topologyFolders ?? []).resolved.length;
+  }, [topologyNotes, topologyFolders, activeNoteId]);
 
   return (
     <div className={`w-full h-full flex flex-col shrink-0 relative ${isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]'}`}>
-      {/* Tab bar — full-width segmented control */}
+      {/* Tab bar — rounded segmented control with a raised pill for the active tab */}
       <div
-        className="h-8 flex items-stretch shrink-0 overflow-hidden border-b"
+        className="h-8 shrink-0 border-b flex items-center px-1"
         style={{
           background: isDark ? '#1E1E1C' : '#DCD9CE',
           borderColor: isDark ? 'rgba(238,237,234,0.18)' : '#2D2D2D',
         }}
       >
-        {([
-          { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
-          { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
-          { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
-          { id: 'graph', label: 'Graph', icon: Network, badge: null },
-          { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
-        ] as const).map((tab, idx) => {
-          const isActive = activeTab === tab.id;
-          const baseStyle: React.CSSProperties = {
-            borderLeft: idx > 0
-              ? `1px solid ${isDark ? 'rgba(238,237,234,0.08)' : 'rgba(45,45,45,0.15)'}`
-              : undefined,
-          };
-          const activeStyle: React.CSSProperties = isActive
-            ? {
-                background: isDark ? '#262624' : '#EAE8E0',
-                color: isDark ? '#EEEDEA' : '#2D2D2D',
-              }
-            : {
-                color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
-              };
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
-              aria-label={tab.label}
-              aria-pressed={isActive}
-              className={`relative flex-1 flex items-center justify-center transition-colors active:opacity-70 ${
-                isActive
-                  ? ''
-                  : isDark ? 'hover:text-[#EEEDEA] hover:bg-[#EEEDEA]/[0.04]' : 'hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/50'
-              }`}
-              style={{ ...baseStyle, ...activeStyle }}
-            >
-              <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
-              {tab.badge !== null && (
-                <span
-                  aria-label={`${tab.badge} pending`}
-                  className="absolute top-1 right-1.5 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E]"
-                >
-                  {tab.badge > 9 ? '9+' : tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        <div
+          className="w-full flex items-stretch gap-0.5 rounded-lg p-0.5"
+          style={{ background: isDark ? '#1E1E1C' : '#DCD9CE' }}
+        >
+          {([
+            { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
+            { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
+            { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
+            { id: 'graph', label: 'Graph', icon: Network, badge: null },
+            { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
+          ] as const).map((tab) => {
+            const isActive = activeTab === tab.id;
+            const activeStyle: React.CSSProperties = isActive
+              ? {
+                  background: isDark ? '#3A3A37' : '#FBFAF6',
+                  color: isDark ? '#EEEDEA' : '#2D2D2D',
+                  boxShadow: isDark
+                    ? '0 1px 2px rgba(0,0,0,0.3)'
+                    : '0 1px 2px rgba(45,45,45,0.12)',
+                }
+              : {
+                  color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
+                };
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
+                aria-label={tab.label}
+                aria-pressed={isActive}
+                className={`relative flex-1 flex items-center justify-center h-6 rounded-md transition-colors active:opacity-70 ${
+                  isActive
+                    ? ''
+                    : isDark ? 'hover:text-[#EEEDEA] hover:bg-[#EEEDEA]/[0.05]' : 'hover:text-[#2D2D2D] hover:bg-[#EAE8E0]/60'
+                }`}
+                style={activeStyle}
+              >
+                <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+                {tab.badge !== null && (
+                  <span
+                    aria-label={`${tab.badge} pending`}
+                    className="absolute top-0 right-1 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E]"
+                  >
+                    {tab.badge > 9 ? '9+' : tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
@@ -239,15 +265,15 @@ export default function RightPanel({
               />
             )}
             <div className="flex-1 overflow-hidden">
-              <GraphView notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
+              <GraphView notes={topologyNotes} folders={topologyFolders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                 hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
                 colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved} />
             </div>
           </div>
           <GraphInfoPanel
-            notes={notes}
-            folders={folders}
+            notes={topologyNotes}
+            folders={topologyFolders}
             activeNoteId={activeNoteId}
             onNavigateToNoteById={onNavigateToNoteById}
             isDark={isDark}

@@ -114,49 +114,66 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
   return { updatedContent: lines.join('\n'), updated: true };
 }
 
+const parseTasksFromNote = (note: Note): GlobalTask[] => {
+  const tasks: GlobalTask[] = [];
+  const lines = note.content.split('\n');
+  const occurrenceMap = new Map<string, number>();
+
+  lines.forEach((line, index) => {
+    const parsed = parseTaskLine(line, index, occurrenceMap);
+    if (!parsed) return;
+
+    // Re-extract due date for parsed task payload.
+    const dueMatch = line.match(DUE_REGEX);
+    let dueDate: string | undefined;
+    if (dueMatch) {
+      const raw = dueMatch[1] || dueMatch[2];
+      const parsedDate = new Date(raw);
+      dueDate = Number.isNaN(parsedDate.getTime()) ? undefined : raw;
+    }
+
+    let priority: Priority = 'none';
+    if (PRIORITY_HIGH_REGEX.test(line)) {
+      priority = 'high';
+    } else if (PRIORITY_MED_REGEX.test(line)) {
+      priority = 'medium';
+    } else if (PRIORITY_LOW_REGEX.test(line)) {
+      priority = 'low';
+    }
+
+    tasks.push({
+      id: `${note.id}-${index}`,
+      noteId: note.id,
+      noteTitle: note.title,
+      content: parsed.content,
+      taskId: parsed.taskId,
+      completed: parsed.completed,
+      dueDate,
+      priority,
+      lineIndex: index,
+      occurrenceIndex: parsed.occurrenceIndex,
+      originalString: line,
+    });
+  });
+  return tasks;
+};
+
+// Per-note parse cache keyed by object identity. Every mutation path creates a
+// fresh Note object, so an unchanged reference means unchanged content — this
+// is called on every notes-state change (i.e. every keystroke) and must not
+// re-run the line regexes over the whole vault each time.
+const noteTasksCache = new WeakMap<Note, GlobalTask[]>();
+
 export const parseTasksFromNotes = (notes: Note[]): GlobalTask[] => {
   const tasks: GlobalTask[] = [];
 
   notes.forEach((note) => {
-    const lines = note.content.split('\n');
-    const occurrenceMap = new Map<string, number>();
-
-    lines.forEach((line, index) => {
-      const parsed = parseTaskLine(line, index, occurrenceMap);
-      if (!parsed) return;
-
-      // Re-extract due date for parsed task payload.
-      const dueMatch = line.match(DUE_REGEX);
-      let dueDate: string | undefined;
-      if (dueMatch) {
-        const raw = dueMatch[1] || dueMatch[2];
-        const parsedDate = new Date(raw);
-        dueDate = Number.isNaN(parsedDate.getTime()) ? undefined : raw;
-      }
-
-      let priority: Priority = 'none';
-      if (PRIORITY_HIGH_REGEX.test(line)) {
-        priority = 'high';
-      } else if (PRIORITY_MED_REGEX.test(line)) {
-        priority = 'medium';
-      } else if (PRIORITY_LOW_REGEX.test(line)) {
-        priority = 'low';
-      }
-
-      tasks.push({
-        id: `${note.id}-${index}`,
-        noteId: note.id,
-        noteTitle: note.title,
-        content: parsed.content,
-        taskId: parsed.taskId,
-        completed: parsed.completed,
-        dueDate,
-        priority,
-        lineIndex: index,
-        occurrenceIndex: parsed.occurrenceIndex,
-        originalString: line,
-      });
-    });
+    let noteTasks = noteTasksCache.get(note);
+    if (!noteTasks) {
+      noteTasks = parseTasksFromNote(note);
+      noteTasksCache.set(note, noteTasks);
+    }
+    tasks.push(...noteTasks);
   });
 
   // Default sort: incomplete first, high priority first, due date first

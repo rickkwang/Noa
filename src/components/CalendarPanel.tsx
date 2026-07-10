@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
 import { Note } from '../types';
 import { formatDate } from '../lib/templates';
@@ -26,7 +26,16 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   // Find the title of the active note to highlight the corresponding calendar day.
   // Daily note titles are the formatted date string (per dateFormat), so we compare
   // the formatted dateStr against the active note's title directly.
-  const activeNoteTitle = notes.find(n => n.id === activeNoteId)?.title ?? '';
+  // Gated on isOpen: this component re-renders on every notes change (every
+  // keystroke) and must do no per-note work while collapsed.
+  const activeNoteTitle = isOpen ? (notes.find(n => n.id === activeNoteId)?.title ?? '') : '';
+
+  // Title set so each day cell checks membership in O(1) instead of scanning
+  // all notes (31 × O(n) per render when open).
+  const noteTitles = useMemo(
+    () => (isOpen ? new Set(notes.map(n => n.title)) : null),
+    [notes, isOpen]
+  );
 
   // Returns true only if the active note is a daily note for this dateStr
   const isActiveDate = (dateStr: string) =>
@@ -42,7 +51,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
 
   const hasDailyNote = (dateStr: string) => {
     const formatted = formatDate(dateFormat, new Date(dateStr + 'T00:00:00'));
-    return notes.some(n => n.title === formatted);
+    return noteTitles?.has(formatted) ?? false;
   };
 
   const prevMonth = () => setViewMonth(new Date(year, month - 1, 1));
@@ -97,15 +106,15 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
               const isActive = isActiveDate(dateStr);
               const hasNote = hasDailyNote(dateStr);
               const isClickable = hasNote || isToday;
-              let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
-              if (isActive) cellClass += 'bg-[#CC7D5E] text-white';
-              else if (isToday) cellClass += 'border border-[#CC7D5E] text-[#CC7D5E] hover:bg-[#DCD9CE]';
+              let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction rounded-md transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
+              if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
+              else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
               else if (hasNote) cellClass += 'text-[#2D2D2D] hover:bg-[#DCD9CE]';
               else cellClass += 'text-[#2D2D2D] opacity-40';
               return (
                 <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
                   <span className="leading-none">{cell.day}</span>
-                  {hasNote && !isActive && <span className="w-1 h-1 bg-[#CC7D5E] mt-0.5" />}
+                  {hasNote && !isActive && <span className="w-1 h-1 rounded-full bg-[#CC7D5E] mt-0.5" />}
                 </div>
               );
             })}

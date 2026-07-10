@@ -143,6 +143,13 @@ export function useCodeMirror({
   const readOnlyCompartmentRef = useRef(new Compartment());
   const readOnlyRef = useRef(readOnly);
 
+  // Mirror the content currently held by EditorView. The update listener already
+  // serializes every changed document for local updates, so retaining that string
+  // lets React round trips skip another O(doc) serialization. Remote transactions
+  // update this ref too, preventing an older local value from masking a later
+  // external A -> B -> A transition.
+  const editorContentRef = useRef<string | null>(null);
+
   // Keep callback refs stable so the CodeMirror instance never captures stale closures
   const onUpdateRef = useRef(onUpdate);
   const onMentionTriggerRef = useRef(onMentionTrigger);
@@ -159,6 +166,7 @@ export function useCodeMirror({
       const isRemoteSync = update.transactions.some((transaction) => transaction.annotation(remoteSyncAnnotation));
       if (update.docChanged) {
         const content = update.state.doc.toString();
+        editorContentRef.current = content;
         // Suppress onUpdate while an IME composition is in-flight. Firing mid-
         // composition causes extractLinks/debounceSave to race with the user
         // finishing a CJK character, producing jittery link state. The final
@@ -246,6 +254,7 @@ export function useCodeMirror({
     ];
 
     const docContent = note?.content ?? '';
+    editorContentRef.current = docContent;
     // Prefer the per-note cursor (A → B → A restores A). Fall back to
     // savedCursorRef when rebuilding the same note (e.g. dark-mode toggle),
     // since that ref is always up to date without a teardown hop.
@@ -267,7 +276,9 @@ export function useCodeMirror({
     // Flush once when IME composition ends, since updateListener skipped
     // intermediate transactions while view.composing was true.
     const handleCompositionEnd = () => {
-      onUpdateRef.current(view.state.doc.toString());
+      const content = view.state.doc.toString();
+      editorContentRef.current = content;
+      onUpdateRef.current(content);
     };
     view.contentDOM.addEventListener('compositionend', handleCompositionEnd);
 
@@ -302,7 +313,10 @@ export function useCodeMirror({
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view || !note) return;
-    const currentDoc = view.state.doc.toString();
+    // Round-trip guard against the editor's current content, not merely the last
+    // locally emitted value. Remote transactions also update editorContentRef.
+    if (note.content === editorContentRef.current) return;
+    const currentDoc = editorContentRef.current ?? view.state.doc.toString();
     const minimalChange = buildMinimalReplaceChange(currentDoc, note.content);
     if (minimalChange) {
       view.dispatch({

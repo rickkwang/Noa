@@ -26,16 +26,19 @@ This retains the fast React round-trip path without confusing historical local c
 
 ### Semantically safe Markdown chunk boundaries
 
-`splitMarkdownForChunkedPreview` will derive cut offsets from a Markdown syntax tree instead of a hand-written fence/math state machine.
+`splitMarkdownForChunkedPreview` will use a lightweight, conservative block-state scanner that preserves the existing linear-time performance.
 
 - Parse only documents at or above the existing size threshold.
-- Use the already-installed `unified`, `remark-parse`, `remark-gfm`, and `remark-math` packages so block structure matches the preview grammar for headings, fenced code, HTML blocks, GFM constructs, and math blocks.
-- Consider only root-level ATX heading nodes with source offsets as possible cut boundaries.
-- If the tree contains a reference definition or footnote definition, return the original Markdown as one chunk because those constructs have document-wide scope.
+- Track the active fence marker and opening run length so only a matching marker run of equal or greater length, with no trailing info string, closes the fence.
+- Track display-math fences so heading-looking lines inside math never become cut points.
+- Conservatively return the original Markdown as one chunk when a raw HTML block opener is present; accurately reproducing all cross-line CommonMark HTML states would make the splitter heavier and less reliable.
+- Return the original Markdown as one chunk when a reference definition or footnote definition is present because those constructs have document-wide scope.
+- Consider only column-zero ATX headings outside those constructs as possible cut boundaries.
 - Preserve the existing minimum chunk size merging and lossless `chunks.join('') === markdown` invariant.
-- If parsing fails or source offsets are unavailable, conservatively return one chunk.
 
-The preview remains chunked for ordinary large notes, while headings inside code, HTML, math, lists, or other nested blocks cannot become cut points.
+The preview remains chunked for ordinary large notes with scanner cost close to the original implementation. Documents containing raw HTML trade chunking for guaranteed semantic preservation.
+
+To make chunk memoization effective, the note context captured by Markdown component renderers remains stable during active-note content-only edits. Title/folder changes and embedded-note content or attachment changes still invalidate that context, so link resolution and transclusions stay current without forcing every unchanged chunk to parse again on each keystroke.
 
 ### Latest-query sidebar refresh
 
@@ -44,6 +47,7 @@ The preview remains chunked for ordinary large notes, while headings inside code
 - Update the query ref every render.
 - The debounced index-refresh callback reads the query and case-sensitivity setting from the latest refs when it fires.
 - If the latest query is empty, the callback does not repopulate results.
+- The non-deferred query is the hard gate for scheduling and immediately cancels pending work when cleared.
 - Query changes continue to run the immediate query effect; they do not cause an additional index rebuild or redundant delayed search.
 
 This keeps the on-demand indexing behavior while removing stale closure writes.

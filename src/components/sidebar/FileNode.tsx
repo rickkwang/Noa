@@ -123,7 +123,7 @@ export const FileNode = React.memo(({
   return (
     <div className="font-redaction">
       <div
-        className={`flex items-center justify-between py-1 px-2 cursor-pointer select-none group ${
+        className={`flex items-center justify-between py-1 px-2 mx-1 rounded-md cursor-pointer select-none group ${
           isDropTarget
             ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
             : isSelected

@@ -161,3 +161,33 @@ describe('toggleTaskInNoteContent', () => {
     expect(result.updatedContent).toBe('- [ ] changed text');
   });
 });
+
+describe('parseTasksFromNotes per-note cache', () => {
+  it('reuses task objects for unchanged note objects across calls', () => {
+    const noteA = { ...note('- [ ] task a'), id: 'a' };
+    const noteB = { ...note('- [ ] task b'), id: 'b' };
+
+    const first = parseTasksFromNotes([noteA, noteB]);
+    const second = parseTasksFromNotes([noteA, noteB]);
+
+    expect(second).toHaveLength(first.length);
+    second.forEach((task, i) => expect(task).toBe(first[i]));
+  });
+
+  it('re-parses only the note object that changed', () => {
+    const noteA = { ...note('- [ ] task a'), id: 'a' };
+    const noteB = { ...note('- [ ] task b'), id: 'b' };
+    const first = parseTasksFromNotes([noteA, noteB]);
+
+    // Simulate an edit: a new object for A (state never mutates in place).
+    const editedA = { ...noteA, content: '- [ ] task a edited' };
+    const second = parseTasksFromNotes([editedA, noteB]);
+
+    const firstB = first.find((t) => t.noteId === 'b')!;
+    const secondB = second.find((t) => t.noteId === 'b')!;
+    expect(secondB).toBe(firstB);
+
+    const secondA = second.find((t) => t.noteId === 'a')!;
+    expect(secondA.content).toBe('task a edited');
+  });
+});

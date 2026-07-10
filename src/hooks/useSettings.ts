@@ -43,6 +43,11 @@ export function useSettings() {
         // accentColor was removed; drop it from older stored settings so it
         // isn't merged back in and re-persisted as a dead key.
         if (parsed.appearance) delete parsed.appearance.accentColor;
+        // The bundled fonts are back; migrate the interim 'system-default'
+        // value from the removal experiment to the default bundled font.
+        if (parsed.appearance?.fontFamily === 'system-default') {
+          parsed.appearance.fontFamily = 'font-iosevka';
+        }
         // Deep merge with default settings to ensure all properties exist
         return {
           editor: { ...defaultSettings.editor, ...parsed.editor },

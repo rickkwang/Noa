@@ -194,11 +194,17 @@ export default function Editor({
     `;
   }, []);
 
+  // Word count and TOC scan the full document — ride the deferred note (same
+  // one the preview uses) so these O(doc) passes run in the low-priority
+  // follow-up render instead of on the urgent keystroke render. On note switch
+  // the deferred value lags one frame; fall back to the fresh note there.
+  const scanNote = deferredNote?.id === note?.id ? deferredNote : note;
+
   const stats = useMemo(() => {
-    const text = note?.content ?? '';
+    const text = scanNote?.content ?? '';
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     return { chars: text.length, words };
-  }, [note?.content]);
+  }, [scanNote?.content]);
 
   useEffect(() => {
     // Reset transient UI state whenever the active note changes — including when
@@ -294,8 +300,8 @@ export default function Editor({
   }, [viewMode, insertFormatting, onNoteUpdate, readOnly, uploadFile]);
 
   const tocHeadings = useMemo(() => {
-    if (!note) return [];
-    return note.content.split('\n').reduce<{ level: number; text: string; lineIndex: number }[]>(
+    if (!scanNote) return [];
+    return scanNote.content.split('\n').reduce<{ level: number; text: string; lineIndex: number }[]>(
       (acc, line, i) => {
         const m = line.match(/^(#{1,6})\s+(.+)$/);
         if (m) acc.push({ level: m[1].length, text: m[2], lineIndex: i });
@@ -303,7 +309,7 @@ export default function Editor({
       },
       []
     );
-  }, [note?.content]);
+  }, [scanNote?.content]);
 
   const handleTitleSubmit = useCallback(() => {
     setIsEditingTitle(false);

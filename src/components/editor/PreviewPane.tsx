@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useScrollingClass } from '../../hooks/useScrollingClass';
 import { useIsDark } from '../../hooks/useIsDark';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
-import type { Components } from 'react-markdown';
+import type { Components, Options as MarkdownOptions } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
@@ -16,8 +16,10 @@ import { visit } from 'unist-util-visit';
 import type { Root, Text, Parent, RootContent } from 'mdast';
 import { Note, Folder, AppSettings } from '../../types';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
+import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { useAttachments } from '../../hooks/useAttachments';
 import { MermaidBlock } from './MermaidBlock';
+import { canReusePreviewContextNotes } from './previewMemo';
 import { Copy, Check, FileText } from '@/src/lib/icons';
 
 function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
@@ -186,6 +188,35 @@ function remarkTag() {
     });
   };
 }
+
+// Module-level so every <Markdown> render (and MarkdownChunk's memo) sees the
+// same plugin identities.
+const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
+const REHYPE_PLUGINS: MarkdownOptions['rehypePlugins'] = [rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]];
+
+// One chunk of a large note's preview. Memoized so a render pass where the
+// chunk text and components are unchanged skips the markdown re-parse, and so
+// React's concurrent renderer can yield between chunks instead of parsing the
+// whole document in one long task (which froze tab-switch animations).
+const MarkdownChunk = React.memo(function MarkdownChunk({ markdown, components }: { markdown: string; components: Components }) {
+  return (
+    <Markdown
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={REHYPE_PLUGINS}
+      components={components}
+      urlTransform={urlTransform}
+    >
+      {markdown}
+    </Markdown>
+  );
+});
+
+// Skips layout/paint for offscreen chunks; the placeholder height only needs
+// to be the right order of magnitude for scrollbar stability.
+const chunkWrapperStyle = {
+  contentVisibility: 'auto',
+  containIntrinsicSize: 'auto 600px',
+} as React.CSSProperties;
 
 interface BacklinkItem {
   id: string;
@@ -397,6 +428,9 @@ interface NoteMarkdownBodyProps {
   depth: number;
   /** Note ids along the current embed chain (incl. the top-level note). */
   visitedIds: ReadonlySet<string>;
+  /** Print rendering: keep chunking but skip content-visibility (Chromium can
+   *  omit content-visibility:auto subtrees from the printed page). */
+  printMode?: boolean;
 }
 
 const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
@@ -410,8 +444,16 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   scrollContainerRef,
   depth,
   visitedIds,
+  printMode,
 }: NoteMarkdownBodyProps) {
-  const linkIndex = useMemo(() => buildLinkIndex(allNotes, folders ?? []), [allNotes, folders]);
+  const componentNotesRef = useRef(allNotes);
+  const componentNotes = canReusePreviewContextNotes(componentNotesRef.current, allNotes, note.id)
+    ? componentNotesRef.current
+    : allNotes;
+  useEffect(() => {
+    componentNotesRef.current = componentNotes;
+  }, [componentNotes]);
+  const linkIndex = useMemo(() => buildLinkIndex(componentNotes, folders ?? []), [componentNotes, folders]);
 
   const previewMarkdown = useMemo(() => {
     const findAttachment = (ref: string) => {
@@ -581,7 +623,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
             <NoteEmbed
               noteId={embedNoteId}
               anchor={embedAnchor}
-              allNotes={allNotes}
+              allNotes={componentNotes}
               folders={folders}
               isDark={isDark}
               onNavigateToNoteLegacy={onNavigateToNoteLegacy}
@@ -728,17 +770,33 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         );
       },
     };
-  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, allNotes, folders, linkIndex, note.folder, depth, visitedIds, scrollContainerRef]);
+  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, componentNotes, folders, linkIndex, note.folder, depth, visitedIds, scrollContainerRef]);
 
+  // Chunk only the top-level note: embeds render inside a <span> (see
+  // NoteEmbed), where block wrappers would be invalid, and embedded sections
+  // are small anyway.
+  const chunks = useMemo(
+    () => (depth === 0 ? splitMarkdownForChunkedPreview(previewMarkdown) : [previewMarkdown]),
+    [depth, previewMarkdown]
+  );
+
+  if (chunks.length === 1) {
+    return <MarkdownChunk markdown={previewMarkdown} components={markdownComponents} />;
+  }
   return (
-    <Markdown
-      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag]}
-      rehypePlugins={[rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]]}
-      components={markdownComponents}
-      urlTransform={urlTransform}
-    >
-      {previewMarkdown}
-    </Markdown>
+    <>
+      {chunks.map((chunk, i) => (
+        <div
+          key={i}
+          style={printMode ? undefined : chunkWrapperStyle}
+          // Replicate the typography plugin's `.prose > :first-child { mt-0 }`,
+          // which the wrapper div would otherwise absorb.
+          className={i === 0 ? '[&>:first-child]:mt-0' : undefined}
+        >
+          <MarkdownChunk markdown={chunk} components={markdownComponents} />
+        </div>
+      ))}
+    </>
   );
 });
 
@@ -880,7 +938,15 @@ export const PreviewPane = React.memo(function PreviewPane({
     <div
       ref={scrollRef}
       className={printMode ? 'block' : 'flex-1 pt-8 pb-8 pl-8 overflow-y-auto flex flex-col bg-[#EAE8E0]/50'}
-      style={printMode ? style : { paddingRight: '2rem', ...style }}
+      style={printMode ? style : {
+        paddingRight: '2rem',
+        // Preview mode has no toolbar below the tab bar, so scrolled content
+        // would butt right against it. Fade the top edge via mask (theme-agnostic
+        // — works over any background, unlike a colored gradient overlay).
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 16px)',
+        maskImage: 'linear-gradient(to bottom, transparent 0, black 16px)',
+        ...style,
+      }}
     >
       <div className="flex-1">
         <div
@@ -902,6 +968,7 @@ export const PreviewPane = React.memo(function PreviewPane({
             scrollContainerRef={scrollRef}
             depth={0}
             visitedIds={visitedIds}
+            printMode={printMode}
           />
         </div>
       </div>

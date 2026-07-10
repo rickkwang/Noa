@@ -37,7 +37,10 @@ const DUE_DISPLAY: Record<string, string> = {
   all: 'all', today: 'today', week: 'week', overdue: 'late',
 };
 
-export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark = false }: TasksPanelProps) {
+// Memoized: `tasks` keeps its identity across keystrokes that don't change any
+// task (useGlobalTasks) and the callbacks are stabilized in App, so typing in
+// a task-free note skips this panel entirely.
+export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark = false }: TasksPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTIONS[number]>('all');
   const [dueDateFilter, setDueDateFilter] = useState<typeof DUE_OPTIONS[number]>('all');
   const [activePageSize, setActivePageSize] = useState(TASKS_PAGE_SIZE);
@@ -88,11 +91,10 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
   const txt = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
   const dim = isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/50';
   const dimmer = isDark ? 'text-[rgba(238,237,234,0.3)]' : 'text-[#2D2D2D]/30';
-  const rowBorder = isDark ? 'border-[rgba(238,237,234,0.06)]' : 'border-[#2D2D2D]/[0.06]';
   const rowHover = isDark ? 'hover:bg-[rgba(238,237,234,0.04)]' : 'hover:bg-[#DCD9CE]/35';
-  const progressTrack = isDark ? 'bg-[rgba(238,237,234,0.1)]' : 'bg-[#2D2D2D]/8';
+  const progressTrack = isDark ? 'bg-[rgba(238,237,234,0.14)]' : 'bg-[#2D2D2D]/12';
   const progressFill = isDark ? 'bg-[#EEEDEA]' : 'bg-[#2D2D2D]';
-  const sectionLine = isDark ? 'bg-[rgba(238,237,234,0.12)]' : 'bg-[#2D2D2D]/12';
+  const sectionLine = isDark ? 'bg-[rgba(238,237,234,0.22)]' : 'bg-[#2D2D2D]/12';
   const checkboxBorder = isDark ? 'border-[rgba(238,237,234,0.3)]' : 'border-[#2D2D2D]/35';
   const checkboxBorderDone = isDark ? 'border-[rgba(238,237,234,0.4)]' : 'border-[#2D2D2D]/50';
   const checkboxBgDone = isDark ? 'bg-[rgba(238,237,234,0.15)]' : 'bg-[#2D2D2D]/20';
@@ -105,6 +107,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
     ? 'border-[rgba(238,237,234,0.15)] text-[rgba(238,237,234,0.3)] hover:border-[rgba(238,237,234,0.4)] hover:text-[rgba(238,237,234,0.6)]'
     : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]';
   const lowRail = isDark ? 'bg-[rgba(238,237,234,0.25)]' : 'bg-[#2D2D2D]/25';
+  const filterBorderIdle = isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[#2D2D2D]/20';
+  const filterHoverIdle = isDark ? 'hover:border-[rgba(238,237,234,0.4)]' : 'hover:border-[#2D2D2D]/40';
 
   // Task body & note titles → clean sans CJK (PingFang/system) instead of the
   // panel's Redaction→serif fallback, which renders Chinese thin and dated at 13px.
@@ -125,17 +129,17 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
     displayMap?: Record<string, string>
   ) {
     return (
-      <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider font-bold font-redaction">
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] font-bold font-redaction">
         <span className={`shrink-0 w-[58px] ${dimmer}`}>{label}</span>
         <div className="flex items-center gap-1 flex-wrap">
           {options.map((opt) => (
             <button
               key={opt}
               onClick={() => { onChange(opt); setActivePageSize(TASKS_PAGE_SIZE); }}
-              className={`px-1.5 py-0.5 border transition-colors active:opacity-70 ${
+              className={`px-1.5 py-0.5 border rounded-[3px] transition-colors active:opacity-70 ${
                 value === opt
                   ? 'border-[#CC7D5E] text-[#CC7D5E]'
-                  : `border-transparent ${dim} hover:opacity-80`
+                  : `${filterBorderIdle} ${dim} ${filterHoverIdle}`
               }`}
             >
               {displayMap?.[opt] ?? opt}
@@ -159,8 +163,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
           {/* ─── Stat header ─────────────────────────────────────────── */}
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
-              <div className="flex items-baseline gap-1 tabular-nums text-[10px] font-semibold">
+              <span className={`text-[11px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
+              <div className="flex items-baseline gap-1 tabular-nums text-[11px] font-semibold">
                 <span className={txt}>{completedTasks.length}</span>
                 <span className={dimmer}>/</span>
                 <span className={dim}>{total}</span>
@@ -168,14 +172,14 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                 <span className={dim}>{completionPct}%</span>
               </div>
             </div>
-            <div className={`h-[2px] w-full ${progressTrack} relative`}>
+            <div className={`h-[3px] w-full ${progressTrack} relative`}>
               <div
                 className={`absolute inset-y-0 left-0 ${progressFill} transition-[width] duration-200`}
                 style={{ width: `${completionPct}%` }}
               />
             </div>
             {(overdueCount > 0 || todayCount > 0) && (
-              <div className="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-wider font-bold">
+              <div className="flex items-center gap-3 mt-2 text-[11px] uppercase tracking-[0.08em] font-bold">
                 {overdueCount > 0 && <span className="text-[#D45555]">▴ {overdueCount} overdue</span>}
                 {todayCount > 0 && <span className="text-[#CC7D5E]">● {todayCount} today</span>}
               </div>
@@ -205,9 +209,9 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             const railColor = priorityRailColor(task.priority);
             return (
               <div key={task.id}
-                className={`group relative flex items-start gap-2.5 pl-3 pr-3 py-2 border-b transition-colors ${rowHover} ${rowBorder}`}>
+                className={`group relative flex items-start gap-2.5 pr-3 py-2.5 transition-colors ${rowHover}`}>
                 {railColor && (
-                  <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
+                  <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
                 <div className="flex items-center h-[19px] shrink-0">
                   <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Complete task">
@@ -218,12 +222,12 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                   <span style={contentFont} className={`block text-sm leading-[1.5] ${txt}`}>{task.content}</span>
                   <button onClick={() => onNavigateToNoteById(task.noteId)}
                     title={task.noteTitle}
-                    className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[10px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
+                    className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
                     <ExternalLink size={9} />
                     <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
                   </button>
                   {task.dueDate && (
-                    <div className={`mt-0.5 text-[10px] tabular-nums font-bold ${
+                    <div className={`mt-0.5 text-[11px] tabular-nums font-bold ${
                       isOverdue ? 'text-[#D45555]' : isToday ? 'text-[#CC7D5E]' : isSoon ? 'text-[#CC7D5E]' : dim
                     }`}>
                       {isOverdue ? '⚠ ' : isToday ? '● ' : '→ '}{task.dueDate}
@@ -235,7 +239,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
           })}
           {filteredActiveTasks.length > activePageSize && (
             <button onClick={() => setActivePageSize(s => s + TASKS_PAGE_SIZE)}
-              className={`w-full text-[10px] uppercase tracking-wider py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
+              className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
               Show more ({filteredActiveTasks.length - activePageSize} remaining)
             </button>
           )}
@@ -254,8 +258,8 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
               size={11}
               className={`shrink-0 transition-transform ${dimmer} ${completedExpanded ? 'rotate-90' : ''}`}
             />
-            <span className={`text-[10px] uppercase tracking-[0.25em] font-bold shrink-0 ${dimmer}`}>Completed</span>
-            <span className={`text-[10px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
+            <span className={`text-[11px] uppercase tracking-[0.25em] font-bold shrink-0 ${dimmer}`}>Completed</span>
+            <span className={`text-[11px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
             <div className={`flex-1 h-px ${sectionLine}`} />
           </button>
           {completedExpanded && (
@@ -263,9 +267,9 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             {completedTasks.slice(0, completedPageSize).map(task => {
               const railColor = priorityRailColor(task.priority);
               return (
-                <div key={task.id} className={`group relative flex items-start gap-2.5 pl-3 pr-3 py-2 border-b opacity-50 hover:opacity-80 transition-opacity ${rowBorder}`}>
+                <div key={task.id} className="group relative flex items-start gap-2.5 pr-3 py-2.5 opacity-50 hover:opacity-80 transition-opacity">
                   {railColor && (
-                    <span className={`absolute left-0 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
+                    <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
                   <div className="flex items-center h-[19px] shrink-0">
                     <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Reopen task">
@@ -278,12 +282,12 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
                     <span style={contentFont} className={`block text-sm leading-[1.5] line-through ${txt}`}>{task.content}</span>
                     <button onClick={() => onNavigateToNoteById(task.noteId)}
                       title={task.noteTitle}
-                      className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[10px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
+                      className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
                       <ExternalLink size={9} />
                       <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
                     </button>
                     {task.dueDate && (
-                      <div className={`mt-0.5 text-[10px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
+                      <div className={`mt-0.5 text-[11px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
                     )}
                   </div>
                 </div>
@@ -291,7 +295,7 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
             })}
             {completedTasks.length > completedPageSize && (
               <button onClick={() => setCompletedPageSize(s => s + TASKS_PAGE_SIZE)}
-                className={`w-full text-[10px] uppercase tracking-wider py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
+                className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
                 Show more ({completedTasks.length - completedPageSize} remaining)
               </button>
             )}
@@ -301,4 +305,4 @@ export function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark =
       )}
     </div>
   );
-}
+});

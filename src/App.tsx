@@ -7,7 +7,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import { STORAGE_KEYS } from './constants/storageKeys';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
-import { parseTasksFromNotes } from './lib/taskParser';
+import { useGlobalTasks } from './hooks/useGlobalTasks';
 import { useSettings } from './hooks/useSettings';
 import { useNotes } from './hooks/useNotes';
 import { useLayout } from './hooks/useLayout';
@@ -557,7 +557,7 @@ export default function App() {
     });
   }, [openTabIds, notes]);
 
-  const globalTasks = useMemo(() => parseTasksFromNotes(notes), [notes]);
+  const globalTasks = useGlobalTasks(notes);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
 
   // Detect orphan activeNoteId: the note was deleted in another tab/window.
@@ -572,13 +572,15 @@ export default function App() {
   }, [isLoaded, activeNoteId, activeNote, setActiveNoteId, setSaveError]);
   const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
 
+  // Read notes via ref so these callbacks stay referentially stable across
+  // keystrokes — they feed memoized children (Sidebar rows, TasksPanel).
   const navigateById = useCallback((id: string) => {
-    if (!notes.some((note) => note.id === id)) return;
+    if (!notesRef.current.some((note) => note.id === id)) return;
     handleNavigateToNoteById(id);
-  }, [handleNavigateToNoteById, notes]);
+  }, [handleNavigateToNoteById]);
 
   const navigateByTitle = useCallback((title: string) => {
-    const matched = notes.filter((note) => note.title === title);
+    const matched = notesRef.current.filter((note) => note.title === title);
     if (matched.length === 1) {
       navigateById(matched[0].id);
       return;
@@ -588,7 +590,25 @@ export default function App() {
       return;
     }
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
-  }, [handleNavigateToNote, navigateById, notes]);
+  }, [handleNavigateToNote, navigateById]);
+
+  const handleRightPanelNavigate = useCallback((id: string) => {
+    navigateById(id);
+    if (isMobile) setIsRightPanelOpen(false);
+  }, [navigateById, isMobile, setIsRightPanelOpen]);
+
+  const handleSidebarSelectNote = useCallback((id: string) => {
+    // Switch + arm the entrance synchronously so the editor build and tab
+    // animation aren't gated on an IndexedDB write; flush the outgoing note's
+    // pending saves in the background (timers are independent of unmount, so
+    // nothing is lost).
+    openTabForNote(id, true);
+    setActiveNoteId(id);
+    if (isMobile) setIsSidebarOpen(false);
+    void flushAllPendingSaves().catch(err => {
+      console.error('[Noa] Failed to flush saves on note select:', err);
+    });
+  }, [openTabForNote, setActiveNoteId, isMobile, setIsSidebarOpen, flushAllPendingSaves]);
 
   const commandPalette = useCommandPalette({
     notes,
@@ -725,18 +745,7 @@ export default function App() {
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
                 recentNoteIds={recentNoteIds}
-                onSelectNote={(id) => {
-                  // Switch + arm the entrance synchronously so the editor build
-                  // and tab animation aren't gated on an IndexedDB write; flush
-                  // the outgoing note's pending saves in the background (timers
-                  // are independent of unmount, so nothing is lost).
-                  openTabForNote(id, true);
-                  setActiveNoteId(id);
-                  if (isMobile) setIsSidebarOpen(false);
-                  void flushAllPendingSaves().catch(err => {
-                    console.error('[Noa] Failed to flush saves on note select:', err);
-                  });
-                }}
+                onSelectNote={handleSidebarSelectNote}
                 onCreateNote={handleCreateNote}
                 onDeleteNote={handleDeleteNote}
                 onRenameNote={handleRenameNote}
@@ -839,10 +848,7 @@ export default function App() {
                 <RightPanel
                   tasks={globalTasks}
                   onToggleTask={handleToggleTaskGuarded}
-                  onNavigateToNoteById={(id) => {
-                    navigateById(id);
-                    if (isMobile) setIsRightPanelOpen(false);
-                  }}
+                  onNavigateToNoteById={handleRightPanelNavigate}
                   activeNote={activeNote}
                   activeTab={activeRightTab}
                   onTabChange={setActiveRightTab}
