@@ -25,16 +25,17 @@ The root application container receives a stable `noa-app-shell` class. Global C
 
 - `input` and `textarea` elements;
 - editable DOM nodes marked with `contenteditable`;
-- CodeMirror's `.cm-editor` root;
-- content regions explicitly marked `.noa-selectable`, starting with Markdown preview.
+- CodeMirror's `.cm-content` in both editable and read-only vault states;
+- content regions explicitly marked `.noa-selectable`, including Markdown preview, version-history content, and error diagnostics.
 
-Print-only preview content stays selectable through the same `.noa-selectable` marker. Native controls such as buttons, tabs, sliders, and selects remain part of the non-selectable shell.
+Print-only preview content stays selectable through the same `.noa-selectable` marker. Clickable UI lists such as search results, tasks, backlinks, and outgoing links remain non-selectable to avoid accidental highlighting during navigation.
 
 ## Regression Coverage
 
-Add one browser test that verifies computed selection policy in the running app:
+Browser tests verify that:
 
-- application shell and settings headings are `none`;
-- search input, CodeMirror, and Markdown preview are `text`.
+- application shell, tabs, and settings headings are non-selectable;
+- search input, editable and read-only CodeMirror content, textareas, Markdown preview, and version-history content remain selectable;
+- the compact graph filter retains a visible focus indicator for keyboard navigation.
 
-Run TypeScript, architecture, unit, smoke, and build-budget checks after implementation.
+The complete TypeScript, architecture, unit, browser, and build-budget checks validate the implementation after changes.

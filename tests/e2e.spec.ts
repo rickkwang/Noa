@@ -45,6 +45,61 @@ async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByRole('tab', { name: 'Data' }).click();
 }
 
+async function saveHistorySnapshotForNote(
+  page: import('@playwright/test').Page,
+  noteTitle: string,
+  content: string,
+) {
+  await page.evaluate(async ({ title, snapshotContent }) => {
+    type StoredNote = { id: string; title: string };
+
+    const openDatabase = (name: string) => new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(name);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    const notesDb = await openDatabase('redaction-diary-notes-db');
+    const note = await new Promise<StoredNote | null>((resolve, reject) => {
+      const transaction = notesDb.transaction('notes', 'readonly');
+      const request = transaction.objectStore('notes').openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(null);
+          return;
+        }
+        const value = cursor.value as Partial<StoredNote>;
+        if (
+          String(cursor.key).startsWith('note:') &&
+          value.title === title &&
+          typeof value.id === 'string'
+        ) {
+          resolve({ id: value.id, title });
+          return;
+        }
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+    });
+    notesDb.close();
+    if (!note) throw new Error(`Note "${title}" was not found.`);
+
+    const savedAt = new Date().toISOString();
+    const historyDb = await openDatabase('redaction-diary-history-db');
+    await new Promise<void>((resolve, reject) => {
+      const transaction = historyDb.transaction('history', 'readwrite');
+      transaction.objectStore('history').put(
+        { noteId: note.id, title: note.title, content: snapshotContent, savedAt },
+        `history:${note.id}:${savedAt}`,
+      );
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    historyDb.close();
+  }, { title: noteTitle, snapshotContent: content });
+}
+
 test('new note flow creates and persists a note', async ({ page }) => {
   const marker = `e2e-note-${Date.now()}`;
   await page.goto('/');
@@ -75,7 +130,10 @@ test('app chrome prevents accidental text selection while content remains select
   expect(await userSelect(page.locator('.noa-app-shell'))).toBe('none');
   expect(await userSelect(page.getByTitle('Double-click to rename'))).toBe('none');
   expect(await userSelect(page.getByPlaceholder('Search notes, tags...'))).toBe('text');
-  expect(await userSelect(page.locator('.cm-content').last())).toBe('text');
+  const editorContent = page.locator('.cm-content').last();
+  expect(await userSelect(editorContent)).toBe('text');
+  await editorContent.evaluate((element) => element.setAttribute('contenteditable', 'false'));
+  expect(await userSelect(editorContent)).toBe('text');
   expect(await userSelect(page.locator('.noa-selectable').first())).toBe('text');
 
   await page.getByTitle('Settings').click();
@@ -83,6 +141,45 @@ test('app chrome prevents accidental text selection while content remains select
   expect(await userSelect(page.getByPlaceholder('# {{date}}\n\n## Notes\n\n'))).toBe('text');
   await page.getByRole('tab', { name: 'Appearance' }).click();
   expect(await userSelect(page.getByRole('heading', { name: 'Theme' }))).toBe('none');
+});
+
+test('version history content remains selectable', async ({ page }) => {
+  const marker = `history-selection-${Date.now()}`;
+  await page.goto('/');
+
+  await page.getByTitle('Version History').click();
+  await expect(page.getByText('No history yet.', { exact: false })).toBeVisible();
+  await page.getByTitle('Version History').click();
+
+  await saveHistorySnapshotForNote(page, 'Welcome to Noa', marker);
+
+  await page.getByTitle('Version History').click();
+  const historyText = page.getByText(marker, { exact: true });
+  await historyText.first().click();
+  await expect(historyText).toHaveCount(2);
+  expect(await historyText.last().evaluate((element) => getComputedStyle(element).userSelect)).toBe('text');
+});
+
+test('graph controls keep visible keyboard focus and hover feedback', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ appearance: { theme: 'light' } }));
+    localStorage.setItem('app-right-panel-open', 'true');
+    localStorage.setItem('app-right-tab', 'graph');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-graph-guide-seen', '1');
+  });
+  await page.goto('/');
+
+  const input = page.getByPlaceholder('filter...');
+  await input.focus();
+  await expect(page.getByRole('group', { name: 'Graph filter controls' })).toHaveCSS(
+    'border-top-color',
+    'rgb(204, 125, 94)',
+  );
+
+  const zoomIn = page.getByTitle('Zoom in');
+  await zoomIn.hover();
+  await expect(zoomIn).toHaveCSS('color', 'rgb(204, 125, 94)');
 });
 
 test('graph canvas backing size remains stable during horizontal window resize', async ({ page }) => {

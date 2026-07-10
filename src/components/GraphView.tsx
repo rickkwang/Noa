@@ -744,8 +744,9 @@ export default function GraphView({
             key={title}
             onClick={action}
             title={title}
-            className="w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E]"
-            style={{ color: isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)' }}
+            className={`w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
+              isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[rgba(45,45,45,0.5)]'
+            }`}
           >
             {icon}
           </button>

@@ -166,7 +166,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
           flexDirection: 'column',
           gap: '0.5rem',
         }}>
-          <div style={{
+          <div className="noa-selectable" style={{
             fontSize: '0.65rem',
             color: textMuted,
             maxHeight: '80px',

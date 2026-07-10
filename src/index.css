@@ -36,9 +36,13 @@ body {
 }
 
 .noa-selectable,
-.noa-app-shell :where(input, textarea, [contenteditable]:not([contenteditable="false"]), .cm-editor) {
+.noa-app-shell :where(input, textarea, [contenteditable]:not([contenteditable="false"]), .cm-content) {
   -webkit-user-select: text;
   user-select: text;
+}
+
+.noa-graph-filter-control:focus-within {
+  border-color: #CC7D5E;
 }
 
 .noa-sidebar-section-surface {
