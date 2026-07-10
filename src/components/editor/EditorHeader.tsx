@@ -146,6 +146,15 @@ export function EditorHeader({
     onTitleKeyDown(e);
   };
   const shouldAnimateEnteringTab = Boolean(enteringTabId && tabs?.some(tab => tab.id === enteringTabId));
+  const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
+
+  const updateEdgeFade = () => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdgeFade(prev => (prev.left === left && prev.right === right ? prev : { left, right }));
+  };
 
   useLayoutEffect(() => {
     const scrollEl = tabStripRef.current;
@@ -163,16 +172,50 @@ export function EditorHeader({
     active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior });
   }, [tabs, note.id, enteringTabId]);
 
+  useEffect(() => {
+    const scrollEl = tabStripRef.current;
+    if (!scrollEl) return;
+    // The strip clips overflowing tabs with a hidden scrollbar, so a window
+    // resize can silently push the active tab out of view. Re-snap it whenever
+    // the strip itself changes size.
+    const observer = new ResizeObserver(() => {
+      const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
+      active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      updateEdgeFade();
+    });
+    observer.observe(scrollEl);
+    scrollEl.addEventListener('scroll', updateEdgeFade, { passive: true });
+    return () => {
+      observer.disconnect();
+      scrollEl.removeEventListener('scroll', updateEdgeFade);
+    };
+  }, []);
+
+  useLayoutEffect(updateEdgeFade, [tabs]);
+
+  // Fade the tab content itself out at overflowing edges (a colored overlay
+  // would need to match the themed header background exactly, which the theme
+  // layer can override at runtime).
+  const maskGradient = edgeFade.left || edgeFade.right
+    ? `linear-gradient(to right, ${edgeFade.left ? 'transparent, black 24px' : 'black'}, ${edgeFade.right ? 'black calc(100% - 24px), transparent' : 'black'})`
+    : undefined;
+  const tabStripMaskStyle: React.CSSProperties = maskGradient
+    ? { maskImage: maskGradient, WebkitMaskImage: maskGradient }
+    : {};
+
   return (
-    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-2 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#EEEDEA]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
+    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#EEEDEA]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
       {/* Tab strip */}
-      <div className="relative min-w-0 flex-1 flex items-end overflow-visible">
-        <div
-          ref={tabStripRef}
-          className="min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-          style={{ scrollPaddingInline: '10px' }}
-        >
-          <div className="flex items-end pt-1 w-full">
+      <div className="min-w-0 flex-1 flex items-end overflow-visible">
+        {/* z-[1] keeps the strip above the header's bottom line even when the
+            mask-image below forces this subtree into its own stacking context */}
+        <div className="relative z-[1] min-w-0 flex items-end overflow-visible">
+          <div
+            ref={tabStripRef}
+            className="min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            style={{ scrollPaddingInline: '10px', ...tabStripMaskStyle }}
+          >
+            <div className="flex items-end pt-1 w-full">
             {tabs && tabs.length > 0 ? (
               tabs.map((tab, idx) => {
                 const isActiveTab = tab.id === note.id;
@@ -305,17 +348,18 @@ export function EditorHeader({
                 )}
               </div>
             )}
-            {onNewTab && (
-              <button
-                onClick={onNewTab}
-                className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#EEEDEA]/70 hover:bg-[#262624]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE]'}`}
-                title="New tab"
-              >
-                <Plus size={14} />
-              </button>
-            )}
+            </div>
           </div>
         </div>
+        {onNewTab && (
+          <button
+            onClick={onNewTab}
+            className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#EEEDEA]/70 hover:bg-[#262624]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE]'}`}
+            title="New tab"
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       {/* Right controls */}
