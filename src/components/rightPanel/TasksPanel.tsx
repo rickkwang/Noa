@@ -33,9 +33,6 @@ const TASKS_PAGE_SIZE = 100;
 
 const PRIORITY_OPTIONS = ['all', 'high', 'medium', 'low'] as const;
 const DUE_OPTIONS = ['all', 'today', 'week', 'overdue'] as const;
-const DUE_DISPLAY: Record<string, string> = {
-  all: 'all', today: 'today', week: 'week', overdue: 'late',
-};
 
 // Memoized: `tasks` keeps its identity across keystrokes that don't change any
 // task (useGlobalTasks) and the callbacks are stabilized in App, so typing in
@@ -47,12 +44,16 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const [completedPageSize, setCompletedPageSize] = useState(TASKS_PAGE_SIZE);
   const [completedExpanded, setCompletedExpanded] = useState(() => lsGetBoolean(STORAGE_KEYS.TASKS_COMPLETED_EXPANDED));
 
-  const { activeTasks, completedTasks, overdueCount, todayCount } = useMemo(() => {
+  const { activeTasks, completedTasks, overdueCount, todayCount, hasPriorities, hasDueDates } = useMemo(() => {
     const activeTasks: typeof tasks = [];
     const completedTasks: typeof tasks = [];
     let overdueCount = 0;
     let todayCount = 0;
+    let hasPriorities = false;
+    let hasDueDates = false;
     for (const t of tasks) {
+      if (t.priority !== 'none') hasPriorities = true;
+      if (t.dueDate) hasDueDates = true;
       if (t.completed) {
         completedTasks.push(t);
       } else {
@@ -62,27 +63,33 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
         if (status === 'today') todayCount++;
       }
     }
-    return { activeTasks, completedTasks, overdueCount, todayCount };
+    return { activeTasks, completedTasks, overdueCount, todayCount, hasPriorities, hasDueDates };
   }, [tasks]);
 
+  // A filter whose row is hidden (no task carries that metadata) must not keep
+  // filtering — e.g. filter set to 'high', then the last prioritized task is
+  // edited away: the row disappears with no visible way to clear it.
+  const priorityFilterEff = hasPriorities ? priorityFilter : 'all';
+  const dueDateFilterEff = hasDueDates ? dueDateFilter : 'all';
+
   const filteredActiveTasks = useMemo(() => {
-    if (priorityFilter === 'all' && dueDateFilter === 'all') return activeTasks;
+    if (priorityFilterEff === 'all' && dueDateFilterEff === 'all') return activeTasks;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     return activeTasks.filter(task => {
-      if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
-      if (dueDateFilter !== 'all') {
+      if (priorityFilterEff !== 'all' && task.priority !== priorityFilterEff) return false;
+      if (dueDateFilterEff !== 'all') {
         if (!task.dueDate) return false;
         const due = parseLocalDueDate(task.dueDate);
-        if (dueDateFilter === 'today' && due.getTime() !== today.getTime()) return false;
-        if (dueDateFilter === 'week') {
+        if (dueDateFilterEff === 'today' && due.getTime() !== today.getTime()) return false;
+        if (dueDateFilterEff === 'week') {
           const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
           if (due < today || due > weekEnd) return false;
         }
-        if (dueDateFilter === 'overdue' && due >= today) return false;
+        if (dueDateFilterEff === 'overdue' && due >= today) return false;
       }
       return true;
     });
-  }, [activeTasks, priorityFilter, dueDateFilter]);
+  }, [activeTasks, priorityFilterEff, dueDateFilterEff]);
 
   const total = activeTasks.length + completedTasks.length;
   const completionPct = total > 0 ? Math.round((completedTasks.length / total) * 100) : 0;
@@ -107,8 +114,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
     ? 'border-[rgba(249,249,247,0.15)] text-[rgba(249,249,247,0.3)] hover:border-[rgba(249,249,247,0.4)] hover:text-[rgba(249,249,247,0.6)]'
     : 'border-[#2D2D2B]/20 text-[#2D2D2B]/40 hover:border-[#2D2D2B]/40 hover:text-[#2D2D2B]';
   const lowRail = isDark ? 'bg-[rgba(249,249,247,0.25)]' : 'bg-[#2D2D2B]/25';
-  const filterBorderIdle = isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]/20';
-  const filterHoverIdle = isDark ? 'hover:border-[rgba(249,249,247,0.4)]' : 'hover:border-[#2D2D2B]/40';
+  const filterHoverIdle = isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/80';
 
   // Task body & note titles → clean sans CJK (PingFang/system) instead of the
   // panel's Redaction→serif fallback, which renders Chinese thin and dated at 13px.
@@ -125,8 +131,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
     label: string,
     options: readonly T[],
     value: T,
-    onChange: (v: T) => void,
-    displayMap?: Record<string, string>
+    onChange: (v: T) => void
   ) {
     return (
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] font-bold font-redaction">
@@ -139,10 +144,10 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               className={`px-1.5 py-0.5 border rounded-[3px] transition-colors active:opacity-70 ${
                 value === opt
                   ? 'border-[#CC7D5E] text-[#CC7D5E]'
-                  : `${filterBorderIdle} ${dim} ${filterHoverIdle}`
+                  : `border-transparent ${dim} ${filterHoverIdle}`
               }`}
             >
-              {displayMap?.[opt] ?? opt}
+              {opt}
             </button>
           ))}
         </div>
@@ -168,8 +173,12 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                 <span className={txt}>{completedTasks.length}</span>
                 <span className={dimmer}>/</span>
                 <span className={dim}>{total}</span>
-                <span className={dimmer}>·</span>
-                <span className={dim}>{completionPct}%</span>
+                {completedTasks.length > 0 && (
+                  <>
+                    <span className={dimmer}>·</span>
+                    <span className={dim}>{completionPct}%</span>
+                  </>
+                )}
               </div>
             </div>
             <div className={`h-[3px] w-full ${progressTrack} relative`}>
@@ -186,11 +195,14 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             )}
           </div>
 
-          {/* ─── Filter strip ────────────────────────────────────────── */}
-          <div className="flex flex-col gap-2 mb-3">
-            {renderFilterRow<typeof PRIORITY_OPTIONS[number]>('Priority', PRIORITY_OPTIONS, priorityFilter, setPriorityFilter)}
-            {renderFilterRow<typeof DUE_OPTIONS[number]>('Due', DUE_OPTIONS, dueDateFilter, setDueDateFilter, DUE_DISPLAY)}
-          </div>
+          {/* ─── Filter strip — each row only when some task carries that
+                 metadata; for plain checklists both rows are pure noise ── */}
+          {(hasPriorities || hasDueDates) && (
+            <div className="flex flex-col gap-2 mb-3">
+              {hasPriorities && renderFilterRow<typeof PRIORITY_OPTIONS[number]>('Priority', PRIORITY_OPTIONS, priorityFilter, setPriorityFilter)}
+              {hasDueDates && renderFilterRow<typeof DUE_OPTIONS[number]>('Due', DUE_OPTIONS, dueDateFilter, setDueDateFilter)}
+            </div>
+          )}
         </>
       )}
 
@@ -213,8 +225,8 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                 {railColor && (
                   <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
-                <div className="flex items-center h-[19px] shrink-0">
-                  <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Complete task">
+                <div className="flex items-center h-[21px] shrink-0">
+                  <button onClick={() => onToggleTask(task)} className="p-1 -m-1 active:opacity-70" aria-label="Complete task">
                     <div className={`w-[15px] h-[15px] rounded-[4px] border transition-colors hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
@@ -271,8 +283,8 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   {railColor && (
                     <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
-                  <div className="flex items-center h-[19px] shrink-0">
-                    <button onClick={() => onToggleTask(task)} className="active:opacity-70" aria-label="Reopen task">
+                  <div className="flex items-center h-[21px] shrink-0">
+                    <button onClick={() => onToggleTask(task)} className="p-1 -m-1 active:opacity-70" aria-label="Reopen task">
                       <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
                         <Check size={10} weight="bold" className={checkmarkColor} />
                       </div>

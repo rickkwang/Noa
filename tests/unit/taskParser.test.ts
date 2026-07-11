@@ -120,6 +120,17 @@ describe('parseTasksFromNotes', () => {
     expect(tasks[0].taskId).toBe('task-123');
     expect(tasks[0].content).toBe('ship it');
   });
+
+  it('skips tasks with empty text (editor list auto-continuation leaves "- [ ] ")', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] real task\n- [ ] \n- [ ]   ')]);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].content).toBe('real task');
+  });
+
+  it('skips tasks whose text is only metadata tokens', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] !high\n- [ ] 📅 2026-01-01')]);
+    expect(tasks).toHaveLength(0);
+  });
 });
 
 describe('toggleTaskInNoteContent', () => {

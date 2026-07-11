@@ -41,7 +41,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
   }, [isDark, settings.appearance.usePointerCursors]);
 
-  const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", monospace' :
+  const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
                           settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
                           settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
                           settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :

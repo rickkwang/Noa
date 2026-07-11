@@ -19,7 +19,10 @@ button {
 }
 
 body {
-  font-family: "Iosevka Nerd Font Mono", "Iosevka NF", monospace;
+  /* Iosevka is not bundled — fall back to the bundled JetBrains Mono so
+     machines without it get a deterministic look instead of the platform's
+     default monospace. Keep the same chain in Editor/GraphView/ThemeInjector. */
+  font-family: "Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace;
   background-color: #F9F9F7;
   color: #2D2D2B;
   margin: 0;

@@ -299,7 +299,12 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
   if (React.isValidElement(firstChild)) {
     const firstChildProps = (firstChild as React.ReactElement<{ children?: React.ReactNode }>).props;
     const firstText = extractTextFromNode(firstChildProps.children);
-    const match = firstText.match(CALLOUT_HEADER_RE);
+    // remark-breaks renders each soft break as <br> + "\n" text, so for a
+    // multi-line callout firstText spans every line of the paragraph. Match
+    // the header against the first line only — against the full text,
+    // "[!TYPE] Title\n…" never matches ($ cannot cross the newline) and
+    // "[!TYPE]\n…" swallows the body line into the title (\s* eats the "\n").
+    const match = firstText.split('\n')[0].match(CALLOUT_HEADER_RE);
     if (match) {
       calloutType = match[1].toUpperCase();
       const foldChar = match[2];
@@ -309,11 +314,10 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
       // Strip the whole "[!TYPE]± title" header from the first child — the title
       // is rendered separately in the callout chrome, so none of the matched
-      // header line should leak into the body. The regex is anchored (^…$) and a
-      // matching callout's first line is single-line, so match[0] is exactly that
-      // header line. Using its length (rather than indexOf on the title text) is
-      // robust even when the title duplicates a substring of the type, e.g.
-      // "[!NOTE]+ NOTE".
+      // header line should leak into the body. match[0] is exactly the header
+      // line (the regex ran against the first line only). Using its length
+      // (rather than indexOf on the title text) is robust even when the title
+      // duplicates a substring of the type, e.g. "[!NOTE]+ NOTE".
       const childNodes = React.Children.toArray(firstChildProps.children);
       const prefixLen = match[0].length;
       const stripped = childNodes
@@ -325,6 +329,24 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
           return c;
         })
         .filter(Boolean);
+      // Drop the <br> (and its "\n" text twin) that separated the header line
+      // from the body, so the body doesn't open with a blank line.
+      while (stripped.length > 0) {
+        const head = stripped[0];
+        if (React.isValidElement(head) && head.type === 'br') {
+          stripped.shift();
+          continue;
+        }
+        if (typeof head === 'string') {
+          const trimmed = head.trimStart();
+          if (!trimmed) {
+            stripped.shift();
+            continue;
+          }
+          if (trimmed !== head) stripped[0] = trimmed;
+        }
+        break;
+      }
       restOfFirst = stripped.length > 0 ? <p>{stripped}</p> : null;
     }
   }

@@ -1,6 +1,6 @@
 import { recordErrorSnapshot } from './errorSnapshots';
 
-export interface DeleteFlowHandlers {
+interface DeleteFlowHandlers {
   id: string;
   deleteLocal: (id: string) => Promise<boolean>;
   closeTab: (id: string) => void;

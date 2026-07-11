@@ -397,6 +397,63 @@ Footnote ref[^1]
   await expect(preview.locator('li.task-list-item')).toHaveCount(2);
 });
 
+test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockquotes', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('sidebar-file-tree')).toBeVisible();
+
+  // Typing in the editor auto-continues "> " on Enter, nesting the body in a
+  // child blockquote — that path never reproduces a literal multi-line
+  // callout. Notes written outside Noa (Obsidian vaults, backups, .md file
+  // imports) DO carry "> [!TYPE] Title\n> body", so inject via storage the way
+  // an import would.
+  await page.evaluate(async () => {
+    const ts = new Date().toISOString();
+    const notes = [
+      {
+        id: 'callout-titled', title: 'CalloutTitled',
+        content: '> [!NOTE] Callout Title\n> callout body\n',
+        createdAt: ts, updatedAt: ts, folder: '', tags: [], links: [], linkRefs: [], source: 'noa',
+      },
+      {
+        id: 'callout-untitled', title: 'CalloutUntitled',
+        content: '> [!TIP]\n> tip body\n',
+        createdAt: ts, updatedAt: ts, folder: '', tags: [], links: [], linkRefs: [], source: 'noa',
+      },
+    ];
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('redaction-diary-notes-db');
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('notes', 'readwrite');
+        for (const note of notes) tx.objectStore('notes').put(note, `note:${note.id}`);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
+  await page.reload();
+  await expect(page.getByTestId('sidebar-file-tree')).toBeVisible();
+
+  // Titled multi-line callout: styled chrome shows the custom title and the
+  // raw [!NOTE] marker is consumed, not leaked into a plain blockquote.
+  await page.getByTestId('sidebar-file-tree').getByText('CalloutTitled.md').click();
+  await page.getByTitle('Preview Only').click();
+  const titledPreview = page.locator('.prose').last();
+  await expect(titledPreview.getByText('Callout Title', { exact: true })).toBeVisible();
+  await expect(titledPreview.getByText('[!NOTE]')).toHaveCount(0);
+  await expect(titledPreview.getByText('callout body')).toBeVisible();
+
+  // No-title multi-line callout: default type label; the body line must not
+  // be promoted into the title.
+  await page.getByTitle('Edit Only').click();
+  await page.getByTestId('sidebar-file-tree').getByText('CalloutUntitled.md').click();
+  await page.getByTitle('Preview Only').click();
+  const untitledPreview = page.locator('.prose').last();
+  await expect(untitledPreview.getByText('Tip', { exact: true })).toBeVisible();
+  await expect(untitledPreview.getByText('tip body')).toBeVisible();
+});
+
 test('invalid JSON import is blocked with readable error', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();

@@ -122,6 +122,11 @@ const parseTasksFromNote = (note: Note): GlobalTask[] => {
   lines.forEach((line, index) => {
     const parsed = parseTaskLine(line, index, occurrenceMap);
     if (!parsed) return;
+    // Empty text (editor list auto-continuation leaves "- [ ] ", or the text
+    // was only metadata tokens) — not a real task; don't surface it. The line
+    // still passes through parseTaskLine so occurrence indices stay aligned
+    // with toggleTaskInNoteContent, which parses the same lines.
+    if (!parsed.content) return;
 
     // Re-extract due date for parsed task payload.
     const dueMatch = line.match(DUE_REGEX);
