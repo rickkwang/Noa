@@ -221,17 +221,17 @@ body {
    the fade keyframes too, snapping the thumb in/out. The [data-theme="dark"]
    prefix already out-specifies the light rules below. */
 @keyframes scrollbar-fadeout-dark {
-  from { background: rgba(249,249,247,0.14); }
+  from { background: rgba(249,249,247,0.10); }
   to   { background: rgba(249,249,247,0); }
 }
 @keyframes scrollbar-fadein-dark {
   from { background: rgba(249,249,247,0); }
-  to   { background: rgba(249,249,247,0.14); }
+  to   { background: rgba(249,249,247,0.10); }
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb       { background: rgba(249,249,247,0); }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(249,249,247,0.20); }
 [data-theme="dark"] .is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(249,249,247,0.14);
+  background: rgba(249,249,247,0.10);
   animation: scrollbar-fadein-dark 0.15s ease;
 }
 [data-theme="dark"] .is-scrolling-out::-webkit-scrollbar-thumb {
@@ -248,20 +248,20 @@ body {
    ═══════════════════════════════════════════════════════════ */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
   background: transparent;
 }
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 @keyframes scrollbar-fadeout {
-  from { background: rgba(45, 45, 43, 0.25); }
+  from { background: rgba(45, 45, 43, 0.18); }
   to   { background: rgba(45, 45, 43, 0); }
 }
 @keyframes scrollbar-fadein {
   from { background: rgba(45, 45, 43, 0); }
-  to   { background: rgba(45, 45, 43, 0.25); }
+  to   { background: rgba(45, 45, 43, 0.18); }
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(45, 45, 43, 0);
@@ -271,7 +271,7 @@ body {
   background: rgba(45, 45, 43, 0.4);
 }
 .is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(45, 45, 43, 0.25);
+  background: rgba(45, 45, 43, 0.18);
   animation: scrollbar-fadein 0.15s ease;
 }
 .is-scrolling-out::-webkit-scrollbar-thumb {

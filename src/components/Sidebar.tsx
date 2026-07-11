@@ -523,27 +523,26 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
         <div className="pt-1 pb-2">
           {searchQuery ? (
-              <div className="px-2">
+              <div className="-mr-[5px]">
                 <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
                   <span>Search Results ({searchResults.length})</span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 flex items-center gap-1"
+                      className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] hover:bg-[#EFEAE3] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
                       title="Close search"
                     >
-                      <X size={11} />
-                      <span className="text-[10px]">Close</span>
+                      <X size={13} />
                     </button>
                   )}
                 </div>
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
+                    className={`p-2 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">
@@ -603,7 +602,7 @@ export default function Sidebar({
                 {/* Obsidian Vault section — only shown when imported content exists */}
                 {(importedFolderTree.length > 0 || rootImportedNotes.length > 0) && (
                   <>
-                    <div className="flex items-center gap-2 px-2 py-1.5 -mr-2">
+                    <div className="flex items-center gap-2 px-2 py-1.5 -mr-[5px]">
                       <div className="flex-1 border-t border-[#2D2D2B]/20" />
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction shrink-0">Obsidian Vault</span>
                       <div className="flex-1 border-t border-[#2D2D2B]/20" />
