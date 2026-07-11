@@ -3,15 +3,15 @@ import { resolveBackgroundColor } from '../../electron/windowBackground.cjs';
 
 describe('resolveBackgroundColor', () => {
   it('accepts 6-digit hex colors', () => {
-    expect(resolveBackgroundColor('#262624')).toBe('#262624');
-    expect(resolveBackgroundColor('#EAE8E0')).toBe('#EAE8E0');
-    expect(resolveBackgroundColor('#eae8e0')).toBe('#eae8e0');
+    expect(resolveBackgroundColor('#2D2D2B')).toBe('#2D2D2B');
+    expect(resolveBackgroundColor('#F9F9F7')).toBe('#F9F9F7');
+    expect(resolveBackgroundColor('#f9f9f7')).toBe('#f9f9f7');
   });
 
   it('rejects non-hex or malformed values', () => {
     expect(resolveBackgroundColor('red')).toBeNull();
     expect(resolveBackgroundColor('#fff')).toBeNull();
-    expect(resolveBackgroundColor('#26262499')).toBeNull();
+    expect(resolveBackgroundColor('#2D2D2B99')).toBeNull();
     expect(resolveBackgroundColor('rgba(0,0,0,0)')).toBeNull();
     expect(resolveBackgroundColor('#2626ZZ')).toBeNull();
   });

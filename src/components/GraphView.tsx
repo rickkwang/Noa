@@ -284,9 +284,9 @@ export default function GraphView({
     stableTopologyRef.current = { key: topologyKey, notes: topologyNotes, folders: folders ?? [] };
   }
 
-  const bgColor   = isDark ? '#262624' : '#EAE8E0';
+  const bgColor   = isDark ? '#2D2D2B' : '#F9F9F7';
   const linkColor = isDark ? '#8A8070' : '#9A9080';
-  const textColor = isDark ? '#EEEDEA' : '#2D2D2D';
+  const textColor = isDark ? '#F9F9F7' : '#2D2D2B';
 
   const nodeColor = isDark ? '#CC7D5E' : '#CC7D5E';
 
@@ -562,7 +562,7 @@ export default function GraphView({
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
       {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
-        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#EAE8E0]/90 px-3 py-1.5 text-xs text-[#2D2D2D]/70 font-redaction flex items-center justify-between">
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-redaction flex items-center justify-between">
           <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
         </div>
       )}
@@ -714,7 +714,7 @@ export default function GraphView({
             ctx.globalAlpha = alpha * labelAlpha;
             ctx.shadowColor = bgColor;
             ctx.shadowBlur = 4;
-            ctx.fillStyle = isDark ? '#EEEDEA' : '#2D2D2D';
+            ctx.fillStyle = textColor;
             ctx.fillText(label, labelX, labelY);
             ctx.shadowBlur = 0;
           }
@@ -735,8 +735,8 @@ export default function GraphView({
       <div
         className="absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md"
         style={{
-          background: isDark ? 'rgba(238,237,234,0.04)' : 'rgba(45,45,45,0.03)',
-          border: `1px solid ${isDark ? 'rgba(238,237,234,0.07)' : 'rgba(45,45,45,0.08)'}`,
+          background: isDark ? 'rgba(249,249,247,0.04)' : 'rgba(45,45,43,0.03)',
+          border: `1px solid ${isDark ? 'rgba(249,249,247,0.07)' : 'rgba(45,45,43,0.08)'}`,
         }}
       >
         {zoomControls.map(({ icon, title, action }) => (
@@ -745,7 +745,7 @@ export default function GraphView({
             onClick={action}
             title={title}
             className={`w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
-              isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[rgba(45,45,45,0.5)]'
+              isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[rgba(45,45,43,0.5)]'
             }`}
           >
             {icon}

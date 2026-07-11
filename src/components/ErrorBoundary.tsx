@@ -39,18 +39,18 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
       return (
-        <div className="flex flex-col items-center justify-center h-full w-full bg-[#EAE8E0] text-[#2D2D2D] font-redaction p-8 text-center">
+        <div className="flex flex-col items-center justify-center h-full w-full bg-[#F9F9F7] text-[#2D2D2B] font-redaction p-8 text-center">
           <AlertTriangle size={48} className="text-[#D45555] mb-4" />
           <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-          <p className="text-sm text-[#2D2D2D]/70 mb-4 max-w-md">
+          <p className="text-sm text-[#2D2D2B]/70 mb-4 max-w-md">
             An error occurred while rendering this component. Try reloading the application.
           </p>
-          <pre className="noa-selectable text-left bg-[#DCD9CE] p-4 rounded-sm text-xs overflow-auto max-w-lg max-h-48 border border-[#2D2D2D]/20">
+          <pre className="noa-selectable text-left bg-[#EFEAE3] p-4 rounded-sm text-xs overflow-auto max-w-lg max-h-48 border border-[#2D2D2B]/20">
             {this.state.error?.message}
           </pre>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 px-4 py-2 bg-[#2D2D2D] text-[#EAE8E0] font-bold text-sm rounded-sm hover:bg-[#CC7D5E] transition-colors"
+            className="mt-6 px-4 py-2 bg-[#2D2D2B] text-[#F9F9F7] font-bold text-sm rounded-sm hover:bg-[#CC7D5E] transition-colors"
           >
             Reload Application
           </button>

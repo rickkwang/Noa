@@ -163,12 +163,14 @@ function createWindow() {
     minHeight: 700,
     title: 'Noa',
     icon: iconPath,
+    frame: false,
+    hasShadow: false,
     // Light-theme default; the renderer re-syncs this to the active theme via
     // 'window:set-background-color'. macOS paints this color at the window
     // edges while renderer frames lag during live resize, so a mismatch with
     // the page background shows as bright ghosting along the frame.
-    backgroundColor: '#EAE8E0',
-    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#F9F9F7',
+    titleBarStyle: 'hidden',
     trafficLightPosition: { x: 9, y: 8 },
     webPreferences: {
       contextIsolation: true,
@@ -176,6 +178,13 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  // A frameless window removes macOS's reflective edge while retaining the
+  // native controls and rounded corners. Keep the traffic lights explicitly
+  // visible because frame:false otherwise hides them on some macOS versions.
+  if (typeof win.setWindowButtonVisibility === 'function') {
+    win.setWindowButtonVisibility(true);
+  }
 
   // External links open in the system browser, never inside the app shell —
   // a new in-app window would inherit the preload bridge.

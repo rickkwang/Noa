@@ -47,12 +47,12 @@ export function useLayout() {
     size: sidebarWidth,
     isDragging: isDraggingSidebar,
     setIsDragging: setIsDraggingSidebar,
-  } = useResizeDrag(280, 280, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
+  } = useResizeDrag(310, 310, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
   const {
     size: rightPanelWidth,
     isDragging: isDraggingRightPanel,
     setIsDragging: setIsDraggingRightPanel,
-  } = useResizeDrag(320, 320, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
+  } = useResizeDrag(310, 310, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
 
   useEffect(() => {
     previewSidebarWidth(sidebarWidth);

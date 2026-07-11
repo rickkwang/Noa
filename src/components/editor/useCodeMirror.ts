@@ -27,10 +27,10 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
   return true;
 }
 
-// Warm dark palette: bg #262624, text #D6D4D1, accent #CC7D5E
+// Warm dark palette: bg #2D2D2B, text #F9F9F7, accent #CC7D5E
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#D6D4D1' },
-  '.cm-content': { caretColor: '#D6D4D1', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#F9F9F7' },
+  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
@@ -39,12 +39,12 @@ const darkTheme = EditorView.theme({
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
   '.cm-inline-code': { background: 'rgba(204,125,94,0.07)', borderRadius: '4px', padding: '0.05em 0.3em' },
-  '.cm-cursor': { borderLeftColor: '#D6D4D1' },
+  '.cm-cursor': { borderLeftColor: '#F9F9F7' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.38)' },
-  '.cm-activeLine': { backgroundColor: 'rgba(238,237,234,0.03)' },
+  '.cm-activeLine': { backgroundColor: 'rgba(249,249,247,0.03)' },
   '.cm-gutters': { display: 'none' },
-  '.cm-placeholder': { color: 'rgba(238,237,234,0.28)' },
+  '.cm-placeholder': { color: 'rgba(249,249,247,0.28)' },
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
@@ -54,16 +54,16 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'inherit', color: '#D6D4D1' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#F9F9F7' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(238,237,234,0.32)', fontFamily: 'inherit' },
-  { tag: tags.quote, fontStyle: 'italic', color: 'rgba(238,237,234,0.52)' },
+  { tag: [tags.processingInstruction, tags.meta], color: 'rgba(249,249,247,0.32)', fontFamily: 'inherit' },
+  { tag: tags.quote, fontStyle: 'italic', color: 'rgba(249,249,247,0.52)' },
 ]);
 
 const lightTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#2D2D2D' },
-  '.cm-content': { caretColor: '#2D2D2D', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#2D2D2B' },
+  '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
@@ -72,12 +72,12 @@ const lightTheme = EditorView.theme({
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
   '.cm-inline-code': { background: 'rgba(204,125,94,0.14)', borderRadius: '4px', padding: '0.05em 0.3em' },
-  '.cm-cursor': { borderLeftColor: '#2D2D2D' },
+  '.cm-cursor': { borderLeftColor: '#2D2D2B' },
   '.cm-selectionBackground': { backgroundColor: '#CC7D5E40' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: '#CC7D5E60' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters': { display: 'none' },
-  '.cm-placeholder': { color: '#2D2D2D50' },
+  '.cm-placeholder': { color: '#2D2D2B50' },
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
@@ -87,11 +87,11 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
   { tag: tags.strong, fontWeight: 'bold' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2D' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2B' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2D40', fontFamily: 'inherit' },
-  { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2D80' },
+  { tag: [tags.processingInstruction, tags.meta], color: '#2D2D2B40', fontFamily: 'inherit' },
+  { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2B80' },
 ]);
 
 // Caps the content column to a reading width and centers it. The vertical/right

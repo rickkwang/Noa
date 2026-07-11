@@ -64,41 +64,42 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   while (cells.length % 7 !== 0) cells.push({ day: null });
 
   return (
-    <div className="noa-sidebar-section-surface shrink-0 border-t border-[#2D2D2D]">
+    <div className="noa-sidebar-section-surface shrink-0 border-t border-[#2D2D2B]">
       {/* Section header */}
       <button
-        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 font-redaction flex items-center transition-colors cursor-pointer"
+        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
         onClick={() => setIsOpen(v => !v)}
+        aria-expanded={isOpen}
       >
         <Calendar size={12} className="mr-1.5 shrink-0" />
         Calendar
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ease-in-out ${isOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={11} className={`ml-auto transition-transform duration-100 ease-out ${isOpen ? '' : '-rotate-90'}`} />
       </button>
 
       {isOpen && (
         <div className="slide-down">
           {/* Month navigation */}
-          <div className="flex items-center justify-between px-3 pb-1">
-            <button onClick={prevMonth} className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer">
+          <div className="flex items-center justify-between px-3 pt-0.5 pb-3">
+            <button onClick={prevMonth} className="p-0.5 text-[#2D2D2B]/50 hover:text-[#2D2D2B] active:opacity-70 transition-colors cursor-pointer">
               <ChevronLeft size={12} />
             </button>
-            <span className="text-xs font-redaction text-[#2D2D2D]/80">{monthLabel}</span>
-            <button onClick={nextMonth} className="p-0.5 text-[#2D2D2D]/50 hover:text-[#2D2D2D] active:opacity-70 transition-colors cursor-pointer">
+            <span className="text-xs font-redaction text-[#2D2D2B]/80">{monthLabel}</span>
+            <button onClick={nextMonth} className="p-0.5 text-[#2D2D2B]/50 hover:text-[#2D2D2B] active:opacity-70 transition-colors cursor-pointer">
               <ChevronRight size={12} />
             </button>
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 px-2 pb-0.5">
+          <div className="grid grid-cols-7 px-2 pb-1">
             {WEEKDAYS.map(wd => (
               <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
-                <span className="text-[#2D2D2D]/40">{wd}</span>
+                <span className="text-[#2D2D2B]/40">{wd}</span>
               </div>
             ))}
           </div>
 
           {/* Day grid */}
-          <div className="grid grid-cols-7 px-2 pb-3">
+          <div className="grid grid-cols-7 gap-y-1 px-2 pb-3">
             {cells.map((cell, i) => {
               if (cell.day === null) return <div key={`empty-${i}`} className="w-7 h-7" />;
               const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
@@ -109,8 +110,8 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
               let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction rounded-md transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
               if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
               else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-              else if (hasNote) cellClass += 'text-[#2D2D2D] hover:bg-[#DCD9CE]';
-              else cellClass += 'text-[#2D2D2D] opacity-40';
+              else if (hasNote) cellClass += 'text-[#2D2D2B] hover:bg-[#EFEAE3]';
+              else cellClass += 'text-[#2D2D2B] opacity-40';
               return (
                 <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
                   <span className="leading-none">{cell.day}</span>

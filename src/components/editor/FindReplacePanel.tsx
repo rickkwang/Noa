@@ -159,11 +159,11 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
     }
   }, [goNext, goPrev, onClose]);
 
-  const bg = isDark ? '#1E1E1C' : '#EAE8E0';
-  const border = isDark ? '#3A3A37' : '#2D2D2D';
-  const text = isDark ? '#EEEDEA' : '#2D2D2D';
-  const inputBg = isDark ? '#2A2A28' : '#DCD9CE';
-  const mutedText = isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)';
+  const bg = isDark ? '#252523' : '#F9F9F7';
+  const border = isDark ? '#3A3A37' : '#2D2D2B';
+  const text = isDark ? '#F9F9F7' : '#2D2D2B';
+  const inputBg = isDark ? '#302F2C' : '#FBF8F4';
+  const mutedText = isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.55)';
   const accent = isDark ? '#CC7D5E' : '#CC7D5E';
 
   return (

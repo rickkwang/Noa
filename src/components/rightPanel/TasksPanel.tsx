@@ -88,27 +88,27 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const completionPct = total > 0 ? Math.round((completedTasks.length / total) * 100) : 0;
 
   // ─── Theme tokens ──────────────────────────────────────────────────────
-  const txt = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
-  const dim = isDark ? 'text-[rgba(238,237,234,0.5)]' : 'text-[#2D2D2D]/50';
-  const dimmer = isDark ? 'text-[rgba(238,237,234,0.3)]' : 'text-[#2D2D2D]/30';
-  const rowHover = isDark ? 'hover:bg-[rgba(238,237,234,0.04)]' : 'hover:bg-[#DCD9CE]/35';
-  const progressTrack = isDark ? 'bg-[rgba(238,237,234,0.14)]' : 'bg-[#2D2D2D]/12';
-  const progressFill = isDark ? 'bg-[#EEEDEA]' : 'bg-[#2D2D2D]';
-  const sectionLine = isDark ? 'bg-[rgba(238,237,234,0.22)]' : 'bg-[#2D2D2D]/12';
-  const checkboxBorder = isDark ? 'border-[rgba(238,237,234,0.3)]' : 'border-[#2D2D2D]/35';
-  const checkboxBorderDone = isDark ? 'border-[rgba(238,237,234,0.4)]' : 'border-[#2D2D2D]/50';
-  const checkboxBgDone = isDark ? 'bg-[rgba(238,237,234,0.15)]' : 'bg-[#2D2D2D]/20';
-  const checkmarkColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
-  const noteLink = isDark ? 'text-[rgba(238,237,234,0.3)]' : 'text-[#2D2D2D]/35';
+  const txt = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
+  const dim = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+  const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
+  const rowHover = isDark ? 'hover:bg-[rgba(249,249,247,0.04)]' : 'hover:bg-[#EFEAE3]/35';
+  const progressTrack = isDark ? 'bg-[rgba(249,249,247,0.14)]' : 'bg-[#2D2D2B]/12';
+  const progressFill = isDark ? 'bg-[#F9F9F7]' : 'bg-[#2D2D2B]';
+  const sectionLine = isDark ? 'bg-[rgba(249,249,247,0.22)]' : 'bg-[#2D2D2B]/12';
+  const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.3)]' : 'border-[#2D2D2B]/35';
+  const checkboxBorderDone = isDark ? 'border-[rgba(249,249,247,0.4)]' : 'border-[#2D2D2B]/50';
+  const checkboxBgDone = isDark ? 'bg-[rgba(249,249,247,0.15)]' : 'bg-[#2D2D2B]/20';
+  const checkmarkColor = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
+  const noteLink = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/35';
   // Opaque panel bg for the hover-reveal source chip so it stays readable when it
   // floats over the end of a long task line. Matches RightPanel container bg.
-  const chipBg = isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]';
+  const chipBg = isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]';
   const showMoreBtn = isDark
-    ? 'border-[rgba(238,237,234,0.15)] text-[rgba(238,237,234,0.3)] hover:border-[rgba(238,237,234,0.4)] hover:text-[rgba(238,237,234,0.6)]'
-    : 'border-[#2D2D2D]/20 text-[#2D2D2D]/40 hover:border-[#2D2D2D]/40 hover:text-[#2D2D2D]';
-  const lowRail = isDark ? 'bg-[rgba(238,237,234,0.25)]' : 'bg-[#2D2D2D]/25';
-  const filterBorderIdle = isDark ? 'border-[rgba(238,237,234,0.15)]' : 'border-[#2D2D2D]/20';
-  const filterHoverIdle = isDark ? 'hover:border-[rgba(238,237,234,0.4)]' : 'hover:border-[#2D2D2D]/40';
+    ? 'border-[rgba(249,249,247,0.15)] text-[rgba(249,249,247,0.3)] hover:border-[rgba(249,249,247,0.4)] hover:text-[rgba(249,249,247,0.6)]'
+    : 'border-[#2D2D2B]/20 text-[#2D2D2B]/40 hover:border-[#2D2D2B]/40 hover:text-[#2D2D2B]';
+  const lowRail = isDark ? 'bg-[rgba(249,249,247,0.25)]' : 'bg-[#2D2D2B]/25';
+  const filterBorderIdle = isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]/20';
+  const filterHoverIdle = isDark ? 'hover:border-[rgba(249,249,247,0.4)]' : 'hover:border-[#2D2D2B]/40';
 
   // Task body & note titles → clean sans CJK (PingFang/system) instead of the
   // panel's Redaction→serif fallback, which renders Chinese thin and dated at 13px.

@@ -14,7 +14,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
       <SettingItem label="Import JSON" description="Restore a complete Noa backup.">
         <button
           onClick={() => jsonInputRef.current?.click()}
-          className="flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
         >
           <Upload size={14} />
           <span>Import JSON</span>
@@ -27,7 +27,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
           onChange={onImportJsonInput}
         />
       </SettingItem>
-      <p className="text-xs text-[#2D2D2D]/60 px-1">
+      <p className="text-xs text-[#2D2D2B]/60 px-1">
         To migrate an Obsidian vault or restore a Vault ZIP, select the folder with Import Vault Folder above.
       </p>
     </SettingSection>

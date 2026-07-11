@@ -25,9 +25,9 @@ const Toggle = ({
     aria-checked={value}
     aria-label={label}
     onClick={() => onChange(!value)}
-    className={`relative h-7 w-14 border-[1.75px] border-[#2D2D2D] transition-colors active:translate-x-px active:translate-y-px ${value ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'}`}
+    className={`relative h-7 w-14 border-[1.75px] border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${value ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'}`}
   >
-    <span className={`absolute left-1 top-1 h-4 w-4 border-[1.75px] border-[#2D2D2D] bg-[#EAE8E0] shadow-[2px_2px_0_0_rgba(45,45,45,1)] transition-transform ${value ? 'translate-x-7' : 'translate-x-0'}`} />
+    <span className={`absolute left-1 top-1 h-4 w-4 border-[1.75px] border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${value ? 'translate-x-7' : 'translate-x-0'}`} />
   </button>
 );
 
@@ -100,10 +100,10 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
               <button
                 key={mode}
                 onClick={() => setEditorViewMode(mode)}
-                className={`px-3 py-1.5 font-bold border-[1.75px] border-[#2D2D2D] text-sm capitalize transition-colors ${
+                className={`px-3 py-1.5 font-bold border-[1.75px] border-[#2D2D2B] text-sm capitalize transition-colors ${
                   editorViewMode === mode
                     ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
-                    : 'bg-[#EAE8E0] text-[#2D2D2D]'
+                    : 'bg-[#F9F9F7] text-[#2D2D2B]'
                 }`}
               >
                 {mode}
@@ -120,7 +120,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             value={settings.dailyNotes.dateFormat}
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
             placeholder="YYYY-MM-DD"
-            className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
+            className="bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
           />
         </SettingItem>
         <SettingItem label="Template" description="Content pre-filled in each new daily note. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
@@ -129,7 +129,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, template: e.target.value } }))}
             placeholder={"# {{date}}\n\n## Notes\n\n"}
             rows={5}
-            className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E] resize-none"
+            className="bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E] resize-none"
           />
         </SettingItem>
       </SettingSection>
@@ -137,17 +137,17 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
       <SettingSection title="Custom Templates" description="Create reusable note templates. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
         <div className="space-y-2">
           {userTemplates.map(t => (
-            <div key={t.id} className="border-[1.75px] border-[#2D2D2D] p-3 flex items-center justify-between gap-3">
+            <div key={t.id} className="border-[1.75px] border-[#2D2D2B] p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold truncate">{t.name}</div>
                 {t.content && (
-                  <div className="text-xs text-[#2D2D2D]/50 truncate mt-0.5">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                  <div className="text-xs text-[#2D2D2B]/50 truncate mt-0.5">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => openEdit(t)}
-                  className="border-[1.75px] border-[#2D2D2D] px-2 py-1 text-xs active:opacity-70"
+                  className="border-[1.75px] border-[#2D2D2B] px-2 py-1 text-xs active:opacity-70"
                 >
                   Edit
                 </button>
@@ -161,7 +161,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteId(t.id)}
-                    className="border-[1.75px] border-[#2D2D2D] px-2 py-1 text-xs active:opacity-70"
+                    className="border-[1.75px] border-[#2D2D2B] px-2 py-1 text-xs active:opacity-70"
                   >
                     Delete
                   </button>
@@ -171,7 +171,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
           ))}
 
           {editingId !== null && (
-            <div className="border-[1.75px] border-[#2D2D2D] p-3 space-y-3 mt-2">
+            <div className="border-[1.75px] border-[#2D2D2B] p-3 space-y-3 mt-2">
               <div>
                 <div className="text-xs font-bold mb-1">Name</div>
                 <input
@@ -180,7 +180,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditName(e.target.value)}
                   maxLength={60}
                   placeholder="Template name"
-                  className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-sm w-full outline-none focus:border-[#CC7D5E]"
+                  className="bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] px-3 py-1.5 text-sm w-full outline-none focus:border-[#CC7D5E]"
                   autoFocus
                 />
               </div>
@@ -191,19 +191,19 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditContent(e.target.value)}
                   rows={7}
                   placeholder={"# {{title}}\n\n{{date}}\n\n"}
-                  className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
+                  className="bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
                 />
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={saveTemplate}
-                  className="border-[1.75px] border-[#2D2D2D] bg-[#2D2D2D] text-[#EAE8E0] px-3 py-1 text-xs font-bold active:opacity-70"
+                  className="border-[1.75px] border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] px-3 py-1 text-xs font-bold active:opacity-70"
                 >
                   Save
                 </button>
                 <button
                   onClick={cancelEdit}
-                  className="border-[1.75px] border-[#2D2D2D] px-3 py-1 text-xs font-bold active:opacity-70"
+                  className="border-[1.75px] border-[#2D2D2B] px-3 py-1 text-xs font-bold active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -214,7 +214,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
           {editingId === null && (
             <button
               onClick={openNew}
-              className="border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-xs font-bold w-full text-left active:opacity-70 hover:bg-[#DCD9CE] mt-1"
+              className="border-[1.75px] border-[#2D2D2B] px-3 py-1.5 text-xs font-bold w-full text-left active:opacity-70 hover:bg-[#EFEAE3] mt-1"
             >
               + New Template
             </button>

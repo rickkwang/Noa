@@ -15,19 +15,18 @@
           var root = document.documentElement;
           if (isDark) {
             root.setAttribute('data-theme', 'dark');
-            root.style.setProperty('--bg-primary', '#262624');
-            root.style.setProperty('--bg-secondary', '#1E1E1C');
+            root.style.setProperty('--bg-primary', '#2D2D2B');
+            root.style.setProperty('--bg-secondary', '#252523');
           } else {
-            root.style.setProperty('--bg-primary', '#EAE8E0');
-            root.style.setProperty('--bg-secondary', '#DCD9CE');
+            root.style.setProperty('--bg-primary', '#F9F9F7');
+            root.style.setProperty('--bg-secondary', '#EFEAE3');
           }
         } catch(e) {}
       })();
     </script>
   </head>
   <body>
-    <div id="root"><div style="height:100vh;width:100vw;background:var(--bg-primary,#EAE8E0);display:flex;flex-direction:column;"><div style="height:48px;border-bottom:1px solid rgba(45,45,45,0.2);background:var(--bg-secondary,#DCD9CE);flex-shrink:0;"></div><div style="display:flex;flex:1;overflow:hidden;"><div style="width:280px;border-right:1px solid rgba(45,45,45,0.2);background:var(--bg-primary,#EAE8E0);flex-shrink:0;"></div><div style="flex:1;background:var(--bg-primary,#EAE8E0);"></div><div style="width:320px;border-left:1px solid rgba(45,45,45,0.2);background:var(--bg-primary,#EAE8E0);flex-shrink:0;"></div></div></div></div>
+    <div id="root"><div style="height:100vh;width:100vw;background:var(--bg-primary,#F9F9F7);display:flex;flex-direction:column;"><div style="height:48px;border-bottom:1px solid rgba(45,45,43,0.2);background:var(--bg-secondary,#EFEAE3);flex-shrink:0;"></div><div style="display:flex;flex:1;overflow:hidden;"><div style="width:280px;border-right:1px solid rgba(45,45,43,0.2);background:var(--bg-primary,#F9F9F7);flex-shrink:0;"></div><div style="flex:1;background:var(--bg-primary,#F9F9F7);"></div><div style="width:320px;border-left:1px solid rgba(45,45,43,0.2);background:var(--bg-primary,#F9F9F7);flex-shrink:0;"></div></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

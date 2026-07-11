@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppSettings } from '../../../types';
 import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
+import { ChevronDown } from '@/src/lib/icons';
 
 interface AppearanceSettingsProps {
   settings: AppSettings;
@@ -30,12 +31,12 @@ function ToggleSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-14 border-[1.75px] border-[#2D2D2D] transition-colors active:translate-x-px active:translate-y-px ${
-        checked ? 'bg-[#CC7D5E]' : 'bg-[#EAE8E0]'
+      className={`relative h-7 w-14 border-[1.75px] border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${
+        checked ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'
       }`}
     >
       <span
-        className={`absolute left-1 top-1 h-4 w-4 border-[1.75px] border-[#2D2D2D] bg-[#EAE8E0] shadow-[2px_2px_0_0_rgba(45,45,45,1)] transition-transform ${
+        className={`absolute left-1 top-1 h-4 w-4 border-[1.75px] border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${
           checked ? 'translate-x-7' : 'translate-x-0'
         }`}
       />
@@ -84,60 +85,66 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
     <div className="space-y-8">
       <SettingSection title="Theme" description="Change how Noa looks.">
         <SettingItem label="Base Theme" description="Choose between light, dark, or sync with system.">
-          <select
-            value={settings.appearance.theme}
-            onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
-            className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="system">System</option>
-          </select>
+          <div className="relative inline-block">
+            <select
+              value={settings.appearance.theme}
+              onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
+              className="appearance-none bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </select>
+            <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
+          </div>
         </SettingItem>
       </SettingSection>
 
       <SettingSection title="Typography" description="Customize fonts and text sizing.">
         <SettingItem label="Font Family" description="The font used for the editor and preview." stacked>
           <div className="flex flex-col space-y-2">
-            <select
-              value={selectValue}
-              onChange={(e) => {
-                updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: e.target.value } }));
-              }}
-              className="bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] px-3 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
-            >
-              {/* Built-in bundled fonts */}
-              <option value="font-iosevka">Iosevka Nerd Font Mono (Default)</option>
-              <option value="font-redaction">Redaction 50</option>
-              <option value="font-pixelify">Pixelify Sans</option>
-              <option value="font-work-sans">Work Sans</option>
+            <div className="relative inline-block self-start">
+              <select
+                value={selectValue}
+                onChange={(e) => {
+                  updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: e.target.value } }));
+                }}
+                className="appearance-none bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
+              >
+                {/* Built-in bundled fonts */}
+                <option value="font-iosevka">Iosevka Nerd Font Mono (Default)</option>
+                <option value="font-redaction">Redaction 50</option>
+                <option value="font-pixelify">Pixelify Sans</option>
+                <option value="font-work-sans">Work Sans</option>
 
-              {/* System fonts — shown when API is available */}
-              {systemFonts.length > 0 && (
-                <optgroup label="System Fonts">
-                  {systemFonts.map(family => (
-                    <option key={family} value={family}>{family}</option>
-                  ))}
-                </optgroup>
-              )}
+                {/* System fonts — shown when API is available */}
+                {systemFonts.length > 0 && (
+                  <optgroup label="System Fonts">
+                    {systemFonts.map(family => (
+                      <option key={family} value={family}>{family}</option>
+                    ))}
+                  </optgroup>
+                )}
 
-              {/* Fallback: if current value is a system font but API wasn't available */}
-              {!currentIsBuiltin && systemFonts.length === 0 && (
-                <option value={currentSystemFont}>{currentSystemFont}</option>
-              )}
-            </select>
+                {/* Fallback: if current value is a system font but API wasn't available */}
+                {!currentIsBuiltin && systemFonts.length === 0 && (
+                  <option value={currentSystemFont}>{currentSystemFont}</option>
+                )}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
+            </div>
 
             {loadingFonts && (
-              <span className="text-xs text-[#2D2D2D]/50">Loading system fonts…</span>
+              <span className="text-xs text-[#2D2D2B]/50">Loading system fonts…</span>
             )}
             {fontError && (
-              <span className="text-xs text-[#2D2D2D]/50">{fontError}</span>
+              <span className="text-xs text-[#2D2D2B]/50">{fontError}</span>
             )}
 
             {/* Preview of the selected font */}
             {!currentIsBuiltin && currentSystemFont && (
               <span
-                className="text-sm text-[#2D2D2D]/70 truncate"
+                className="text-sm text-[#2D2D2B]/70 truncate"
                 style={{ fontFamily: currentSystemFont }}
               >
                 The quick brown fox — {currentSystemFont}
@@ -147,7 +154,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
         <SettingItem label="Font Size" description="Base font size for the editor.">
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2D]/70">{settings.editor.fontSize}px</span>
+            <span className="text-xs text-[#2D2D2B]/70">{settings.editor.fontSize}px</span>
             <input
               type="range"
               min="10"
@@ -160,7 +167,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
         <SettingItem label="Line Height" description="Spacing between lines of text.">
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2D]/70">{settings.editor.lineHeight}</span>
+            <span className="text-xs text-[#2D2D2B]/70">{settings.editor.lineHeight}</span>
             <input
               type="range"
               min="1.2"
@@ -177,7 +184,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
       <SettingSection title="Editor Style" description="Adjust the reading and writing experience.">
         <SettingItem label="Max Width" description="Maximum width of the editor content area.">
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2D]/70">{settings.appearance.maxWidth}px</span>
+            <span className="text-xs text-[#2D2D2B]/70">{settings.appearance.maxWidth}px</span>
             <input
               type="range"
               min="600"

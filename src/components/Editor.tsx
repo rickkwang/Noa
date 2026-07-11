@@ -403,12 +403,12 @@ export default function Editor({
 
   if (!note) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#EAE8E0] font-redaction select-none">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#F9F9F7] font-redaction select-none">
         <div className="flex flex-col gap-8 w-56">
           {/* Wordmark */}
           <div className="flex flex-col gap-1">
-            <div className="text-4xl font-bold text-[#2D2D2D]/75 tracking-tight">Noa</div>
-            <div className="text-[10px] text-[#2D2D2D]/30 uppercase tracking-widest">your private writing space</div>
+            <div className="text-4xl font-bold text-[#2D2D2B]/75 tracking-tight">Noa</div>
+            <div className="text-[10px] text-[#2D2D2B]/30 uppercase tracking-widest">your private writing space</div>
           </div>
 
           {/* Shortcuts */}
@@ -420,14 +420,14 @@ export default function Editor({
             ].map(({ key, desc }) => (
               <div key={key} className="flex items-center gap-3">
                 <span className="text-[10px] font-bold text-[#CC7D5E]/60 tracking-widest w-7">{key}</span>
-                <span className="text-[#2D2D2D]/15">·</span>
-                <span className="text-xs text-[#2D2D2D]/40">{desc}</span>
+                <span className="text-[#2D2D2B]/15">·</span>
+                <span className="text-xs text-[#2D2D2B]/40">{desc}</span>
               </div>
             ))}
           </div>
 
           {/* Footer */}
-          <div className="text-[10px] text-[#2D2D2D]/20 tracking-wide">
+          <div className="text-[10px] text-[#2D2D2B]/20 tracking-wide">
             Notes stored locally · Export regularly
           </div>
         </div>
@@ -437,7 +437,7 @@ export default function Editor({
 
   return (
     <div
-      className="flex-1 flex flex-col min-w-0 bg-[#EAE8E0] relative"
+      className="flex-1 flex flex-col min-w-0 bg-[#F9F9F7] relative"
     >
       <EditorHeader
         note={note}
@@ -536,7 +536,7 @@ export default function Editor({
             <div ref={editorContainerRef} className="h-full" />
           </div>
 
-          <div className="absolute bottom-2 right-4 text-xs text-[#2D2D2D]/40 font-redaction pointer-events-none">
+          <div className="absolute bottom-2 right-4 text-xs text-[#2D2D2B]/40 font-redaction pointer-events-none">
             {stats.words} words · {stats.chars} chars
           </div>
 
@@ -566,7 +566,7 @@ export default function Editor({
 
         {viewMode === 'split' && (
           <div
-            className="w-px bg-[#2D2D2D]/20 cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
+            className="w-px bg-[#2D2D2B]/20 cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
             onMouseDown={handleDividerMouseDown}
           />
         )}

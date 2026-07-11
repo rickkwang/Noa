@@ -664,31 +664,31 @@ export default function App() {
     return (
       <>
       <ThemeInjector settings={settings} />
-      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #EAE8E0)' }}>
-        <div className="h-12 border-b shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #DCD9CE)', borderBottomColor: 'var(--panel-divider, #2D2D2D)' }}>
-          <div className="h-3 w-44 bg-[#2D2D2D]/10 animate-pulse" />
+      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #F9F9F7)' }}>
+        <div className="h-12 border-b shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #EFEAE3)', borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
+          <div className="h-3 w-44 bg-[#2D2D2B]/10 animate-pulse" />
         </div>
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-[280px] border-r border-[#2D2D2D]/20 shrink-0 px-3 py-3 space-y-2">
-            <div className="h-4 w-28 bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-7 w-full bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-7 w-[90%] bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-7 w-[82%] bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-7 w-[88%] bg-[#2D2D2D]/10 animate-pulse" />
+          <div className="w-[280px] border-r border-[#2D2D2B]/20 shrink-0 px-3 py-3 space-y-2">
+            <div className="h-4 w-28 bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-7 w-full bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-7 w-[90%] bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-7 w-[82%] bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-7 w-[88%] bg-[#2D2D2B]/10 animate-pulse" />
           </div>
           <div className="flex-1 px-6 py-5 space-y-3">
-            <div className="h-7 w-48 bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-4 w-full bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-4 w-[97%] bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-4 w-[92%] bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-4 w-[95%] bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-4 w-[85%] bg-[#2D2D2D]/10 animate-pulse" />
+            <div className="h-7 w-48 bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-4 w-full bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-4 w-[97%] bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-4 w-[92%] bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-4 w-[95%] bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-4 w-[85%] bg-[#2D2D2B]/10 animate-pulse" />
           </div>
-          <div className="w-[320px] border-l border-[#2D2D2D]/20 shrink-0 px-3 py-3 space-y-2">
-            <div className="h-6 w-full bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2D]/10 animate-pulse" />
+          <div className="w-[320px] border-l border-[#2D2D2B]/20 shrink-0 px-3 py-3 space-y-2">
+            <div className="h-6 w-full bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
+            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
           </div>
         </div>
       </div>
@@ -697,7 +697,7 @@ export default function App() {
   }
 
   return (
-    <div className="noa-app-shell h-screen w-screen flex flex-col bg-[#EAE8E0] text-[#2D2D2D] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
+    <div className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
       <ThemeInjector settings={settings} />
       {!isFocusMode && <TopBar
         settings={settings}
@@ -722,20 +722,20 @@ export default function App() {
 
         {/* Sidebar — always rendered for slide animation */}
         <div
-          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#EAE8E0] shadow-xl' : ''}`}
+          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#F9F9F7] shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? 'var(--noa-sidebar-width, 280px)' : '0')),
+            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
             borderRightWidth: isFocusMode ? 0 : 1,
             borderRightStyle: 'solid',
-            borderRightColor: (isSidebarOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2D)' : 'transparent',
+            borderRightColor: (isSidebarOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2B)' : 'transparent',
           }}
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 280px)',
+              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 310px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"
@@ -775,7 +775,7 @@ export default function App() {
         </div>
 
         <ErrorBoundary>
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading editor…</div>}>
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading editor…</div>}>
             {activeNoteId ? (
               <Editor
                 note={activeNote}
@@ -803,7 +803,7 @@ export default function App() {
                 readOnly={vaultCacheReadOnly}
               />
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2D]/30 font-redaction select-none">
+              <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2B]/30 font-redaction select-none">
                 <p className="text-sm">No note selected</p>
                 <p className="text-xs mt-1">Open a note from the sidebar</p>
               </div>
@@ -822,18 +822,18 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? 'var(--noa-right-panel-width, 320px)' : '0')),
+            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '0')),
             maxWidth: isMobile ? '320px' : undefined,
             transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
             minWidth: 0,
             borderLeftWidth: isFocusMode ? 0 : 1,
             borderLeftStyle: 'solid',
-            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2D)' : 'transparent',
+            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2B)' : 'transparent',
           }}
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 320px)',
+              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 310px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"
@@ -846,7 +846,7 @@ export default function App() {
             )}
             <div className="flex-1 overflow-hidden">
               <ErrorBoundary>
-              <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2D]/60 text-sm">Loading panel…</div>}>
+              <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading panel…</div>}>
                 <RightPanel
                   tasks={globalTasks}
                   onToggleTask={handleToggleTaskGuarded}
@@ -867,7 +867,7 @@ export default function App() {
         </div>
       </div>
       {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C] bg-[#EC9A3C]/10 px-4 py-3 max-w-sm shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]">
+        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C] bg-[#EC9A3C]/10 px-4 py-3 max-w-sm shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)]">
           <div className="text-xs font-bold text-[#8A571C] uppercase tracking-wider mb-1">Warning · Save</div>
           <div className="text-xs text-[#A26721] leading-relaxed mb-3">{saveError}</div>
           <button
@@ -879,15 +879,15 @@ export default function App() {
         </div>
       )}
       {externalUpdateNotice && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#EAE8E0] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,45,0.15)]">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,43,0.15)]">
           <div className="text-xs font-bold text-[#CC7D5E] uppercase tracking-wider mb-0.5">Vault Sync</div>
-          <div className="text-xs text-[#2D2D2D]/70 leading-relaxed">{externalUpdateNotice}</div>
+          <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
         </div>
       )}
       {fsSyncError && fsHandle && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2D]/40 bg-[#EAE8E0] px-4 py-3 max-w-sm font-redaction rounded-md">
-          <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Error · Vault Sync</div>
-          <div className="text-xs text-[#2D2D2D]/60 leading-relaxed mb-3">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2B]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md">
+          <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Error · Vault Sync</div>
+          <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
             {needsReauth
               ? 'Vault access is paused. Reconnect the folder before editing; cached notes are read-only.'
               : autoRetryExhausted
@@ -898,7 +898,7 @@ export default function App() {
             <button
               disabled={syncStatus === 'syncing'}
               onClick={needsReauth ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
             >
               {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
             </button>
@@ -906,7 +906,7 @@ export default function App() {
               <button
                 disabled={syncStatus === 'syncing'}
                 onClick={handleDisconnectFolder}
-                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/40 px-2 py-0.5 text-[#2D2D2D] hover:bg-[#DCD9CE] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 Disconnect
               </button>
@@ -915,9 +915,9 @@ export default function App() {
         </div>
       )}
       {showStorageNotice && (
-        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2D]/20 bg-[#DCD9CE] px-4 py-3 max-w-xs font-redaction shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)]">
-          <div className="text-xs font-bold text-[#2D2D2D] uppercase tracking-wider mb-1">Local Storage Only</div>
-          <div className="text-xs text-[#2D2D2D]/60 leading-relaxed mb-3">
+        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)]">
+          <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Local Storage Only</div>
+          <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
             {LOCAL_DATA_BOUNDARY_COPY}
           </div>
           <button
@@ -925,7 +925,7 @@ export default function App() {
               setShowStorageNotice(false);
               try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
             }}
-            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-0.5 text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:border-[#2D2D2D]/60 transition-colors"
+            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/30 px-2 py-0.5 text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:border-[#2D2D2B]/60 transition-colors"
           >
             Got it
           </button>
@@ -933,21 +933,21 @@ export default function App() {
       )}
       {loadError && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] p-4 font-redaction space-y-3 slide-down">
+          <div className="w-full max-w-xl bg-[#F9F9F7] border-2 border-[#2D2D2B] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] p-4 font-redaction space-y-3 slide-down">
             <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
-            <p className="text-sm text-[#2D2D2D]/80">{loadError.message}</p>
-            <p className="text-xs text-[#2D2D2D]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
-            <p className="text-xs text-[#2D2D2D]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
+            <p className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
+            <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
+            <p className="text-xs text-[#2D2D2B]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={retryInitialization}
-                className="px-3 py-1 text-xs font-bold bg-[#EAE8E0] border-2 border-[#2D2D2D] hover:bg-[#DCD9CE]"
+                className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border-2 border-[#2D2D2B] hover:bg-[#EFEAE3]"
               >
                 Retry Read
               </button>
               <button
                 onClick={() => recoveryImportInputRef.current?.click()}
-                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2D] hover:opacity-90"
+                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2B] hover:opacity-90"
               >
                 Import Backup
               </button>
@@ -979,10 +979,10 @@ export default function App() {
       {commandPalette.isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
           <div
-            className="w-full max-w-xl border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down"
+            className="w-full max-w-xl border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-[#2D2D2D] p-3 bg-[#DCD9CE]">
+            <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">
               <input
                 ref={commandPalette.inputRef}
                 type="text"
@@ -1000,18 +1000,18 @@ export default function App() {
                   }
                 }}
                 placeholder="Type a command or note title..."
-                className="w-full bg-[#EAE8E0] border border-[#2D2D2D] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
+                className="w-full bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
               />
             </div>
             <div className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
               {commandPalette.items.length === 0 ? (
-                <div className="px-2 py-3 text-xs text-[#2D2D2D]/60">No matching commands.</div>
+                <div className="px-2 py-3 text-xs text-[#2D2D2B]/60">No matching commands.</div>
               ) : (
                 commandPalette.items.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => commandPalette.run(item.action)}
-                    className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2D]/30 hover:bg-[#DCD9CE]/50 font-redaction"
+                    className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2B]/30 hover:bg-[#EFEAE3]/50 font-redaction"
                   >
                     {item.label}
                   </button>
@@ -1046,10 +1046,10 @@ export default function App() {
       )}
       {navigationConflict && (
         <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
-          <div className="w-full max-w-lg border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
-            <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE]">
-              <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Duplicate Title</div>
-              <div className="text-sm text-[#2D2D2D] mt-1">
+          <div className="w-full max-w-lg border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3]">
+              <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
+              <div className="text-sm text-[#2D2D2B] mt-1">
                 Multiple notes match "<span className="font-bold">{navigationConflict.title}</span>". Select one:
               </div>
             </div>
@@ -1064,20 +1064,20 @@ export default function App() {
                       navigateById(id);
                       setNavigationConflict(null);
                     }}
-                    className="w-full text-left border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 px-3 py-2 bg-[#EAE8E0] hover:bg-[#DCD9CE]/40"
+                    className="w-full text-left border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40"
                   >
-                    <div className="text-sm font-bold text-[#2D2D2D] truncate">{note.title}</div>
-                    <div className="text-xs text-[#2D2D2D]/60 mt-0.5">
+                    <div className="text-sm font-bold text-[#2D2D2B] truncate">{note.title}</div>
+                    <div className="text-xs text-[#2D2D2B]/60 mt-0.5">
                       {folderNameById.get(note.folder) ?? 'No Folder'} · Created {new Date(note.createdAt).toLocaleString()}
                     </div>
                   </button>
                 );
               })}
             </div>
-            <div className="border-t border-[#2D2D2D]/20 px-4 py-2 flex justify-end">
+            <div className="border-t border-[#2D2D2B]/20 px-4 py-2 flex justify-end">
               <button
                 onClick={() => setNavigationConflict(null)}
-                className="text-xs uppercase tracking-wider font-bold border border-[#2D2D2D]/30 px-2 py-1 text-[#2D2D2D]/70 hover:text-[#2D2D2D]"
+                className="text-xs uppercase tracking-wider font-bold border border-[#2D2D2B]/30 px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B]"
               >
                 Cancel
               </button>
@@ -1093,13 +1093,13 @@ export default function App() {
         const dateFormat = settings.dailyNotes.dateFormat;
         return (
           <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
-            <div className="w-full max-w-sm border-2 border-[#2D2D2D] bg-[#EAE8E0] shadow-[4px_4px_0px_0px_rgba(45,45,45,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
-              <div className="border-b border-[#2D2D2D] px-4 py-3 bg-[#DCD9CE] flex items-center justify-between">
+            <div className="w-full max-w-sm border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
+              <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-[#2D2D2D]/60 font-bold">Choose Template</div>
-                  <div className="text-sm text-[#2D2D2D] mt-0.5">Pick a template for this note</div>
+                  <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Choose Template</div>
+                  <div className="text-sm text-[#2D2D2B] mt-0.5">Pick a template for this note</div>
                 </div>
-                <button onClick={() => setPendingTemplateNoteId(null)} className="text-[#2D2D2D]/50 hover:text-[#2D2D2D] text-lg leading-none active:opacity-70">×</button>
+                <button onClick={() => setPendingTemplateNoteId(null)} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none active:opacity-70">×</button>
               </div>
               <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
                 {allTemplates.map(t => (
@@ -1111,11 +1111,11 @@ export default function App() {
                       }
                       setPendingTemplateNoteId(null);
                     }}
-                    className="w-full text-left border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 px-3 py-2 bg-[#EAE8E0] hover:bg-[#DCD9CE]/40 active:opacity-70"
+                    className="w-full text-left border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40 active:opacity-70"
                   >
-                    <div className="text-sm font-bold text-[#2D2D2D]">{t.name}</div>
+                    <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
                     {t.content && (
-                      <div className="text-xs text-[#2D2D2D]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                      <div className="text-xs text-[#2D2D2B]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
                     )}
                   </button>
                 ))}
@@ -1127,14 +1127,14 @@ export default function App() {
       {isFocusMode && (
         <button
           onClick={exitFocusMode}
-          className="fixed top-3 right-4 z-50 text-[#2D2D2D]/40 hover:text-[#2D2D2D] text-xs font-redaction px-2 py-1 border border-[#2D2D2D]/20 hover:border-[#2D2D2D]/50 bg-[#EAE8E0]/80 backdrop-blur-sm active:opacity-70 transition-opacity"
+          className="fixed top-3 right-4 z-50 text-[#2D2D2B]/40 hover:text-[#2D2D2B] text-xs font-redaction px-2 py-1 border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 bg-[#F9F9F7]/80 backdrop-blur-sm active:opacity-70 transition-opacity"
           title="Exit focus mode (Esc)"
         >
           Esc
         </button>
       )}
       {tabLimitWarning && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2D] text-[#EAE8E0] text-xs px-3 py-1.5 font-redaction pointer-events-none">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2B] text-[#F9F9F7] text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)
         </div>
       )}

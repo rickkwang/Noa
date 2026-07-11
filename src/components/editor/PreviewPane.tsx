@@ -55,7 +55,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
           alignItems: 'center',
           justifyContent: 'center',
           background: 'transparent',
-          color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.55)',
+          color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.55)',
           cursor: 'pointer',
           opacity: 0.6,
           transition: 'opacity 120ms, color 120ms',
@@ -338,7 +338,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
   if (!config) {
     return (
-      <blockquote style={{ borderLeft: `3px solid ${isDark ? '#EEEDEA30' : '#2D2D2D40'}`, paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
+      <blockquote style={{ borderLeft: `3px solid ${isDark ? '#F9F9F730' : '#2D2D2B40'}`, paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
         {children}
       </blockquote>
     );
@@ -576,7 +576,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           }
           // Unresolved note link: render inert instead of a dead browser nav.
           return (
-            <span style={{ color: isDark ? 'rgba(238,237,234,0.45)' : 'rgba(45,45,45,0.5)' }} title={`Unresolved link: ${mdTarget}`}>
+            <span style={{ color: isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.5)' }} title={`Unresolved link: ${mdTarget}`}>
               {children}
             </span>
           );
@@ -634,7 +634,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         }
         if (!src || src === 'note-attachment://missing') {
           return (
-            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(238,237,234,0.35)' : 'rgba(45,45,45,0.4)', border: `1px dashed ${isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)'}` }}>
+            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(249,249,247,0.35)' : 'rgba(45,45,43,0.4)', border: `1px dashed ${isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.2)'}` }}>
               [{alt ?? 'Attachment not found'}]
             </span>
           );
@@ -643,7 +643,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           const attachmentId = decodeURIComponent(src.replace('note-attachment://id/', ''));
           const url = objectUrls?.get(attachmentId) ?? '';
           if (!url) {
-            return <span className="text-xs italic" style={{ color: isDark ? 'rgba(238,237,234,0.35)' : 'rgba(45,45,45,0.4)' }}>[Loading attachment...]</span>;
+            return <span className="text-xs italic" style={{ color: isDark ? 'rgba(249,249,247,0.35)' : 'rgba(45,45,43,0.4)' }}>[Loading attachment...]</span>;
           }
           return <ZoomableImage src={url} alt={alt ?? ''} />;
         }
@@ -662,7 +662,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         }}>{children}</mark>
       ),
       hr: () => (
-        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, margin: '1.5rem 0' }} />
+        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, margin: '1.5rem 0' }} />
       ),
       code: ({ className, children }) => {
         const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? '';
@@ -700,7 +700,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           return (
             <section
               style={{
-                borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.12)' : 'rgba(45,45,45,0.2)'}`,
+                borderTop: `1px dashed ${isDark ? 'rgba(249,249,247,0.12)' : 'rgba(45,45,43,0.2)'}`,
                 marginTop: '2rem',
                 paddingTop: '0.75rem',
                 fontSize: '0.8em',
@@ -724,13 +724,13 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       ),
       tbody: ({ children }) => <tbody>{children}</tbody>,
       tr: ({ children }) => (
-        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}>{children}</tr>
+        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}>{children}</tr>
       ),
       th: ({ children }) => (
-        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderBottom: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, color: isDark ? '#D6D4D1' : '#2D2D2D', whiteSpace: 'nowrap' }}>{children}</th>
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderBottom: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderLeft: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderRight: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, color: isDark ? '#F9F9F7' : '#2D2D2B', whiteSpace: 'nowrap' }}>{children}</th>
       ),
       td: ({ children }) => (
-        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderLeft: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, borderRight: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}`, color: isDark ? '#D6D4D1' : '#2D2D2D' }}>{children}</td>
+        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderLeft: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderRight: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, color: isDark ? '#F9F9F7' : '#2D2D2B' }}>{children}</td>
       ),
       li: ({ children, className, ...props }) => {
         const isTask = className?.includes('task-list-item');
@@ -753,14 +753,14 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
                 width: '14px',
                 height: '14px',
                 minWidth: '14px',
-                border: `1.5px solid ${isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.35)'}`,
+                border: `1.5px solid ${isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.35)'}`,
                 marginTop: '3px',
                 backgroundColor: isChecked ? (isDark ? '#CC7D5E' : '#CC7D5E') : 'transparent',
               }}
             >
               {isChecked && (
                 <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#262624' : '#EAE8E0'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#2D2D2B' : '#F9F9F7'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </span>
@@ -843,8 +843,8 @@ function NoteEmbed({
     return next;
   }, [visitedIds, noteId]);
 
-  const mutedColor = isDark ? 'rgba(238,237,234,0.4)' : 'rgba(45,45,45,0.45)';
-  const borderColor = isDark ? 'rgba(238,237,234,0.15)' : 'rgba(45,45,45,0.2)';
+  const mutedColor = isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.45)';
+  const borderColor = isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.2)';
 
   if (!target || !embeddedNote) {
     return (
@@ -935,7 +935,7 @@ export const PreviewPane = React.memo(function PreviewPane({
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#EAE8E0]/50'}
+      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]/50'}
       style={printMode ? style : {
         paddingRight: '2rem',
         // Preview mode has no toolbar below the tab bar, so scrolled content
@@ -950,8 +950,8 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#D6D4D1] prose-headings:text-[#D6D4D1] prose-p:text-[#D6D4D1] prose-li:text-[#D6D4D1] prose-strong:text-[#D6D4D1] prose-em:text-[#D6D4D1] prose-blockquote:text-[#D6D4D1] prose-ol:text-[#D6D4D1] prose-ul:text-[#D6D4D1] prose-a:text-[#CC7D5E] prose-pre:text-[#D6D4D1] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#D6D4D1] prose-hr:border-[#3A3A37] prose-th:text-[#D6D4D1] prose-td:text-[#D6D4D1]'
-              : 'text-[#2D2D2D] prose-headings:text-[#2D2D2D] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2D] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2D]'
+              ? 'text-[#F9F9F7] prose-headings:text-[#F9F9F7] prose-p:text-[#F9F9F7] prose-li:text-[#F9F9F7] prose-strong:text-[#F9F9F7] prose-em:text-[#F9F9F7] prose-blockquote:text-[#F9F9F7] prose-ol:text-[#F9F9F7] prose-ul:text-[#F9F9F7] prose-a:text-[#CC7D5E] prose-pre:text-[#F9F9F7] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F9F9F7] prose-hr:border-[#3A3A37] prose-th:text-[#F9F9F7] prose-td:text-[#F9F9F7]'
+              : 'text-[#2D2D2B] prose-headings:text-[#2D2D2B] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2B] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2B]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
@@ -972,8 +972,8 @@ export const PreviewPane = React.memo(function PreviewPane({
       </div>
 
       {!printMode && backlinks.length > 0 && (
-        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}>
-          <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.35)' }}>
+        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}>
+          <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
             <span>{backlinks.length}</span>
             <span>Linked Mentions</span>
           </h3>
@@ -982,13 +982,13 @@ export const PreviewPane = React.memo(function PreviewPane({
               <div
                 key={backlink.id}
                 className="px-2 py-1.5 cursor-pointer transition-colors group"
-                style={{ border: `1px solid ${isDark ? 'rgba(238,237,234,0.5)' : '#2D2D2D'}` }}
+                style={{ border: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}
                 onClick={() => onNavigateToNoteById(backlink.id)}
               >
-                <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(238,237,234,0.55)' : 'rgba(45,45,45,0.65)' }}>
+                <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>
                   {backlink.title}
                 </div>
-                <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(238,237,234,0.3)' : 'rgba(45,45,45,0.4)' }}>
+                <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
                   {getSnippet(backlink.content, note.title)}
                 </div>
               </div>

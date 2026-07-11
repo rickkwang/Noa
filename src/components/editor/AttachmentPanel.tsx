@@ -75,7 +75,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
   if (attachments.length === 0 && !isDragOver) {
     return (
       <div
-        className="group bg-[#EAE8E0] shrink-0"
+        className="group bg-[#F9F9F7] shrink-0"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -84,7 +84,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
           <button
             disabled={readOnly}
             onClick={() => fileInputRef.current?.click()}
-            className="text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-[10px] uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Add Attachment"
           >
             + Attachments
@@ -103,7 +103,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
 
   return (
     <div
-      className={`bg-[#EAE8E0] shrink-0 transition-colors ${isDragOver ? 'bg-[#CC7D5E]/10' : ''}`}
+      className={`bg-[#F9F9F7] shrink-0 transition-colors ${isDragOver ? 'bg-[#CC7D5E]/10' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -112,7 +112,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
       <div className="flex items-center gap-2 px-4 py-1.5">
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#2D2D2D]/50 hover:text-[#2D2D2D] transition-colors active:opacity-70"
+          className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title={isOpen ? 'Collapse Attachments' : 'Expand Attachments'}
         >
           <span>{isOpen ? '▾' : '▸'}</span>
@@ -122,7 +122,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
         <button
           disabled={readOnly}
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
           title="Add Attachment"
         >
           + Add
@@ -149,7 +149,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
       {isOpen && (
         <div className="px-4 pb-2 space-y-0.5">
           {attachments.length === 0 ? (
-            <div className="text-xs text-[#2D2D2D]/30 font-redaction py-1">
+            <div className="text-xs text-[#2D2D2B]/30 font-redaction py-1">
               Drag files here, or click "+ Add" to upload images.
             </div>
           ) : (
@@ -162,12 +162,12 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                   <button
                   disabled={readOnly}
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2D]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2D]/70 disabled:cursor-default"
+                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}
                 </button>
-                <span className="text-[10px] text-[#2D2D2D]/30 shrink-0">{formatBytes(att.size)}</span>
+                <span className="text-[10px] text-[#2D2D2B]/30 shrink-0">{formatBytes(att.size)}</span>
                 {confirmDeleteId === att.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -189,7 +189,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-[10px] text-[#2D2D2D]/40 hover:text-[#2D2D2D] active:opacity-70"
+                      className="text-[10px] text-[#2D2D2B]/40 hover:text-[#2D2D2B] active:opacity-70"
                     >
                       Cancel
                     </button>
@@ -198,7 +198,7 @@ export function AttachmentPanel({ attachments, onUpload, onDelete, onInsertRefer
                   <button
                     disabled={readOnly}
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-[10px] text-[#2D2D2D]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
+                    className="text-[10px] text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
                     title="Delete Attachment"
                   >
                     ✕

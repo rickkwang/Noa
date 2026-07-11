@@ -178,10 +178,10 @@ export function MentionDropdown({
 
   return (
     <div
-      className={`absolute z-50 bg-[#EAE8E0] border border-[#2D2D2D] shadow-[4px_4px_0_0_rgba(45,45,45,1)] font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#F9F9F7] border border-[#2D2D2B] shadow-[4px_4px_0_0_rgba(45,45,43,1)] font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
-      <div className="px-3 py-1 bg-[#DCD9CE] border-b border-[#2D2D2D] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2D]/70">
+      <div className="px-3 py-1 bg-[#EFEAE3] border-b border-[#2D2D2B] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2B]/70">
         Link to note
       </div>
       {items.map((item, i) => {
@@ -190,7 +190,7 @@ export function MentionDropdown({
           <div
             key={item.kind === 'existing' ? item.id : `create:${item.title}`}
             ref={active ? selectedRef : undefined}
-            className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2D]/10 last:border-0 truncate ${active ? 'bg-[#2D2D2D] text-[#EAE8E0]' : 'hover:bg-[#DCD9CE]'}`}
+            className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2B]/10 last:border-0 truncate ${active ? 'bg-[#2D2D2B] text-[#F9F9F7]' : 'hover:bg-[#EFEAE3]'}`}
             onMouseDown={(e) => {
               e.preventDefault();
               onInsert(item.title, mentionQuery.index);
@@ -199,7 +199,7 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[#EAE8E0]/70' : 'text-[#CC7D5E]'}`}>New</span>
+                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[#F9F9F7]/70' : 'text-[#CC7D5E]'}`}>New</span>
                 <span className="text-xs">{item.title}</span>
               </>
             ) : (

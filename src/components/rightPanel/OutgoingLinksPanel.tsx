@@ -38,14 +38,14 @@ export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNot
     return map;
   }, [activeNote, resolved]);
 
-  const txtMuted = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/50';
-  const cardBorder = isDark ? 'border-[rgba(238,237,234,0.25)]' : 'border-[#2D2D2D]';
-  const cardBg = isDark ? 'bg-[#1E1E1C] hover:bg-[#2C2C28]' : 'bg-[#DCD9CE]/40 hover:bg-[#DCD9CE]/70';
-  const titleColor = isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]';
-  const snippetColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/60';
-  const unresolvedBorder = isDark ? 'border-[rgba(238,237,234,0.12)]' : 'border-[#2D2D2D]/30';
+  const txtMuted = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/50';
+  const cardBorder = isDark ? 'border-[rgba(249,249,247,0.25)]' : 'border-[#2D2D2B]';
+  const cardBg = isDark ? 'bg-[#252523] hover:bg-[#302F2C]' : 'bg-[#EFEAE3]/40 hover:bg-[#EFEAE3]/70';
+  const titleColor = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
+  const snippetColor = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/60';
+  const unresolvedBorder = isDark ? 'border-[rgba(249,249,247,0.12)]' : 'border-[#2D2D2B]/30';
   const unresolvedBg = isDark ? 'bg-transparent' : 'bg-transparent';
-  const unresolvedTitleColor = isDark ? 'text-[rgba(238,237,234,0.45)]' : 'text-[#2D2D2D]/50';
+  const unresolvedTitleColor = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/50';
 
   const hasAny = resolved.length > 0 || unresolvedTitles.length > 0;
 
@@ -55,7 +55,7 @@ export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNot
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>Open a note to see outgoing links.</div>
       ) : !hasAny ? (
         <div className={`text-center mt-10 text-sm ${txtMuted}`}>
-          No outgoing links from<br /><span className={`font-bold ${isDark ? 'text-[rgba(238,237,234,0.6)]' : 'text-[#2D2D2D]/70'}`}>"{activeNote.title}"</span>
+          No outgoing links from<br /><span className={`font-bold ${isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[#2D2D2B]/70'}`}>"{activeNote.title}"</span>
         </div>
       ) : (
         <div className="space-y-2.5">

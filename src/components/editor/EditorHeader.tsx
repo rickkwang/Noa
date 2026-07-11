@@ -25,22 +25,22 @@ function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark:
         <Download size={14} />
       </button>
       {open && (
-        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#262624] border border-[#EEEDEA]/10' : 'bg-[#EAE8E0] border border-[#2D2D2D]/15'}`}>
+        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#2D2D2B] border border-[#F9F9F7]/10' : 'bg-[#F9F9F7] border border-[#2D2D2B]/15'}`}>
           <button
             onClick={() => { onExportMd(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#EEEDEA]/08 text-[#EEEDEA]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
           >
             Markdown (.md)
           </button>
           <button
             onClick={() => { onExportHtml(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#EEEDEA]/08 text-[#EEEDEA]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
           >
             HTML (.html)
           </button>
           <button
             onClick={() => { onExportPdf(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#EEEDEA]/08 text-[#EEEDEA]' : 'hover:bg-[#2D2D2D]/06 text-[#2D2D2D]'}`}
+            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
           >
             PDF (.pdf)
           </button>
@@ -204,7 +204,7 @@ export function EditorHeader({
     : {};
 
   return (
-    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#1E1E1C] after:bg-[#EEEDEA]/15' : 'bg-[#DCD9CE] after:bg-[#2D2D2D]'}`}>
+    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#252523] after:bg-[#F9F9F7]/15' : 'bg-[#EFEAE3] after:bg-[#2D2D2B]'}`}>
       {/* Tab strip */}
       <div className="min-w-0 flex-1 flex items-end overflow-visible">
         {/* z-[1] keeps the strip above the header's bottom line even when the
@@ -240,7 +240,7 @@ export function EditorHeader({
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#EEEDEA]/15' : 'bg-[#2D2D2D]/20'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/15' : 'bg-[#2D2D2B]/20'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
                       />
                     )}
@@ -256,8 +256,8 @@ export function EditorHeader({
                       }}
                       className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
                         isActiveTab
-                          ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#262624] text-[#EEEDEA]' : 'bg-[#EAE8E0] text-[#2D2D2D]'}`
-                          : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#EEEDEA]/55 hover:text-[#EEEDEA]/80' : 'text-[#2D2D2D]/50 hover:text-[#2D2D2D]/80'}`
+                          ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#2D2D2B] text-[#F9F9F7]' : 'bg-[#F9F9F7] text-[#2D2D2B]'}`
+                          : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'}`
                       }`}
                       style={tabStyle}
                     >
@@ -273,7 +273,7 @@ export function EditorHeader({
                           onCompositionStart={handleCompositionStart}
                           onCompositionEnd={handleCompositionEnd}
                           disabled={readOnly}
-                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
+                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#F9F9F7] border-[#CC7D5E]' : 'text-[#2D2D2B] border-[#CC7D5E]'}`}
                         />
                       ) : (
                         <span
@@ -296,7 +296,7 @@ export function EditorHeader({
                           if (tabEl) tabEl.style.setProperty('--noa-tab-w', `${tabEl.offsetWidth}px`);
                           onTabClose?.(tab.id);
                         }}
-                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-[#D45555]'}`}
+                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -309,7 +309,7 @@ export function EditorHeader({
             ) : (
               /* Fallback: single tab (legacy mode) */
               <div
-                className={`flex items-center gap-1.5 px-3 pt-1 rounded-t-lg relative z-[1] shrink-0 ${isDark ? 'bg-[#262624]' : 'bg-[#EAE8E0]'}`}
+                className={`flex items-center gap-1.5 px-3 pt-1 rounded-t-lg relative z-[1] shrink-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
                 style={{
                   borderWidth: '1px',
                   borderStyle: 'solid',
@@ -330,11 +330,11 @@ export function EditorHeader({
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
                     disabled={readOnly}
-                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#EEEDEA] border-[#CC7D5E]' : 'text-[#2D2D2D] border-[#CC7D5E]'}`}
+                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#F9F9F7] border-[#CC7D5E]' : 'text-[#2D2D2B] border-[#CC7D5E]'}`}
                   />
                 ) : (
                   <span
-                    className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[#EEEDEA]' : 'text-[#2D2D2D]'}`}
+                    className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}
                     onClick={readOnly ? undefined : () => onSetEditingTitle(true)}
                     title={readOnly ? note.title : 'Click to rename'}
                   >
@@ -342,7 +342,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2D]/40 hover:text-[#D45555]'}`}>
+                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}>
                     <X size={11} />
                   </button>
                 )}
@@ -354,7 +354,7 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#EEEDEA]/30 hover:text-[#EEEDEA]/70 hover:bg-[#262624]' : 'text-[#2D2D2D]/40 hover:text-[#2D2D2D] hover:bg-[#DCD9CE]'}`}
+            className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/70 hover:bg-[#2D2D2B]' : 'text-[#2D2D2B]/40 hover:text-[#2D2D2B] hover:bg-[#EFEAE3]'}`}
             title="New tab"
           >
             <Plus size={14} />
@@ -363,7 +363,7 @@ export function EditorHeader({
       </div>
 
       {/* Right controls */}
-      <div className={`flex items-center gap-3 shrink-0 whitespace-nowrap self-center px-1 ${isDark ? 'text-[#EEEDEA]/50' : 'text-[#2D2D2D]/60'}`}>
+      <div className={`flex items-center gap-3 shrink-0 whitespace-nowrap self-center px-1 ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}>
         {/* Group 1: view modes */}
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -389,7 +389,7 @@ export function EditorHeader({
           </button>
         </div>
 
-        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#EEEDEA]/10' : 'bg-[#2D2D2D]/20'}`} />
+        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#2D2D2B]/20'}`} />
 
         {/* Group 2: actions */}
         <div className="flex items-center gap-1 shrink-0">
@@ -405,7 +405,7 @@ export function EditorHeader({
           )}
         </div>
 
-        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#EEEDEA]/10' : 'bg-[#2D2D2D]/20'}`} />
+        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#2D2D2B]/20'}`} />
 
         {/* Group 3: timestamp */}
         <div

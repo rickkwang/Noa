@@ -224,12 +224,12 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 bg-[#EAE8E0] border-2 border-[#2D2D2D] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)] min-w-[160px]"
+            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border-2 border-[#2D2D2B] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)] min-w-[160px]"
           >
             {builtinTemplates.map(t => (
               <button
                 key={t.id}
-                className="w-full text-left px-3 py-1.5 text-sm font-redaction hover:bg-[#DCD9CE] text-[#2D2D2D]"
+                className="w-full text-left px-3 py-1.5 text-sm font-redaction hover:bg-[#EFEAE3] text-[#2D2D2B]"
                 onClick={() => {
                   onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                   setTemplateMenuFolderId(null);
@@ -275,7 +275,7 @@ export default function Sidebar({
             />
           ))}
           {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
-          {!hasChildren && <div className="text-[#2D2D2D]/50 py-1 font-redaction" style={{ paddingLeft: '22px' }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2B]/50 py-1 font-redaction" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -359,22 +359,78 @@ export default function Sidebar({
 
   return (
     <div 
-      className="w-full h-full flex flex-col bg-[#EAE8E0] shrink-0 relative"
+      className="w-full h-full flex flex-col bg-[#F9F9F7] shrink-0 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {isDragOver && (
         <div className="absolute inset-0 bg-[#CC7D5E]/10 border-2 border-dashed border-[#CC7D5E] z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-[#EAE8E0] px-4 py-2 border border-[#CC7D5E] shadow-lg font-redaction font-bold text-[#CC7D5E] flex items-center">
+          <div className="bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] shadow-lg font-redaction font-bold text-[#CC7D5E] flex items-center">
             <Plus size={16} className="mr-2" />
             Drop files to import
           </div>
         </div>
       )}
-          {pendingDelete && (
-        <div className="slide-down border-b-2 border-[#CC7D5E] bg-[#CC7D5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
-          <p className="text-xs text-[#2D2D2D]">
+      <div className="h-8 border-b border-[#2D2D2B] flex items-center px-2 gap-0.5 shrink-0 bg-[#EFEAE3] z-10 overflow-hidden">
+        <button
+          onClick={() => onCreateNote(primaryNoaFolderId)}
+          className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          title="New note"
+        >
+          <SquarePen size={14} />
+        </button>
+        <button
+          onClick={() => onCreateFolder()}
+          className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          title="New folder"
+        >
+          <FolderPlus size={14} />
+        </button>
+        <button
+          onClick={() => {
+            setFoldersExpandedByDefault((value) => !value);
+            setFolderTreeResetKey((value) => value + 1);
+          }}
+          className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
+        >
+          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+        </button>
+        <button
+          onClick={() => onOpenDailyNote?.()}
+          className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          title="Open today's daily note"
+        >
+          <Calendar size={14} />
+        </button>
+        <button
+          onClick={() => {
+            if (notes.length === 0) return;
+            const randomNote = notes[Math.floor(Math.random() * notes.length)];
+            onSelectNote(randomNote.id);
+          }}
+          className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          title="Open random note"
+        >
+          <Dices size={14} />
+        </button>
+        <button
+          onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
+          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2B]/50 hover:text-[#CC7D5E]"
+          style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
+          title="Click to cycle sort order"
+        >
+          <ArrowUpDown size={14} />
+          <span className="text-[10px] uppercase tracking-wide leading-none">
+            {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
+          </span>
+        </button>
+      </div>
+
+      {pendingDelete && (
+        <div className="slide-down border-b border-[#2D2D2B]/20 bg-[#CC7D5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
+          <p className="text-xs text-[#2D2D2B]">
             Delete "<span className="font-bold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
               ? (() => {
@@ -407,91 +463,36 @@ export default function Sidebar({
           <div className="flex gap-1.5">
             <button
               onClick={() => { pendingDelete.type === 'note' ? onDeleteNote(pendingDelete.id) : onDeleteFolder(pendingDelete.id); setPendingDelete(null); }}
-              className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+              className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
             >
               Delete
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="px-2 py-0.5 text-xs font-bold bg-[#EAE8E0] border border-[#2D2D2D] hover:bg-[#DCD9CE]"
+              className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
             >
               Cancel
             </button>
           </div>
         </div>
       )}
-      <div className="h-8 border-b border-[#2D2D2D] flex items-center px-2 gap-0.5 shrink-0 bg-[#DCD9CE] z-10 overflow-hidden">
-        <button
-          onClick={() => onCreateNote(primaryNoaFolderId)}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
-          title="New note"
-        >
-          <SquarePen size={14} />
-        </button>
-        <button
-          onClick={() => onCreateFolder()}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
-          title="New folder"
-        >
-          <FolderPlus size={14} />
-        </button>
-        <button
-          onClick={() => {
-            setFoldersExpandedByDefault((value) => !value);
-            setFolderTreeResetKey((value) => value + 1);
-          }}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
-          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
-        >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
-        </button>
-        <button
-          onClick={() => onOpenDailyNote?.()}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
-          title="Open today's daily note"
-        >
-          <Calendar size={14} />
-        </button>
-        <button
-          onClick={() => {
-            if (notes.length === 0) return;
-            const randomNote = notes[Math.floor(Math.random() * notes.length)];
-            onSelectNote(randomNote.id);
-          }}
-          className="p-1 text-[#2D2D2D]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
-          title="Open random note"
-        >
-          <Dices size={14} />
-        </button>
-        <button
-          onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2D]/50 hover:text-[#CC7D5E]"
-          style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
-          title="Click to cycle sort order"
-        >
-          <ArrowUpDown size={14} />
-          <span className="text-[10px] uppercase tracking-wide leading-none">
-            {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
-          </span>
-        </button>
-      </div>
-      
+
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
-        <div className="border-b border-[#2D2D2D]/20 bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
-          <span className="text-xs text-[#2D2D2D]/70">{selectedNoteIds.size} selected</span>
+        <div className="border-b border-[#2D2D2B]/20 bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
+          <span className="text-xs text-[#2D2D2B]/70">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#EAE8E0] border border-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -505,13 +506,13 @@ export default function Sidebar({
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2D] hover:opacity-90 active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#EAE8E0] border border-[#2D2D2D] hover:bg-[#DCD9CE] active:opacity-70"
+                  className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -523,15 +524,15 @@ export default function Sidebar({
 
       {/* Main Content Section */}
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <div className="py-2">
+        <div className="pt-1 pb-2">
           {searchQuery ? (
               <div className="px-2">
-                <div className="text-xs text-[#2D2D2D]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
+                <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
                   <span>Search Results ({searchResults.length})</span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="text-[#2D2D2D]/40 hover:text-[#CC7D5E] active:opacity-70 flex items-center gap-1"
+                      className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 flex items-center gap-1"
                       title="Close search"
                     >
                       <X size={11} />
@@ -542,16 +543,16 @@ export default function Sidebar({
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#DCD9CE]/50'} transition-colors`}
+                    className={`p-2 mb-1 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
-                    <div className="font-bold font-redaction text-sm text-[#2D2D2D] mb-1 flex items-center">
+                    <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">
                       <FileText size={12} className="mr-1.5 text-[#CC7D5E] shrink-0" />
                       <span className="truncate">
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
-                    <div className="text-xs text-[#2D2D2D]/70 font-redaction leading-relaxed break-words line-clamp-2">
+                    <div className="text-xs text-[#2D2D2B]/70 font-redaction leading-relaxed break-words line-clamp-2">
                       <HighlightedText text={result.contentSnippet} />
                     </div>
                     {result.note.tags && result.note.tags.length > 0 && (
@@ -566,14 +567,14 @@ export default function Sidebar({
                   </div>
                 ))}
                 {searchResults.length === 0 && (
-                  <div className="text-[#2D2D2D]/50 px-2 py-4 font-redaction text-sm text-center">
+                  <div className="text-[#2D2D2B]/50 px-2 py-4 font-redaction text-sm text-center">
                     No matches found
                   </div>
                 )}
               </div>
             ) : (
               <>
-              <div data-testid="sidebar-file-tree">
+              <div data-testid="sidebar-file-tree" className="pt-1">
                 {/* Noa-native notes — flat root, no wrapper node */}
                 <div
                   onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
@@ -602,10 +603,10 @@ export default function Sidebar({
                 {/* Obsidian Vault section — only shown when imported content exists */}
                 {(importedFolderTree.length > 0 || rootImportedNotes.length > 0) && (
                   <>
-                    <div className="flex items-center gap-2 px-2 py-1.5 mt-1">
-                      <div className="flex-1 border-t border-[#2D2D2D]/20" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 font-redaction shrink-0">Obsidian Vault</span>
-                      <div className="flex-1 border-t border-[#2D2D2D]/20" />
+                    <div className="flex items-center gap-2 px-2 py-1.5 -mr-2">
+                      <div className="flex-1 border-t border-[#2D2D2B]/20" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction shrink-0">Obsidian Vault</span>
+                      <div className="flex-1 border-t border-[#2D2D2B]/20" />
                     </div>
                     <div
                       onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}

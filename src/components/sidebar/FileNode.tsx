@@ -128,9 +128,13 @@ export const FileNode = React.memo(({
             ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
             : isSelected
               ? 'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'
-              : (isActive ? 'bg-[#DCD9CE]' : 'hover:bg-[#DCD9CE]/50')
+              : (isActive ? 'bg-[#EFEAE3]' : 'hover:bg-[#EFEAE3]/50')
         }`}
-        style={{ paddingLeft: `${depth === 0 ? 4 : 2}px` }}
+        style={{
+          paddingLeft: `${depth === 0 ? 4 : 2}px`,
+          // Extend row fills beneath the stable 8px scrollbar gutter.
+          marginRight: '-4px',
+        }}
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnter={onDragEnter}
@@ -144,10 +148,10 @@ export const FileNode = React.memo(({
         onDoubleClick={handleDoubleClick}
       >
         <div className="flex items-center overflow-hidden flex-1">
-          <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2D]/50">
+          <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2B]/50">
             {isFolder ? <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} /> : null}
           </span>
-          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#CC7D5E]' : (isActive ? 'text-[#CC7D5E]' : (iconColor ? '' : 'text-[#2D2D2D]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
+          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#CC7D5E]' : (isActive ? 'text-[#CC7D5E]' : (iconColor ? '' : 'text-[#2D2D2B]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
               return <RenderIcon size={14} weight="regular" />;
@@ -163,7 +167,7 @@ export const FileNode = React.memo(({
               }}
               onBlur={handleRenameSubmit}
               onKeyDown={handleKeyDown}
-              className="bg-transparent border-b border-[#2D2D2D] outline-none w-full text-[#2D2D2D] font-redaction"
+              className="bg-transparent border-b border-[#2D2D2B] outline-none w-full text-[#2D2D2B] font-redaction"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -213,7 +217,7 @@ export const FileNode = React.memo(({
           className="transition-[grid-template-rows] duration-200 ease-in-out"
           style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', marginLeft: '18px' }}
         >
-          <div className="overflow-hidden border-l border-[#2D2D2D]/15">
+          <div className="overflow-hidden border-l border-[#2D2D2B]/15">
             {children}
           </div>
         </div>

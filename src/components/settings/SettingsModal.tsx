@@ -140,21 +140,21 @@ export default function SettingsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title Bar */}
-        <div className="h-10 border-b-[1.75px] border-[#2D2D2D] flex items-center justify-between px-4 bg-[#DCD9CE] shrink-0">
+        <div className="h-10 border-b-[1.75px] border-[#2D2D2B] flex items-center justify-between px-4 bg-[#EFEAE3] shrink-0">
           <div className="flex items-center space-x-2">
-            <Settings size={16} className="text-[#2D2D2D]" />
+            <Settings size={16} className="text-[#2D2D2B]" />
             <span id="settings-dialog-title" className="font-bold tracking-widest uppercase text-sm">SETTINGS</span>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="hover:bg-[#D45555] hover:text-white p-1 border-[1.75px] border-transparent hover:border-[#2D2D2D] transition-colors"
+            className="hover:bg-[#D45555] hover:text-white p-1 border-[1.75px] border-transparent hover:border-[#2D2D2B] transition-colors"
           >
             <X size={18} />
           </button>
@@ -168,7 +168,7 @@ export default function SettingsModal({
             id={`settings-panel-${activeTab}`}
             role="tabpanel"
             aria-labelledby={`settings-tab-${activeTab}`}
-            className="flex-1 p-4 bg-[#EAE8E0] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 md:p-8"
+            className="flex-1 p-4 bg-[#F9F9F7] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 md:p-8"
           >
             {activeTab === 'appearance' && (
               <AppearanceSettings settings={settings} updateSettings={updateSettings} />
@@ -208,10 +208,10 @@ export default function SettingsModal({
               <div className="space-y-8">
                 <div>
                   <div className="flex items-baseline gap-3">
-                    <h2 className="font-bold text-lg text-[#2D2D2D]">About</h2>
-                    <span className="text-base font-bold text-[#2D2D2D]">v{import.meta.env.PACKAGE_VERSION}</span>
+                    <h2 className="font-bold text-lg text-[#2D2D2B]">About</h2>
+                    <span className="text-base font-bold text-[#2D2D2B]">v{import.meta.env.PACKAGE_VERSION}</span>
                   </div>
-                  <p className="text-sm text-[#2D2D2D]/70 mt-1">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
+                  <p className="text-sm text-[#2D2D2B]/70 mt-1">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
                   <img
                     src={fable5VerifiedBadge}
                     alt="Fable 5 Verified"
@@ -222,7 +222,7 @@ export default function SettingsModal({
                 <SettingSection bare title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackMailto}
-                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
+                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
                   >
                     <span>Send Feedback</span>
                   </a>
@@ -231,22 +231,22 @@ export default function SettingsModal({
                   <div className="space-y-2">
                     <button
                       onClick={handleExportDiagnostics}
-                      className="inline-flex items-center justify-center space-x-2 bg-[#EAE8E0] text-[#2D2D2D] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
+                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
                       disabled={diagnosticsState === 'exporting'}
                     >
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
                     </button>
                     {diagnosticsState === 'success' && (
-                      <p className="text-xs text-[#2D2D2D]/70">Diagnostics exported locally.</p>
+                      <p className="text-xs text-[#2D2D2B]/70">Diagnostics exported locally.</p>
                     )}
                     {diagnosticsState === 'error' && (
                       <p className="text-xs text-[#A93B3B]">Diagnostics export failed. Try again.</p>
                     )}
                   </div>
                 </SettingSection>
-                <div className="border-[1.75px] border-[#2D2D2D] overflow-hidden">
-                  <div className="bg-[#DCD9CE] px-4 py-1.5 border-b-[1.75px] border-[#2D2D2D]">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2D]/70">Keyboard Shortcuts</span>
+                <div className="border-[1.75px] border-[#2D2D2B] overflow-hidden">
+                  <div className="bg-[#EFEAE3] px-4 py-1.5 border-b-[1.75px] border-[#2D2D2B]">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2B]/70">Keyboard Shortcuts</span>
                   </div>
                   <table className="w-full text-xs font-redaction">
                     <tbody>
@@ -258,9 +258,9 @@ export default function SettingsModal({
                         ['Cmd/Ctrl + S', 'Force save pending edits'],
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
-                        <tr key={key} className="border-b-[1.75px] border-[#2D2D2D]/15 last:border-0">
+                        <tr key={key} className="border-b-[1.75px] border-[#2D2D2B]/15 last:border-0">
                           <td className="px-4 py-1.5 font-bold text-[#CC7D5E] whitespace-nowrap w-48">{key}</td>
-                          <td className="px-4 py-1.5 text-[#2D2D2D]/60">{desc}</td>
+                          <td className="px-4 py-1.5 text-[#2D2D2B]/60">{desc}</td>
                         </tr>
                       ))}
                     </tbody>

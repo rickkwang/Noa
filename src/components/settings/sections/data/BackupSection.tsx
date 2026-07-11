@@ -49,19 +49,19 @@ export default function BackupSection({
     <SettingSection title="Backup" description="Export your data for safekeeping.">
       <div className="px-1 pb-2 space-y-1 text-xs">
         <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
-        <div className="text-[#2D2D2D]/60">
+        <div className="text-[#2D2D2B]/60">
           Last export: {formatExportTimestamp(lastExportAt)}
           {daysSinceExport !== null ? ` (${daysSinceExport} day(s) ago)` : ''}
         </div>
-        <div className="text-[#2D2D2D]/60">Backup health is based on JSON or Vault exports.</div>
-        <div className="text-[#2D2D2D]/60">Recommended cadence: export JSON or Vault at least every 7 days.</div>
+        <div className="text-[#2D2D2B]/60">Backup health is based on JSON or Vault exports.</div>
+        <div className="text-[#2D2D2B]/60">Recommended cadence: export JSON or Vault at least every 7 days.</div>
       </div>
       {showStorage && storageEstimate && (
         <div className="px-1 pb-2 space-y-1">
-          <div className="text-xs text-[#2D2D2D]/60 font-redaction">
+          <div className="text-xs text-[#2D2D2B]/60 font-redaction">
             Storage used: {formatBytes(storageEstimate.usageBytes)} / ~{formatBytes(storageEstimate.quotaBytes)} (estimated)
           </div>
-          <div className="h-1 w-full bg-[#2D2D2D]/10 overflow-hidden">
+          <div className="h-1 w-full bg-[#2D2D2B]/10 overflow-hidden">
             <div
               className="h-full transition-[width]"
               style={{
@@ -80,7 +80,7 @@ export default function BackupSection({
       <SettingItem label="Export JSON Backup" description="Complete backup including metadata and settings.">
         <button
           onClick={onExportJson}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
         >
           <Download size={14} />
           <span>Export JSON</span>
@@ -91,7 +91,7 @@ export default function BackupSection({
         <button
           onClick={onExportZip}
           disabled={exportingZip}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingZip ? <Loader2 size={14} className="animate-spin" /> : <FileArchive size={14} />}
           <span>{exportingZip ? 'Exporting…' : 'Export Vault'}</span>
@@ -102,7 +102,7 @@ export default function BackupSection({
         <button
           onClick={onExportHtmlZip}
           disabled={exportingHtml}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2D] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           {exportingHtml ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
           <span>{exportingHtml ? 'Exporting…' : 'Export HTML'}</span>

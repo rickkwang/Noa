@@ -58,7 +58,7 @@ export default function AutoBackupSection({
   if (!isFileSystemSupported()) {
     return (
       <SettingSection title="Automatic backup" description="Automatically save a snapshot to a folder on your disk every day.">
-        <div className="px-1 py-3 text-xs text-[#2D2D2D]/70">
+        <div className="px-1 py-3 text-xs text-[#2D2D2B]/70">
           Not supported in this browser. Use Chrome or the Noa desktop app.
         </div>
       </SettingSection>
@@ -76,7 +76,7 @@ export default function AutoBackupSection({
               <button
                 onClick={() => { void onRunNow(); }}
                 disabled={busy}
-                className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-[1.75px] border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-[1.75px] border-[#2D2D2B] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
               >
                 {busy ? <Loader2 size={12} className="animate-spin" /> : null}
                 Run backup now
@@ -84,7 +84,7 @@ export default function AutoBackupSection({
               <button
                 onClick={() => { void onDisconnect(); }}
                 disabled={busy}
-                className="px-3 py-1.5 text-xs font-bold bg-[#EAE8E0] border-[1.75px] border-[#2D2D2D] hover:bg-[#DCD9CE] disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-bold bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] hover:bg-[#EFEAE3] disabled:opacity-50"
               >
                 Disconnect
               </button>
@@ -93,7 +93,7 @@ export default function AutoBackupSection({
             <button
               onClick={() => { void onChooseDirectory(); }}
               disabled={busy}
-              className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-[1.75px] border-[#2D2D2D] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border-[1.75px] border-[#2D2D2B] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
             >
               <FolderOpen size={12} />
               Choose folder
@@ -103,13 +103,13 @@ export default function AutoBackupSection({
       </SettingItem>
 
       <SettingItem label="Last automatic backup" description={lastAutoBackupAt ? new Date(lastAutoBackupAt).toLocaleString() : 'No automatic backup has run yet.'}>
-        <div className="text-xs font-bold text-[#2D2D2D]">
+        <div className="text-xs font-bold text-[#2D2D2B]">
           {formatRelative(lastAutoBackupAt)}
         </div>
       </SettingItem>
 
       <SettingItem label="Retention" description={`The ${DEFAULT_KEEP_BACKUPS} most recent backup files are kept; older files are deleted automatically.`}>
-        <div className="text-xs text-[#2D2D2D]/60">Keep {DEFAULT_KEEP_BACKUPS}</div>
+        <div className="text-xs text-[#2D2D2B]/60">Keep {DEFAULT_KEEP_BACKUPS}</div>
       </SettingItem>
 
       {status === 'needs-reauth' && hasBackupHandle && (
@@ -119,7 +119,7 @@ export default function AutoBackupSection({
           </span>
           <button
             onClick={() => { void onReconnect(); }}
-            className="px-3 py-1 text-xs font-bold bg-[#EC9A3C] text-white border-[1.75px] border-[#2D2D2D] hover:opacity-90"
+            className="px-3 py-1 text-xs font-bold bg-[#EC9A3C] text-white border-[1.75px] border-[#2D2D2B] hover:opacity-90"
           >
             Reconnect
           </button>

@@ -58,7 +58,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
 
   return (
     <div
-      className="noa-sidebar-section-surface flex shrink-0 border-t border-[#2D2D2D] relative flex-col"
+      className="noa-sidebar-section-surface flex shrink-0 border-t border-[#2D2D2B] relative flex-col"
       style={{ height: isTagsOpen ? tagsHeight : 'auto' }}
     >
       {isTagsOpen && (
@@ -68,17 +68,18 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         />
       )}
       <button
-        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2D]/40 hover:text-[#2D2D2D]/70 font-redaction border-b border-[#2D2D2D]/20 flex items-center shrink-0 transition-colors cursor-pointer"
+        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#2D2D2B]/70 font-redaction border-b border-[#2D2D2B]/20 flex items-center shrink-0 transition-colors cursor-pointer"
         onClick={() => setIsTagsOpen(v => !v)}
+        aria-expanded={isTagsOpen}
       >
         <Tag size={12} className="mr-1.5 shrink-0" />
         Tags Explorer
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-200 ease-in-out ${isTagsOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={11} className={`ml-auto transition-transform duration-100 ease-out ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>
       {isTagsOpen && (
         <div className="flex-1 overflow-y-auto p-2.5 slide-down" style={{ scrollbarGutter: 'stable' }}>
           {tags.length === 0 ? (
-            <div className="text-xs text-[#2D2D2D]/50 p-1 font-redaction">No tags found in notes</div>
+            <div className="text-xs text-[#2D2D2B]/50 p-1 font-redaction">No tags found in notes</div>
           ) : (
             <div className="flex flex-wrap gap-1">
               {tags.map(tag => {
