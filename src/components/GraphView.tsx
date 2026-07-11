@@ -153,7 +153,6 @@ export default function GraphView({
   // should adapt to window/panel changes through zoom/pan only.
   const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
   const dimensionsRef = useRef(canvasSize);
-  const visibleSizeRef = useRef({ width: 0, height: 0 });
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isDraggingNodeRef = useRef(false);
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -215,17 +214,11 @@ export default function GraphView({
       const targetW = stableSize.width;
       const targetH = Math.max(stableSize.height, Math.ceil(rect.height) + 2);
       const current = dimensionsRef.current;
-      const visibleWidth = Math.round(rect.width);
-      const visibleHeight = Math.round(rect.height);
-      const visibleSizeChanged =
-        visibleWidth !== visibleSizeRef.current.width ||
-        visibleHeight !== visibleSizeRef.current.height;
 
       if (targetW !== current.width || targetH !== current.height) {
         dimensionsRef.current = { width: targetW, height: targetH };
         setCanvasSize({ width: targetW, height: targetH });
       }
-      visibleSizeRef.current = { width: visibleWidth, height: visibleHeight };
 
       // Run a fit that was missed while the tab was hidden, then record the
       // fitted camera so reset-view targets it instead of the unfitted one.
@@ -238,11 +231,10 @@ export default function GraphView({
             initialView.current = { x: center.x, y: center.y, zoom };
           }
         }
-      } else if (visibleSizeChanged) {
-        // Re-fit only when the visible container changes. This keeps panel drags
-        // smooth without resetting the graph on unrelated window resize events.
-        fitView(0);
       }
+      // Note: no re-fit on container resize — the canvas is oversized and
+      // CSS-centred, so the camera stays stable on its own. Re-fitting here
+      // would discard the user's pan/zoom on every window/panel resize.
     };
 
     apply();
