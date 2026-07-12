@@ -9,6 +9,7 @@ coverage/
 .env*
 !.env.example
 .alma-snapshots
+.worktrees/
 test-results/.last-run.json
 CLAUDE.md
 AGENTS.md
