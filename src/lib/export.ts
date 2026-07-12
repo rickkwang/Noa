@@ -1,6 +1,7 @@
 import { Attachment, Folder, Note } from '../types';
 import { storage } from './storage';
 import { blobToBase64, type ImportedNote } from './attachmentUtils';
+import { selectNoaOwnedWorkspace } from './workspaceOwnership';
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
@@ -48,10 +49,11 @@ export async function buildBackupPayload(
   folders: Folder[],
   workspaceName: string,
 ): Promise<BackupPayload> {
+  const ownedWorkspace = selectNoaOwnedWorkspace(notes, folders);
   return {
     version: 2,
-    notes: await hydrateAttachmentPayloads(cloneNotesForBackup(notes)),
-    folders,
+    notes: await hydrateAttachmentPayloads(cloneNotesForBackup(ownedWorkspace.notes)),
+    folders: ownedWorkspace.folders,
     workspaceName,
   };
 }

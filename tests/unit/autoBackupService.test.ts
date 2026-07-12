@@ -1,5 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
-import { buildBackupFilename, pruneOldBackups, shouldRunAutoBackup } from '../../src/services/autoBackupService';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildBackupFilename, pruneOldBackups, runAutoBackup, shouldRunAutoBackup } from '../../src/services/autoBackupService';
+import type { Note } from '../../src/types';
+
+const backupNote = (id: string, folder: string): Note => ({
+  id,
+  title: id,
+  content: 'content',
+  createdAt: '2026-04-20T00:00:00.000Z',
+  updatedAt: '2026-04-20T00:00:00.000Z',
+  folder,
+  tags: [],
+  links: [],
+  linkRefs: [],
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('shouldRunAutoBackup', () => {
   const now = Date.parse('2026-04-20T12:00:00.000Z');
@@ -38,6 +55,57 @@ describe('buildBackupFilename', () => {
     expect(nextDay).toBe('noa-backup-2026-03-06-0115.json');
     const sorted = [nextDay, early, later].slice().sort();
     expect(sorted).toEqual([early, later, nextDay]);
+  });
+});
+
+describe('runAutoBackup ownership boundary', () => {
+  it('validates and serializes only Noa-owned rows', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    });
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+    let written = '';
+    const handle = {
+      async getFileHandle() {
+        return {
+          async createWritable() {
+            return {
+              async write(value: FileSystemWriteChunkType) {
+                written = String(value);
+              },
+              async close() {},
+            };
+          },
+        };
+      },
+      async *entries() {},
+      async removeEntry() {},
+    } as unknown as FileSystemDirectoryHandle;
+    const localNote = backupNote('local-note', 'local-folder');
+    const invalidVaultNote = {
+      ...backupNote('vault:external', 'vault:folder'),
+      origin: 'vault' as const,
+      vaultId: 'external',
+      vaultPath: 'Projects/External.md',
+    } as Partial<Note>;
+    delete invalidVaultNote.content;
+
+    const result = await runAutoBackup(
+      handle,
+      [localNote, invalidVaultNote as Note],
+      [
+        { id: 'local-folder', name: 'Local' },
+        { id: 'vault:folder', name: 'Projects', origin: 'vault', vaultPath: 'Projects' },
+      ],
+      'Workspace',
+    );
+
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(written)).toMatchObject({
+      notes: [{ id: 'local-note' }],
+      folders: [{ id: 'local-folder' }],
+    });
   });
 });
 

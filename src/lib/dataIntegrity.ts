@@ -14,6 +14,10 @@ export interface IntegrityReport {
   issues: IntegrityIssue[];
 }
 
+export interface NormalizeNotesOptions {
+  preserveVaultMetadata?: boolean;
+}
+
 function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
@@ -61,7 +65,11 @@ function normalizeAttachment(
   };
 }
 
-function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: IntegrityIssue[] } {
+function normalizeNote(
+  raw: unknown,
+  idx: number,
+  preserveVaultMetadata: boolean,
+): { note: Note | null; issues: IntegrityIssue[] } {
   const issues: IntegrityIssue[] = [];
   if (!raw || typeof raw !== 'object') {
     issues.push({ level: 'error', message: `Note #${idx + 1} is not an object.` });
@@ -87,6 +95,9 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
   const links = Array.isArray(obj.links) ? obj.links.filter(isString) : [];
   const linkRefs = Array.isArray(obj.linkRefs) ? obj.linkRefs.filter(isString) : [];
   const source = obj.source === 'obsidian-import' ? 'obsidian-import' : 'noa';
+  const origin = preserveVaultMetadata && obj.origin === 'vault' ? 'vault' : undefined;
+  const vaultId = preserveVaultMetadata && isString(obj.vaultId) && obj.vaultId.trim() ? obj.vaultId : undefined;
+  const vaultPath = preserveVaultMetadata && isString(obj.vaultPath) && obj.vaultPath.trim() ? obj.vaultPath : undefined;
   const rawFrontmatter = isString(obj.rawFrontmatter) ? obj.rawFrontmatter : undefined;
   const attachments = Array.isArray(obj.attachments)
     ? obj.attachments
@@ -110,18 +121,24 @@ function normalizeNote(raw: unknown, idx: number): { note: Note | null; issues: 
       linkRefs,
       attachments,
       source,
+      ...(origin ? { origin } : {}),
+      ...(vaultId ? { vaultId } : {}),
+      ...(vaultPath ? { vaultPath } : {}),
       ...(rawFrontmatter !== undefined ? { rawFrontmatter } : {}),
     },
     issues,
   };
 }
 
-export function normalizeAndValidateNotes(input: unknown[]): { notes: Note[]; report: IntegrityReport } {
+export function normalizeAndValidateNotes(
+  input: unknown[],
+  options: NormalizeNotesOptions = {},
+): { notes: Note[]; report: IntegrityReport } {
   const notes: Note[] = [];
   const issues: IntegrityIssue[] = [];
 
   input.forEach((item, idx) => {
-    const normalized = normalizeNote(item, idx);
+    const normalized = normalizeNote(item, idx, options.preserveVaultMetadata === true);
     issues.push(...normalized.issues);
     if (normalized.note) notes.push(normalized.note);
   });

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import { AppErrorCode, Attachment, Folder, Note, RecoveryAction } from '../types';
 import { storage } from '../lib/storage';
@@ -9,6 +9,10 @@ import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErro
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { extractLinks, extractTags } from '../lib/noteUtils';
 import { extractObsidianCreatedAt, extractObsidianTags } from '../lib/frontmatter';
+import {
+  selectNoaOwnedWorkspace,
+  stripVaultMetadataFromImportedFolders,
+} from '../lib/workspaceOwnership';
 
 /** For Obsidian imports: use frontmatter tags if present, fall back to body #hashtags. */
 function resolveImportTags(content: string): string[] {
@@ -384,9 +388,10 @@ async function buildVaultImportPayload(
 
 export async function exportJsonSnapshot(notes: Note[], folders: Folder[], workspaceName: string): Promise<boolean> {
   try {
-    const report = validateExportData(notes, folders);
+    const ownedWorkspace = selectNoaOwnedWorkspace(notes, folders);
+    const report = validateExportData(ownedWorkspace.notes, ownedWorkspace.folders);
     if (!report.ok) return false;
-    const payload = await buildBackupPayload(notes, folders, workspaceName);
+    const payload = await buildBackupPayload(ownedWorkspace.notes, ownedWorkspace.folders, workspaceName);
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json',
     });
@@ -415,6 +420,7 @@ export function useDataTransfer({
   const [importingData, setImportingData] = useState(false);
   const [importStatusText, setImportStatusText] = useState<string | null>(null);
   const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('overwrite');
+  const exportWorkspace = useMemo(() => selectNoaOwnedWorkspace(notes, folders), [folders, notes]);
 
   // Wrap onImportData to track loading state
   const trackedImportData: typeof onImportData = useCallback(async (...args) => {
@@ -429,7 +435,7 @@ export function useDataTransfer({
   }, [onImportData]);
 
   const ensureExportIntegrity = useCallback(() => {
-    const report = validateExportData(notes, folders);
+    const report = validateExportData(exportWorkspace.notes, exportWorkspace.folders);
     if (!report.ok) {
       const appError = fromImportError('import_integrity_failed', 'Export integrity check failed.');
       recordErrorSnapshot({
@@ -448,12 +454,12 @@ export function useDataTransfer({
       return false;
     }
     return true;
-  }, [folders, notes, notify]);
+  }, [exportWorkspace, notify]);
 
   const exportJson = useCallback(() => {
     if (!ensureExportIntegrity()) return;
     void (async () => {
-      const ok = await exportJsonSnapshot(notes, folders, workspaceName);
+      const ok = await exportJsonSnapshot(exportWorkspace.notes, exportWorkspace.folders, workspaceName);
       if (!ok) {
         const appError = fromImportError('unknown_error', 'Export failed. Please retry.');
         recordErrorSnapshot({
@@ -471,7 +477,7 @@ export function useDataTransfer({
         });
       }
     })();
-  }, [ensureExportIntegrity, folders, notes, notify, workspaceName]);
+  }, [ensureExportIntegrity, exportWorkspace, notify, workspaceName]);
 
   const exportZip = useCallback(async () => {
     if (!ensureExportIntegrity()) return;
@@ -481,8 +487,8 @@ export function useDataTransfer({
       const zip = new JSZip();
       const manifest: BackupPayload = {
         version: 2,
-        notes: cloneNotesForBackup(notes),
-        folders,
+        notes: cloneNotesForBackup(exportWorkspace.notes),
+        folders: exportWorkspace.folders,
         workspaceName,
       };
       zip.file('manifest.json', JSON.stringify(manifest, null, 2));
@@ -504,8 +510,8 @@ export function useDataTransfer({
         return used;
       };
 
-      folders.forEach((folder) => {
-        const folderNotes = notes.filter((note) => note.folder === folder.id);
+      exportWorkspace.folders.forEach((folder) => {
+        const folderNotes = exportWorkspace.notes.filter((note) => note.folder === folder.id);
         if (folderNotes.length === 0) return;
         const folderZip = ensureZipFolder(zip, folder.name);
         if (!folderZip) return;
@@ -516,8 +522,9 @@ export function useDataTransfer({
       });
 
       const rootUsed = usedNamesFor('');
-      notes
-        .filter((note) => !note.folder)
+      const exportFolderIds = new Set(exportWorkspace.folders.map((folder) => folder.id));
+      exportWorkspace.notes
+        .filter((note) => !note.folder || !exportFolderIds.has(note.folder))
         .forEach((note) => {
           zip.file(uniqueExportFilename(rootUsed, note.title, note.id, '.md'), note.content);
         });
@@ -525,7 +532,7 @@ export function useDataTransfer({
       // Export attachments using the vault layout so importZip can recover
       // each blob's attachment id without guessing.
       await Promise.all(
-        notes.flatMap((note) =>
+        exportWorkspace.notes.flatMap((note) =>
           (note.attachments ?? []).map(async (att) => {
             const blob = await storage.getAttachmentBlob(att.id);
             if (blob) zip.file(zipAttachmentPath(note.id, att), blob);
@@ -549,7 +556,7 @@ export function useDataTransfer({
     } finally {
       setExportingZip(false);
     }
-  }, [ensureExportIntegrity, folders, notes, notify, workspaceName]);
+  }, [ensureExportIntegrity, exportWorkspace, notify, workspaceName]);
 
   const exportHtmlZip = useCallback(async () => {
     if (!ensureExportIntegrity()) return;
@@ -561,7 +568,7 @@ export function useDataTransfer({
 
       if (htmlFolder) {
         const usedNames = new Set<string>();
-        notes.forEach((note) => {
+        exportWorkspace.notes.forEach((note) => {
           const safeTitle = escapeHtml(note.title || 'Untitled');
           const html = `<!DOCTYPE html>
 <html lang="en">
@@ -595,7 +602,7 @@ export function useDataTransfer({
     } finally {
       setExportingHtml(false);
     }
-  }, [ensureExportIntegrity, notes, notify, workspaceName]);
+  }, [ensureExportIntegrity, exportWorkspace, notify, workspaceName]);
 
   const importJsonFile = useCallback(
     (file: File) => {
@@ -673,7 +680,9 @@ export function useDataTransfer({
               const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, strategy);
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
               const importedCount = countImportedNotes(finalNotes, notes, strategy);
-              const incomingFolders = Array.isArray(parsed.folders) ? parsed.folders as Folder[] : [];
+              const incomingFolders = Array.isArray(parsed.folders)
+                ? stripVaultMetadataFromImportedFolders(parsed.folders as Folder[])
+                : [];
               try {
                 await trackedImportData(
                   finalNotes as ImportedNote[],
@@ -1024,7 +1033,8 @@ export function useDataTransfer({
               source: sourceById.get(note.id) ?? 'obsidian-import',
             }));
             newFolders = Array.isArray(manifest.folders)
-              ? manifest.folders.map((folder) => ({ ...folder, source: folder.source ?? 'obsidian-import' }))
+              ? stripVaultMetadataFromImportedFolders(manifest.folders)
+                  .map((folder) => ({ ...folder, source: folder.source ?? 'obsidian-import' }))
               : [];
             workspaceLabel = manifest.workspaceName || workspaceLabel;
             attachmentNoteLookup = rawNotes as ImportedNote[];

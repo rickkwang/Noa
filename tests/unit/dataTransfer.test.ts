@@ -17,6 +17,10 @@ import {
   zipAttachmentPath,
 } from '../../src/hooks/useDataTransfer';
 import { Note } from '../../src/types';
+import {
+  selectNoaOwnedWorkspace,
+  stripVaultMetadataFromImportedFolders,
+} from '../../src/lib/workspaceOwnership';
 
 const makeNote = (id: string, title: string): Note => ({
   id,
@@ -28,6 +32,56 @@ const makeNote = (id: string, title: string): Note => ({
   tags: [],
   links: [],
   linkRefs: [],
+});
+
+describe('selectNoaOwnedWorkspace', () => {
+  it('excludes vault cache rows but preserves ordinary one-time imports', () => {
+    const local = makeNote('local', 'Local');
+    const imported = { ...makeNote('imported', 'Imported'), source: 'obsidian-import' as const };
+    const vault = {
+      ...makeNote('vault:external', 'Vault'),
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultId: 'external',
+      vaultPath: 'Vault.md',
+    };
+    const localFolder = { id: 'local-folder', name: 'Local' };
+    const importedFolder = { id: 'imported-folder', name: 'Imported', source: 'obsidian-import' as const };
+    const vaultFolder = {
+      id: 'vault:folder',
+      name: 'Vault folder',
+      origin: 'vault' as const,
+      vaultPath: 'Projects',
+    };
+    const notes = [local, imported, vault];
+    const folders = [localFolder, importedFolder, vaultFolder];
+
+    const selected = selectNoaOwnedWorkspace(notes, folders);
+
+    expect(selected.notes).toEqual([local, imported]);
+    expect(selected.folders).toEqual([localFolder, importedFolder]);
+    expect(selected.notes[0]).toBe(local);
+    expect(selected.folders[0]).toBe(localFolder);
+    expect(notes).toEqual([local, imported, vault]);
+    expect(folders).toEqual([localFolder, importedFolder, vaultFolder]);
+  });
+
+  it('strips vault ownership metadata from externally imported folders', () => {
+    const importedFolders = [{
+      id: 'external-folder',
+      name: 'External',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultPath: 'External',
+    }];
+
+    expect(stripVaultMetadataFromImportedFolders(importedFolders)).toEqual([{
+      id: 'external-folder',
+      name: 'External',
+      source: 'obsidian-import',
+    }]);
+    expect(importedFolders[0]).toMatchObject({ origin: 'vault', vaultPath: 'External' });
+  });
 });
 
 describe('analyzeConflicts', () => {

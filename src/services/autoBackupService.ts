@@ -4,6 +4,7 @@ import { validateExportData } from '../lib/dataIntegrity';
 import { markExported } from '../lib/exportTimestamp';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
+import { selectNoaOwnedWorkspace } from '../lib/workspaceOwnership';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const BACKUP_FILENAME_PREFIX = 'noa-backup-';
@@ -76,14 +77,15 @@ export async function runAutoBackup(
   workspaceName: string,
   keepN = DEFAULT_KEEP_BACKUPS,
 ): Promise<AutoBackupResult> {
-  const report = validateExportData(notes, folders);
+  const ownedWorkspace = selectNoaOwnedWorkspace(notes, folders);
+  const report = validateExportData(ownedWorkspace.notes, ownedWorkspace.folders);
   if (!report.ok) {
     return { ok: false, reason: 'validation_failed', detail: report.issues[0]?.message };
   }
   const filename = buildBackupFilename();
   let payload;
   try {
-    payload = await buildBackupPayload(notes, folders, workspaceName);
+    payload = await buildBackupPayload(ownedWorkspace.notes, ownedWorkspace.folders, workspaceName);
   } catch (err) {
     return { ok: false, reason: 'write_failed', detail: err instanceof Error ? err.message : String(err) };
   }

@@ -90,6 +90,36 @@ describe('normalizeAndValidateNotes', () => {
     expect(notes[0].source).toBe('obsidian-import');
   });
 
+  it('strips vault cache identity metadata by default for untrusted imports', () => {
+    const { notes, report } = normalizeAndValidateNotes([{
+      ...validNote,
+      origin: 'vault',
+      vaultId: 'external-note-id',
+      vaultPath: 'Projects/Noa.md',
+    }]);
+
+    expect(report.ok).toBe(true);
+    expect(notes[0]).not.toHaveProperty('origin');
+    expect(notes[0]).not.toHaveProperty('vaultId');
+    expect(notes[0]).not.toHaveProperty('vaultPath');
+  });
+
+  it('preserves vault cache identity metadata only for trusted cache normalization', () => {
+    const { notes, report } = normalizeAndValidateNotes([{
+      ...validNote,
+      origin: 'vault',
+      vaultId: 'external-note-id',
+      vaultPath: 'Projects/Noa.md',
+    }], { preserveVaultMetadata: true });
+
+    expect(report.ok).toBe(true);
+    expect(notes[0]).toMatchObject({
+      origin: 'vault',
+      vaultId: 'external-note-id',
+      vaultPath: 'Projects/Noa.md',
+    });
+  });
+
   it('includes note id in attachment warning message', () => {
     const { report } = normalizeAndValidateNotes([
       {

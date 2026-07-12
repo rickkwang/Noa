@@ -23,6 +23,9 @@ export interface Note {
   linkRefs: string[];
   attachments?: Attachment[];
   source?: NoteSource;
+  origin?: 'vault';
+  vaultId?: string;
+  vaultPath?: string;
   frontmatter?: Record<string, unknown>;
   /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
    *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
@@ -44,6 +47,8 @@ export interface Folder {
   id: string;
   name: string;
   source?: NoteSource;
+  origin?: 'vault';
+  vaultPath?: string;
 }
 
 export type BackupHealthStatus = 'healthy' | 'warning' | 'risk';
