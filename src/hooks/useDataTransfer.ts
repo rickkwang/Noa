@@ -8,7 +8,7 @@ import { markExported } from '../lib/exportTimestamp';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { extractLinks, extractTags } from '../lib/noteUtils';
-import { extractObsidianCreatedAt, extractObsidianTags } from '../lib/frontmatter';
+import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from '../lib/frontmatter';
 import {
   selectNoaOwnedWorkspace,
   stripVaultMetadataFromImportedFolders,
@@ -278,26 +278,35 @@ async function buildVaultImportPayload(
     if (classification.kind === 'unsupported') continue;
 
     if (classification.kind === 'text') {
-      let content = '';
+      let raw = '';
       try {
-        content = await file.text();
+        raw = await file.text();
       } catch {
         continue;
       }
+      // Same contract as the vault-connect scan path: frontmatter is split off
+      // into rawFrontmatter (verbatim, for round-trip write-back) instead of
+      // leaking into the editor body — otherwise a later vault sync would stack
+      // a second frontmatter block on top of the original one.
+      const isMarkdown = /\.(md|markdown|mdown)$/i.test(file.name);
+      const { rawBlock, body, eol } = isMarkdown
+        ? splitFrontmatter(raw)
+        : { rawBlock: '', body: raw, eol: undefined };
       const fallbackTs = new Date(file.lastModified || Date.now()).toISOString();
       noteDrafts.push({
         vaultFolderPath,
         note: {
           id: crypto.randomUUID(),
           title: file.name.replace(/\.[^/.]+$/, ''),
-          content,
-          createdAt: extractObsidianCreatedAt(content) ?? fallbackTs,
+          content: body,
+          createdAt: extractObsidianCreatedAt(raw) ?? fallbackTs,
           updatedAt: fallbackTs,
           folder: folderId,
-          tags: resolveImportTags(content),
-          links: extractLinks(content),
+          tags: resolveImportTags(raw),
+          links: extractLinks(body),
           linkRefs: [],
           source: 'obsidian-import',
+          ...(eol ? { rawFrontmatter: rawBlock, frontmatterEol: eol } : {}),
         },
       });
       continue;

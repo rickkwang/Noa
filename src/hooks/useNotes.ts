@@ -254,7 +254,9 @@ export function useNotes(settings?: AppSettings) {
         setFolders(loadedFolders);
 
         if (savedNotes && savedNotes.length > 0) {
-          const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes);
+          // Trusted path: our own IndexedDB cache. Preserve the vault origin
+          // marker so mirror rows keep write-through after a reload.
+          const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes, { preserveVaultMetadata: true });
           if (!report.ok) {
             throw new Error(
               report.issues.find((issue) => issue.level === 'error')?.message ??
@@ -410,6 +412,10 @@ Export regularly: use Settings → Data → Export Backup.`,
       const renameRegex = new RegExp(`\\[\\[${escapedOld}(?=[\\]|#])`, 'g');
       const updated = prev.map(n => {
         if (n.id === id) return { ...n, title: newTitle, updatedAt: new Date().toISOString() };
+        // Link-text rewriting is a Noa-owned convenience. Never mutate vault
+        // file content as a side effect of a rename: Obsidian owns those files,
+        // and cross-domain links are intentionally resolution-only.
+        if (oldNote.origin === 'vault' || n.origin === 'vault') return n;
         if (n.id !== id && renameRegex.test(n.content)) {
           // Reset lastIndex because /g regexes retain state between test/exec calls.
           renameRegex.lastIndex = 0;
@@ -461,9 +467,8 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleCreateNote = useCallback((folderId: string, initialContent: string = '') => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
-    const targetSource = targetFolder?.source ?? 'noa';
-    if (targetSource !== 'noa') {
-      setSaveError('Cannot create notes inside imported vault area.');
+    if (targetFolder?.origin === 'vault') {
+      setSaveError('Creating notes directly inside the connected vault is not available yet.');
       return undefined;
     }
     const newNote: Note = {
@@ -494,13 +499,11 @@ Export regularly: use Settings → Data → Export Backup.`,
     setNotes(prev => {
       const target = prev.find((note) => note.id === id);
       if (!target || target.folder === folderId) return prev;
-      const noteSource = target.source ?? 'noa';
-      if (!folderId) {
-        if (noteSource !== 'noa') return prev;
-      } else {
+      const noteIsVault = target.origin === 'vault';
+      if (folderId) {
         const targetFolder = folders.find((folder) => folder.id === folderId);
         if (!targetFolder) return prev;
-        if ((targetFolder.source ?? 'noa') !== noteSource) return prev;
+        if ((targetFolder.origin === 'vault') !== noteIsVault) return prev;
       }
       const nextNote = { ...target, folder: folderId, updatedAt: new Date().toISOString() };
       const updated = prev.map((note) => (note.id === id ? nextNote : note));
@@ -515,8 +518,8 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleImportNote = useCallback(async (title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
-    if (targetFolder && (targetFolder.source ?? 'noa') !== 'noa') {
-      setSaveError('Cannot import files directly into imported vault area.');
+    if (targetFolder?.origin === 'vault') {
+      setSaveError('Cannot import files directly into the connected vault.');
       return;
     }
     const newNote: Note = {
@@ -597,7 +600,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       content: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      folder: foldersRef.current.find((folder) => (folder.source ?? 'noa') === 'noa')?.id ?? 'diary',
+      folder: foldersRef.current.find(
+        (folder) => folder.origin !== 'vault' && (folder.source ?? 'noa') === 'noa',
+      )?.id ?? 'diary',
       tags: [],
       links: [],
       linkRefs: [],
@@ -664,13 +669,15 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
-    if (parent?.source === 'obsidian-import') {
-      setSaveError('Cannot create folders inside imported vault area.');
+    if (parent?.origin === 'vault') {
+      setSaveError('Creating folders directly inside the connected vault is not available yet.');
       return;
     }
     const desiredPath = parent ? `${parent.name}/New Folder` : 'New Folder';
     const siblingPrefix = parent ? `${parent.name}/` : '';
-    const existingNames = new Set(folders.map((folder) => folder.name));
+    const existingNames = new Set(
+      folders.filter((folder) => folder.origin !== 'vault').map((folder) => folder.name),
+    );
 
     let nextPath = desiredPath;
     let suffix = 2;
@@ -691,9 +698,10 @@ Export regularly: use Settings → Data → Export Backup.`,
     if (!target) return;
     const oldPath = target.name;
     const nextPath = name.trim() || 'Untitled Folder';
+    const targetIsVault = target.origin === 'vault';
     const nextFolders = prev.map((folder) => {
       if (folder.id === id) return { ...folder, name: nextPath };
-      if (isDescendantPath(folder.name, oldPath)) {
+      if ((folder.origin === 'vault') === targetIsVault && isDescendantPath(folder.name, oldPath)) {
         return { ...folder, name: nextPath + folder.name.slice(oldPath.length) };
       }
       return folder;
@@ -709,9 +717,12 @@ Export regularly: use Settings → Data → Export Backup.`,
     const currentNotes = notesRef.current;
     const target = currentFolders.find((folder) => folder.id === id);
     const folderPrefix = target?.name ?? '';
+    const targetIsVault = target?.origin === 'vault';
     const folderIdsToDelete = new Set(
       currentFolders
-        .filter((folder) => folder.id === id || folder.name.startsWith(`${folderPrefix}/`))
+        .filter((folder) =>
+          folder.id === id
+          || ((folder.origin === 'vault') === targetIsVault && folder.name.startsWith(`${folderPrefix}/`)))
         .map((folder) => folder.id)
     );
     const toDelete = currentNotes.filter(n => folderIdsToDelete.has(n.folder));
@@ -794,6 +805,17 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false, deletedNoteIds?: string[]) => {
     const savedAttachmentIds: string[] = [];
+    // Blob ids that existed before this import. A failed import must only clean
+    // up blobs it created itself — pre-existing ids were merely overwritten with
+    // the same immutable content, and deleting them would destroy the user's
+    // attachments. null = listing failed → delete nothing (the orphan pruner
+    // reclaims leaked blobs on the next successful import).
+    let preexistingBlobIds: ReadonlySet<string> | null = null;
+    try {
+      preexistingBlobIds = new Set(await storage.listAttachmentBlobIds());
+    } catch {
+      preexistingBlobIds = null;
+    }
     // Acquire import lock BEFORE flushing pending saves so any concurrent
     // debounceSave calls that arrive mid-flush get queued instead of racing.
     isImportingRef.current = true;
@@ -849,7 +871,10 @@ Export regularly: use Settings → Data → Export Backup.`,
         }
       }
 
-      const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes);
+      // Preserve the vault origin marker: vault-sync merge results reach here
+      // already marked, and untrusted external imports (JSON/zip/folder) have
+      // stripped origin upstream before calling in — so trusting it here is safe.
+      const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes, { preserveVaultMetadata: true });
       // When vault-sync prunes, rescue any local Noa-native notes that were
       // created between mergeScannedNotes() capturing its snapshot and this
       // import landing. Without this, a note created during bootstrap
@@ -864,10 +889,10 @@ Export regularly: use Settings → Data → Export Backup.`,
           if (deferredById.size === 0) return list;
           return list.map(n => {
             const edited = deferredById.get(n.id);
-            // Only overlay onto noa-native notes; obsidian-import notes must
-            // keep the version that the vault just delivered, otherwise we
-            // would clobber the canonical file with a potentially stale copy.
-            if (!edited || (n.source ?? 'noa') !== 'noa') return n;
+            // Only live vault cache rows must keep the disk-delivered version.
+            // One-time imports are Noa-owned even when source is obsidian-import,
+            // so edits made during a regular import still need rescuing.
+            if (!edited || n.origin === 'vault') return n;
             return edited;
           });
         };
@@ -877,7 +902,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         // deletions would resurrect on every sync.
         const externallyDeleted = new Set(deletedNoteIds ?? []);
         const rescued = notesRef.current.filter(
-          n => (n.source ?? 'noa') === 'noa' && !importedIds.has(n.id) && !externallyDeleted.has(n.id)
+          n => n.origin !== 'vault' && !importedIds.has(n.id) && !externallyDeleted.has(n.id)
         );
         const base = rescued.length > 0 ? [...normalizedNotes, ...rescued] : normalizedNotes;
         return overlayEdits(base);
@@ -915,7 +940,10 @@ Export regularly: use Settings → Data → Export Backup.`,
       if (importedFolders) setFolders(importedFolders);
       if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
     } catch (error) {
-      await Promise.allSettled(savedAttachmentIds.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
+      const createdByThisImport = preexistingBlobIds === null
+        ? []
+        : savedAttachmentIds.filter((attachmentId) => !preexistingBlobIds.has(attachmentId));
+      await Promise.allSettled(createdByThisImport.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
       throw error;
     } finally {
       // Flush queued edits BEFORE releasing the lock. If we released first,
@@ -950,26 +978,32 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [applyEmptyWorkspace]);
 
   const clearWorkspaceAfterDisconnect = useCallback(async (): Promise<string[]> => {
-    const pending = Array.from(saveTimers.current.values());
-    pending.forEach((timer) => clearTimeout(timer));
-    saveTimers.current.clear();
-
     // Read latest state via refs — otherwise stale closures miss notes/folders
     // the user created right before invoking disconnect.
     const currentFolders = foldersRef.current;
     const currentNotes = notesRef.current;
-    const importedFolderIds = new Set(
-      currentFolders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import').map((folder) => folder.id),
-    );
-    const importedNotes = currentNotes.filter(
-      (note) => (note.source ?? 'noa') === 'obsidian-import' || importedFolderIds.has(note.folder),
-    );
+    const vaultNotes = currentNotes.filter((note) => note.origin === 'vault');
+    const vaultNoteIds = new Set(vaultNotes.map((note) => note.id));
+
+    // Disconnect must not cancel pending saves for Noa-owned notes. Only cache
+    // rows being removed lose their pending save/snapshot timers.
+    for (const noteId of vaultNoteIds) {
+      const pendingSave = saveTimers.current.get(noteId);
+      if (pendingSave) clearTimeout(pendingSave);
+      saveTimers.current.delete(noteId);
+      const pendingSnapshot = snapshotTimers.current.get(noteId);
+      if (pendingSnapshot) clearTimeout(pendingSnapshot);
+      snapshotTimers.current.delete(noteId);
+      snapshotFirstScheduled.current.delete(noteId);
+    }
+
     const results = await Promise.allSettled(
-      importedNotes.map(async (note) => {
+      vaultNotes.map(async (note) => {
         if (note.attachments?.length) {
           await storage.deleteAttachmentBlobsByNoteId(note.id, note.attachments, currentNotes);
         }
         await storage.deleteNote(note.id);
+        storage.deleteSnapshotsForNote(note.id).catch(() => {});
         return note.id;
       }),
     );
@@ -980,32 +1014,31 @@ Export regularly: use Settings → Data → Export Backup.`,
     const deletedNoteIdsSet = new Set(deletedNoteIds);
     const failedCount = results.length - deletedNoteIds.length;
 
-    const remainingImportedNotes = importedNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
-    const importedFolders = currentFolders.filter((folder) => (folder.source ?? 'noa') === 'obsidian-import');
-    const importedFolderById = new Map(importedFolders.map((folder) => [folder.id, folder]));
-    const importedFolderByName = new Map(importedFolders.map((folder) => [folder.name, folder]));
+    const remainingVaultNotes = vaultNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
+    const vaultFolders = currentFolders.filter((folder) => folder.origin === 'vault');
+    const vaultFolderById = new Map(vaultFolders.map((folder) => [folder.id, folder]));
+    const vaultFolderByName = new Map(vaultFolders.map((folder) => [folder.name, folder]));
 
-    const keptImportedFolderIds = new Set<string>();
-    for (const note of remainingImportedNotes) {
-      const directFolder = importedFolderById.get(note.folder);
+    const keptVaultFolderIds = new Set<string>();
+    for (const note of remainingVaultNotes) {
+      const directFolder = vaultFolderById.get(note.folder);
       if (!directFolder) continue;
       const segments = directFolder.name.split('/').filter(Boolean);
       let currentPath = '';
       for (const segment of segments) {
         currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-        const matched = importedFolderByName.get(currentPath);
-        if (matched) keptImportedFolderIds.add(matched.id);
+        const matched = vaultFolderByName.get(currentPath);
+        if (matched) keptVaultFolderIds.add(matched.id);
       }
     }
 
     const nextFolders = currentFolders.filter((folder) => {
-      const source = folder.source ?? 'noa';
-      if (source !== 'obsidian-import') return true;
-      return keptImportedFolderIds.has(folder.id);
+      if (folder.origin !== 'vault') return true;
+      return keptVaultFolderIds.has(folder.id);
     });
     const nextNotes = currentNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
 
-    if (deletedNoteIds.length > 0 || importedFolderIds.size > 0) {
+    if (deletedNoteIds.length > 0 || vaultFolders.length > 0) {
       const nextNotesWithRefs = syncLinkRefs(nextNotes, currentNotes, undefined, nextFolders);
       setFolders(nextFolders);
       setNotes(nextNotesWithRefs);
@@ -1018,18 +1051,18 @@ Export regularly: use Settings → Data → Export Backup.`,
       await storage.saveFolders(nextFolders);
     }
 
-    // Reset workspace name so Current Path no longer shows the vault name
-    // after disconnecting. Use a neutral default rather than the previous
-    // vault name which is now stale.
+    if (failedCount > 0) {
+      const message = 'Failed to remove some vault cache notes. The vault remains connected; retry sync before disconnecting again.';
+      setSaveError(message);
+      throw new Error(message);
+    }
+
+    // Reset workspace name only after every vault cache row was removed. If a
+    // delete failed, keeping the vault identity makes the retry path explicit.
     const DEFAULT_WORKSPACE = 'Default Workspace';
     setWorkspaceName(DEFAULT_WORKSPACE);
     await storage.saveWorkspaceName(DEFAULT_WORKSPACE);
-
-    if (failedCount > 0) {
-      setSaveError('Failed to remove some imported notes while disconnecting.');
-    } else {
-      setSaveError(null);
-    }
+    setSaveError(null);
     return deletedNoteIds;
   }, [syncLinkRefs]);
 

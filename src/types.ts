@@ -30,6 +30,9 @@ export interface Note {
   /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
    *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
   rawFrontmatter?: string;
+  /** Delimiter line ending used by the original frontmatter block. Required
+   *  for byte-exact round trips when the block contains only one line. */
+  frontmatterEol?: '\n' | '\r\n';
 }
 
 export interface Link {

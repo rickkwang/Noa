@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deleteNoteFile, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
-import { mergeScannedNotes, syncFolderCreate, syncFolderDelete, syncFolderRename, syncNoteRename, syncNoteUpdate } from '../../src/services/fileSyncService';
+import { mergeScannedNotes, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate } from '../../src/services/fileSyncService';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 import type { Note } from '../../src/types';
 
@@ -15,6 +15,9 @@ const makeNote = (overrides: Partial<Note> = {}): Note => ({
   links: [],
   linkRefs: [],
   source: 'obsidian-import',
+  // Notes written to disk are vault-origin by definition; kept-local tests
+  // override this to undefined to model a Noa-owned note.
+  origin: 'vault',
   ...overrides,
 });
 
@@ -68,9 +71,49 @@ describe('deleteNoteFile with duplicate titles', () => {
 
     expect(await readFileText(root, 'Sample.md')).toBe('note A');
   });
+
+  it('does not fall back to an unrelated title match when an exact vaultPath is known', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Existing.md', 'user-owned body');
+    const stale = makeNote({
+      id: 'stale-note',
+      title: 'Existing',
+      vaultPath: 'Missing.md',
+    });
+
+    const removed = await deleteNoteFile(asFsHandle(root), stale, []);
+
+    expect(removed).toBeNull();
+    expect(await readFileText(root, 'Existing.md')).toBe('user-owned body');
+  });
 });
 
 describe('syncNoteRename', () => {
+  it('flushes a pending content update before renaming so the old path cannot reappear', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'old content' });
+    await writeNote(asFsHandle(root), note, []);
+
+    const pendingUpdate = syncNoteUpdate(asFsHandle(root), note, 'latest content', []);
+    await syncNoteRename(asFsHandle(root), { ...note, content: 'latest content' }, 'Renamed', []);
+    await pendingUpdate;
+
+    expect(resolvePath(root, 'Sample.md')).toBeNull();
+    expect(await readFileText(root, 'Renamed.md')).toBe('latest content');
+  });
+
+  it('cancels a pending content update when deletion supersedes it', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'old content' });
+    await writeNote(asFsHandle(root), note, []);
+
+    const pendingUpdate = syncNoteUpdate(asFsHandle(root), note, 'late content', []);
+    await syncNoteDelete(asFsHandle(root), note, []);
+    await pendingUpdate;
+
+    expect(resolvePath(root, 'Sample.md')).toBeNull();
+  });
+
   it('keeps the vault attachments directory of the renamed note', async () => {
     const root = createMemRoot();
     const note = makeNote();
@@ -120,6 +163,21 @@ describe('syncNoteRename', () => {
     // Sanity: nothing else left behind except the manifest and attachments root.
     expect(listPaths(root)).toEqual(['.noa/', '.noa/manifest.json', 'attachments/']);
   });
+
+  it('does not overwrite an unmanaged vault file with the requested target title', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ title: 'Original', content: 'managed body' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, 'Existing.md', 'user-owned body');
+
+    await syncNoteRename(asFsHandle(root), note, 'Existing', []);
+
+    expect(await readFileText(root, 'Existing.md')).toBe('user-owned body');
+    expect(resolvePath(root, 'Original.md')).toBeNull();
+    const managedPath = listPaths(root).find((path) => /^Existing_[0-9a-f]{8}\.md$/.test(path));
+    expect(managedPath).toBeDefined();
+    expect(await readFileText(root, managedPath as string)).toBe('managed body');
+  });
 });
 
 describe('syncFolderRename', () => {
@@ -127,7 +185,7 @@ describe('syncFolderRename', () => {
 
   it('moves managed notes but preserves files Noa does not track', async () => {
     const root = createMemRoot();
-    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const }];
+    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
     const note = makeNote({ folder: folderId, content: 'managed note' });
     await writeNote(asFsHandle(root), note, oldFolders);
 
@@ -136,7 +194,7 @@ describe('syncFolderRename', () => {
     expect(oldDir?.kind).toBe('directory');
     await (oldDir as ReturnType<typeof createMemRoot>).getFileHandle('reference.pdf', { create: true });
 
-    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const }];
+    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
     await syncFolderRename(asFsHandle(root), folderId, 'Old Folder', newFolders, [note]);
 
     // Managed note moved to the renamed directory.
@@ -148,11 +206,11 @@ describe('syncFolderRename', () => {
 
   it('removes the old directory tree when it only contained managed notes', async () => {
     const root = createMemRoot();
-    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const }];
+    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
     const note = makeNote({ folder: folderId, content: 'managed note' });
     await writeNote(asFsHandle(root), note, oldFolders);
 
-    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const }];
+    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
     await syncFolderRename(asFsHandle(root), folderId, 'Old Folder', newFolders, [note]);
 
     expect(await readFileText(root, 'New Folder/Sample.md')).toBe('managed note');
@@ -163,8 +221,8 @@ describe('syncFolderRename', () => {
     const root = createMemRoot();
     const childId = 'c1c1c1c1-0000-4000-8000-00000000000c';
     const oldFolders = [
-      { id: folderId, name: 'Old Folder', source: 'obsidian-import' as const },
-      { id: childId, name: 'Old Folder/Child', source: 'obsidian-import' as const },
+      { id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
+      { id: childId, name: 'Old Folder/Child', source: 'obsidian-import' as const, origin: 'vault' as const },
     ];
     const nested = makeNote({ id: 'd4d4d4d4-0000-4000-8000-000000000004', folder: childId, content: 'nested note' });
     await writeNote(asFsHandle(root), nested, oldFolders);
@@ -172,8 +230,8 @@ describe('syncFolderRename', () => {
     await (childDir as ReturnType<typeof createMemRoot>).getFileHandle('drawing.canvas', { create: true });
 
     const newFolders = [
-      { id: folderId, name: 'New Folder', source: 'obsidian-import' as const },
-      { id: childId, name: 'New Folder/Child', source: 'obsidian-import' as const },
+      { id: folderId, name: 'New Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
+      { id: childId, name: 'New Folder/Child', source: 'obsidian-import' as const, origin: 'vault' as const },
     ];
     await syncFolderRename(asFsHandle(root), folderId, 'Old Folder', newFolders, [nested]);
 
@@ -186,7 +244,7 @@ describe('syncFolderRename', () => {
 describe('manifest path consistency for folders with spaces', () => {
   it('writes manifest keys that match the real on-disk directory layout', async () => {
     const root = createMemRoot();
-    const folders = [{ id: 'f1', name: 'My Notes', source: 'obsidian-import' as const }];
+    const folders = [{ id: 'f1', name: 'My Notes', source: 'obsidian-import' as const, origin: 'vault' as const }];
     await writeNote(asFsHandle(root), makeNote({ folder: 'f1' }), folders);
 
     expect(await readFileText(root, 'My Notes/Sample.md')).toBe('# Sample');
@@ -196,7 +254,7 @@ describe('manifest path consistency for folders with spaces', () => {
 
   it('scanDirectory reuses existing folders whose names contain spaces', async () => {
     const root = createMemRoot();
-    const folders = [{ id: 'f1', name: 'My Notes', source: 'obsidian-import' as const }];
+    const folders = [{ id: 'f1', name: 'My Notes', source: 'obsidian-import' as const, origin: 'vault' as const }];
     await writeNote(asFsHandle(root), makeNote({ folder: 'f1' }), folders);
 
     const { notes, newFolders } = await scanDirectory(asFsHandle(root), folders);
@@ -265,11 +323,40 @@ describe('manifest path consistency for folders with spaces', () => {
     });
   });
 
+  it('scanDirectory skips re-reading attachment payloads whose blobs are already in storage', async () => {
+    const root = createMemRoot();
+    const noteId = '11111111-1111-4111-8111-111111111111';
+    const attachmentId = '22222222-2222-4222-8222-222222222222';
+    await writeRawFile(root, 'Native.md', [
+      '---',
+      `id: ${noteId}`,
+      'createdAt: 2026-04-09T12:00:00.000Z',
+      'noaSource: noa',
+      '---',
+      `![[attachments/${noteId}/${attachmentId}-photo.png]]`,
+    ].join('\n'));
+    await writeRawFile(root, `attachments/${noteId}/${attachmentId}-photo.png`, 'hello');
+
+    const { notes } = await scanDirectory(asFsHandle(root), [], {
+      existingAttachmentBlobIds: new Set([attachmentId]),
+    });
+
+    const attachment = notes[0].attachments?.[0];
+    expect(attachment?.dataBase64).toBeUndefined();
+    expect(attachment).toMatchObject({
+      id: attachmentId,
+      noteId,
+      filename: 'photo.png',
+      size: 5,
+      vaultPath: `attachments/${noteId}/${attachmentId}-photo.png`,
+    });
+  });
+
   it('scanDirectory returns the current vault folder tree without stale cached folders', async () => {
     const root = createMemRoot();
     const staleFolders = [
-      { id: 'old', name: 'Old Folder', source: 'obsidian-import' as const },
-      { id: 'keep', name: 'Keep Folder', source: 'obsidian-import' as const },
+      { id: 'old', name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
+      { id: 'keep', name: 'Keep Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
     ];
     await writeRawFile(root, 'Keep Folder/Note.md', 'Body');
 
@@ -280,13 +367,13 @@ describe('manifest path consistency for folders with spaces', () => {
     expect(newFolders).toEqual([]);
   });
 
-  it('mergeScannedNotes uses the current vault folder tree in authoritative mode', async () => {
+  it('mergeScannedNotes drops stale cached folders no surviving note references', async () => {
     const root = createMemRoot();
     const staleFolders = [
-      { id: 'old', name: 'Old Folder', source: 'obsidian-import' as const },
-      { id: 'keep', name: 'Keep Folder', source: 'obsidian-import' as const },
+      { id: 'old', name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
+      { id: 'keep', name: 'Keep Folder', source: 'obsidian-import' as const, origin: 'vault' as const },
     ];
-    const localNote = makeNote({ id: 'local-only', folder: 'old' });
+    const localNote = makeNote({ id: 'local-only', folder: '', origin: undefined });
     await writeRawFile(root, 'Keep Folder/Note.md', 'Body');
 
     const result = await mergeScannedNotes(
@@ -297,11 +384,89 @@ describe('manifest path consistency for folders with spaces', () => {
     );
 
     expect(result.folders.map((folder) => folder.name)).toEqual(['Keep Folder']);
-    // local-only was never manifest-tracked → kept for the next full sync.
+    // local-only is Noa-owned, so an authoritative vault refresh leaves it alone.
     expect(result.deletedNoteIds).toEqual([]);
     expect(result.notes).toHaveLength(2);
     expect(result.notes.some((n) => n.id === 'local-only')).toBe(true);
     expect(result.notes.find((n) => n.id !== 'local-only')?.folder).toBe('keep');
+  });
+
+  it('mergeScannedNotes keeps local folders that kept-local notes still reference', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Vault Folder/Disk.md', 'disk note');
+    const localFolders = [
+      { id: 'lf-parent', name: 'Local' },
+      { id: 'lf-child', name: 'Local/Drafts' },
+    ];
+    const localNote = makeNote({ id: 'local-note', folder: 'lf-child', source: 'noa', origin: undefined });
+
+    const result = await mergeScannedNotes(
+      asFsHandle(root),
+      [localNote],
+      localFolders,
+      { mode: 'vault-authoritative' },
+    );
+
+    // The kept-local note survives, so its folder chain (including ancestors)
+    // must survive too — otherwise the cache would reference missing folder ids.
+    expect(result.notes.some((n) => n.id === 'local-note')).toBe(true);
+    expect(result.folders.map((folder) => folder.name).sort()).toEqual([
+      'Local',
+      'Local/Drafts',
+      'Vault Folder',
+    ]);
+  });
+
+  it('preserves empty Noa folders during a non-empty vault refresh', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Vault Folder/Disk.md', 'disk note');
+    const localFolders = [{ id: 'empty-local', name: 'Empty Local', source: 'noa' as const }];
+
+    const result = await mergeScannedNotes(
+      asFsHandle(root),
+      [],
+      localFolders,
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(result.folders.map((folder) => folder.name).sort()).toEqual(['Empty Local', 'Vault Folder']);
+  });
+
+  it('drops stale vault folders from an empty vault but keeps Noa folders', async () => {
+    const root = createMemRoot();
+    const folders = [
+      { id: 'local', name: 'Local', source: 'noa' as const },
+      { id: 'stale-vault', name: 'Gone', origin: 'vault' as const },
+    ];
+
+    const result = await mergeScannedNotes(
+      asFsHandle(root),
+      [],
+      folders,
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(result.folders).toEqual([folders[0]]);
+  });
+
+  it('does not reuse a Noa-owned folder id for a same-named vault directory', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Projects/Disk.md', 'disk note');
+    const localFolder = { id: 'local-projects', name: 'Projects', source: 'noa' as const };
+
+    const result = await mergeScannedNotes(
+      asFsHandle(root),
+      [makeNote({ id: 'local-note', folder: 'local-projects', source: 'noa', origin: undefined })],
+      [localFolder],
+      { mode: 'vault-authoritative' },
+    );
+
+    const sameNamed = result.folders.filter((folder) => folder.name === 'Projects');
+    expect(sameNamed).toHaveLength(2);
+    expect(sameNamed).toContainEqual(localFolder);
+    expect(sameNamed.some((folder) => folder.id !== localFolder.id && folder.origin === 'vault')).toBe(true);
+    expect(result.notes.find((note) => note.id === 'local-note')?.folder).toBe(localFolder.id);
+    expect(result.notes.find((note) => note.id !== 'local-note')?.folder).not.toBe(localFolder.id);
   });
 });
 
@@ -327,18 +492,10 @@ describe('mergeScannedNotes with pending debounced writes', () => {
 });
 
 describe('folder lifecycle on disk', () => {
-  it('syncFolderCreate creates the directory so authoritative scans keep empty folders', async () => {
-    const root = createMemRoot();
-    await syncFolderCreate(asFsHandle(root), 'Projects/Ideas');
-
-    const dir = resolvePath(root, 'Projects/Ideas');
-    expect(dir?.kind).toBe('directory');
-  });
-
   it('syncFolderRename creates the new directory for an empty folder', async () => {
     const root = createMemRoot();
     await root.getDirectoryHandle('Old Name', { create: true });
-    const folders = [{ id: 'f1', name: 'New Name' }];
+    const folders = [{ id: 'f1', name: 'New Name', origin: 'vault' as const }];
 
     await syncFolderRename(asFsHandle(root), 'f1', 'Old Name', folders, []);
 
@@ -410,6 +567,190 @@ describe('vault manifest location and hidden entries', () => {
 
     const stats = await scanNoteFileStats(asFsHandle(root));
     expect([...stats.keys()]).toEqual(['README.md']);
+  });
+});
+
+describe('vault origin marking and write guard', () => {
+  it('marks scanned notes and folders as vault-origin', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Projects/Idea.md', 'body');
+
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+
+    expect(notes[0].origin).toBe('vault');
+    expect(notes[0].vaultPath).toBe('Projects/Idea.md');
+    expect(folders.every((folder) => folder.origin === 'vault')).toBe(true);
+  });
+
+  it('marks newly-discovered vault folders as vault-origin', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Fresh/Note.md', 'body');
+
+    const { newFolders } = await scanDirectory(asFsHandle(root), []);
+
+    expect(newFolders.length).toBeGreaterThan(0);
+    expect(newFolders.every((folder) => folder.origin === 'vault')).toBe(true);
+  });
+
+  it('refuses to write a note that is not vault-origin (defense in depth)', async () => {
+    const root = createMemRoot();
+    // A Noa-owned note (no origin marker) must never reach the vault, even if a
+    // stray caller invokes writeNote directly.
+    const noaNote = makeNote({ id: 'noa-only', origin: undefined, content: 'private' });
+
+    const result = await writeNote(asFsHandle(root), noaNote, []);
+
+    expect(result).toBeNull();
+    expect(resolvePath(root, 'Sample.md')).toBeNull();
+    expect(resolvePath(root, '.noa/manifest.json')).toBeNull();
+  });
+
+  it('refuses to write a vault note into a Noa-owned folder', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ folder: 'local-folder' });
+    const localFolders = [{ id: 'local-folder', name: 'Private', source: 'noa' as const }];
+
+    const result = await writeNote(asFsHandle(root), note, localFolders);
+
+    expect(result).toBeNull();
+    expect(resolvePath(root, 'Private/Sample.md')).toBeNull();
+    expect(resolvePath(root, '.noa/manifest.json')).toBeNull();
+  });
+
+  it('refuses a structural move from the vault into a Noa-owned folder', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'stay in vault' });
+    await writeNote(asFsHandle(root), note, []);
+    const localFolders = [{ id: 'local-folder', name: 'Private', source: 'noa' as const }];
+
+    await syncNoteMove(
+      asFsHandle(root),
+      note,
+      { ...note, folder: 'local-folder' },
+      localFolders,
+    );
+
+    expect(await readFileText(root, 'Sample.md')).toBe('stay in vault');
+    expect(resolvePath(root, 'Private/Sample.md')).toBeNull();
+  });
+
+  it('uses vaultId rather than the namespaced cache id for disk identity', async () => {
+    const root = createMemRoot();
+    const note = makeNote({
+      id: 'vault:shared-id',
+      vaultId: 'shared-id',
+      source: 'noa',
+      content: 'body',
+    });
+
+    await writeNote(asFsHandle(root), note, []);
+
+    expect(await readFileText(root, 'Sample.md')).toContain('id: shared-id');
+    expect(await readFileText(root, 'Sample.md')).not.toContain('id: vault:shared-id');
+    const manifest = JSON.parse((await readFileText(root, '.noa/manifest.json')) ?? '{}');
+    expect(manifest.notes['Sample.md']?.id).toBe('shared-id');
+  });
+});
+
+describe('vault files stay untouched on first connect', () => {
+  it('registers a manifest entry without rewriting a byte-identical obsidian file', async () => {
+    const root = createMemRoot();
+    const original = [
+      '---',
+      'id: 20240101',
+      'links: [projects/alpha]',
+      'aliases:',
+      '  - Alpha',
+      '---',
+      'Body with ![[ spaced embed ]] and [[Other Note]]',
+    ].join('\n');
+    await writeRawFile(root, 'Alpha.md', original);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    expect(notes).toHaveLength(1);
+    const fileBefore = await (resolvePath(root, 'Alpha.md') as { getFile(): Promise<File> }).getFile();
+
+    const written = await writeNote(asFsHandle(root), notes[0], []);
+
+    expect(await readFileText(root, 'Alpha.md')).toBe(original);
+    const fileAfter = await (resolvePath(root, 'Alpha.md') as { getFile(): Promise<File> }).getFile();
+    expect(fileAfter.lastModified).toBe(fileBefore.lastModified);
+    expect(written?.path).toBe('Alpha.md');
+    const manifest = JSON.parse((await readFileText(root, '.noa/manifest.json')) ?? '{}');
+    expect(manifest.notes['Alpha.md']?.id).toBe(notes[0].id);
+  });
+
+  it('keeps CRLF files byte-identical through scan and write-back', async () => {
+    const root = createMemRoot();
+    const original = '---\r\ntitle: Keep\r\ncreated: 2026-04-05\r\n---\r\nline one\r\nline two';
+    await writeRawFile(root, 'Windows.md', original);
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    await writeNote(asFsHandle(root), notes[0], []);
+
+    expect(await readFileText(root, 'Windows.md')).toBe(original);
+  });
+
+  it('keeps one-line CRLF frontmatter byte-identical through scan and write-back', async () => {
+    const root = createMemRoot();
+    const original = '---\r\ntitle: Keep\r\n---\r\nbody';
+    await writeRawFile(root, 'Windows.md', original);
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    await writeNote(asFsHandle(root), notes[0], []);
+
+    expect(await readFileText(root, 'Windows.md')).toBe(original);
+  });
+
+  it('does not adopt a user frontmatter id: as note identity', async () => {
+    const root = createMemRoot();
+    const withUserId = (body: string) => ['---', 'id: 123', '---', body].join('\n');
+    await writeRawFile(root, 'One.md', withUserId('one'));
+    await writeRawFile(root, 'Two.md', withUserId('two'));
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+
+    // A user's own id: field (common in Zettelkasten templates) must not become
+    // the note id — template-duplicated ids would collapse distinct notes.
+    expect(notes).toHaveLength(2);
+    expect(notes.every((n) => n.id !== '123')).toBe(true);
+    expect(new Set(notes.map((n) => n.id)).size).toBe(2);
+  });
+});
+
+describe('scan title collision-suffix stripping', () => {
+  it('strips the suffix only when it mirrors the owning note id', async () => {
+    const root = createMemRoot();
+    const noteA = makeNote({ id: 'a1a1a1a1-0000-4000-8000-000000000001', content: 'note A' });
+    const noteB = makeNote({ id: 'b2b2b2b2-0000-4000-8000-000000000002', content: 'note B' });
+    await writeNote(asFsHandle(root), noteA, []);
+    await writeNote(asFsHandle(root), noteB, []); // collision → Sample_b2b2b2b2.md
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+
+    expect(notes.map((n) => n.title).sort()).toEqual(['Sample', 'Sample']);
+  });
+
+  it('keeps date-like suffixes in user filenames', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'journal_20240115.md', 'daily entry');
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+
+    expect(notes[0].title).toBe('journal_20240115');
+  });
+
+  it('round-trips collision suffixes for non-UUID vault ids', async () => {
+    const root = createMemRoot();
+    const noteA = makeNote({ id: 'restored-note-a', content: 'note A' });
+    const noteB = makeNote({ id: 'restored-note-b', content: 'note B' });
+    await writeNote(asFsHandle(root), noteA, []);
+    await writeNote(asFsHandle(root), noteB, []);
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+
+    expect(notes.map((note) => note.title).sort()).toEqual(['Sample', 'Sample']);
   });
 });
 

@@ -65,8 +65,8 @@ describe('mergeVaultNotes (newest wins)', () => {
 
 describe('mergeVaultNotes (vault authoritative)', () => {
   it('takes the disk version even when the cached Noa version is newer', () => {
-    const local = note({ id: 'n1', content: 'cached edit', updatedAt: '2024-01-03T00:00:00.000Z', linkRefs: ['r1'] });
-    const disk = note({ id: 'n1', content: 'disk version', updatedAt: '2024-01-02T00:00:00.000Z' });
+    const local = note({ id: 'n1', content: 'cached edit', updatedAt: '2024-01-03T00:00:00.000Z', linkRefs: ['r1'], origin: 'vault' });
+    const disk = note({ id: 'n1', content: 'disk version', updatedAt: '2024-01-02T00:00:00.000Z', origin: 'vault' });
 
     const { notes, deletedNoteIds } = mergeVaultNotes(
       [local],
@@ -83,7 +83,7 @@ describe('mergeVaultNotes (vault authoritative)', () => {
 
   it('keeps untracked local notes even when the vault is non-empty', () => {
     const local = note({ id: 'local-only', title: 'Cached' });
-    const disk = note({ id: 'disk-only', title: 'Disk' });
+    const disk = note({ id: 'disk-only', title: 'Disk', origin: 'vault' });
 
     const { notes, deletedNoteIds } = mergeVaultNotes(
       [local],
@@ -111,7 +111,7 @@ describe('mergeVaultNotes (vault authoritative)', () => {
   });
 
   it('drops manifest-tracked notes when their files were removed from disk', () => {
-    const local = note({ id: 'n1', title: 'Deleted on disk' });
+    const local = note({ id: 'n1', title: 'Deleted on disk', origin: 'vault' });
 
     const { notes, deletedNoteIds } = mergeVaultNotes(
       [local],
@@ -122,6 +122,78 @@ describe('mergeVaultNotes (vault authoritative)', () => {
 
     expect(notes).toEqual([]);
     expect(deletedNoteIds).toEqual(['n1']);
+  });
+
+  it('drops vault-origin cache rows even when the vault never had a manifest', () => {
+    const cachedVaultNote = note({
+      id: 'vault-only',
+      title: 'Deleted before first Noa write',
+      origin: 'vault',
+      vaultPath: 'Deleted.md',
+    });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [cachedVaultNote],
+      [],
+      new Set(),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toEqual([]);
+    expect(deletedNoteIds).toEqual(['vault-only']);
+  });
+
+  it('keeps one-time imports because source provenance is not vault ownership', () => {
+    const importedLocalNote = note({
+      id: 'one-time-import',
+      source: 'obsidian-import',
+      origin: undefined,
+    });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [importedLocalNote],
+      [],
+      new Set(),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toEqual([importedLocalNote]);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
+  it('keeps both domains when a scanned vault id collides with a Noa-owned note id', () => {
+    const local = note({ id: 'shared-id', title: 'Private local note', content: 'local' });
+    const disk = note({
+      id: 'shared-id',
+      title: 'Legacy copied vault note',
+      content: 'disk',
+      origin: 'vault',
+      vaultPath: 'Legacy.md',
+    });
+
+    const first = mergeVaultNotes(
+      [local],
+      [disk],
+      new Set(['shared-id']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(first.notes).toHaveLength(2);
+    expect(first.notes).toContainEqual(local);
+    const vaultCache = first.notes.find((item) => item.origin === 'vault');
+    expect(vaultCache).toMatchObject({
+      id: 'vault:shared-id',
+      vaultId: 'shared-id',
+      content: 'disk',
+    });
+
+    const second = mergeVaultNotes(
+      first.notes,
+      [disk],
+      new Set(['shared-id']),
+      { mode: 'vault-authoritative' },
+    );
+    expect(second.notes.find((item) => item.origin === 'vault')?.id).toBe('vault:shared-id');
   });
 });
 
@@ -138,7 +210,7 @@ describe('mergeVaultNotes (vault authoritative) — unsynced local state', () =>
 
   it('keeps local notes the manifest never tracked (created in Noa, not yet on disk)', () => {
     const justCreated = note({ id: 'new-local', title: 'Daily note' });
-    const disk = note({ id: 'disk-1', title: 'Disk' });
+    const disk = note({ id: 'disk-1', title: 'Disk', origin: 'vault' });
 
     const { notes, deletedNoteIds } = mergeVaultNotes(
       [justCreated],
@@ -152,8 +224,8 @@ describe('mergeVaultNotes (vault authoritative) — unsynced local state', () =>
   });
 
   it('still drops manifest-tracked notes whose files were removed from a non-empty vault', () => {
-    const trackedGone = note({ id: 'tracked', title: 'Deleted in Obsidian' });
-    const disk = note({ id: 'disk-1', title: 'Disk' });
+    const trackedGone = note({ id: 'tracked', title: 'Deleted in Obsidian', origin: 'vault' });
+    const disk = note({ id: 'disk-1', title: 'Disk', origin: 'vault' });
 
     const { notes, deletedNoteIds } = mergeVaultNotes(
       [trackedGone],
@@ -169,8 +241,8 @@ describe('mergeVaultNotes (vault authoritative) — unsynced local state', () =>
   it('preserves local attachments that have not reached the vault yet', () => {
     const syncedOnDisk = attachment({ id: 'att-synced', vaultPath: 'attachments/n1/att-synced-img.png' });
     const pendingLocal = attachment({ id: 'att-pending', filename: 'new.png' });
-    const local = note({ id: 'n1', attachments: [syncedOnDisk, pendingLocal] });
-    const disk = note({ id: 'n1', attachments: [syncedOnDisk] });
+    const local = note({ id: 'n1', attachments: [syncedOnDisk, pendingLocal], origin: 'vault' });
+    const disk = note({ id: 'n1', attachments: [syncedOnDisk], origin: 'vault' });
 
     const { notes } = mergeVaultNotes([local], [disk], new Set(['n1']), { mode: 'vault-authoritative' });
 
@@ -179,8 +251,8 @@ describe('mergeVaultNotes (vault authoritative) — unsynced local state', () =>
 
   it('drops local attachments that were synced before but disappeared from disk', () => {
     const removedOnDisk = attachment({ id: 'att-removed', vaultPath: 'attachments/n1/att-removed-img.png' });
-    const local = note({ id: 'n1', attachments: [removedOnDisk] });
-    const disk = note({ id: 'n1', attachments: [] });
+    const local = note({ id: 'n1', attachments: [removedOnDisk], origin: 'vault' });
+    const disk = note({ id: 'n1', attachments: [], origin: 'vault' });
 
     const { notes } = mergeVaultNotes([local], [disk], new Set(['n1']), { mode: 'vault-authoritative' });
 

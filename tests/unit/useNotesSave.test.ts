@@ -110,6 +110,117 @@ describe('useNotes handleSaveNote', () => {
   });
 });
 
+describe('useNotes handleImportData attachment rollback', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  it('rolls back only newly-saved attachment blobs when the import fails', async () => {
+    vi.resetModules();
+    vi.useRealTimers();
+
+    const deleteAttachmentBlob = vi.fn(async () => undefined);
+    const storageMock = {
+      saveNote: vi.fn(async () => undefined),
+      verifyAccess: vi.fn(async () => undefined),
+      migrateFromLocalStorage: vi.fn(async () => false),
+      migrateToPerNoteStorage: vi.fn(async () => undefined),
+      getWorkspaceName: vi.fn(async () => null),
+      getFolders: vi.fn(async () => null),
+      getNotes: vi.fn(async () => null),
+      saveFolders: vi.fn(async () => undefined),
+      saveWorkspaceName: vi.fn(async () => undefined),
+      deleteNote: vi.fn(async () => undefined),
+      deleteAttachmentBlobsByNoteId: vi.fn(async () => undefined),
+      pruneOrphanedNotes: vi.fn(async () => undefined),
+      pruneOrphanedAttachments: vi.fn(async () => undefined),
+      saveAttachmentBlob: vi.fn(async () => undefined),
+      deleteAttachmentBlob,
+      listAttachmentBlobIds: vi.fn(async () => ['pre-existing']),
+      saveNotes: vi.fn(async () => {
+        throw new Error('quota exceeded');
+      }),
+    };
+    const harness = createReactHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    const api = useNotes();
+
+    const attachment = (id: string, filename: string) => ({
+      id,
+      noteId: 'n1',
+      filename,
+      mimeType: 'image/png',
+      size: 5,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      dataBase64: 'aGVsbG8=',
+    });
+    const note = {
+      ...makeNote(),
+      attachments: [attachment('pre-existing', 'a.png'), attachment('brand-new', 'b.png')],
+    };
+
+    await expect(api.handleImportData([note])).rejects.toThrow();
+
+    // Blobs that existed before the import were merely overwritten with the
+    // same immutable content — deleting them would destroy user attachments.
+    expect(deleteAttachmentBlob).toHaveBeenCalledWith('brand-new');
+    expect(deleteAttachmentBlob).not.toHaveBeenCalledWith('pre-existing');
+  });
+
+  it('preserves the vault origin marker when importing merged vault rows', async () => {
+    vi.resetModules();
+    vi.useRealTimers();
+
+    const saveNotes = vi.fn(async () => undefined);
+    const storageMock = {
+      saveNote: vi.fn(async () => undefined),
+      verifyAccess: vi.fn(async () => undefined),
+      migrateFromLocalStorage: vi.fn(async () => false),
+      migrateToPerNoteStorage: vi.fn(async () => undefined),
+      getWorkspaceName: vi.fn(async () => null),
+      getFolders: vi.fn(async () => null),
+      getNotes: vi.fn(async () => null),
+      saveFolders: vi.fn(async () => undefined),
+      saveWorkspaceName: vi.fn(async () => undefined),
+      deleteNote: vi.fn(async () => undefined),
+      deleteAttachmentBlobsByNoteId: vi.fn(async () => undefined),
+      pruneOrphanedNotes: vi.fn(async () => undefined),
+      pruneOrphanedAttachments: vi.fn(async () => undefined),
+      saveAttachmentBlob: vi.fn(async () => undefined),
+      deleteAttachmentBlob: vi.fn(async () => undefined),
+      listAttachmentBlobIds: vi.fn(async () => []),
+      saveNotes,
+    };
+    const harness = createReactHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    const api = useNotes();
+
+    const vaultNote = { ...makeNote(), source: 'obsidian-import' as const, origin: 'vault' as const, vaultPath: 'Sample.md' };
+
+    await api.handleImportData([vaultNote]);
+
+    // The mirror cache row must keep origin: 'vault' through normalize/persist —
+    // otherwise on reload it would look Noa-owned and lose write-through.
+    const savedArgs = saveNotes.mock.calls as unknown as Array<[Array<{ id: string; origin?: string }>]>;
+    const persisted = savedArgs[0]?.[0]?.find((n) => n.id === 'n1');
+    expect(persisted?.origin).toBe('vault');
+  });
+});
+
 describe('useNotes importBackupFromRecovery', () => {
   beforeEach(() => {
     vi.useFakeTimers();

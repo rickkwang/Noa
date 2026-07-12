@@ -145,7 +145,7 @@ async function installMockDirectoryPicker(
 ) {
   await page.addInitScript(async () => {
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const syncMode = { failWrites: false };
+    const syncMode = { failReads: false, failWrites: false };
     (window as typeof window & { __syncMode?: typeof syncMode }).__syncMode = syncMode;
     (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = false;
 
@@ -162,6 +162,9 @@ async function installMockDirectoryPicker(
       }
 
       async getFile() {
+        if (syncMode.failReads) {
+          throw new DOMException('blocked', 'NotAllowedError');
+        }
         const binary = this.binaryBase64
           ? Uint8Array.from(atob(this.binaryBase64), (char) => char.charCodeAt(0))
           : this.content;
@@ -681,12 +684,68 @@ test('filesystem sync status transitions from syncing to error on retry', async 
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.evaluate(() => {
-    const syncMode = (window as typeof window & { __syncMode?: { failWrites: boolean } }).__syncMode;
-    if (syncMode) syncMode.failWrites = true;
+    const syncMode = (window as typeof window & { __syncMode?: { failReads: boolean } }).__syncMode;
+    if (syncMode) syncMode.failReads = true;
   });
   await page.getByRole('button', { name: 'Retry Sync' }).click();
   await expect(page.getByText(/Sync status: error/i)).toBeVisible();
   await expect(page.getByText(/Sync error:/i)).toBeVisible();
+
+  // A vault failure makes only vault cache rows read-only. Local Noa work must
+  // remain available while the user decides whether to retry or disconnect.
+  await page.keyboard.press('Escape');
+  await page.getByTitle('New note').click();
+  await expect(page.getByText('New Note.md', { exact: true })).toBeVisible();
+});
+
+test('disconnect removes every vault-origin cache row regardless of source provenance', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{
+        path: 'Native.md',
+        content: [
+          '---',
+          'id: native-vault-note',
+          'createdAt: 2026-07-13T00:00:00.000Z',
+          'noaSource: noa',
+          '---',
+          '# Native vault note',
+        ].join('\n'),
+      }],
+    };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expect(page.getByText('Native.md', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
+
+  await expect(page.getByText('Native.md', { exact: true })).toHaveCount(0);
+  await expect.poll(async () => page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('redaction-diary-notes-db');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    if (!db.objectStoreNames.contains('notes')) {
+      db.close();
+      return false;
+    }
+    const exists = await new Promise<boolean>((resolve) => {
+      const request = db.transaction('notes', 'readonly').objectStore('notes').get('note:native-vault-note');
+      request.onsuccess = () => resolve(Boolean(request.result));
+      request.onerror = () => resolve(true);
+    });
+    db.close();
+    return exists;
+  })).toBe(false);
 });
 
 test('attachment previews recycle object URLs when switching notes', async ({ page }) => {

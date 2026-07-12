@@ -38,6 +38,32 @@ describe('fileSystemStorage frontmatter write-back', () => {
     ].join('\n'));
   });
 
+  it('preserves user-owned keys like id:/links: verbatim when writing back an imported note', () => {
+    const note = makeNote({
+      source: 'obsidian-import',
+      rawFrontmatter: ['id: 20240101', 'links:', '  - projects/alpha', 'created: 2026-04-05'].join('\n'),
+    });
+
+    expect(__test__.buildFrontMatter(note)).toBe([
+      '---',
+      'id: 20240101',
+      'links:',
+      '  - projects/alpha',
+      'created: 2026-04-05',
+      '---',
+      '',
+    ].join('\n'));
+  });
+
+  it('writes CRLF frontmatter delimiters when the imported block uses CRLF', () => {
+    const note = makeNote({
+      source: 'obsidian-import',
+      rawFrontmatter: 'title: Keep\r\ncreated: 2026-04-05',
+    });
+
+    expect(__test__.buildFrontMatter(note)).toBe('---\r\ntitle: Keep\r\ncreated: 2026-04-05\r\n---\r\n');
+  });
+
   it('does not inject Noa metadata when writing back an imported note', () => {
     const note = makeNote({
       source: 'obsidian-import',

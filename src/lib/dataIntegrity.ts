@@ -99,6 +99,9 @@ function normalizeNote(
   const vaultId = preserveVaultMetadata && isString(obj.vaultId) && obj.vaultId.trim() ? obj.vaultId : undefined;
   const vaultPath = preserveVaultMetadata && isString(obj.vaultPath) && obj.vaultPath.trim() ? obj.vaultPath : undefined;
   const rawFrontmatter = isString(obj.rawFrontmatter) ? obj.rawFrontmatter : undefined;
+  const frontmatterEol = obj.frontmatterEol === '\r\n' || obj.frontmatterEol === '\n'
+    ? obj.frontmatterEol
+    : undefined;
   const attachments = Array.isArray(obj.attachments)
     ? obj.attachments
         .map((attachment, attachmentIdx) => normalizeAttachment(attachment, id, idx, attachmentIdx, issues))
@@ -125,6 +128,7 @@ function normalizeNote(
       ...(vaultId ? { vaultId } : {}),
       ...(vaultPath ? { vaultPath } : {}),
       ...(rawFrontmatter !== undefined ? { rawFrontmatter } : {}),
+      ...(frontmatterEol ? { frontmatterEol } : {}),
     },
     issues,
   };

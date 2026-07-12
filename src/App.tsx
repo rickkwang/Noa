@@ -96,6 +96,10 @@ export default function App() {
     setWorkspaceName,
   } = useNotes(settings);
 
+  const notesRef = useRef(notes);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+  useEffect(() => { activeNoteIdRef.current = activeNoteId; }, [activeNoteId]);
+
   const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
   const {
     fsHandle,
@@ -114,7 +118,6 @@ export default function App() {
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
-    syncFolderOnCreate,
     syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,
@@ -128,8 +131,8 @@ export default function App() {
     onImportData: handleImportData,
   });
 
-  const blockVaultCacheWrite = useCallback(() => {
-    if (!vaultCacheReadOnly) return false;
+  const blockVaultCacheWrite = useCallback((isVaultOwned: boolean) => {
+    if (!isVaultOwned || !vaultCacheReadOnly) return false;
     setSaveError('Vault is the source of truth. Reconnect or retry sync before making changes.');
     return true;
   }, [setSaveError, vaultCacheReadOnly]);
@@ -169,19 +172,23 @@ export default function App() {
   }, [isLoaded, fsHandle, syncStatus]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
-    if (blockVaultCacheWrite()) return;
+    const note = notesRef.current.find((item) => item.id === id);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     _handleUpdateNote(id, content);
     syncNoteOnUpdate(id, content);
   }, [_handleUpdateNote, blockVaultCacheWrite, syncNoteOnUpdate]);
 
   const handleRenameNote = useCallback((id: string, newTitle: string) => {
-    if (blockVaultCacheWrite()) return;
+    const note = notesRef.current.find((item) => item.id === id);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
+    if (!note) return;
     _handleRenameNote(id, newTitle);
-    syncNoteOnRename(id, newTitle);
+    syncNoteOnRename(note, newTitle);
   }, [_handleRenameNote, blockVaultCacheWrite, syncNoteOnRename]);
 
   const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
-    if (blockVaultCacheWrite()) return '';
+    const targetFolder = folders.find((folder) => folder.id === folderId);
+    if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return '';
     const createdId = _handleCreateNote(folderId, initialContent);
     // New note will be saved by useNotes via storage.saveNote; FS sync on next update
     const userTemplates = settings.templates?.userTemplates ?? [];
@@ -189,25 +196,27 @@ export default function App() {
       waitingForTemplateRef.current = true;
     }
     return createdId;
-  }, [_handleCreateNote, blockVaultCacheWrite, settings.templates?.userTemplates]);
+  }, [_handleCreateNote, blockVaultCacheWrite, folders, settings.templates?.userTemplates]);
 
   const handleSaveNoteGuarded = useCallback((note: Parameters<typeof handleSaveNote>[0]) => {
-    if (blockVaultCacheWrite()) return;
+    if (blockVaultCacheWrite(note.origin === 'vault')) return;
     handleSaveNote(note);
   }, [blockVaultCacheWrite, handleSaveNote]);
 
   const handleImportNoteGuarded = useCallback((...args: Parameters<typeof handleImportNote>) => {
-    if (blockVaultCacheWrite()) return;
+    const folderId = args[2];
+    const targetFolder = folderId ? folders.find((folder) => folder.id === folderId) : undefined;
+    if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return;
     handleImportNote(...args);
-  }, [blockVaultCacheWrite, handleImportNote]);
+  }, [blockVaultCacheWrite, folders, handleImportNote]);
 
   const handleOpenDailyNoteGuarded = useCallback(() => {
-    if (blockVaultCacheWrite()) return;
     handleOpenDailyNote();
-  }, [blockVaultCacheWrite, handleOpenDailyNote]);
+  }, [handleOpenDailyNote]);
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
-    if (blockVaultCacheWrite()) return;
+    const note = notesRef.current.find((item) => item.id === task.noteId);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     const toggled = handleToggleTask(task);
     // Write through to the vault — a storage-only toggle would be reverted by
     // the next disk-authoritative scan.
@@ -215,45 +224,40 @@ export default function App() {
   }, [blockVaultCacheWrite, handleToggleTask, syncNoteOnUpdate]);
 
   const restoreSnapshotGuarded = useCallback(async (snapshot: Parameters<typeof restoreSnapshot>[0]) => {
-    if (blockVaultCacheWrite()) return;
+    const note = notesRef.current.find((item) => item.id === snapshot.noteId);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     await restoreSnapshot(snapshot);
     // Write through to the vault — a storage-only restore would be reverted by
     // the next disk-authoritative scan.
     syncNoteOnUpdate(snapshot.noteId, snapshot.content);
   }, [blockVaultCacheWrite, restoreSnapshot, syncNoteOnUpdate]);
 
-  const notesRef = useRef(notes);
-  useEffect(() => { notesRef.current = notes; }, [notes]);
-  useEffect(() => { activeNoteIdRef.current = activeNoteId; }, [activeNoteId]);
-
   const handleMoveNote = useCallback((id: string, folderId: string) => {
-    if (blockVaultCacheWrite()) return;
     const note = notesRef.current.find((item) => item.id === id);
     if (!note || note.folder === folderId) return;
+    if (blockVaultCacheWrite(note.origin === 'vault')) return;
     _handleMoveNote(id, folderId);
-    syncNoteOnMove(id, note.folder, folderId);
+    syncNoteOnMove(note, folderId);
   }, [_handleMoveNote, blockVaultCacheWrite, syncNoteOnMove]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
-    if (blockVaultCacheWrite()) return;
-    const createdName = _handleCreateFolder(parentFolderId);
-    // Materialise the directory on disk immediately (Obsidian-style): an
-    // empty folder that only lives in IndexedDB would be dropped by the next
-    // disk-authoritative scan.
-    if (createdName) syncFolderOnCreate(createdName);
-  }, [_handleCreateFolder, blockVaultCacheWrite, syncFolderOnCreate]);
+    const parentFolder = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : undefined;
+    if (blockVaultCacheWrite(parentFolder?.origin === 'vault')) return;
+    _handleCreateFolder(parentFolderId);
+  }, [_handleCreateFolder, blockVaultCacheWrite, folders]);
 
   const handleRenameFolder = useCallback((id: string, newName: string) => {
-    if (blockVaultCacheWrite()) return;
     const oldFolder = folders.find((folder) => folder.id === id);
     if (!oldFolder) return;
+    if (blockVaultCacheWrite(oldFolder.origin === 'vault')) return;
     _handleRenameFolder(id, newName);
 
     const previousName = oldFolder.name;
     const nextName = newName.trim() || 'Untitled Folder';
+    const targetIsVault = oldFolder.origin === 'vault';
     const nextFolders = folders.map((folder) => {
       if (folder.id === id) return { ...folder, name: nextName };
-      if (isDescendantPath(folder.name, previousName)) {
+      if ((folder.origin === 'vault') === targetIsVault && isDescendantPath(folder.name, previousName)) {
         return { ...folder, name: nextName + folder.name.slice(previousName.length) };
       }
       return folder;
@@ -302,26 +306,33 @@ export default function App() {
   }, [setActiveNoteId]);
 
   const handleDeleteNote = useCallback((id: string) => {
-    if (blockVaultCacheWrite()) return;
+    const note = notesRef.current.find((item) => item.id === id);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
+    if (!note) return;
     void deleteNoteWithLocalFirst({
       id,
       deleteLocal: _handleDeleteNote,
       closeTab: closeTabById,
-      syncDelete: syncNoteOnDelete,
+      syncDelete: () => syncNoteOnDelete(note),
     });
   }, [_handleDeleteNote, blockVaultCacheWrite, closeTabById, syncNoteOnDelete]);
 
   const handleDeleteFolder = useCallback((id: string) => {
-    if (blockVaultCacheWrite()) return;
-    const folderName = folders.find((folder) => folder.id === id)?.name;
+    const deletedFolder = folders.find((folder) => folder.id === id);
+    if (blockVaultCacheWrite(deletedFolder?.origin === 'vault')) return;
+    const notesBeforeDelete = new Map(notesRef.current.map((note) => [note.id, note]));
     void (async () => {
       try {
         const deletedNoteIds = await _handleDeleteFolder(id);
         deletedNoteIds.forEach((noteId) => closeTabById(noteId));
-        deletedNoteIds.forEach((noteId) => syncNoteOnDelete(noteId));
-        // Remove the (now empty) directory tree so the next disk-authoritative
-        // scan does not resurrect the deleted folder. Untracked files survive.
-        if (folderName) syncFolderOnDelete(folderName);
+        deletedNoteIds.forEach((noteId) => {
+          const deletedNote = notesBeforeDelete.get(noteId);
+          if (deletedNote) syncNoteOnDelete(deletedNote);
+        });
+        // Mirror mode: only a vault folder has a directory on disk to remove.
+        // A Noa-owned folder never touched the vault, and its name could match
+        // an unrelated vault directory — so never run the disk cleanup for it.
+        if (deletedFolder) syncFolderOnDelete(deletedFolder);
       } catch (err) {
         console.error('[App] handleDeleteFolder failed:', err);
       }
@@ -330,14 +341,14 @@ export default function App() {
 
   const handleDisconnectFolder = useCallback(async () => {
     try {
-      await disconnect();
       const deletedNoteIds = await clearWorkspaceAfterDisconnect();
       deletedNoteIds.forEach((id) => closeTabById(id));
+      await disconnect();
     } catch (err) {
-      // Surface instead of swallowing — disconnect failures leave the workspace
-      // in a half-torn-down state and the user needs to know.
       console.error('[App] handleDisconnectFolder failed:', err);
-      setSaveError('Failed to disconnect vault. Check folder permissions and retry.');
+      setSaveError(err instanceof Error
+        ? err.message
+        : 'Failed to disconnect vault. Check folder permissions and retry.');
     }
   }, [disconnect, clearWorkspaceAfterDisconnect, closeTabById, setSaveError]);
 
@@ -484,7 +495,7 @@ export default function App() {
   }, [activeNoteId]);
 
   const primaryNoaFolderId = useMemo(
-    () => folders.find((f) => (f.source ?? 'noa') === 'noa')?.id ?? 'diary',
+    () => folders.find((f) => f.origin !== 'vault' && (f.source ?? 'noa') === 'noa')?.id ?? 'diary',
     [folders]
   );
 
@@ -800,7 +811,7 @@ export default function App() {
                 onTabEnterComplete={handleTabEnterComplete}
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
                 onRestoreSnapshot={restoreSnapshotGuarded}
-                readOnly={vaultCacheReadOnly}
+                readOnly={vaultCacheReadOnly && activeNote?.origin === 'vault'}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2B]/30 font-redaction select-none">
@@ -867,12 +878,12 @@ export default function App() {
         </div>
       </div>
       {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C] bg-[#EC9A3C]/10 px-4 py-3 max-w-sm shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)]">
-          <div className="text-xs font-bold text-[#8A571C] uppercase tracking-wider mb-1">Warning · Save</div>
-          <div className="text-xs text-[#A26721] leading-relaxed mb-3">{saveError}</div>
+        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,43,0.15)]">
+          <div className="text-xs font-bold text-[#A26721] uppercase tracking-wider mb-1">Warning · Save</div>
+          <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
           <button
             onClick={clearSaveError}
-            className="text-[10px] uppercase tracking-wider font-bold border border-[#EC9A3C] px-2 py-0.5 text-[#A26721] hover:bg-[#EC9A3C]/20 transition-colors active:opacity-70"
+            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 rounded"
           >
             Dismiss
           </button>

@@ -18,8 +18,8 @@ export function useSidebarDrag({
   const [draggedItem, setDraggedItem] = useState<{ kind: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
-  const resolveNoteSource = useCallback((note: Note) => note.source ?? 'noa', []);
-  const resolveFolderSource = useCallback((folder: Folder) => folder.source ?? 'noa', []);
+  const isVaultNote = useCallback((note: Note) => note.origin === 'vault', []);
+  const isVaultFolder = useCallback((folder: Folder) => folder.origin === 'vault', []);
 
   const parseDraggedItem = useCallback((e: React.DragEvent) => {
     const raw = e.dataTransfer.getData('application/x-noa-tree-item') || e.dataTransfer.getData('text/plain');
@@ -41,14 +41,18 @@ export function useSidebarDrag({
     }
   }, []);
 
-  const moveFolderToTarget = useCallback((folderId: string, targetFolderId: string | null) => {
+  const moveFolderToTarget = useCallback((
+    folderId: string,
+    targetFolderId: string | null,
+    rootIsVault: boolean,
+  ) => {
     const source = folders.find((f) => f.id === folderId);
     if (!source) return;
-    const sourceType = resolveFolderSource(source);
+    const sourceIsVault = isVaultFolder(source);
     if (targetFolderId) {
       const target = folders.find((f) => f.id === targetFolderId);
-      if (!target || resolveFolderSource(target) !== sourceType) return;
-    } else if (sourceType !== 'noa') {
+      if (!target || isVaultFolder(target) !== sourceIsVault) return;
+    } else if (sourceIsVault !== rootIsVault) {
       return;
     }
     const sourcePath = source.name;
@@ -57,9 +61,13 @@ export function useSidebarDrag({
     if (isDescendantPath(targetPath, sourcePath)) return;
     const nextPath = targetPath ? `${targetPath}/${sourceLeaf}` : sourceLeaf;
     onRenameFolder(folderId, nextPath);
-  }, [folders, onRenameFolder, resolveFolderSource]);
+  }, [folders, isVaultFolder, onRenameFolder]);
 
-  const handleDropItem = useCallback((targetFolderId: string | null, e: React.DragEvent) => {
+  const handleDropItem = useCallback((
+    targetFolderId: string | null,
+    e: React.DragEvent,
+    rootIsVault = false,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     const item = parseDraggedItem(e);
@@ -70,11 +78,11 @@ export function useSidebarDrag({
     if (item.kind === 'note') {
       const note = notes.find((n) => n.id === item.id);
       if (!note) return;
-      const noteSource = resolveNoteSource(note);
+      const noteIsVault = isVaultNote(note);
       if (targetFolderId) {
         const target = folders.find((f) => f.id === targetFolderId);
-        if (!target || resolveFolderSource(target) !== noteSource) return;
-      } else if (noteSource !== 'noa') {
+        if (!target || isVaultFolder(target) !== noteIsVault) return;
+      } else if (noteIsVault !== rootIsVault) {
         return;
       }
       onMoveNote(item.id, targetFolderId ?? '');
@@ -82,9 +90,9 @@ export function useSidebarDrag({
     }
 
     if (item.kind === 'folder') {
-      moveFolderToTarget(item.id, targetFolderId);
+      moveFolderToTarget(item.id, targetFolderId, rootIsVault);
     }
-  }, [folders, moveFolderToTarget, notes, onMoveNote, parseDraggedItem, resolveFolderSource, resolveNoteSource]);
+  }, [folders, isVaultFolder, isVaultNote, moveFolderToTarget, notes, onMoveNote, parseDraggedItem]);
 
   const handleDragStartItem = useCallback((kind: 'note' | 'folder', id: string, name: string) => (e: React.DragEvent) => {
     const payload = { kind, id, name };

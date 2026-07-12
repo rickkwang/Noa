@@ -34,6 +34,47 @@ const historyStore = localforage.createInstance({
   storeName: 'history'
 });
 
+interface NoteBatchStore {
+  getItem<T>(key: string): Promise<T | null>;
+  setItem<T>(key: string, value: T): Promise<T>;
+  removeItem(key: string): Promise<void>;
+}
+
+/**
+ * Sequential batch write with restore-style rollback: a failed write puts every
+ * overwritten key back to its previous value (and removes keys that did not
+ * exist before), so a failed import can never destroy pre-existing notes.
+ * Exported for unit tests; production callers use storage.saveNotes.
+ */
+export async function saveNotesBatch(store: NoteBatchStore, notes: Note[]): Promise<void> {
+  const written: Array<{ id: string; previous: Note | null }> = [];
+  try {
+    for (const n of notes) {
+      const previous = await store.getItem<Note>(`note:${n.id}`);
+      await store.setItem(`note:${n.id}`, n);
+      written.push({ id: n.id, previous });
+    }
+  } catch {
+    const rollback = await Promise.allSettled(
+      written.map(({ id, previous }) =>
+        previous ? store.setItem(`note:${id}`, previous) : store.removeItem(`note:${id}`)
+      )
+    );
+    const rollbackFailures = rollback.filter(r => r.status === 'rejected').length;
+    if (rollbackFailures > 0) {
+      // Store is now in an inconsistent state — partial writes remain.
+      // Surface this explicitly so the caller can prompt the user to
+      // reset or restore from backup instead of silently proceeding.
+      throw new Error(
+        `Import failed after writing ${written.length}/${notes.length} notes, and ${rollbackFailures} rollback operation(s) also failed. Storage is in an inconsistent state — please reset the workspace and restore from backup.`
+      );
+    }
+    throw new Error(
+      `Import failed after writing ${written.length}/${notes.length} notes (rolled back). Storage may be full.`
+    );
+  }
+}
+
 export const storage = {
   async verifyAccess(): Promise<void> {
     await workspaceStore.setItem('__healthcheck__', 'ok');
@@ -66,30 +107,7 @@ export const storage = {
   // Batch save for import. Writes sequentially so we can roll back on failure
   // without leaving the store in a partially-imported state.
   async saveNotes(notes: Note[]): Promise<void> {
-    const written: string[] = [];
-    try {
-      for (const n of notes) {
-        await notesStore.setItem(`note:${n.id}`, n);
-        written.push(n.id);
-      }
-    } catch {
-      // Roll back all keys written so far so the store stays consistent.
-      const rollback = await Promise.allSettled(
-        written.map(id => notesStore.removeItem(`note:${id}`))
-      );
-      const rollbackFailures = rollback.filter(r => r.status === 'rejected').length;
-      if (rollbackFailures > 0) {
-        // Store is now in an inconsistent state — partial writes remain.
-        // Surface this explicitly so the caller can prompt the user to
-        // reset or restore from backup instead of silently proceeding.
-        throw new Error(
-          `Import failed after writing ${written.length}/${notes.length} notes, and ${rollbackFailures} rollback operation(s) also failed. Storage is in an inconsistent state — please reset the workspace and restore from backup.`
-        );
-      }
-      throw new Error(
-        `Import failed after writing ${written.length}/${notes.length} notes (rolled back). Storage may be full.`
-      );
-    }
+    return saveNotesBatch(notesStore, notes);
   },
 
   // Migration: old 'all-notes' key → per-note keys
@@ -200,6 +218,12 @@ export const storage = {
 
   async deleteAttachmentBlob(attachmentId: string): Promise<void> {
     await attachmentsStore.removeItem(`blob:${attachmentId}`);
+  },
+
+  /** Ids of every attachment blob currently in storage (cheap keys() sweep, no blob reads). */
+  async listAttachmentBlobIds(): Promise<string[]> {
+    const keys = await attachmentsStore.keys();
+    return keys.filter((key) => key.startsWith('blob:')).map((key) => key.slice(5));
   },
 
   async deleteAttachmentBlobsByNoteId(noteId: string, attachments: Attachment[], allNotes?: Note[]): Promise<void> {

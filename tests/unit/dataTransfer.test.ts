@@ -324,6 +324,57 @@ describe('buildVaultImportPayload', () => {
     expect(result.notes[0]?.content).toContain('keep-me');
   });
 
+  it('splits markdown frontmatter into rawFrontmatter and keeps only the body as content', async () => {
+    const original = ['---', 'id: 20240101', 'tags: [work]', '---', '# Guide body'].join('\n');
+    const files = [
+      {
+        pathSegments: ['MyVault', 'Docs', 'guide.md'],
+        file: new File([original], 'guide.md', { type: 'text/markdown' }),
+      },
+    ];
+    const folderIdByPath = new Map([
+      ['MyVault', 'root-folder'],
+      ['MyVault/Docs', 'docs-folder'],
+    ]);
+
+    const result = await buildVaultImportPayload(files, folderIdByPath);
+
+    // Consistent with the vault-connect scan path: frontmatter never leaks into
+    // the editor body, and a later vault write can reproduce the original file
+    // instead of stacking a second frontmatter block on top.
+    expect(result.notes[0]?.content).toBe('# Guide body');
+    expect(result.notes[0]?.rawFrontmatter).toBe('id: 20240101\ntags: [work]');
+    expect(result.notes[0]?.tags).toEqual(['work']);
+  });
+
+  it('recognizes an empty markdown frontmatter block', async () => {
+    const files = [{
+      pathSegments: ['MyVault', 'empty.md'],
+      file: new File(['---\n---\nbody'], 'empty.md', { type: 'text/markdown' }),
+    }];
+
+    const result = await buildVaultImportPayload(files, new Map([['MyVault', 'root-folder']]));
+
+    expect(result.notes[0]?.content).toBe('body');
+    expect(result.notes[0]?.rawFrontmatter).toBe('');
+    expect(result.notes[0]?.frontmatterEol).toBe('\n');
+  });
+
+  it('keeps non-markdown text files verbatim even when they start with ---', async () => {
+    const original = '---\nkey: value\n---\ndocument body';
+    const files = [
+      {
+        pathSegments: ['MyVault', 'config.yaml'],
+        file: new File([original], 'config.yaml', { type: '' }),
+      },
+    ];
+
+    const result = await buildVaultImportPayload(files, new Map([['MyVault', 'root-folder']]));
+
+    expect(result.notes[0]?.content).toBe(original);
+    expect(result.notes[0]?.rawFrontmatter).toBeUndefined();
+  });
+
   it('does not bind ambiguous basename-only references to multiple same-named attachments', async () => {
     const pngBytes = Uint8Array.from([137, 80, 78, 71]);
     const files = [

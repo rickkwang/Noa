@@ -3,13 +3,11 @@ import { Folder, Note, SyncStatus } from '../types';
 import {
   checkExternalVaultChanges,
   classifySyncError,
-  connectDirectoryAndSeed,
+  connectDirectory,
   disconnectDirectory,
   mergeScannedNotes,
   resetVaultStatSnapshot,
   restorePersistedFsHandle,
-  retryFullSync,
-  syncFolderCreate,
   syncFolderDelete,
   syncFolderRename,
   syncNoteMove,
@@ -44,12 +42,11 @@ interface UseFileSyncResult {
   retry: () => void;
   reconnect: () => Promise<void>;
   syncNoteOnUpdate: (id: string, content: string) => void;
-  syncNoteOnMove: (id: string, previousFolderId: string, nextFolderId: string) => void;
-  syncNoteOnRename: (id: string, newTitle: string) => void;
+  syncNoteOnMove: (note: Note, nextFolderId: string) => void;
+  syncNoteOnRename: (note: Note, newTitle: string) => void;
   syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[]) => void;
-  syncFolderOnCreate: (folderName: string) => void;
-  syncFolderOnDelete: (folderName: string) => void;
-  syncNoteOnDelete: (id: string) => void;
+  syncFolderOnDelete: (folder: Folder) => void;
+  syncNoteOnDelete: (note: Note) => void;
   /** Transient notice after external vault changes were merged in; auto-clears. */
   externalUpdateNotice: string | null;
 }
@@ -181,8 +178,9 @@ export function useFileSync({
           currentFolders,
           VAULT_AUTHORITATIVE_MERGE,
         );
+        // Mirror mode: only refresh the vault cache from disk. Noa-owned notes
+        // are never written back into the vault.
         await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
-        await retryFullSync(handle, merged, mergedFolders);
       })()
         .then(() => {
           if (generation !== retryGeneration.current) return;
@@ -215,8 +213,8 @@ export function useFileSync({
         currentFolders,
         VAULT_AUTHORITATIVE_MERGE,
       );
+      // Mirror mode: refresh the vault cache from disk only; Noa notes stay local.
       await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
-      await retryFullSync(fsHandle, merged, mergedFolders);
     })()
       .then(recordSuccess)
       .catch(recordFailure);
@@ -245,9 +243,9 @@ export function useFileSync({
         currentFolders,
         VAULT_AUTHORITATIVE_MERGE,
       );
-      // Always prune so vault deletions are removed from storage.
+      // Always prune so vault deletions are removed from storage. Mirror mode:
+      // no write-back — the vault cache is refreshed from disk only.
       await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
-      await retryFullSync(fsHandle, merged, mergedFolders);
       recordSuccess();
     } catch (error) {
       recordFailure(error);
@@ -301,17 +299,14 @@ export function useFileSync({
           VAULT_AUTHORITATIVE_MERGE,
         );
         try {
-          // Always prune so vault deletions are removed from storage.
+          // Always prune so vault deletions are removed from storage. Mirror
+          // mode: the vault cache is refreshed from disk; Noa notes are never
+          // written into the vault.
           await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
         } catch (importError) {
           recordFailure(importError);
           return;
         }
-        // Refresh vault-managed files from the authoritative merge result. For a
-        // fresh empty vault this seeds local notes; for an existing vault this
-        // rewrites only the scanned disk state, so stale IndexedDB notes do not
-        // reappear.
-        await retryFullSync(handle, merged, mergedFolders);
         recordSuccess();
       } catch (error) {
         recordFailure(error);
@@ -391,7 +386,7 @@ export function useFileSync({
     try {
       const currentNotes = notesRef.current;
       const currentFolders = foldersRef.current;
-      const handle = await connectDirectoryAndSeed(currentNotes, currentFolders);
+      const handle = await connectDirectory();
       setFsHandle(handle);
       const { notes: merged, folders: mergedFolders, deletedNoteIds } = await mergeScannedNotes(
         handle,
@@ -400,13 +395,13 @@ export function useFileSync({
         VAULT_AUTHORITATIVE_MERGE,
       );
       try {
+        // Mirror mode: connecting refreshes the vault cache from disk only.
+        // Noa's own notes are never written into the vault.
         await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
       } catch (importError) {
         recordFailure(importError);
         throw importError;
       }
-      // Seed a fresh empty vault, or refresh files from the scanned disk state.
-      await retryFullSync(handle, merged, mergedFolders);
       recordSuccess();
     } catch (error) {
       recordFailure(error);
@@ -432,6 +427,9 @@ export function useFileSync({
       if (!fsHandle) return;
       const note = notesRef.current.find((n) => n.id === id);
       if (!note) return;
+      // Mirror mode: only vault-origin notes write through to disk. Noa-owned
+      // notes live purely in IndexedDB and never touch the vault.
+      if (note.origin !== 'vault') return;
 
       setSyncStatus('syncing');
       void syncNoteUpdate(fsHandle, note, content, foldersRef.current)
@@ -445,11 +443,14 @@ export function useFileSync({
   );
 
   const syncNoteOnMove = useCallback(
-    (id: string, previousFolderId: string, nextFolderId: string) => {
+    (note: Note, nextFolderId: string) => {
       if (!fsHandle) return;
-      const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
-      const previousNote = { ...note, folder: previousFolderId };
+      if (note.origin !== 'vault') return;
+      if (nextFolderId) {
+        const nextFolder = foldersRef.current.find((folder) => folder.id === nextFolderId);
+        if (nextFolder?.origin !== 'vault') return;
+      }
+      const previousNote = { ...note };
       setSyncStatus('syncing');
       const movedNote = { ...note, folder: nextFolderId, updatedAt: new Date().toISOString() };
       void syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current)
@@ -463,10 +464,9 @@ export function useFileSync({
   );
 
   const syncNoteOnRename = useCallback(
-    (id: string, newTitle: string) => {
+    (note: Note, newTitle: string) => {
       if (!fsHandle) return;
-      const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (note.origin !== 'vault') return;
 
       setSyncStatus('syncing');
       void syncNoteRename(fsHandle, note, newTitle, foldersRef.current)
@@ -480,10 +480,9 @@ export function useFileSync({
   );
 
   const syncNoteOnDelete = useCallback(
-    (id: string) => {
+    (note: Note) => {
       if (!fsHandle) return;
-      const note = notesRef.current.find((n) => n.id === id);
-      if (!note) return;
+      if (note.origin !== 'vault') return;
 
       setSyncStatus('syncing');
       void syncNoteDelete(fsHandle, note, foldersRef.current)
@@ -496,25 +495,11 @@ export function useFileSync({
     [fsHandle, recordFailure, recordSuccess, scheduleRetry],
   );
 
-  const syncFolderOnCreate = useCallback(
-    (folderName: string) => {
-      if (!fsHandle) return;
-      setSyncStatus('syncing');
-      void syncFolderCreate(fsHandle, folderName)
-        .then(recordSuccess)
-        .catch((error) => {
-          recordFailure(error);
-          scheduleRetry();
-        });
-    },
-    [fsHandle, recordFailure, recordSuccess, scheduleRetry],
-  );
-
   const syncFolderOnDelete = useCallback(
-    (folderName: string) => {
-      if (!fsHandle) return;
+    (folder: Folder) => {
+      if (!fsHandle || folder.origin !== 'vault') return;
       setSyncStatus('syncing');
-      void syncFolderDelete(fsHandle, folderName)
+      void syncFolderDelete(fsHandle, folder.name)
         .then(recordSuccess)
         .catch((error) => {
           recordFailure(error);
@@ -529,6 +514,9 @@ export function useFileSync({
       if (!fsHandle) return;
       const targetFolder = foldersRef.current.find((folder) => folder.id === folderId);
       if (!targetFolder) return;
+      // Mirror mode: renaming a Noa-owned folder must not create or move any
+      // directories in the vault.
+      if (targetFolder.origin !== 'vault') return;
       setSyncStatus('syncing');
       void syncFolderRename(fsHandle, folderId, previousName, nextFolders, notesRef.current)
         .then(recordSuccess)
@@ -557,7 +545,6 @@ export function useFileSync({
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
-    syncFolderOnCreate,
     syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,

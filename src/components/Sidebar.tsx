@@ -114,7 +114,7 @@ export default function Sidebar({
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [templateMenuFolderId, setTemplateMenuFolderId] = useState<string | null>(null);
-  const resolveFolderSource = useCallback((folder: FolderType) => folder.source ?? 'noa', []);
+  const isVaultFolder = useCallback((folder: FolderType) => folder.origin === 'vault', []);
 
   const searchResults = useSidebarSearch({ notes, folders, searchQuery, caseSensitive, fuzzySearch });
 
@@ -126,10 +126,10 @@ export default function Sidebar({
     handleDragOverTarget,
     handleDragEnterTarget,
   } = useSidebarDrag({ notes, folders, onMoveNote, onRenameFolder });
-  const noaFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'noa'), [folders, resolveFolderSource]);
-  const importedFolders = useMemo(() => folders.filter((folder) => resolveFolderSource(folder) === 'obsidian-import'), [folders, resolveFolderSource]);
+  const noaFolders = useMemo(() => folders.filter((folder) => !isVaultFolder(folder)), [folders, isVaultFolder]);
+  const vaultFolders = useMemo(() => folders.filter(isVaultFolder), [folders, isVaultFolder]);
   const noaFolderTree = useMemo(() => buildFolderTree(noaFolders), [noaFolders]);
-  const importedFolderTree = useMemo(() => buildFolderTree(importedFolders), [importedFolders]);
+  const vaultFolderTree = useMemo(() => buildFolderTree(vaultFolders), [vaultFolders]);
 
   type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
   const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
@@ -156,11 +156,11 @@ export default function Sidebar({
     return map;
   }, [notes, noteSortOrder]);
   const rootNoaNotes = useMemo(
-    () => (notesByFolderId.get('') || []).filter((note) => (note.source ?? 'noa') === 'noa'),
+    () => (notesByFolderId.get('') || []).filter((note) => note.origin !== 'vault'),
     [notesByFolderId]
   );
-  const rootImportedNotes = useMemo(
-    () => (notesByFolderId.get('') || []).filter((note) => (note.source ?? 'noa') === 'obsidian-import'),
+  const rootVaultNotes = useMemo(
+    () => (notesByFolderId.get('') || []).filter((note) => note.origin === 'vault'),
     [notesByFolderId]
   );
 
@@ -182,8 +182,8 @@ export default function Sidebar({
     setPendingDelete({ type: 'note', id, name });
   }, []);
   const primaryNoaFolderId = useMemo(
-    () => (folders.find((folder) => resolveFolderSource(folder) === 'noa')?.id ?? folders[0]?.id ?? ''),
-    [folders, resolveFolderSource]
+    () => (folders.find((folder) => !isVaultFolder(folder))?.id ?? ''),
+    [folders, isVaultFolder]
   );
 
   const renameFolderWithValidation = useCallback((id: string, nextPath: string): string | void => {
@@ -192,30 +192,34 @@ export default function Sidebar({
     const normalizedNextPath = nextPath.trim() || 'Untitled Folder';
     const nextParentPath = getFolderParentPath(normalizedNextPath);
     const nextLeafName = getFolderLeafName(normalizedNextPath).toLocaleLowerCase();
-    const targetSource = resolveFolderSource(targetFolder);
+    const targetIsVault = isVaultFolder(targetFolder);
     const conflict = folders.some((folder) => {
       if (folder.id === id) return false;
-      if (resolveFolderSource(folder) !== targetSource) return false;
+      if (isVaultFolder(folder) !== targetIsVault) return false;
       if (getFolderParentPath(folder.name) !== nextParentPath) return false;
       return getFolderLeafName(folder.name).toLocaleLowerCase() === nextLeafName;
     });
     if (conflict) return 'A folder with this name already exists in this location.';
     onRenameFolder(id, normalizedNextPath);
-  }, [folders, onRenameFolder, resolveFolderSource]);
+  }, [folders, isVaultFolder, onRenameFolder]);
 
-  const getFolderSubtreeNoteCount = useCallback((folderPath: string) => {
+  const getFolderSubtreeNoteCount = useCallback((folderId: string) => {
+    const target = folders.find((folder) => folder.id === folderId);
+    if (!target) return 0;
+    const targetIsVault = isVaultFolder(target);
     const targetIds = new Set(
       folders
-        .filter((folder) => folder.name === folderPath || folder.name.startsWith(`${folderPath}/`))
+        .filter((folder) =>
+          isVaultFolder(folder) === targetIsVault
+          && (folder.name === target.name || folder.name.startsWith(`${target.name}/`)))
         .map((folder) => folder.id)
     );
     return notes.filter((note) => targetIds.has(note.folder)).length;
-  }, [folders, notes]);
+  }, [folders, isVaultFolder, notes]);
 
   const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, activeId: string, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
-    const folderSource = resolveFolderSource(node.folder);
-    const canCreateInsideFolder = folderSource === 'noa';
+    const canCreateInsideFolder = !isVaultFolder(node.folder);
     const childNotes = notesByFolderId.get(node.folder.id) || [];
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
@@ -279,7 +283,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onRenameNote, renameFolderWithValidation, resolveFolderSource, selectedNoteIds, templateMenuFolderId]);
+  }, [dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, isVaultFolder, notesByFolderId, onCreateFolder, onCreateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -435,11 +439,14 @@ export default function Sidebar({
             {pendingDelete.type === 'folder'
               ? (() => {
                   const target = folders.find((folder) => folder.id === pendingDelete.id);
-                  const count = target ? getFolderSubtreeNoteCount(target.name) : notes.filter(n => n.folder === pendingDelete.id).length;
+                  const count = target ? getFolderSubtreeNoteCount(target.id) : notes.filter(n => n.folder === pendingDelete.id).length;
                   if (count > 0) {
+                    const targetIsVault = target ? isVaultFolder(target) : false;
                     const subtreeIds = new Set(
                       folders
-                        .filter((f) => f.id === target?.id || f.name.startsWith((target?.name ?? '') + '/'))
+                        .filter((f) =>
+                          f.id === target?.id
+                          || (isVaultFolder(f) === targetIsVault && f.name.startsWith((target?.name ?? '') + '/')))
                         .map((f) => f.id)
                     );
                     const affectedNotes = notes.filter((n) => subtreeIds.has(n.folder));
@@ -599,8 +606,8 @@ export default function Sidebar({
                   ))}
                 </div>
 
-                {/* Obsidian Vault section — only shown when imported content exists */}
-                {(importedFolderTree.length > 0 || rootImportedNotes.length > 0) && (
+                {/* Connected vault section — ownership is origin, not import provenance. */}
+                {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
                     <div className="flex items-center gap-2 px-2 py-1.5 -mr-[5px]">
                       <div className="flex-1 border-t border-[#2D2D2B]/20" />
@@ -610,15 +617,11 @@ export default function Sidebar({
                     <div
                       onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}
                       onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDragEndItem();
-                      }}
+                      onDrop={(e) => handleDropItem(null, e, true)}
                       onDragEnd={handleDragEndItem}
                     >
-                      {importedFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
-                      {rootImportedNotes.map((note) => (
+                      {vaultFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
+                      {rootVaultNotes.map((note) => (
                         <SidebarNoteRow
                           key={note.id}
                           note={note}

@@ -1,8 +1,37 @@
 export function parseFrontmatter(content: string): { meta: Record<string, string>; body: string } {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-  if (!match) return { meta: {}, body: content };
-  const meta = parseFrontmatterBlock(match[1]);
-  return { meta, body: match[2] };
+  const { rawBlock, body, eol } = splitFrontmatter(content);
+  if (!eol) return { meta: {}, body: content };
+  return { meta: parseFrontmatterBlock(rawBlock), body };
+}
+
+/**
+ * Split a markdown document into its raw frontmatter block (verbatim, without
+ * the --- delimiters) and body. Returns an empty rawBlock when the document
+ * has no frontmatter.
+ */
+export function splitFrontmatter(content: string): { rawBlock: string; body: string; eol?: '\n' | '\r\n' } {
+  const opening = content.match(/^---(\r\n|\n)/);
+  if (!opening) return { rawBlock: '', body: content };
+  const eol = opening[1] as '\n' | '\r\n';
+  const blockStart = opening[0].length;
+  const markerIndex = content.indexOf(`${eol}---`, blockStart);
+  const closingStart = content.startsWith('---', blockStart)
+    ? blockStart
+    : markerIndex < 0 ? -1 : markerIndex + eol.length;
+  if (closingStart < 0) return { rawBlock: '', body: content };
+
+  const afterClosing = closingStart + 3;
+  if (afterClosing < content.length && !content.startsWith(eol, afterClosing)) {
+    return { rawBlock: '', body: content };
+  }
+  const bodyStart = content.startsWith(eol, afterClosing)
+    ? afterClosing + eol.length
+    : afterClosing;
+  return {
+    rawBlock: content.slice(blockStart, closingStart === blockStart ? closingStart : closingStart - eol.length),
+    body: content.slice(bodyStart),
+    eol,
+  };
 }
 
 export function parseFrontmatterBlock(block: string): Record<string, string> {

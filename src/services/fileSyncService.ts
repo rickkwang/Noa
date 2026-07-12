@@ -1,10 +1,13 @@
 import { Folder, Note } from '../types';
+import { storage } from '../lib/storage';
 import {
   clearPersistedHandle,
   createFolderDirectory,
   deleteNoteFile,
   getPersistedHandle,
+  getNoteFilePath,
   persistHandle,
+  removeNoteFileAtPath,
   removeEmptyFolderTree,
   requestDirectoryAccess,
   scanDirectory,
@@ -36,14 +39,11 @@ export async function restorePersistedFsHandle(): Promise<FileSystemDirectoryHan
   return getPersistedHandle();
 }
 
-export async function connectDirectoryAndSeed(
-  _notes: Note[],
-  _folders: Folder[],
-): Promise<FileSystemDirectoryHandle> {
+export async function connectDirectory(): Promise<FileSystemDirectoryHandle> {
   const handle = await requestDirectoryAccess();
   await persistHandle(handle);
-  // No writes here: the caller first merges the vault's contents (newest wins),
-  // then seeds the vault with the merged result via retryFullSync.
+  // Connecting only persists the handle. The caller scans disk into a cache;
+  // Noa-owned notes are never seeded into the vault.
   return handle;
 }
 
@@ -72,6 +72,33 @@ export interface MergeVaultNotesOptions {
   mode?: VaultMergeMode;
 }
 
+function namespaceVaultIdCollisions(notes: Note[], scanned: Note[]): Note[] {
+  const localIds = new Set(notes.filter((note) => note.origin !== 'vault').map((note) => note.id));
+  if (localIds.size === 0) return scanned;
+  const rawScannedIds = new Set(scanned.map((note) => note.id));
+  const assignedCacheIds = new Set<string>();
+
+  return scanned.map((note) => {
+    const diskId = note.vaultId ?? note.id;
+    if (!localIds.has(note.id)) {
+      assignedCacheIds.add(note.id);
+      return note;
+    }
+
+    let cacheId = `vault:${diskId}`;
+    while (localIds.has(cacheId) || rawScannedIds.has(cacheId) || assignedCacheIds.has(cacheId)) {
+      cacheId = `vault:${cacheId}`;
+    }
+    assignedCacheIds.add(cacheId);
+    return {
+      ...note,
+      id: cacheId,
+      vaultId: diskId,
+      attachments: note.attachments?.map((attachment) => ({ ...attachment, noteId: cacheId })),
+    };
+  });
+}
+
 /**
  * Attachments without a vaultPath were added in Noa and have not been
  * confirmed on disk yet — dropping them would lose the upload. Ones whose
@@ -87,15 +114,11 @@ function mergePendingAttachments(previous: Note, fresh: Note): Pick<Note, 'attac
   return merged.length ? { attachments: merged } : {};
 }
 
-function mergeFreshVaultFolders(current: Folder[], scanned: Folder[]): Folder[] {
-  const merged = [...current];
-  const names = new Set(current.map((folder) => folder.name));
-  for (const folder of scanned) {
-    if (names.has(folder.name)) continue;
-    merged.push(folder);
-    names.add(folder.name);
-  }
-  return merged;
+function mergeVaultAndLocalFolders(current: Folder[], scanned: Folder[]): Folder[] {
+  // Folder ownership is independent across the two domains. Every Noa-owned
+  // folder survives (including empty folders), while vault cache folders are
+  // replaced wholesale by the directory tree that actually exists on disk.
+  return [...current.filter((folder) => folder.origin !== 'vault'), ...scanned];
 }
 
 /**
@@ -112,10 +135,8 @@ function mergeFreshVaultFolders(current: Folder[], scanned: Folder[]): Folder[] 
  * Vault-authoritative rules:
  *  - Notes present on disk replace the IndexedDB cache (linkRefs and pending
  *    local attachments are preserved — both are Noa-owned state).
- *  - A local note missing from disk is deleted ONLY when the manifest tracked
- *    it: its file existed once and was removed externally. Local notes the
- *    manifest never saw (just created/imported in Noa, fresh-vault seeding)
- *    are kept and land on disk at the next full sync.
+ *  - A vault-origin cache row missing from disk is deleted whether or not a
+ *    manifest exists. Noa-owned rows and one-time imports pass through untouched.
  */
 export function mergeVaultNotes(
   notes: Note[],
@@ -123,9 +144,12 @@ export function mergeVaultNotes(
   manifestIds: ReadonlySet<string>,
   options: MergeVaultNotesOptions = {},
 ): { notes: Note[]; deletedNoteIds: string[]; updatedNoteIds: string[] } {
+  const scannedForMerge = options.mode === 'vault-authoritative'
+    ? namespaceVaultIdCollisions(notes, scanned)
+    : scanned;
   const scannedById = new Map<string, Note>();
   const uniqueScanned: Note[] = [];
-  for (const n of scanned) {
+  for (const n of scannedForMerge) {
     if (scannedById.has(n.id)) {
       // Duplicate id on disk (e.g. a file copied outside Noa sharing another file's id).
       // Log and keep the first occurrence so merge stays deterministic.
@@ -140,9 +164,12 @@ export function mergeVaultNotes(
     const localById = new Map(notes.map((note) => [note.id, note]));
     const scannedIds = new Set(uniqueScanned.map((note) => note.id));
     const deletedNoteIds = notes
-      .filter((note) => !scannedIds.has(note.id) && manifestIds.has(note.id))
+      // origin is the ownership boundary. A cached vault row missing from the
+      // disk scan was deleted externally even if the vault never had a manifest;
+      // a Noa-owned or one-time-import row must survive regardless of source.
+      .filter((note) => note.origin === 'vault' && !scannedIds.has(note.id))
       .map((note) => note.id);
-    const keptLocal = notes.filter((note) => !scannedIds.has(note.id) && !manifestIds.has(note.id));
+    const keptLocal = notes.filter((note) => note.origin !== 'vault' && !scannedIds.has(note.id));
     const updatedNoteIds: string[] = [];
     const merged = uniqueScanned.map((fresh) => {
       const previous = localById.get(fresh.id);
@@ -212,15 +239,23 @@ export async function mergeScannedNotes(
   // that lands mid-scan keeps an older mtime in the snapshot and is re-detected
   // on the next poll instead of being silently missed.
   const stats = await withTimeout(scanNoteFileStats(handle), SCAN_TIMEOUT_MS, 'Vault stat scan');
+  // Blobs already in storage are immutable per id — telling the scan about them
+  // skips re-reading every attachment payload on every merge.
+  let existingAttachmentBlobIds: ReadonlySet<string> | undefined;
+  try {
+    existingAttachmentBlobIds = new Set(await storage.listAttachmentBlobIds());
+  } catch {
+    existingAttachmentBlobIds = undefined; // storage unavailable → scan reads payloads as before
+  }
   const { notes: scanned, folders: scannedFolders, newFolders, manifestIds } = await withTimeout(
-    scanDirectory(handle, folders),
+    scanDirectory(handle, folders, { existingAttachmentBlobIds }),
     SCAN_TIMEOUT_MS,
     'Vault directory scan'
   );
   _vaultStatSnapshot = stats;
   const { notes: merged, deletedNoteIds, updatedNoteIds } = mergeVaultNotes(notes, scanned, manifestIds, options);
   const mergedFolders = options.mode === 'vault-authoritative'
-    ? (scanned.length === 0 && manifestIds.size === 0 ? mergeFreshVaultFolders(folders, scannedFolders) : scannedFolders)
+    ? mergeVaultAndLocalFolders(folders, scannedFolders)
     : [...folders, ...newFolders];
   return { notes: merged, folders: mergedFolders, newFolders, deletedNoteIds, updatedNoteIds };
 }
@@ -275,11 +310,20 @@ async function writeNoteTracked(
   handle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
-): Promise<void> {
+): Promise<Awaited<ReturnType<typeof writeNote>>> {
   const written = await writeNote(handle, note, folders);
   if (written && _vaultStatSnapshot) {
     _vaultStatSnapshot.set(written.path, written.lastModified);
   }
+  return written;
+}
+
+async function removeNoteFileAtPathTracked(
+  handle: FileSystemDirectoryHandle,
+  path: string,
+): Promise<void> {
+  const removed = await removeNoteFileAtPath(handle, path);
+  if (removed && _vaultStatSnapshot) _vaultStatSnapshot.delete(path);
 }
 
 async function deleteNoteFileTracked(
@@ -366,6 +410,27 @@ function debouncedNoteWrite(noteId: string, fn: () => Promise<void>, delayMs = 3
   });
 }
 
+/** Put every pending note write onto the global queue without yielding. */
+function enqueueAllPendingNoteWrites(): void {
+  for (const [noteId, pending] of Array.from(_noteDebounceTimers.entries())) {
+    flushNoteWrite(noteId, pending.fn);
+  }
+}
+
+/** A delete supersedes a debounced update that has not started yet. */
+function cancelPendingNoteWrite(noteId: string): void {
+  const pending = _noteDebounceTimers.get(noteId);
+  if (pending !== undefined) {
+    clearTimeout(pending.timer);
+    _noteDebounceTimers.delete(noteId);
+  }
+  const settlers = _notePendingSettlers.get(noteId);
+  if (settlers) {
+    settlers.forEach((settler) => settler.resolve());
+    _notePendingSettlers.delete(noteId);
+  }
+}
+
 /**
  * Flush every pending debounced note write to disk and wait for the queue to
  * drain. Called before vault scans: the disk is authoritative, so a scan must
@@ -373,9 +438,7 @@ function debouncedNoteWrite(noteId: string, fn: () => Promise<void>, delayMs = 3
  * the stale disk content would clobber the newer in-memory note.
  */
 async function flushAllPendingNoteWrites(): Promise<void> {
-  for (const [noteId, pending] of Array.from(_noteDebounceTimers.entries())) {
-    flushNoteWrite(noteId, pending.fn);
-  }
+  enqueueAllPendingNoteWrites();
   await _vaultWriteQueue;
 }
 
@@ -396,9 +459,13 @@ export async function syncNoteUpdate(
   folders: Folder[],
 ): Promise<void> {
   // Use per-note debounce: rapid typing collapses into one write.
-  await debouncedNoteWrite(note.id, () =>
-    writeNoteTracked(handle, { ...note, content, updatedAt: new Date().toISOString() }, folders)
-  );
+  await debouncedNoteWrite(note.id, async () => {
+    await writeNoteTracked(
+      handle,
+      { ...note, content, updatedAt: new Date().toISOString() },
+      folders,
+    );
+  });
 }
 
 export async function syncNoteRename(
@@ -407,12 +474,20 @@ export async function syncNoteRename(
   newTitle: string,
   folders: Folder[],
 ): Promise<void> {
+  // The pending write still carries the old title/path. Queue it first so the
+  // rename is guaranteed to be the final operation for this note.
+  const pending = _noteDebounceTimers.get(note.id);
+  if (pending) flushNoteWrite(note.id, pending.fn);
   await withVaultLock(async () => {
-    // keepAttachments: the note continues to exist — its attachments/{noteId}
-    // directory must survive the rename (writeNote does not recreate it for
-    // obsidian-import notes).
-    await deleteNoteFileTracked(handle, note, folders, { keepAttachments: true });
-    await writeNoteTracked(handle, { ...note, title: newTitle, updatedAt: new Date().toISOString() }, folders);
+    const previousPath = await getNoteFilePath(handle, note, folders);
+    const written = await writeNoteTracked(
+      handle,
+      { ...note, title: newTitle, updatedAt: new Date().toISOString() },
+      folders,
+    );
+    if (previousPath && written && previousPath !== written.path) {
+      await removeNoteFileAtPathTracked(handle, previousPath);
+    }
   });
 }
 
@@ -421,6 +496,9 @@ export async function syncNoteDelete(
   note: Note,
   folders: Folder[],
 ): Promise<void> {
+  // A not-yet-started content write is obsolete once the note is deleted. An
+  // already queued write remains ahead of this delete via the global lock.
+  cancelPendingNoteWrite(note.id);
   await withVaultLock(() => deleteNoteFileTracked(handle, note, folders));
 }
 
@@ -430,17 +508,20 @@ export async function syncNoteMove(
   nextNote: Note,
   folders: Folder[],
 ): Promise<void> {
+  if (nextNote.origin !== 'vault') return;
+  if (nextNote.folder) {
+    const targetFolder = folders.find((folder) => folder.id === nextNote.folder);
+    if (targetFolder?.origin !== 'vault') return;
+  }
+  const pending = _noteDebounceTimers.get(previousNote.id);
+  if (pending) flushNoteWrite(previousNote.id, pending.fn);
   await withVaultLock(async () => {
-    await deleteNoteFileTracked(handle, previousNote, folders, { keepAttachments: true });
-    await writeNoteTracked(handle, nextNote, folders);
+    const previousPath = await getNoteFilePath(handle, previousNote, folders);
+    const written = await writeNoteTracked(handle, nextNote, folders);
+    if (previousPath && written && previousPath !== written.path) {
+      await removeNoteFileAtPathTracked(handle, previousPath);
+    }
   });
-}
-
-export async function syncFolderCreate(
-  handle: FileSystemDirectoryHandle,
-  folderName: string,
-): Promise<void> {
-  await withVaultLock(() => createFolderDirectory(handle, folderName));
 }
 
 export async function syncFolderDelete(
@@ -449,6 +530,8 @@ export async function syncFolderDelete(
 ): Promise<void> {
   // Only empty parts of the tree are removed — untracked files (PDFs,
   // .canvas, ...) and their parent directories survive.
+  // Flush note writes first so a delayed write cannot recreate the folder.
+  enqueueAllPendingNoteWrites();
   await withVaultLock(() => removeEmptyFolderTree(handle, folderName));
 }
 
@@ -459,9 +542,12 @@ export async function syncFolderRename(
   currentFolders: Folder[],
   notes: Note[],
 ): Promise<void> {
+  // Pending note payloads still reference the old folder tree. Queue them
+  // before the rename so the structural operation remains last.
+  enqueueAllPendingNoteWrites();
   await withVaultLock(async () => {
     const nextFolder = currentFolders.find((folder) => folder.id === folderId);
-    if (!nextFolder) return;
+    if (nextFolder?.origin !== 'vault') return;
 
     // currentFolders already has the new names, so match against the new folder's
     // id plus any child that was a descendant of previousName (now updated to
@@ -470,7 +556,9 @@ export async function syncFolderRename(
     const newPrefix = nextFolder.name;
     const affectedFolderIds = new Set(
       currentFolders
-        .filter((folder) => folder.id === folderId || folder.name.startsWith(`${newPrefix}/`))
+        .filter((folder) =>
+          folder.origin === 'vault'
+          && (folder.id === folderId || folder.name.startsWith(`${newPrefix}/`)))
         .map((folder) => folder.id)
     );
 
@@ -484,9 +572,12 @@ export async function syncFolderRename(
 
     // Move managed notes one by one instead of deleting the directory tree —
     // vault folders may contain files Noa does not track, and those must survive.
-    for (const note of notes.filter((n) => affectedFolderIds.has(n.folder))) {
-      await deleteNoteFileTracked(handle, note, previousFolders, { keepAttachments: true });
-      await writeNoteTracked(handle, note, currentFolders);
+    for (const note of notes.filter((n) => n.origin === 'vault' && affectedFolderIds.has(n.folder))) {
+      const previousPath = await getNoteFilePath(handle, note, previousFolders);
+      const written = await writeNoteTracked(handle, note, currentFolders);
+      if (previousPath && written && previousPath !== written.path) {
+        await removeNoteFileAtPathTracked(handle, previousPath);
+      }
     }
     // Empty (sub)folders have no note writes to materialise their new
     // directories — create them explicitly so the rename survives on disk.
@@ -496,18 +587,6 @@ export async function syncFolderRename(
       }
     }
     await removeEmptyFolderTree(handle, previousName);
-  });
-}
-
-export async function retryFullSync(
-  handle: FileSystemDirectoryHandle,
-  notes: Note[],
-  folders: Folder[],
-): Promise<void> {
-  await withVaultLock(async () => {
-    for (const note of notes) {
-      await writeNoteTracked(handle, note, folders);
-    }
   });
 }
 
