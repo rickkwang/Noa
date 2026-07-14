@@ -89,10 +89,10 @@ describe('selectVaultPendingOperations', () => {
       folders: [oldFolder],
     };
 
-    expect(selectVaultPendingOperations([operation], 'vault-b', 'vault-a')).toEqual([]);
+    expect(selectVaultPendingOperations([operation], 'vault-b')).toEqual([]);
   });
 
-  it('binds legacy operations only when the last confirmed vault matches', () => {
+  it('never guesses an identity for legacy unbound operations', () => {
     const operation: VaultPendingOperation = {
       key: 'delete-note:legacy',
       entityKey: `note:${note.id}`,
@@ -101,7 +101,7 @@ describe('selectVaultPendingOperations', () => {
       folders: [oldFolder],
     };
 
-    expect(selectVaultPendingOperations([operation], 'vault-a', 'vault-a')[0]).toMatchObject({ vaultId: 'vault-a' });
-    expect(selectVaultPendingOperations([operation], 'vault-b', 'vault-a')).toEqual([]);
+    expect(selectVaultPendingOperations([operation], 'vault-a')).toEqual([]);
+    expect(selectVaultPendingOperations([operation], 'vault-b')).toEqual([]);
   });
 });

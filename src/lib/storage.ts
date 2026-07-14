@@ -35,7 +35,6 @@ const historyStore = localforage.createInstance({
 });
 
 const VAULT_PENDING_OPERATIONS_KEY = 'vault-pending-operations';
-const LAST_VAULT_ID_KEY = 'last-vault-id';
 let vaultOperationQueue: Promise<void> = Promise.resolve();
 
 function enqueueVaultOperationMutation(task: () => Promise<void>): Promise<void> {
@@ -183,14 +182,6 @@ export const storage = {
   async getVaultPendingOperations(): Promise<VaultPendingOperation[]> {
     await vaultOperationQueue;
     return (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
-  },
-
-  async getLastVaultId(): Promise<string | null> {
-    return workspaceStore.getItem<string>(LAST_VAULT_ID_KEY);
-  },
-
-  async setLastVaultId(vaultId: string): Promise<void> {
-    await workspaceStore.setItem(LAST_VAULT_ID_KEY, vaultId);
   },
 
   async upsertVaultPendingOperation(operation: VaultPendingOperation): Promise<void> {

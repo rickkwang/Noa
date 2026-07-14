@@ -354,6 +354,73 @@ test('settings remembers the last active tab when reopened', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Export Diagnostics' })).toBeVisible();
 });
 
+test('appearance settings persist after a full reload', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  const selects = page.getByRole('combobox');
+  await selects.nth(0).selectOption('dark');
+  await selects.nth(1).selectOption('font-redaction');
+  await expect(selects.nth(0)).toHaveValue('dark');
+  await expect(selects.nth(1)).toHaveValue('font-redaction');
+
+  await page.reload();
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  await expect(page.getByRole('combobox').nth(0)).toHaveValue('dark');
+  await expect(page.getByRole('combobox').nth(1)).toHaveValue('font-redaction');
+});
+
+test('a recovered settings read merges and persists a queued change', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-settings', JSON.stringify({
+      appearance: { theme: 'light' },
+      templates: {
+        userTemplates: [{
+          id: 'keep-template',
+          name: 'Keep',
+          content: 'important',
+          createdAt: '2026-01-01',
+        }],
+      },
+      backup: { autoBackupEnabled: true },
+    }));
+    const realGetItem = Storage.prototype.getItem;
+    (window as typeof window & { __allowSettingsRead?: boolean }).__allowSettingsRead = false;
+    Storage.prototype.getItem = function getItem(key: string) {
+      if (key === 'app-settings'
+        && !(window as typeof window & { __allowSettingsRead?: boolean }).__allowSettingsRead) {
+        throw new DOMException('temporary', 'SecurityError');
+      }
+      return realGetItem.call(this, key);
+    };
+  });
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  await page.getByRole('combobox').nth(0).selectOption('dark');
+  await page.evaluate(() => {
+    (window as typeof window & { __allowSettingsRead?: boolean }).__allowSettingsRead = true;
+  });
+
+  await expect.poll(() => page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('app-settings') ?? '{}');
+    return saved.appearance?.theme;
+  })).toBe('dark');
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('app-settings') ?? '{}'));
+  expect(persisted.appearance.theme).toBe('dark');
+  expect(persisted.templates.userTemplates).toEqual([{
+    id: 'keep-template',
+    name: 'Keep',
+    content: 'important',
+    createdAt: '2026-01-01',
+  }]);
+  expect(persisted.backup.autoBackupEnabled).toBe(true);
+});
+
 test('settings keeps primary controls inside the dialog at narrower widths', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 700 });
   await page.goto('/');

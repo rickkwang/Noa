@@ -4,17 +4,8 @@ import type { Folder, Note, VaultPendingOperation } from '../types';
 export function selectVaultPendingOperations(
   operations: readonly VaultPendingOperation[],
   vaultId: string,
-  previousVaultId: string | null,
 ): VaultPendingOperation[] {
-  return operations.flatMap((operation) => {
-    if (operation.vaultId === vaultId) return [operation];
-    // Operations written before vault identities existed may be recovered only
-    // when the last confirmed vault is still the one currently selected.
-    if (!operation.vaultId && previousVaultId === vaultId) {
-      return [{ ...operation, vaultId }];
-    }
-    return [];
-  });
+  return operations.filter((operation) => operation.vaultId === vaultId);
 }
 
 /**

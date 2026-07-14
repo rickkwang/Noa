@@ -241,14 +241,16 @@ export function useFileSync({
   ): Promise<{ notes: Note[]; folders: Folder[] }> => {
     const syncedNoteIds = new Set<string>();
 
-    const previousVaultId = await storage.getLastVaultId();
     const vaultId = await getVaultIdentity(handle);
     vaultIdRef.current = vaultId;
-    await storage.setLastVaultId(vaultId);
+    const pendingOperations = await storage.getVaultPendingOperations();
+    const unboundOperations = pendingOperations.filter((operation) => !operation.vaultId);
+    await Promise.all(
+      unboundOperations.map((operation) => storage.removeVaultPendingOperation(operation.key)),
+    );
     const durableOperations = selectVaultPendingOperations(
-      await storage.getVaultPendingOperations(),
+      pendingOperations,
       vaultId,
-      previousVaultId,
     );
     applyPendingStructuralOperations(durableOperations);
     for (const operation of durableOperations) {
@@ -267,7 +269,6 @@ export function useFileSync({
       const remaining = selectVaultPendingOperations(
         await storage.getVaultPendingOperations(),
         vaultId,
-        null,
       );
       applyPendingStructuralOperations(remaining);
     }
@@ -436,7 +437,10 @@ export function useFileSync({
     setSyncStatus('syncing');
     void execute().then(async () => {
       if (durableOperation) {
-        const remaining = await storage.getVaultPendingOperations();
+        const vaultId = vaultIdRef.current;
+        const remaining = vaultId
+          ? selectVaultPendingOperations(await storage.getVaultPendingOperations(), vaultId)
+          : [];
         applyPendingStructuralOperations(remaining);
       }
       if (generation !== retryGeneration.current || disconnectingRef.current) return;
