@@ -182,6 +182,53 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
   await expect(zoomIn).toHaveCSS('color', 'rgb(204, 125, 94)');
 });
 
+test('closed right panel defers its lazy content until first open', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-right-panel-open', 'false');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+  });
+  await page.goto('/');
+
+  await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(0);
+  await page.getByTitle('Toggle Panel').click();
+  await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(1);
+  await page.getByTitle('Toggle Panel').click();
+  await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(1);
+});
+
+test('restored-open right panel waits until the post-load animation frame', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-right-panel-open', 'true');
+    localStorage.setItem('app-right-tab', 'tasks');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const queuedFrames: FrameRequestCallback[] = [];
+    let holdFrames = true;
+
+    window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      if (!holdFrames) return nativeRequestAnimationFrame(callback);
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    };
+
+    (window as Window & { __flushNoaAnimationFrames?: () => void }).__flushNoaAnimationFrames = () => {
+      holdFrames = false;
+      const timestamp = performance.now();
+      queuedFrames.splice(0).forEach((callback) => callback(timestamp));
+    };
+  });
+
+  await page.goto('/');
+  await expect(page.getByPlaceholder('Search notes, tags...')).toBeVisible();
+  await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(0);
+
+  await page.evaluate(() => {
+    (window as Window & { __flushNoaAnimationFrames?: () => void }).__flushNoaAnimationFrames?.();
+  });
+  await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(1);
+});
+
 test('graph canvas backing size remains stable during horizontal window resize', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.addInitScript(() => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deleteNoteFile, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
-import { mergeScannedNotes, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate } from '../../src/services/fileSyncService';
+import { mergeScannedNotes, replayVaultPendingOperation, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 import type { Note } from '../../src/types';
 
@@ -177,6 +177,78 @@ describe('syncNoteRename', () => {
     const managedPath = listPaths(root).find((path) => /^Existing_[0-9a-f]{8}\.md$/.test(path));
     expect(managedPath).toBeDefined();
     expect(await readFileText(root, managedPath as string)).toBe('managed body');
+  });
+});
+
+describe('syncVaultNoteSnapshot', () => {
+  it('writes the latest dirty snapshot and removes the obsolete vault path', async () => {
+    const root = createMemRoot();
+    const original = makeNote({ title: 'Old title', content: 'old content' });
+    await writeNote(asFsHandle(root), original, []);
+
+    const recovered = {
+      ...original,
+      title: 'Recovered title',
+      content: 'latest local edit',
+      vaultPath: 'Old title.md',
+      vaultDirty: true,
+    };
+    await syncVaultNoteSnapshot(asFsHandle(root), recovered, []);
+
+    expect(resolvePath(root, 'Old title.md')).toBeNull();
+    expect(await readFileText(root, 'Recovered title.md')).toBe('latest local edit');
+  });
+});
+
+describe('replayVaultPendingOperation', () => {
+  it('replays a persisted note-delete tombstone after the local row is gone', async () => {
+    const root = createMemRoot();
+    const deleted = makeNote({ title: 'Delete me' });
+    await writeNote(asFsHandle(root), deleted, []);
+
+    await replayVaultPendingOperation(asFsHandle(root), {
+      key: 'delete-note:1',
+      entityKey: `note:${deleted.id}`,
+      kind: 'delete-note',
+      note: deleted,
+      folders: [],
+    }, []);
+
+    expect(resolvePath(root, 'Delete me.md')).toBeNull();
+  });
+
+  it('replays a persisted folder rename using the desired folder snapshot', async () => {
+    const root = createMemRoot();
+    const folderId = 'folder-1';
+    const originalFolders = [{ id: folderId, name: 'Old', origin: 'vault' as const }];
+    const nextFolders = [{ id: folderId, name: 'New', origin: 'vault' as const }];
+    const moved = makeNote({ folder: folderId, title: 'Inside' });
+    await writeNote(asFsHandle(root), moved, originalFolders);
+
+    await replayVaultPendingOperation(asFsHandle(root), {
+      key: 'rename-folder:1',
+      entityKey: `folder:${folderId}`,
+      kind: 'rename-folder',
+      folderId,
+      previousName: 'Old',
+      nextFolders,
+    }, [moved]);
+
+    expect(resolvePath(root, 'Old/Inside.md')).toBeNull();
+    expect(await readFileText(root, 'New/Inside.md')).toBe('# Sample');
+
+    const finalFolders = [{ id: folderId, name: 'Final', origin: 'vault' as const }];
+    await replayVaultPendingOperation(asFsHandle(root), {
+      key: 'rename-folder:2',
+      entityKey: `folder:${folderId}`,
+      kind: 'rename-folder',
+      folderId,
+      previousName: 'New',
+      nextFolders: finalFolders,
+    }, [moved]);
+
+    expect(resolvePath(root, 'New/Inside.md')).toBeNull();
+    expect(await readFileText(root, 'Final/Inside.md')).toBe('# Sample');
   });
 });
 

@@ -4,6 +4,7 @@ const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
 const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
 const { resolveBackgroundColor } = require('./windowBackground.cjs');
+const { installSingleInstanceGuard } = require('./singleInstance.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
@@ -25,6 +26,12 @@ let latestAvailableVersion = null;
 let latestAvailableInfo = null;
 let macInstallTask = null;
 let downloadTask = null;
+
+const isPrimaryInstance = installSingleInstanceGuard({
+  app,
+  getWindow: () => win,
+  createWindow,
+});
 
 function emitUpdateStatus(payload) {
   updateState = payload;
@@ -256,7 +263,7 @@ function installPermissionHandlers() {
   });
 }
 
-app.whenReady().then(() => {
+if (isPrimaryInstance) app.whenReady().then(() => {
   installPermissionHandlers();
   setupAutoUpdater();
   buildMenu();
@@ -404,12 +411,12 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('window-all-closed', () => {
+if (isPrimaryInstance) app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
 let isQuitting = false;
-app.on('before-quit', (event) => {
+if (isPrimaryInstance) app.on('before-quit', (event) => {
   if (isQuitting) return;
   event.preventDefault();
   isQuitting = true;

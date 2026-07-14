@@ -26,6 +26,9 @@ export interface Note {
   origin?: 'vault';
   vaultId?: string;
   vaultPath?: string;
+  /** Internal cache marker: local vault edits must reach disk before an
+   * authoritative scan may replace this row. Never trusted from imports. */
+  vaultDirty?: boolean;
   frontmatter?: Record<string, unknown>;
   /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
    *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
@@ -53,6 +56,29 @@ export interface Folder {
   origin?: 'vault';
   vaultPath?: string;
 }
+
+export type VaultPendingOperation =
+  | {
+      key: string;
+      entityKey: string;
+      kind: 'delete-note';
+      note: Note;
+      folders: Folder[];
+    }
+  | {
+      key: string;
+      entityKey: string;
+      kind: 'rename-folder';
+      folderId: string;
+      previousName: string;
+      nextFolders: Folder[];
+    }
+  | {
+      key: string;
+      entityKey: string;
+      kind: 'delete-folder';
+      folder: Folder;
+    };
 
 export type BackupHealthStatus = 'healthy' | 'warning' | 'risk';
 export type RecoveryAction = 'retry' | 'import_backup' | 'reset_workspace';

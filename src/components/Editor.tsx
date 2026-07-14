@@ -47,6 +47,7 @@ interface EditorProps {
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
   readOnly?: boolean;
+  attachmentMutationsDisabled?: boolean;
 }
 
 export default function Editor({
@@ -73,6 +74,7 @@ export default function Editor({
   onTabCloseAnimationComplete,
   onRestoreSnapshot,
   readOnly = false,
+  attachmentMutationsDisabled = false,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -231,6 +233,11 @@ export default function Editor({
     if (!container || viewMode === 'preview' || readOnly) return;
 
     const handleFiles = async (files: File[]) => {
+      if (attachmentMutationsDisabled) {
+        setImageError('Vault attachments are managed from the connected folder.');
+        setTimeout(() => setImageError(null), 3000);
+        return;
+      }
       for (const file of files) {
         if (!ATTACHMENT_PASTE_TYPES.has(file.type)) continue;
         if (onNoteUpdate) {
@@ -295,7 +302,7 @@ export default function Editor({
       container.removeEventListener('paste', handlePaste);
       container.removeEventListener('drop', handleDrop);
     };
-  }, [viewMode, insertFormatting, onNoteUpdate, readOnly, uploadFile]);
+  }, [attachmentMutationsDisabled, viewMode, insertFormatting, onNoteUpdate, readOnly, uploadFile]);
 
   const tocHeadings = useMemo(() => {
     if (!scanNote) return [];
@@ -615,6 +622,8 @@ export default function Editor({
             insertFormatting(syntax);
           }}
           readOnly={readOnly}
+          mutationsDisabled={attachmentMutationsDisabled}
+          mutationsDisabledReason="Manage vault attachments from the connected folder."
         />
       )}
     </div>

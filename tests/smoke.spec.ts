@@ -145,7 +145,7 @@ async function installMockDirectoryPicker(
 ) {
   await page.addInitScript(async () => {
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const syncMode = { failReads: false, failWrites: false };
+    const syncMode = { failReads: false, failWrites: false, failWriteNames: [] as string[] };
     (window as typeof window & { __syncMode?: typeof syncMode }).__syncMode = syncMode;
     (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = false;
 
@@ -176,7 +176,7 @@ async function installMockDirectoryPicker(
 
       async createWritable() {
         await delay(40);
-        if (syncMode.failWrites) {
+        if (syncMode.failWrites || syncMode.failWriteNames.includes(this.name)) {
           throw new DOMException('blocked', 'NotAllowedError');
         }
         const fileHandle = this;
@@ -290,6 +290,19 @@ async function installMockDirectoryPicker(
         __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string; base64?: string; type?: string }> };
       }).__pickerSeed;
       const root = new MockDirectoryHandle(seed?.rootName || 'mock-vault');
+      (window as typeof window & {
+        __readMockVaultFile?: (path: string) => string | null;
+      }).__readMockVaultFile = (path: string) => {
+        const parts = path.split('/').filter(Boolean);
+        let current: MockDirectoryHandle | MockFileHandle = root;
+        for (const part of parts) {
+          if (!(current instanceof MockDirectoryHandle)) return null;
+          const next = current.entriesMap.get(part);
+          if (!next) return null;
+          current = next;
+        }
+        return current instanceof MockFileHandle ? current.content : null;
+      };
       if (seed) {
         (seed.dirs ?? []).forEach((dirPath) => {
           const parts = dirPath.split('/').filter(Boolean);
@@ -664,6 +677,7 @@ test('filesystem sync status transitions from syncing to ready on retry', async 
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.getByRole('button', { name: 'Retry Sync' }).click();
+  await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeDisabled();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
 });
 
@@ -696,6 +710,109 @@ test('filesystem sync status transitions from syncing to error on retry', async 
   await page.keyboard.press('Escape');
   await page.getByTitle('New note').click();
   await expect(page.getByText('New Note.md', { exact: true })).toBeVisible();
+});
+
+test('failed vault write keeps the local edit and retry writes that edit to disk', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  const marker = `recovered-${Date.now()}`;
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{ path: 'Synced.md', content: '# Synced\n\nOld disk content.' }],
+    };
+  });
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.getByText('Synced.md', { exact: true }).click();
+  await ensureEditMode(page);
+  await expect(page.getByTitle('Manage vault attachments from the connected folder.')).toBeDisabled();
+  await page.evaluate(() => {
+    const syncMode = (window as typeof window & { __syncMode?: { failWrites: boolean } }).__syncMode;
+    if (syncMode) syncMode.failWrites = true;
+  });
+  const editor = page.locator('.cm-content').last();
+  await editor.click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.type(`# Synced\n\n${marker}`);
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
+  await page.getByLabel('Data').getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await expect(page.getByText('Synced.md', { exact: true })).toBeVisible();
+  await expect(page.getByText('Disconnected from local folder. Using IndexedDB.', { exact: true })).toHaveCount(0);
+  await page.evaluate(() => {
+    const syncMode = (window as typeof window & { __syncMode?: { failWrites: boolean } }).__syncMode;
+    if (syncMode) syncMode.failWrites = false;
+  });
+  await page.getByRole('button', { name: 'Retry Sync' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible({ timeout: 5_000 });
+  await expect.poll(() => page.evaluate((expected) => {
+    const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
+    return read?.('Synced.md')?.includes(expected) ?? false;
+  }, marker)).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.cm-content').last()).toContainText(marker);
+});
+
+test('a later successful vault write does not hide an earlier failed note', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [
+        { path: 'Alpha.md', content: '# Alpha\n\nOld alpha.' },
+        { path: 'Beta.md', content: '# Beta\n\nOld beta.' },
+      ],
+    };
+  });
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.evaluate(() => {
+    const mode = (window as typeof window & { __syncMode?: { failWriteNames: string[] } }).__syncMode;
+    if (mode) mode.failWriteNames = ['Alpha.md'];
+  });
+  await page.getByText('Alpha.md', { exact: true }).click();
+  await ensureEditMode(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type('\nalpha edit');
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
+
+  await page.keyboard.press('Escape');
+  await page.getByText('Beta.md', { exact: true }).click();
+  await ensureEditMode(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type('\nbeta edit');
+  await page.waitForTimeout(800);
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await expect(page.getByText(/Sync status: error/i)).toBeVisible();
+
+  await page.evaluate(() => {
+    const mode = (window as typeof window & { __syncMode?: { failWriteNames: string[] } }).__syncMode;
+    if (mode) mode.failWriteNames = [];
+  });
+  await page.getByRole('button', { name: 'Retry Sync' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible({ timeout: 5_000 });
 });
 
 test('disconnect removes every vault-origin cache row regardless of source provenance', async ({ page }) => {

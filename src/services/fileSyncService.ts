@@ -1,4 +1,4 @@
-import { Folder, Note } from '../types';
+import { Folder, Note, VaultPendingOperation } from '../types';
 import { storage } from '../lib/storage';
 import {
   clearPersistedHandle,
@@ -167,9 +167,11 @@ export function mergeVaultNotes(
       // origin is the ownership boundary. A cached vault row missing from the
       // disk scan was deleted externally even if the vault never had a manifest;
       // a Noa-owned or one-time-import row must survive regardless of source.
-      .filter((note) => note.origin === 'vault' && !scannedIds.has(note.id))
+      .filter((note) => note.origin === 'vault' && !note.vaultDirty && !scannedIds.has(note.id))
       .map((note) => note.id);
-    const keptLocal = notes.filter((note) => note.origin !== 'vault' && !scannedIds.has(note.id));
+    const keptLocal = notes.filter(
+      (note) => (note.origin !== 'vault' || note.vaultDirty) && !scannedIds.has(note.id),
+    );
     const updatedNoteIds: string[] = [];
     const merged = uniqueScanned.map((fresh) => {
       const previous = localById.get(fresh.id);
@@ -177,6 +179,10 @@ export function mergeVaultNotes(
         updatedNoteIds.push(fresh.id);
         return fresh;
       }
+      // A failed local write leaves disk stale. Keep the cache row until a
+      // confirmed write clears vaultDirty; otherwise retry/poll would silently
+      // replace the user's newer edit with the old file contents.
+      if (previous.vaultDirty) return previous;
       if (fresh.content !== previous.content || fresh.title !== previous.title) {
         updatedNoteIds.push(fresh.id);
       }
@@ -524,6 +530,29 @@ export async function syncNoteMove(
   });
 }
 
+/**
+ * Reconcile the latest cached vault note after a previous write failed or the
+ * app restarted with vaultDirty persisted. This is deliberately immediate and
+ * idempotent: it writes the desired snapshot, then removes an obsolete path
+ * left behind by a failed rename/move.
+ */
+export async function syncVaultNoteSnapshot(
+  handle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+): Promise<void> {
+  if (note.origin !== 'vault') return;
+  await withVaultLock(async () => {
+    const previousPath = await getNoteFilePath(handle, note, folders);
+    const written = await writeNoteTracked(handle, note, folders);
+    const stalePaths = new Set([previousPath, note.vaultPath].filter((path): path is string => Boolean(path)));
+    if (written) stalePaths.delete(written.path);
+    for (const path of stalePaths) {
+      await removeNoteFileAtPathTracked(handle, path);
+    }
+  });
+}
+
 export async function syncFolderDelete(
   handle: FileSystemDirectoryHandle,
   folderName: string,
@@ -588,6 +617,28 @@ export async function syncFolderRename(
     }
     await removeEmptyFolderTree(handle, previousName);
   });
+}
+
+export async function replayVaultPendingOperation(
+  handle: FileSystemDirectoryHandle,
+  operation: VaultPendingOperation,
+  notes: Note[],
+): Promise<void> {
+  if (operation.kind === 'delete-note') {
+    await syncNoteDelete(handle, operation.note, operation.folders);
+    return;
+  }
+  if (operation.kind === 'rename-folder') {
+    await syncFolderRename(
+      handle,
+      operation.folderId,
+      operation.previousName,
+      operation.nextFolders,
+      notes,
+    );
+    return;
+  }
+  await syncFolderDelete(handle, operation.folder.name);
 }
 
 export function classifySyncError(error: unknown): FileSyncError {

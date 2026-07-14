@@ -92,6 +92,7 @@ export default function App() {
     resetWorkspaceFromRecovery,
     clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
+    markVaultNotesSynced,
     isLoaded,
     setWorkspaceName,
   } = useNotes(settings);
@@ -110,7 +111,16 @@ export default function App() {
     needsReauth,
     autoRetryExhausted,
     vaultCacheReadOnly,
+    authoritativeSyncInProgress,
+    isAuthoritativeSyncActive,
+    isVaultEntityOperationPending,
+    isAnyVaultStructuralOperationPending,
+    reserveVaultStructuralOperation,
+    releaseVaultStructuralOperation,
+    hasPendingStructuralOperations,
     connect,
+    beginDisconnect,
+    cancelDisconnect,
     disconnect,
     retry,
     reconnect,
@@ -129,13 +139,26 @@ export default function App() {
     activeNoteId,
     ensureInitialNote,
     onImportData: handleImportData,
+    onVaultNotesSynced: markVaultNotesSynced,
   });
 
   const blockVaultCacheWrite = useCallback((isVaultOwned: boolean) => {
-    if (!isVaultOwned || !vaultCacheReadOnly) return false;
-    setSaveError('Vault is the source of truth. Reconnect or retry sync before making changes.');
+    const authoritativeSyncActive = isAuthoritativeSyncActive();
+    const structuralOperationPending = isAnyVaultStructuralOperationPending();
+    if (!isVaultOwned || (!vaultCacheReadOnly && !authoritativeSyncActive && !structuralOperationPending)) return false;
+    setSaveError(structuralOperationPending
+      ? 'A vault file operation is still pending. Retry sync before making more changes.'
+      : authoritativeSyncActive
+        ? 'Vault changes are being applied from disk. Wait for sync to finish before editing.'
+        : 'Vault is the source of truth. Reconnect or retry sync before making changes.');
     return true;
-  }, [setSaveError, vaultCacheReadOnly]);
+  }, [isAnyVaultStructuralOperationPending, isAuthoritativeSyncActive, setSaveError, vaultCacheReadOnly]);
+
+  const blockPendingVaultEntityOperation = useCallback((entityKey: string) => {
+    if (!isVaultEntityOperationPending(entityKey)) return false;
+    setSaveError('A vault file operation is still pending for this item. Retry sync before changing it again.');
+    return true;
+  }, [isVaultEntityOperationPending, setSaveError]);
 
   const autoBackup = useAutoBackup({
     notes,
@@ -250,7 +273,19 @@ export default function App() {
     const oldFolder = folders.find((folder) => folder.id === id);
     if (!oldFolder) return;
     if (blockVaultCacheWrite(oldFolder.origin === 'vault')) return;
-    _handleRenameFolder(id, newName);
+    const entityKey = `folder:${id}`;
+    const needsVaultReservation = oldFolder.origin === 'vault';
+    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
+    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
+      setSaveError('A vault file operation is still pending. Retry sync before changing this folder.');
+      return;
+    }
+    try {
+      _handleRenameFolder(id, newName);
+    } catch (error) {
+      if (needsVaultReservation) releaseVaultStructuralOperation(entityKey);
+      throw error;
+    }
 
     const previousName = oldFolder.name;
     const nextName = newName.trim() || 'Untitled Folder';
@@ -264,7 +299,7 @@ export default function App() {
     });
 
     syncFolderOnRename(id, previousName, nextFolders);
-  }, [_handleRenameFolder, blockVaultCacheWrite, folders, syncFolderOnRename]);
+  }, [_handleRenameFolder, blockPendingVaultEntityOperation, blockVaultCacheWrite, folders, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncFolderOnRename]);
 
   const closeTabById = useCallback((id: string) => {
     const current = openTabIdsRef.current;
@@ -309,17 +344,36 @@ export default function App() {
     const note = notesRef.current.find((item) => item.id === id);
     if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     if (!note) return;
+    const entityKey = `note:${note.id}`;
+    const needsVaultReservation = note.origin === 'vault';
+    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
+    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
+      setSaveError('A vault file operation is still pending. Retry sync before deleting this note.');
+      return;
+    }
     void deleteNoteWithLocalFirst({
       id,
       deleteLocal: _handleDeleteNote,
       closeTab: closeTabById,
       syncDelete: () => syncNoteOnDelete(note),
+    }).then((deleted) => {
+      if (!deleted && needsVaultReservation) releaseVaultStructuralOperation(entityKey);
+    }).catch((error) => {
+      if (needsVaultReservation) releaseVaultStructuralOperation(entityKey);
+      console.error('[App] handleDeleteNote failed:', error);
     });
-  }, [_handleDeleteNote, blockVaultCacheWrite, closeTabById, syncNoteOnDelete]);
+  }, [_handleDeleteNote, blockPendingVaultEntityOperation, blockVaultCacheWrite, closeTabById, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncNoteOnDelete]);
 
   const handleDeleteFolder = useCallback((id: string) => {
     const deletedFolder = folders.find((folder) => folder.id === id);
     if (blockVaultCacheWrite(deletedFolder?.origin === 'vault')) return;
+    const entityKey = `folder:${id}`;
+    const needsVaultReservation = deletedFolder?.origin === 'vault';
+    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
+    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
+      setSaveError('A vault file operation is still pending. Retry sync before deleting this folder.');
+      return;
+    }
     const notesBeforeDelete = new Map(notesRef.current.map((note) => [note.id, note]));
     void (async () => {
       try {
@@ -334,23 +388,35 @@ export default function App() {
         // an unrelated vault directory — so never run the disk cleanup for it.
         if (deletedFolder) syncFolderOnDelete(deletedFolder);
       } catch (err) {
+        if (needsVaultReservation) releaseVaultStructuralOperation(entityKey);
         console.error('[App] handleDeleteFolder failed:', err);
       }
     })();
-  }, [_handleDeleteFolder, blockVaultCacheWrite, closeTabById, folders, syncFolderOnDelete, syncNoteOnDelete]);
+  }, [_handleDeleteFolder, blockPendingVaultEntityOperation, blockVaultCacheWrite, closeTabById, folders, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncFolderOnDelete, syncNoteOnDelete]);
 
   const handleDisconnectFolder = useCallback(async () => {
+    let disconnectStarted = false;
     try {
+      if (notesRef.current.some((note) => note.origin === 'vault' && note.vaultDirty)) {
+        throw new Error('Some vault edits have not reached disk yet. Retry sync before disconnecting.');
+      }
+      if (hasPendingStructuralOperations) {
+        throw new Error('Vault file operations are still pending. Retry sync before disconnecting.');
+      }
+      beginDisconnect();
+      disconnectStarted = true;
       const deletedNoteIds = await clearWorkspaceAfterDisconnect();
       deletedNoteIds.forEach((id) => closeTabById(id));
       await disconnect();
     } catch (err) {
+      if (disconnectStarted) cancelDisconnect();
       console.error('[App] handleDisconnectFolder failed:', err);
       setSaveError(err instanceof Error
         ? err.message
         : 'Failed to disconnect vault. Check folder permissions and retry.');
+      throw err;
     }
-  }, [disconnect, clearWorkspaceAfterDisconnect, closeTabById, setSaveError]);
+  }, [beginDisconnect, cancelDisconnect, disconnect, clearWorkspaceAfterDisconnect, closeTabById, hasPendingStructuralOperations, setSaveError]);
 
   const {
     isMobile,
@@ -370,6 +436,17 @@ export default function App() {
     toggleFocusMode,
     exitFocusMode,
   } = useLayout();
+
+  // Keep the graph/tasks bundle out of the first render. If the panel was
+  // restored as open, mount it on the next frame so the app shell can paint
+  // first. Once mounted, retain it across toggles to preserve panel state and
+  // make subsequent opens instantaneous.
+  const [hasMountedRightPanel, setHasMountedRightPanel] = useState(false);
+  useEffect(() => {
+    if (!isLoaded || !isRightPanelOpen || hasMountedRightPanel) return;
+    const frame = window.requestAnimationFrame(() => setHasMountedRightPanel(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [hasMountedRightPanel, isLoaded, isRightPanelOpen]);
 
   // Restore openTabIds from localStorage after notes load
   useEffect(() => {
@@ -811,7 +888,8 @@ export default function App() {
                 onTabEnterComplete={handleTabEnterComplete}
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
                 onRestoreSnapshot={restoreSnapshotGuarded}
-                readOnly={vaultCacheReadOnly && activeNote?.origin === 'vault'}
+                readOnly={(vaultCacheReadOnly || authoritativeSyncInProgress) && activeNote?.origin === 'vault'}
+                attachmentMutationsDisabled={activeNote?.origin === 'vault'}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2B]/30 font-redaction select-none">
@@ -855,7 +933,7 @@ export default function App() {
                 onMouseDown={() => setIsDraggingRightPanel(true)}
               />
             )}
-            <div className="flex-1 overflow-hidden">
+            {hasMountedRightPanel && <div className="flex-1 overflow-hidden" data-noa-right-panel-content>
               <ErrorBoundary>
               <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading panel…</div>}>
                 <RightPanel
@@ -873,7 +951,7 @@ export default function App() {
                 />
               </Suspense>
               </ErrorBoundary>
-            </div>
+            </div>}
           </div>
         </div>
       </div>
@@ -916,7 +994,7 @@ export default function App() {
             {permissionRevoked && (
               <button
                 disabled={syncStatus === 'syncing'}
-                onClick={handleDisconnectFolder}
+                onClick={() => { void handleDisconnectFolder().catch(() => {}); }}
                 className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 Disconnect

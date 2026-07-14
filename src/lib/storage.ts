@@ -1,5 +1,5 @@
 import localforage from 'localforage';
-import { Note, Folder, Attachment, NoteSnapshot } from '../types';
+import { Note, Folder, Attachment, NoteSnapshot, VaultPendingOperation } from '../types';
 
 const MAX_SNAPSHOTS_PER_NOTE = 60;
 // Exponential-decay retention window (ms). Within the newest snapshot, adjacent
@@ -33,6 +33,15 @@ const historyStore = localforage.createInstance({
   name: 'redaction-diary-history-db',
   storeName: 'history'
 });
+
+const VAULT_PENDING_OPERATIONS_KEY = 'vault-pending-operations';
+let vaultOperationQueue: Promise<void> = Promise.resolve();
+
+function enqueueVaultOperationMutation(task: () => Promise<void>): Promise<void> {
+  const result = vaultOperationQueue.then(task);
+  vaultOperationQueue = result.catch(() => undefined);
+  return result;
+}
 
 interface NoteBatchStore {
   getItem<T>(key: string): Promise<T | null>;
@@ -168,6 +177,31 @@ export const storage = {
 
   async saveWorkspaceName(name: string): Promise<void> {
     await workspaceStore.setItem('workspace-name', name);
+  },
+
+  async getVaultPendingOperations(): Promise<VaultPendingOperation[]> {
+    await vaultOperationQueue;
+    return (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
+  },
+
+  async upsertVaultPendingOperation(operation: VaultPendingOperation): Promise<void> {
+    await enqueueVaultOperationMutation(async () => {
+      const current = (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
+      const next = [...current.filter((item) => item.key !== operation.key), operation];
+      await workspaceStore.setItem(VAULT_PENDING_OPERATIONS_KEY, next);
+    });
+  },
+
+  async removeVaultPendingOperation(key: string): Promise<void> {
+    await enqueueVaultOperationMutation(async () => {
+      const current = (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
+      const next = current.filter((item) => item.key !== key);
+      if (next.length === 0) {
+        await workspaceStore.removeItem(VAULT_PENDING_OPERATIONS_KEY);
+      } else {
+        await workspaceStore.setItem(VAULT_PENDING_OPERATIONS_KEY, next);
+      }
+    });
   },
 
   async pruneOrphanedNotes(validIds: string[]): Promise<void> {

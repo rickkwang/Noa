@@ -223,6 +223,52 @@ describe('mergeVaultNotes (vault authoritative) — unsynced local state', () =>
     expect(deletedNoteIds).toEqual([]);
   });
 
+  it('preserves a dirty vault row until its local write reaches disk', () => {
+    const local = note({
+      id: 'n1',
+      content: 'new local edit',
+      updatedAt: '2024-01-03T00:00:00.000Z',
+      origin: 'vault',
+      vaultDirty: true,
+    });
+    const staleDisk = note({
+      id: 'n1',
+      content: 'old disk content',
+      updatedAt: '2024-01-02T00:00:00.000Z',
+      origin: 'vault',
+    });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [staleDisk],
+      new Set(['n1']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toEqual([local]);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
+  it('does not delete a dirty vault row when a failed move left its file temporarily missing', () => {
+    const local = note({
+      id: 'n1',
+      title: 'Moved locally',
+      origin: 'vault',
+      vaultPath: 'Old/Moved locally.md',
+      vaultDirty: true,
+    });
+
+    const { notes, deletedNoteIds } = mergeVaultNotes(
+      [local],
+      [],
+      new Set(['n1']),
+      { mode: 'vault-authoritative' },
+    );
+
+    expect(notes).toEqual([local]);
+    expect(deletedNoteIds).toEqual([]);
+  });
+
   it('still drops manifest-tracked notes whose files were removed from a non-empty vault', () => {
     const trackedGone = note({ id: 'tracked', title: 'Deleted in Obsidian', origin: 'vault' });
     const disk = note({ id: 'disk-1', title: 'Disk', origin: 'vault' });

@@ -133,7 +133,6 @@ export function useAttachments(
           mimeType: file.type,
           size: file.size,
           createdAt: new Date().toISOString(),
-          vaultPath: `attachments/${note.id}/${id}-${file.name}`,
         };
 
         await storage.saveAttachmentBlob(id, file);

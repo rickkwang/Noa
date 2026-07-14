@@ -89,7 +89,8 @@ export default function WorkspaceSection({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onDisconnectFolder}
-                  className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
+                  disabled={connectingFs}
+                  className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                 >
                   <Unlink size={14} />
                   <span>Disconnect</span>
@@ -97,7 +98,8 @@ export default function WorkspaceSection({
                 {onRetryFsSync && (
                   <button
                     onClick={onRetryFsSync}
-                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm"
+                    disabled={connectingFs}
+                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border-[1.75px] border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -124,7 +126,7 @@ export default function WorkspaceSection({
               Sync status: {syncStatusLabel}. When a vault is connected, Noa refreshes its local cache from the Markdown files on disk. Edits, renames and deletions made in other apps are picked up automatically.
             </p>
             <p className="text-xs text-[#2D2D2B]/60">
-              Notes created in Noa are written to the connected folder as Markdown with recoverable Noa identity metadata.
+              The connected folder is a live mirror: existing Markdown notes can be edited here and changes write back to disk. New Noa notes stay in local storage and cannot be created inside vault folders.
             </p>
             <p className="text-xs text-[#2D2D2B]/60">
               Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.

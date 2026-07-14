@@ -237,7 +237,7 @@ export default function DataSettings({
         syncStatusLabel={syncStatus}
         fsLastSyncAt={fsLastSyncAt}
         fsSyncError={fsSyncError}
-        connectingFs={transfer.connectingFs}
+        connectingFs={transfer.connectingFs || syncStatus === 'syncing'}
         onConnectFolder={() => {
           void transfer.connectFolder();
         }}

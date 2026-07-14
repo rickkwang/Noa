@@ -96,12 +96,14 @@ describe('normalizeAndValidateNotes', () => {
       origin: 'vault',
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
+      vaultDirty: true,
     }]);
 
     expect(report.ok).toBe(true);
     expect(notes[0]).not.toHaveProperty('origin');
     expect(notes[0]).not.toHaveProperty('vaultId');
     expect(notes[0]).not.toHaveProperty('vaultPath');
+    expect(notes[0]).not.toHaveProperty('vaultDirty');
   });
 
   it('preserves vault cache identity metadata only for trusted cache normalization', () => {
@@ -110,6 +112,7 @@ describe('normalizeAndValidateNotes', () => {
       origin: 'vault',
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
+      vaultDirty: true,
     }], { preserveVaultMetadata: true });
 
     expect(report.ok).toBe(true);
@@ -117,6 +120,7 @@ describe('normalizeAndValidateNotes', () => {
       origin: 'vault',
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
+      vaultDirty: true,
     });
   });
 
