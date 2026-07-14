@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, Note, SyncStatus, VaultPendingOperation } from '../types';
+import {
+  Folder,
+  Note,
+  SyncStatus,
+  VaultPendingOperation,
+  VaultSyncedNoteExpectation,
+} from '../types';
 import {
   checkExternalVaultChanges,
   classifySyncError,
   connectDirectory,
   disconnectDirectory,
+  getVaultIdentity,
   mergeScannedNotes,
   resetVaultStatSnapshot,
   replayVaultPendingOperation,
@@ -20,6 +27,11 @@ import {
 import { fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { storage } from '../lib/storage';
+import {
+  commitVaultPendingOperation,
+  selectVaultPendingOperations,
+  shouldReplayVaultPendingOperation,
+} from '../lib/vaultPendingOperations';
 
 interface UseFileSyncOptions {
   isLoaded: boolean;
@@ -29,7 +41,7 @@ interface UseFileSyncOptions {
   activeNoteId: string;
   ensureInitialNote: () => void;
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[]) => Promise<void>;
-  onVaultNotesSynced: (noteIds: string[]) => void;
+  onVaultNotesSynced: (expectations: VaultSyncedNoteExpectation[]) => void;
 }
 
 interface UseFileSyncResult {
@@ -47,6 +59,8 @@ interface UseFileSyncResult {
   isAnyVaultStructuralOperationPending: () => boolean;
   reserveVaultStructuralOperation: (entityKey: string) => boolean;
   releaseVaultStructuralOperation: (entityKey: string) => void;
+  prepareVaultStructuralOperations: (operations: readonly VaultPendingOperation[]) => Promise<void>;
+  cancelVaultStructuralOperations: (operations: readonly VaultPendingOperation[]) => Promise<void>;
   hasPendingStructuralOperations: boolean;
   connect: () => Promise<void>;
   beginDisconnect: () => void;
@@ -57,9 +71,9 @@ interface UseFileSyncResult {
   syncNoteOnUpdate: (id: string, content: string) => void;
   syncNoteOnMove: (note: Note, nextFolderId: string) => void;
   syncNoteOnRename: (note: Note, newTitle: string) => void;
-  syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[]) => void;
-  syncFolderOnDelete: (folder: Folder) => void;
-  syncNoteOnDelete: (note: Note) => void;
+  syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[], prepared?: VaultPendingOperation) => void;
+  syncFolderOnDelete: (folder: Folder, prepared?: VaultPendingOperation) => void;
+  syncNoteOnDelete: (note: Note, prepared?: VaultPendingOperation) => void;
   /** Transient notice after external vault changes were merged in; auto-clears. */
   externalUpdateNotice: string | null;
 }
@@ -76,9 +90,30 @@ const VAULT_AUTHORITATIVE_MERGE = { mode: 'vault-authoritative' as const };
 
 interface TrackedSyncOperation {
   run: () => Promise<void>;
-  noteId?: string;
+  expectation?: VaultSyncedNoteExpectation;
   failed: boolean;
   durable: boolean;
+}
+
+export function shouldLockVaultCache({
+  isLoaded,
+  vaultHydrationPending,
+  hasFsHandle,
+  vaultHydrated,
+  hasSyncError,
+  hasVaultOwnedData,
+}: {
+  isLoaded: boolean;
+  vaultHydrationPending: boolean;
+  hasFsHandle: boolean;
+  vaultHydrated: boolean;
+  hasSyncError: boolean;
+  hasVaultOwnedData: boolean;
+}): boolean {
+  if (!isLoaded) return false;
+  if (vaultHydrationPending) return true;
+  if (!hasFsHandle) return hasVaultOwnedData;
+  return !vaultHydrated || hasSyncError;
 }
 
 export function useFileSync({
@@ -102,7 +137,15 @@ export function useFileSync({
   const [hasPendingStructuralOperations, setHasPendingStructuralOperations] = useState(false);
   const [authoritativeSyncInProgress, setAuthoritativeSyncInProgress] = useState(false);
   const permissionRevoked = needsReauth || autoRetryExhausted;
-  const vaultCacheReadOnly = Boolean(isLoaded && (vaultHydrationPending || (fsHandle && (!vaultHydrated || fsSyncError))));
+  const vaultCacheReadOnly = shouldLockVaultCache({
+    isLoaded,
+    vaultHydrationPending,
+    hasFsHandle: Boolean(fsHandle),
+    vaultHydrated,
+    hasSyncError: Boolean(fsSyncError),
+    hasVaultOwnedData: notes.some((note) => note.origin === 'vault')
+      || folders.some((folder) => folder.origin === 'vault'),
+  });
   const autoRetryAttempts = useRef(0);
   const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapped = useRef(false);
@@ -110,6 +153,7 @@ export function useFileSync({
   const foldersRef = useRef(folders);
   const workspaceNameRef = useRef(workspaceName);
   const fsHandleRef = useRef(fsHandle);
+  const vaultIdRef = useRef<string | null>(null);
   const disconnectingRef = useRef(false);
   const authoritativeWorkCountRef = useRef(0);
   const pendingStructuralOperationsRef = useRef(false);
@@ -197,15 +241,34 @@ export function useFileSync({
   ): Promise<{ notes: Note[]; folders: Folder[] }> => {
     const syncedNoteIds = new Set<string>();
 
-    const durableOperations = await storage.getVaultPendingOperations();
+    const previousVaultId = await storage.getLastVaultId();
+    const vaultId = await getVaultIdentity(handle);
+    vaultIdRef.current = vaultId;
+    await storage.setLastVaultId(vaultId);
+    const durableOperations = selectVaultPendingOperations(
+      await storage.getVaultPendingOperations(),
+      vaultId,
+      previousVaultId,
+    );
     applyPendingStructuralOperations(durableOperations);
     for (const operation of durableOperations) {
-      await replayVaultPendingOperation(handle, operation, notesRef.current);
+      if (!shouldReplayVaultPendingOperation(operation, notesRef.current, foldersRef.current)) {
+        await storage.removeVaultPendingOperation(operation.key);
+        trackedOperationsRef.current.delete(operation.entityKey);
+        continue;
+      }
+      const committed = commitVaultPendingOperation(operation);
+      if (operation.phase === 'prepared') await storage.upsertVaultPendingOperation(committed);
+      await replayVaultPendingOperation(handle, committed, notesRef.current);
       await storage.removeVaultPendingOperation(operation.key);
       trackedOperationsRef.current.delete(operation.entityKey);
     }
     if (durableOperations.length > 0) {
-      const remaining = await storage.getVaultPendingOperations();
+      const remaining = selectVaultPendingOperations(
+        await storage.getVaultPendingOperations(),
+        vaultId,
+        null,
+      );
       applyPendingStructuralOperations(remaining);
     }
 
@@ -217,7 +280,7 @@ export function useFileSync({
       await operation.run();
       if (trackedOperationsRef.current.get(key) === operation) {
         trackedOperationsRef.current.delete(key);
-        if (operation.noteId) syncedNoteIds.add(operation.noteId);
+        if (operation.expectation) syncedNoteIds.add(operation.expectation.id);
       }
     }
 
@@ -244,7 +307,17 @@ export function useFileSync({
       clearedNoteIds.push(note.id);
       return syncedNote;
     });
-    onVaultNotesSynced(clearedNoteIds);
+    const clearedById = new Map(scanNotes.map((note) => [note.id, note]));
+    onVaultNotesSynced(clearedNoteIds.flatMap((id) => {
+      const note = clearedById.get(id);
+      return note ? [{
+        id: note.id,
+        content: note.content,
+        title: note.title,
+        folder: note.folder,
+        updatedAt: note.updatedAt,
+      }] : [];
+    }));
     return { notes: scanNotes, folders: foldersRef.current };
   }, [applyPendingStructuralOperations, onVaultNotesSynced]);
 
@@ -252,6 +325,10 @@ export function useFileSync({
     handle: FileSystemDirectoryHandle,
     generation: number,
   ): Promise<{ deletedNoteIds: string[]; updatedNoteIds: string[] } | null> => {
+    // A prepared structural transaction has already reserved its local entity
+    // but may still be persisting the matching local mutation. Do not let an
+    // authoritative scan observe or promote that half-finished transaction.
+    if (reservedStructuralEntityKeysRef.current.size > 0) return null;
     authoritativeWorkCountRef.current += 1;
     setAuthoritativeSyncInProgress(true);
     try {
@@ -276,6 +353,12 @@ export function useFileSync({
     () => authoritativeWorkCountRef.current > 0,
     [],
   );
+
+  const isAnyVaultStructuralOperationPending = useCallback(() => (
+    reservedStructuralEntityKeysRef.current.size > 0
+    || pendingStructuralEntityKeysRef.current.size > 0
+    || Array.from(trackedOperationsRef.current.values()).some((operation) => operation.durable)
+  ), []);
 
   const scheduleRetry = useCallback(() => {
     if (!fsHandleRef.current) return;
@@ -322,22 +405,25 @@ export function useFileSync({
   const runTrackedOperation = useCallback((
     key: string,
     run: () => Promise<void>,
-    noteId?: string,
+    expectation?: VaultSyncedNoteExpectation,
     durableOperation?: VaultPendingOperation,
   ) => {
     if (disconnectingRef.current) return;
     const generation = retryGeneration.current;
     const execute = async () => {
       if (durableOperation) {
+        const vaultId = vaultIdRef.current;
+        if (!vaultId) throw new Error('Vault identity is not ready.');
+        const committed = commitVaultPendingOperation({ ...durableOperation, vaultId });
         pendingStructuralOperationsRef.current = true;
         pendingStructuralEntityKeysRef.current.add(durableOperation.entityKey);
         setHasPendingStructuralOperations(true);
-        await storage.upsertVaultPendingOperation(durableOperation);
+        await storage.upsertVaultPendingOperation(committed);
       }
       await run();
       if (durableOperation) await storage.removeVaultPendingOperation(durableOperation.key);
     };
-    const operation = { run: execute, noteId, failed: false, durable: Boolean(durableOperation) };
+    const operation = { run: execute, expectation, failed: false, durable: Boolean(durableOperation) };
     // A newer mutation for the same entity supersedes an older failed closure.
     trackedOperationsRef.current.set(key, operation);
     if (durableOperation) {
@@ -357,7 +443,7 @@ export function useFileSync({
       if (trackedOperationsRef.current.get(key) !== operation) return;
       trackedOperationsRef.current.delete(key);
       refreshStructuralPendingState();
-      if (noteId) onVaultNotesSynced([noteId]);
+      if (expectation) onVaultNotesSynced([expectation]);
       recordSuccess();
     }).catch((error) => {
       if (generation !== retryGeneration.current || disconnectingRef.current) return;
@@ -488,12 +574,18 @@ export function useFileSync({
     let disposed = false;
 
     const poll = async () => {
-      if (disposed || pollInFlight.current || document.hidden) return;
+      if (disposed || pollInFlight.current || document.hidden || isAnyVaultStructuralOperationPending()) return;
       const generation = retryGeneration.current;
       pollInFlight.current = true;
       try {
         const changed = await checkExternalVaultChanges(fsHandle);
-        if (!changed || disposed || generation !== retryGeneration.current || disconnectingRef.current) return;
+        if (
+          !changed
+          || disposed
+          || generation !== retryGeneration.current
+          || disconnectingRef.current
+          || isAnyVaultStructuralOperationPending()
+        ) return;
         setSyncStatus('syncing');
         const result = await syncFromAuthoritativeDisk(fsHandle, generation);
         if (disposed || generation !== retryGeneration.current || disconnectingRef.current) return;
@@ -515,7 +607,7 @@ export function useFileSync({
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [fsHandle, isLoaded, recordFailure, recordSuccess, showExternalUpdateNotice, syncFromAuthoritativeDisk]);
+  }, [fsHandle, isAnyVaultStructuralOperationPending, isLoaded, recordFailure, recordSuccess, showExternalUpdateNotice, syncFromAuthoritativeDisk]);
 
   const connect = useCallback(async () => {
     disconnectingRef.current = false;
@@ -554,24 +646,46 @@ export function useFileSync({
     || pendingStructuralEntityKeysRef.current.has(entityKey)
   ), []);
 
-  const isAnyVaultStructuralOperationPending = useCallback(() => (
-    reservedStructuralEntityKeysRef.current.size > 0
-    || pendingStructuralEntityKeysRef.current.size > 0
-    || Array.from(trackedOperationsRef.current.values()).some((operation) => operation.durable)
-  ), []);
-
   const reserveVaultStructuralOperation = useCallback((entityKey: string) => {
-    if (isAnyVaultStructuralOperationPending()) return false;
+    if (!fsHandleRef.current || isAuthoritativeSyncActive() || isAnyVaultStructuralOperationPending()) return false;
     reservedStructuralEntityKeysRef.current.add(entityKey);
     refreshStructuralPendingState();
     return true;
-  }, [isAnyVaultStructuralOperationPending, refreshStructuralPendingState]);
+  }, [isAnyVaultStructuralOperationPending, isAuthoritativeSyncActive, refreshStructuralPendingState]);
 
   const releaseVaultStructuralOperation = useCallback((entityKey: string) => {
     // Once runTrackedOperation has adopted the reservation, it owns cleanup
     // after the durable journal entry succeeds or is replayed.
     if (trackedOperationsRef.current.get(entityKey)?.durable) return;
     reservedStructuralEntityKeysRef.current.delete(entityKey);
+    refreshStructuralPendingState();
+  }, [refreshStructuralPendingState]);
+
+  const prepareVaultStructuralOperations = useCallback(async (
+    operations: readonly VaultPendingOperation[],
+  ) => {
+    if (disconnectingRef.current) throw new Error('Vault is disconnecting.');
+    const vaultId = vaultIdRef.current;
+    if (!vaultId) throw new Error('Vault identity is not ready.');
+    const prepared = operations.map((operation) => ({
+      ...operation,
+      vaultId,
+      phase: 'prepared' as const,
+    }));
+    await storage.upsertVaultPendingOperations(prepared);
+    prepared.forEach((operation) => pendingStructuralEntityKeysRef.current.add(operation.entityKey));
+    refreshStructuralPendingState();
+  }, [refreshStructuralPendingState]);
+
+  const cancelVaultStructuralOperations = useCallback(async (
+    operations: readonly VaultPendingOperation[],
+  ) => {
+    await Promise.all(operations.map((operation) => storage.removeVaultPendingOperation(operation.key)));
+    operations.forEach((operation) => {
+      pendingStructuralEntityKeysRef.current.delete(operation.entityKey);
+      reservedStructuralEntityKeysRef.current.delete(operation.entityKey);
+      trackedOperationsRef.current.delete(operation.entityKey);
+    });
     refreshStructuralPendingState();
   }, [refreshStructuralPendingState]);
 
@@ -615,7 +729,7 @@ export function useFileSync({
       runTrackedOperation(
         `note:${id}`,
         () => syncNoteUpdate(fsHandle, note, content, foldersRef.current),
-        id,
+        { id, content },
       );
     },
     [fsHandle, runTrackedOperation],
@@ -634,7 +748,7 @@ export function useFileSync({
       runTrackedOperation(
         `note:${note.id}`,
         () => syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current),
-        note.id,
+        { id: note.id, folder: nextFolderId },
       );
     },
     [fsHandle, runTrackedOperation],
@@ -648,14 +762,14 @@ export function useFileSync({
       runTrackedOperation(
         `note:${note.id}`,
         () => syncNoteRename(fsHandle, note, newTitle, foldersRef.current),
-        note.id,
+        { id: note.id, title: newTitle },
       );
     },
     [fsHandle, runTrackedOperation],
   );
 
   const syncNoteOnDelete = useCallback(
-    (note: Note) => {
+    (note: Note, prepared?: VaultPendingOperation) => {
       if (!fsHandle) return;
       if (note.origin !== 'vault') return;
 
@@ -665,7 +779,7 @@ export function useFileSync({
         entityKey,
         () => syncNoteDelete(fsHandle, note, currentFolders),
         undefined,
-        {
+        prepared ?? {
           key: `${entityKey}:delete:${crypto.randomUUID()}`,
           entityKey,
           kind: 'delete-note',
@@ -678,14 +792,14 @@ export function useFileSync({
   );
 
   const syncFolderOnDelete = useCallback(
-    (folder: Folder) => {
+    (folder: Folder, prepared?: VaultPendingOperation) => {
       if (!fsHandle || folder.origin !== 'vault') return;
       const entityKey = `folder:${folder.id}`;
       runTrackedOperation(
         entityKey,
         () => syncFolderDelete(fsHandle, folder.name),
         undefined,
-        {
+        prepared ?? {
           key: `${entityKey}:delete:${crypto.randomUUID()}`,
           entityKey,
           kind: 'delete-folder',
@@ -697,7 +811,7 @@ export function useFileSync({
   );
 
   const syncFolderOnRename = useCallback(
-    (folderId: string, previousName: string, nextFolders: Folder[]) => {
+    (folderId: string, previousName: string, nextFolders: Folder[], prepared?: VaultPendingOperation) => {
       if (!fsHandle) return;
       const targetFolder = foldersRef.current.find((folder) => folder.id === folderId);
       if (!targetFolder) return;
@@ -709,7 +823,7 @@ export function useFileSync({
         entityKey,
         () => syncFolderRename(fsHandle, folderId, previousName, nextFolders, notesRef.current),
         undefined,
-        {
+        prepared ?? {
           key: `${entityKey}:rename:${crypto.randomUUID()}`,
           entityKey,
           kind: 'rename-folder',
@@ -737,6 +851,8 @@ export function useFileSync({
     isAnyVaultStructuralOperationPending,
     reserveVaultStructuralOperation,
     releaseVaultStructuralOperation,
+    prepareVaultStructuralOperations,
+    cancelVaultStructuralOperations,
     hasPendingStructuralOperations,
     connect,
     beginDisconnect,

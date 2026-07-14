@@ -22,6 +22,7 @@ interface VaultManifestNoteEntry {
 
 interface VaultManifest {
   version: 1;
+  vaultId?: string;
   notes: Record<string, VaultManifestNoteEntry>;
 }
 
@@ -250,7 +251,23 @@ function parseManifestText(text: string): VaultManifest {
   if (parsed.version !== 1 || !parsed.notes || typeof parsed.notes !== 'object') {
     return { version: 1, notes: {} };
   }
-  return { version: 1, notes: parsed.notes as Record<string, VaultManifestNoteEntry> };
+  const vaultId = typeof parsed.vaultId === 'string' && parsed.vaultId.trim()
+    ? parsed.vaultId
+    : undefined;
+  return {
+    version: 1,
+    ...(vaultId ? { vaultId } : {}),
+    notes: parsed.notes as Record<string, VaultManifestNoteEntry>,
+  };
+}
+
+/** Return the stable identity for this vault, creating it in Noa's manifest once. */
+export async function getVaultIdentity(rootHandle: FileSystemDirectoryHandle): Promise<string> {
+  const manifest = await readVaultManifest(rootHandle);
+  if (manifest.vaultId) return manifest.vaultId;
+  const vaultId = crypto.randomUUID();
+  await writeVaultManifest(rootHandle, { ...manifest, vaultId });
+  return vaultId;
 }
 
 // Noa's app data lives in a hidden .noa/ directory — the Obsidian convention

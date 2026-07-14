@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { reconcileConcurrentImportEdits } from '../../src/lib/vaultImportReconciliation';
+import {
+  matchesVaultSyncedExpectation,
+  reconcileConcurrentImportEdits,
+} from '../../src/lib/vaultImportReconciliation';
 import type { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note> = {}): Note => ({
@@ -39,5 +42,29 @@ describe('reconcileConcurrentImportEdits', () => {
     const result = reconcileConcurrentImportEdits([], [cleanCache], new Map(), true, [cleanCache.id]);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('matchesVaultSyncedExpectation', () => {
+  it('rejects an acknowledgement for an older content revision', () => {
+    const current = note({ content: 'newer local edit', vaultDirty: true });
+
+    expect(matchesVaultSyncedExpectation(current, {
+      id: current.id,
+      content: 'older disk write',
+    })).toBe(false);
+  });
+
+  it('matches only the fields the disk operation actually wrote', () => {
+    const current = note({ title: 'Renamed', content: 'local content', vaultDirty: true });
+
+    expect(matchesVaultSyncedExpectation(current, {
+      id: current.id,
+      title: 'Renamed',
+    })).toBe(true);
+    expect(matchesVaultSyncedExpectation(current, {
+      id: current.id,
+      title: 'Old title',
+    })).toBe(false);
   });
 });

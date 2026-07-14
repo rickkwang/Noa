@@ -815,6 +815,40 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible({ timeout: 5_000 });
 });
 
+test('vault editor is read-only while a structural operation is pending', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [
+        { path: 'Folder/Inside.md', content: '# Inside' },
+        { path: 'Root.md', content: '# Root' },
+      ],
+    };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.getByText('Root.md', { exact: true }).click();
+  await ensureEditMode(page);
+  const editor = page.locator('.cm-content').last();
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+
+  await page.getByText('Folder', { exact: true }).dblclick();
+  const folderName = page.locator('input[value="Folder"]');
+  await folderName.fill('Renamed');
+  await page.keyboard.press('Enter');
+
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(editor).toHaveAttribute('contenteditable', 'true', { timeout: 5_000 });
+});
+
 test('disconnect removes every vault-origin cache row regardless of source provenance', async ({ page }) => {
   await installMockDirectoryPicker(page);
   await page.goto('/');

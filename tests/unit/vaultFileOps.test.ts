@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deleteNoteFile, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
+import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
 import { mergeScannedNotes, replayVaultPendingOperation, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 import type { Note } from '../../src/types';
@@ -25,6 +25,17 @@ const makeNote = (overrides: Partial<Note> = {}): Note => ({
 // that fileSystemStorage actually touches.
 const asFsHandle = (root: ReturnType<typeof createMemRoot>) =>
   root as unknown as FileSystemDirectoryHandle;
+
+describe('vault identity', () => {
+  it('persists one identity per vault root', async () => {
+    const first = asFsHandle(createMemRoot());
+    const second = asFsHandle(createMemRoot());
+
+    const firstId = await getVaultIdentity(first);
+    expect(await getVaultIdentity(first)).toBe(firstId);
+    expect(await getVaultIdentity(second)).not.toBe(firstId);
+  });
+});
 
 async function writeRawFile(root: ReturnType<typeof createMemRoot>, path: string, content: string) {
   const segments = path.split('/').filter(Boolean);

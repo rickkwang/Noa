@@ -38,6 +38,15 @@ export interface Note {
   frontmatterEol?: '\n' | '\r\n';
 }
 
+/** The exact note fields confirmed by one successful vault write. */
+export interface VaultSyncedNoteExpectation {
+  id: string;
+  content?: string;
+  title?: string;
+  folder?: string;
+  updatedAt?: string;
+}
+
 export interface Link {
   sourceId: string;
   targetId: string;
@@ -62,6 +71,8 @@ export type VaultPendingOperation =
       key: string;
       entityKey: string;
       kind: 'delete-note';
+      vaultId?: string;
+      phase?: 'prepared' | 'committed';
       note: Note;
       folders: Folder[];
     }
@@ -69,6 +80,8 @@ export type VaultPendingOperation =
       key: string;
       entityKey: string;
       kind: 'rename-folder';
+      vaultId?: string;
+      phase?: 'prepared' | 'committed';
       folderId: string;
       previousName: string;
       nextFolders: Folder[];
@@ -77,6 +90,8 @@ export type VaultPendingOperation =
       key: string;
       entityKey: string;
       kind: 'delete-folder';
+      vaultId?: string;
+      phase?: 'prepared' | 'committed';
       folder: Folder;
     };
 

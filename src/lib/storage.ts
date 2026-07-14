@@ -35,6 +35,7 @@ const historyStore = localforage.createInstance({
 });
 
 const VAULT_PENDING_OPERATIONS_KEY = 'vault-pending-operations';
+const LAST_VAULT_ID_KEY = 'last-vault-id';
 let vaultOperationQueue: Promise<void> = Promise.resolve();
 
 function enqueueVaultOperationMutation(task: () => Promise<void>): Promise<void> {
@@ -184,10 +185,27 @@ export const storage = {
     return (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
   },
 
+  async getLastVaultId(): Promise<string | null> {
+    return workspaceStore.getItem<string>(LAST_VAULT_ID_KEY);
+  },
+
+  async setLastVaultId(vaultId: string): Promise<void> {
+    await workspaceStore.setItem(LAST_VAULT_ID_KEY, vaultId);
+  },
+
   async upsertVaultPendingOperation(operation: VaultPendingOperation): Promise<void> {
+    await this.upsertVaultPendingOperations([operation]);
+  },
+
+  async upsertVaultPendingOperations(operations: readonly VaultPendingOperation[]): Promise<void> {
+    if (operations.length === 0) return;
     await enqueueVaultOperationMutation(async () => {
       const current = (await workspaceStore.getItem<VaultPendingOperation[]>(VAULT_PENDING_OPERATIONS_KEY)) ?? [];
-      const next = [...current.filter((item) => item.key !== operation.key), operation];
+      const incomingKeys = new Set(operations.map((operation) => operation.key));
+      const next = [
+        ...current.filter((item) => !incomingKeys.has(item.key)),
+        ...operations,
+      ];
       await workspaceStore.setItem(VAULT_PENDING_OPERATIONS_KEY, next);
     });
   },

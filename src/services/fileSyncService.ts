@@ -39,6 +39,8 @@ export async function restorePersistedFsHandle(): Promise<FileSystemDirectoryHan
   return getPersistedHandle();
 }
 
+export { getVaultIdentity } from '../lib/fileSystemStorage';
+
 export async function connectDirectory(): Promise<FileSystemDirectoryHandle> {
   const handle = await requestDirectoryAccess();
   await persistHandle(handle);

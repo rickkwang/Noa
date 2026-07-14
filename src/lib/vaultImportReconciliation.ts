@@ -1,5 +1,17 @@
-import type { Note } from '../types';
+import type { Note, VaultSyncedNoteExpectation } from '../types';
 import type { ImportedNote } from './attachmentUtils';
+
+export function matchesVaultSyncedExpectation(
+  note: Note,
+  expectation: VaultSyncedNoteExpectation,
+): boolean {
+  if (note.id !== expectation.id) return false;
+  if (expectation.content !== undefined && note.content !== expectation.content) return false;
+  if (expectation.title !== undefined && note.title !== expectation.title) return false;
+  if (expectation.folder !== undefined && note.folder !== expectation.folder) return false;
+  if (expectation.updatedAt !== undefined && note.updatedAt !== expectation.updatedAt) return false;
+  return true;
+}
 
 export function reconcileConcurrentImportEdits(
   importedNotes: ImportedNote[],

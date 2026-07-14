@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { AppErrorCode, AppSettings, Attachment, Folder, GlobalTask, Note, NoteSnapshot } from '../types';
+import {
+  AppErrorCode,
+  AppSettings,
+  Attachment,
+  Folder,
+  GlobalTask,
+  Note,
+  NoteSnapshot,
+  VaultSyncedNoteExpectation,
+} from '../types';
 import { storage } from '../lib/storage';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
@@ -26,7 +35,10 @@ import {
   type ImportedNote,
 } from '../lib/attachmentUtils';
 import { prepareImportedNotes } from '../lib/importUtils';
-import { reconcileConcurrentImportEdits } from '../lib/vaultImportReconciliation';
+import {
+  matchesVaultSyncedExpectation,
+  reconcileConcurrentImportEdits,
+} from '../lib/vaultImportReconciliation';
 
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
@@ -697,7 +709,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     return newFolder.name;
   }, [folders]);
 
-  const handleRenameFolder = useCallback((id: string, name: string) => {
+  const handleRenameFolder = useCallback(async (id: string, name: string): Promise<void> => {
     const prev = foldersRef.current;
     const target = prev.find((folder) => folder.id === id);
     if (!target) return;
@@ -711,13 +723,25 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
       return folder;
     });
+    try {
+      // Structural vault recovery uses the persisted folder list to decide
+      // whether a prepared rename actually reached local state. Persist it
+      // before exposing the mutation or starting the filesystem operation.
+      await storage.saveFolders(nextFolders);
+    } catch (error) {
+      setSaveError('Failed to rename folder. Storage may be full.');
+      throw error;
+    }
     setFolders(nextFolders);
     // Folder names participate in [[folder/Note]] resolution — refresh refs
     // against the renamed list (foldersRef only updates after commit).
     setNotes(notesPrev => syncLinkRefs(notesPrev, notesPrev, undefined, nextFolders));
   }, [syncLinkRefs]);
 
-  const handleDeleteFolder = useCallback(async (id: string): Promise<string[]> => {
+  const handleDeleteFolder = useCallback(async (id: string): Promise<{
+    deletedNoteIds: string[];
+    foldersDeleted: boolean;
+  }> => {
     const currentFolders = foldersRef.current;
     const currentNotes = notesRef.current;
     const target = currentFolders.find((folder) => folder.id === id);
@@ -749,6 +773,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
     });
     const failedCount = results.length - deletedIds.length;
+    let foldersDeleted = false;
     if (deletedIds.length > 0 || failedCount === 0) {
       const deletedSet = new Set(deletedIds);
       setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
@@ -760,7 +785,16 @@ Export regularly: use Settings → Data → Export Backup.`,
         prev
       ));
       if (removeFolders) {
-        setFolders(prev => prev.filter((folder) => !folderIdsToDelete.has(folder.id)));
+        const nextFolders = currentFolders.filter((folder) => !folderIdsToDelete.has(folder.id));
+        try {
+          // A prepared folder delete is replayed only when the persisted local
+          // folder list proves that the local mutation completed.
+          await storage.saveFolders(nextFolders);
+          setFolders(nextFolders);
+          foldersDeleted = true;
+        } catch {
+          setSaveError('Notes were deleted, but the folder could not be removed from local storage. Please try again.');
+        }
       }
     }
     if (failedCount > 0) {
@@ -774,7 +808,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       );
       storage.pruneOrphanedAttachments(validIds).catch(() => {});
     }
-    return deletedIds;
+    return { deletedNoteIds: deletedIds, foldersDeleted };
   }, [syncLinkRefs]);
 
   const { handleOpenDailyNote } = useDailyNotes({
@@ -1142,11 +1176,12 @@ Export regularly: use Settings → Data → Export Backup.`,
     }
   }, [syncLinkRefs]);
 
-  const markVaultNotesSynced = useCallback((noteIds: string[]) => {
-    if (noteIds.length === 0) return;
-    const syncedIds = new Set(noteIds);
+  const markVaultNotesSynced = useCallback((expectations: VaultSyncedNoteExpectation[]) => {
+    if (expectations.length === 0) return;
+    const expectedById = new Map(expectations.map((expectation) => [expectation.id, expectation]));
     setNotes((prev) => prev.map((note) => {
-      if (!syncedIds.has(note.id) || !note.vaultDirty) return note;
+      const expectation = expectedById.get(note.id);
+      if (!expectation || !note.vaultDirty || !matchesVaultSyncedExpectation(note, expectation)) return note;
       const { vaultDirty: _vaultDirty, ...syncedNote } = note;
       void storage.saveNote(syncedNote).catch(() => {
         // Keeping a stale dirty marker in IndexedDB is conservative: the next
