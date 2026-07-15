@@ -171,7 +171,7 @@ function createWindow() {
     title: 'Noa',
     icon: iconPath,
     frame: false,
-    hasShadow: false,
+    hasShadow: true,
     // Light-theme default; the renderer re-syncs this to the active theme via
     // 'window:set-background-color'. macOS paints this color at the window
     // edges while renderer frames lag during live resize, so a mismatch with

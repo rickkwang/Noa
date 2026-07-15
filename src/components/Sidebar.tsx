@@ -376,7 +376,7 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="h-8 border-b border-[#2D2D2B] flex items-center px-2 gap-0.5 shrink-0 bg-[#EFEAE3] z-10 overflow-hidden">
+      <div className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 bg-[#EFEAE3] z-10 overflow-hidden" style={{ borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"

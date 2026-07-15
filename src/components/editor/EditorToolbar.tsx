@@ -15,7 +15,7 @@ export function EditorToolbar({
   onToggleToc,
 }: EditorToolbarProps) {
   return (
-    <div className="h-8 border-b border-[#2D2D2B] flex items-center px-4 shrink-0 bg-[#F9F9F7] z-10 font-redaction space-x-2 text-[#2D2D2B]/70 relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="h-8 border-b flex items-center px-4 shrink-0 bg-[#F9F9F7] z-10 font-redaction space-x-2 text-[#2D2D2B]/70 relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
       <button
         onClick={() => onInsertFormatting('**', '**')}
         className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"

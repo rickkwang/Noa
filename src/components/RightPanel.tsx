@@ -201,7 +201,7 @@ export default function RightPanel({
       )}
       {(hasVisitedGraph || activeTab === 'graph') && (
         <div
-          className="flex-1 flex-col overflow-hidden p-3 gap-3"
+          className="flex-1 flex-col overflow-hidden p-2 gap-2"
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (
@@ -219,7 +219,7 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className="flex flex-col border" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.9)' }}>
+          <div className="flex flex-col border rounded-md overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.9)' }}>
             <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523] border-[rgba(249,249,247,0.1)]' : 'bg-[#EFEAE3] border-[#2D2D2B]/50'}`}>
               <Network size={11} className="text-[#CC7D5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix</span>
@@ -345,13 +345,13 @@ function GraphInfoPanel({
   );
 
   return (
-    <div className={`flex-1 flex flex-col border font-redaction min-h-0 ${isDark ? 'border-[rgba(249,249,247,0.15)] bg-[#2D2D2B]' : 'border-[#2D2D2B]/90 bg-[#F9F9F7]'}`}>
+    <div className={`flex-1 flex flex-col border rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'border-[rgba(249,249,247,0.15)] bg-[#2D2D2B]' : 'border-[#2D2D2B]/90 bg-[#F9F9F7]'}`}>
       <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523] border-[rgba(249,249,247,0.1)]' : 'bg-[#EFEAE3] border-[#2D2D2B]/50'}`}>
         <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix Stats</span>
       </div>
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable] min-h-0">
-      <div className="p-3 space-y-3">
+      <div className="p-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
             <div key={label} className={`border p-2 text-center ${isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]'}`}>

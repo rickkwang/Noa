@@ -64,7 +64,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   while (cells.length % 7 !== 0) cells.push({ day: null });
 
   return (
-    <div className="noa-sidebar-section-surface shrink-0 border-t border-[#2D2D2B]">
+    <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
       {/* Section header */}
       <button
         className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"

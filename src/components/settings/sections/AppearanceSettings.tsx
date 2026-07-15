@@ -15,6 +15,30 @@ function isBuiltin(fontFamily: string) {
   return BUILTIN_FONTS.includes(fontFamily);
 }
 
+// Module-level cache: queryLocalFonts() enumerates every installed system font,
+// which is slow enough to visibly stutter the Typography section. This section
+// remounts each time Settings reopens (SettingsModal conditionally renders it),
+// so without caching across mounts the enumeration re-ran on every open.
+let cachedSystemFonts: string[] | null = null;
+let systemFontsPromise: Promise<string[]> | null = null;
+
+function loadSystemFonts(): Promise<string[]> {
+  if (cachedSystemFonts) return Promise.resolve(cachedSystemFonts);
+  if (systemFontsPromise) return systemFontsPromise;
+
+  const api = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
+  if (typeof api !== 'function') return Promise.resolve([]);
+
+  systemFontsPromise = api()
+    .then((fonts: { family: string }[]) => {
+      const families = Array.from(new Set(fonts.map((f: { family: string }) => f.family))).sort() as string[];
+      cachedSystemFonts = families;
+      return families;
+    })
+    .finally(() => { systemFontsPromise = null; });
+  return systemFontsPromise;
+}
+
 function ToggleSwitch({
   checked,
   onChange,
@@ -45,26 +69,20 @@ function ToggleSwitch({
 }
 
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
-  const [systemFonts, setSystemFonts] = useState<string[]>([]);
+  const [systemFonts, setSystemFonts] = useState<string[]>(cachedSystemFonts ?? []);
   const [loadingFonts, setLoadingFonts] = useState(false);
   const [fontError, setFontError] = useState<string | null>(null);
   const didLoad = useRef(false);
 
-  // Try to enumerate local fonts on mount (requires Local Font Access API)
+  // Enumerate local fonts once per session (requires Local Font Access API);
+  // subsequent mounts read from the module-level cache instead of re-querying.
   useEffect(() => {
-    if (didLoad.current) return;
+    if (didLoad.current || cachedSystemFonts) return;
     didLoad.current = true;
 
-    const api = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
-    if (typeof api !== 'function') return;
-
     setLoadingFonts(true);
-    api()
-      .then((fonts: { family: string }[]) => {
-        // Deduplicate family names and sort
-        const families = Array.from(new Set(fonts.map((f: { family: string }) => f.family))).sort() as string[];
-        setSystemFonts(families);
-      })
+    loadSystemFonts()
+      .then(setSystemFonts)
       .catch((err: unknown) => {
         // Permission denied or API unavailable — silently degrade
         const msg = err instanceof Error ? err.message : String(err);
