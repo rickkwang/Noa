@@ -83,6 +83,11 @@ const AUTO_RETRY_MULTIPLIER = 2;
 const AUTO_RETRY_MAX_DELAY_MS = 15_000;
 const AUTO_RETRY_MAX_ATTEMPTS = 5;
 
+// The watchdog tick doubles as the grace period: a transient gap between a
+// structural reservation and its tracked operation lasts milliseconds, so a
+// full tick spent in that gap means the owner died without cleanup.
+const SYNC_WATCHDOG_INTERVAL_MS = 45_000;
+
 // External-change polling cadence. The FSA API has no watcher; window focus is
 // the primary signal (returning from Obsidian/Finder), the interval the backstop.
 const EXTERNAL_POLL_INTERVAL_MS = 60_000;
@@ -93,6 +98,31 @@ interface TrackedSyncOperation {
   expectation?: VaultSyncedNoteExpectation;
   failed: boolean;
   durable: boolean;
+}
+
+export type SyncWatchdogVerdict = 'wait' | 'land-ready' | 'stalled';
+
+// Decision core of the stuck-`syncing` watchdog. Every convergence path back
+// to `ready` relies on a completion callback landing recordSuccess; if all of
+// them early-return (generation bump, superseded operation, abandoned scan),
+// the status spins forever with nothing in flight. A hung write is
+// indistinguishable from slow IO, so in-flight work always waits.
+export function assessSyncWatchdog({
+  trackedOperationCount,
+  authoritativeWorkCount,
+  pendingStructuralOperations,
+}: {
+  trackedOperationCount: number;
+  authoritativeWorkCount: number;
+  pendingStructuralOperations: boolean;
+}): SyncWatchdogVerdict {
+  if (trackedOperationCount > 0 || authoritativeWorkCount > 0) return 'wait';
+  // A structural reservation with no owning operation left to complete it can
+  // never converge on its own — surface an error instead of an eternal spinner.
+  if (pendingStructuralOperations) return 'stalled';
+  // All of recordSuccess's gates are clear but no callback landed the status:
+  // the machine is idle in all but name.
+  return 'land-ready';
 }
 
 export function shouldLockVaultCache({
@@ -235,6 +265,30 @@ export function useFileSync({
       suggestedAction: appError.suggestedAction,
     });
   }, []);
+
+  // Stuck-`syncing` watchdog: retry() is guarded against the syncing state, so
+  // an abandoned status would otherwise leave the user with no escape short of
+  // a reload. `land-ready` is safe by construction — recordSuccess re-checks
+  // the same gates before landing.
+  useEffect(() => {
+    if (syncStatus !== 'syncing') return;
+    const timer = setInterval(() => {
+      const verdict = assessSyncWatchdog({
+        trackedOperationCount: trackedOperationsRef.current.size,
+        authoritativeWorkCount: authoritativeWorkCountRef.current,
+        pendingStructuralOperations: pendingStructuralOperationsRef.current,
+      });
+      if (verdict === 'wait') return;
+      if (verdict === 'stalled') {
+        recordFailure(new Error(
+          'Vault sync stalled: a pending file operation never completed. Reload the app to recover, or disconnect and reconnect the vault.',
+        ));
+        return;
+      }
+      recordSuccess();
+    }, SYNC_WATCHDOG_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [syncStatus, recordFailure, recordSuccess]);
 
   const prepareNotesForAuthoritativeScan = useCallback(async (
     handle: FileSystemDirectoryHandle,

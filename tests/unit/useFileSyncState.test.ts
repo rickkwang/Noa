@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldLockVaultCache } from '../../src/hooks/useFileSync';
+import { assessSyncWatchdog, shouldLockVaultCache } from '../../src/hooks/useFileSync';
 
 const readyState = {
   isLoaded: true,
@@ -35,5 +35,32 @@ describe('shouldLockVaultCache', () => {
       ...readyState,
       hasSyncError: true,
     })).toBe(true);
+  });
+});
+
+describe('assessSyncWatchdog', () => {
+  const idle = {
+    trackedOperationCount: 0,
+    authoritativeWorkCount: 0,
+    pendingStructuralOperations: false,
+  };
+
+  it('waits while tracked operations or authoritative scans are in flight', () => {
+    expect(assessSyncWatchdog({ ...idle, trackedOperationCount: 1 })).toBe('wait');
+    expect(assessSyncWatchdog({ ...idle, authoritativeWorkCount: 1 })).toBe('wait');
+    // A hung write is indistinguishable from slow IO — never fail it.
+    expect(assessSyncWatchdog({
+      ...idle,
+      trackedOperationCount: 1,
+      pendingStructuralOperations: true,
+    })).toBe('wait');
+  });
+
+  it('reports a stall when a structural reservation has no owning operation left', () => {
+    expect(assessSyncWatchdog({ ...idle, pendingStructuralOperations: true })).toBe('stalled');
+  });
+
+  it('lands an abandoned syncing status back to ready when every gate is clear', () => {
+    expect(assessSyncWatchdog(idle)).toBe('land-ready');
   });
 });

@@ -974,8 +974,19 @@ Export regularly: use Settings → Data → Export Backup.`,
       // edits are already several seconds old and at risk on quit.
       const queued = Array.from(deferredSavesRef.current.values());
       deferredSavesRef.current.clear();
+      let flushFailures = 0;
       for (const note of queued) {
-        try { await storage.saveNote(note); } catch { /* best-effort */ }
+        try {
+          await storage.saveNote(note);
+        } catch (err) {
+          // On the failed-import path this flush is the only persistence these
+          // edits get — swallowing the error silently would lose them on quit.
+          flushFailures += 1;
+          console.error('[Noa] Failed to flush deferred edit for note:', note.id, err);
+        }
+      }
+      if (flushFailures > 0) {
+        setSaveError(`Failed to save ${flushFailures} edit${flushFailures > 1 ? 's' : ''} made during import. Storage may be full.`);
       }
       isImportingRef.current = false;
     }
