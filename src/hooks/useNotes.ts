@@ -143,6 +143,17 @@ export function useNotes(settings?: AppSettings) {
         scheduleSnapshot(latest);
       } catch {
         setSaveError('Failed to save note. Storage may be full.');
+        // Snapshots live in a separate store; preserving the edit there keeps
+        // it recoverable even when the primary note write keeps failing.
+        try {
+          await storage.saveSnapshot({
+            noteId: latest.id,
+            content: latest.content,
+            title: latest.title,
+            savedAt: new Date().toISOString(),
+          });
+          await storage.pruneSnapshots(latest.id);
+        } catch { /* both stores failed; error already surfaced */ }
       }
       saveTimers.current.delete(noteId);
     }, 500);
@@ -395,19 +406,30 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
     setNotes(prev => {
-      const updated = prev.map(n =>
-        n.id === id
-          ? markVaultDirty({ ...n, content, updatedAt: new Date().toISOString(),
-              // Obsidian notes own their tags via frontmatter; don't re-derive from body
-              ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(content), tags: extractTags(content) }) })
-          : n
-      );
+      let nextNote: Note | undefined;
+      let prevLinks: string[] | undefined;
+      const updated = prev.map(n => {
+        if (n.id !== id) return n;
+        prevLinks = n.links;
+        nextNote = markVaultDirty({ ...n, content, updatedAt: new Date().toISOString(),
+          // Obsidian notes own their tags via frontmatter; don't re-derive from body
+          ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(content), tags: extractTags(content) }) });
+        return nextNote;
+      });
+      if (!nextNote) return prev;
+      // Content edits that leave the wikilink set unchanged cannot alter any
+      // note's linkRefs (the title/folder index is untouched) — skip the full
+      // link-index rebuild on this per-keystroke hot path.
+      if (sameStringArray(prevLinks ?? [], nextNote.links ?? [])) {
+        debounceSave(nextNote);
+        return updated;
+      }
       const withRefs = syncLinkRefs(updated, prev, new Set([id]));
       const note = withRefs.find(n => n.id === id);
       if (note) debounceSave(note);
       return withRefs;
     });
-  }, [debounceSave, syncLinkRefs]);
+  }, [debounceSave, syncLinkRefs, sameStringArray]);
 
   const handleSaveNote = useCallback((note: Note) => {
     setNotes(prev => {
@@ -1045,6 +1067,16 @@ Export regularly: use Settings → Data → Export Backup.`,
       .map((result) => result.value);
     const deletedNoteIdsSet = new Set(deletedNoteIds);
     const failedCount = results.length - deletedNoteIds.length;
+
+    // deleteAttachmentBlobsByNoteId above judges "still referenced" against the
+    // pre-deletion snapshot, so a blob shared by two vault notes survives both
+    // deletes. Prune against the post-deletion list to catch those orphans.
+    const survivingAttachmentIds = new Set(
+      currentNotes
+        .filter((note) => !deletedNoteIdsSet.has(note.id))
+        .flatMap((note) => (note.attachments ?? []).map((a) => a.id)),
+    );
+    storage.pruneOrphanedAttachments(survivingAttachmentIds).catch(() => {});
 
     const remainingVaultNotes = vaultNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
     const vaultFolders = currentFolders.filter((folder) => folder.origin === 'vault');
