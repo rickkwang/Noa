@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Settings, X } from '@/src/lib/icons';
-import { Note, Folder, AppSettings, SyncStatus } from '../../types';
-import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
-import SettingsSidebar, { SETTINGS_TABS, SettingsTab } from './SettingsSidebar';
-import SettingSection from './SettingSection';
-import AppearanceSettings from './sections/AppearanceSettings';
-import DataSettings from './sections/DataSettings';
-import EditorSettings from './sections/EditorSettings';
-import AppUpdateSettings from './sections/AppUpdateSettings';
-import { buildDiagnostics, downloadDiagnostics } from '../../lib/diagnostics';
 import fable5VerifiedBadge from '../../assets/fable5-verified.png';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
+import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
+import { buildDiagnostics, downloadDiagnostics } from '../../lib/diagnostics';
 import { lsGet, lsSet } from '../../lib/safeLocalStorage';
+import { Note, Folder, AppSettings, SyncStatus } from '../../types';
+import AppearanceSettings from './sections/AppearanceSettings';
+import AppUpdateSettings from './sections/AppUpdateSettings';
+import DataSettings from './sections/DataSettings';
+import EditorSettings from './sections/EditorSettings';
+import SettingSection from './SettingSection';
+import SettingsSidebar, { SETTINGS_TABS, SettingsTab } from './SettingsSidebar';
+import { Settings, X } from '@/src/lib/icons';
 
 interface SettingsModalProps {
   onClose: () => void;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppSettings } from '../types';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { AppSettings } from '../types';
 
 export const defaultSettings: AppSettings = {
   editor: {

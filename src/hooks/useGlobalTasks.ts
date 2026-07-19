@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
-import { GlobalTask, Note } from '../types';
 import { parseTasksFromNotes } from '../lib/taskParser';
+import { GlobalTask, Note } from '../types';
 
 // Global task list derived from notes. parseTasksFromNotes caches per-note
 // results by object identity, so only edited notes re-parse; on top of that,

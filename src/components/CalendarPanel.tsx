@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
-import { Note } from '../types';
 import { formatDate } from '../lib/templates';
+import { Note } from '../types';
+import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
 
 interface CalendarPanelProps {
   notes: Note[];

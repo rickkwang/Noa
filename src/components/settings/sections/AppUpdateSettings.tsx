@@ -1,8 +1,8 @@
 import React from 'react';
-import { RefreshCcw, Download } from '@/src/lib/icons';
-import SettingSection from '../SettingSection';
-import SettingItem from '../SettingItem';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';
+import SettingItem from '../SettingItem';
+import SettingSection from '../SettingSection';
+import { RefreshCcw, Download } from '@/src/lib/icons';
 
 export default function AppUpdateSettings() {
   const { isDesktop, version, status, busy, checkForUpdates, installUpdate } = useDesktopUpdater();

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Note, Folder } from '../types';
 import { getFolderLeafName, isDescendantPath } from '../lib/pathUtils';
+import { Note, Folder } from '../types';
 
 interface UseSidebarDragOptions {
   notes: Note[];

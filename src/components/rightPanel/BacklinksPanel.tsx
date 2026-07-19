@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { ExternalLink } from '@/src/lib/icons';
-import { Note } from '../../types';
 import { getBacklinks } from '../../lib/noteUtils';
+import { Note } from '../../types';
+import { ExternalLink } from '@/src/lib/icons';
 
 interface BacklinksPanelProps {
   activeNote?: Note;

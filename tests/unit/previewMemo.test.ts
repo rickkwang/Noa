@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Note } from '../../src/types';
 import { canReusePreviewContextNotes } from '../../src/components/editor/previewMemo';
+import type { Note } from '../../src/types';
 
 const note = (id: string, content: string): Note => ({
   id,

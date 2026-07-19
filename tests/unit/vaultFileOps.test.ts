@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
 import { mergeScannedNotes, replayVaultPendingOperation, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
-import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 import type { Note } from '../../src/types';
+import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 
 const makeNote = (overrides: Partial<Note> = {}): Note => ({
   id: 'a1a1a1a1-0000-4000-8000-000000000001',

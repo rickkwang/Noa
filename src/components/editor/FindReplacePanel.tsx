@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorView } from '@codemirror/view';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, X } from '@/src/lib/icons';
 
 interface FindReplacePanelProps {

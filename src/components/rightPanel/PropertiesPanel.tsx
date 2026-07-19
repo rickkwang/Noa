@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, X } from '@/src/lib/icons';
-import { Note } from '../../types';
 import { parseFrontmatter, parseFrontmatterBlock, stringifyFrontmatter, hasFrontmatter } from '../../lib/frontmatter';
+import { Note } from '../../types';
+import { Plus, X } from '@/src/lib/icons';
 
 interface PropertiesPanelProps {
   activeNote?: Note;
@@ -48,6 +48,10 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
     editedMetaRef.current = meta;
     propBodyRef.current = body;
     setAddingProp(false);
+    // Depend on specific fields rather than the activeNote object reference —
+    // the parent re-creates the note object on every keystroke, so including
+    // activeNote would re-init the form on every edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNote?.id, activeNote?.content, activeNote?.rawFrontmatter, noteHasContentFrontmatter]);
 
   // Keep refs in sync so onBlur always reads the latest values

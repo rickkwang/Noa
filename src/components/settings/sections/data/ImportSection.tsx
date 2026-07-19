@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
-import { Upload } from '@/src/lib/icons';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
+import { Upload } from '@/src/lib/icons';
 
 interface ImportSectionProps {
   jsonInputRef: RefObject<HTMLInputElement | null>;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppSettings, UserTemplate } from '../../../types';
-import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
+import SettingSection from '../SettingSection';
 
 interface EditorSettingsProps {
   settings: AppSettings;

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, Tag } from '@/src/lib/icons';
-import { Note } from '../../types';
 import { useResizeDrag } from '../../hooks/useResizeDrag';
+import { Note } from '../../types';
+import { ChevronDown, Tag } from '@/src/lib/icons';
 
 interface TagBrowserProps {
   notes: Note[];

@@ -1,18 +1,17 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
-import { GlobalTask, Note, Folder, AppSettings } from '../types';
-import GraphView, { type GraphColorMode } from './GraphView';
-import { buildGraphModel } from '../lib/graphModel';
+import type { RightTab } from '../constants/rightTabs';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { computeOutgoingLinks } from '../hooks/useOutgoingLinks';
+import { buildGraphModel } from '../lib/graphModel';
 import { computeTopologySignature, getBacklinks } from '../lib/noteUtils';
-import { TasksPanel } from './rightPanel/TasksPanel';
+import { GlobalTask, Note, Folder, AppSettings } from '../types';
+import GraphView, { type GraphColorMode } from './GraphView';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
-
-import type { RightTab } from '../constants/rightTabs';
+import { TasksPanel } from './rightPanel/TasksPanel';
+import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 export type RightPanelTab = RightTab;
 
 // Backlinks: single link with a bold arrow pointing IN (incoming links)
@@ -332,6 +331,10 @@ function GraphInfoPanel({
     searchQuery,
     folders: stableNotesRef.current.folders,
     showUnresolved,
+  // topologyKey is a stable hash standing in for `notes`/`folders` (see
+  // stableNotesRef pattern above); depending on the arrays directly would
+  // recompute graphModel on every parent re-render with new array identities.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [topologyKey, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery, showUnresolved]);
   const { stats } = graphModel;
   // Lookup map so per-row title resolution is O(1) instead of scanning `notes`

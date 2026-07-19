@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Folder, Note } from '../types';
 import { buildLinkIndex, resolveLinkTarget } from '../lib/noteUtils';
+import { Folder, Note } from '../types';
 
 export interface OutgoingLinks {
   resolved: Note[];

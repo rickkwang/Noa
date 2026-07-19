@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
-import { Note, Folder as FolderType } from '../types';
-import { builtinTemplates, applyTemplate } from '../lib/templates';
-import { classifyFolderImportFile } from '../lib/importUtils';
-import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
-import CalendarPanel from './CalendarPanel';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
-import { TagBrowser } from './sidebar/TagBrowser';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
+import { classifyFolderImportFile } from '../lib/importUtils';
+import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
+import { builtinTemplates, applyTemplate } from '../lib/templates';
+import { Note, Folder as FolderType } from '../types';
+import CalendarPanel from './CalendarPanel';
+import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
+import { TagBrowser } from './sidebar/TagBrowser';
+import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
 
 // Renders a search-highlight snippet safely without dangerouslySetInnerHTML.
 // The search engine wraps matched characters in <b>…</b>; we parse those tags
@@ -81,7 +81,6 @@ interface SidebarProps {
   folders: FolderType[];
   searchQuery: string;
   activeNoteId: string;
-  recentNoteIds?: string[];
   onSelectNote: (id: string) => void;
   onCreateNote: (folderId: string, initialContent?: string) => void;
   onDeleteNote: (id: string) => void;
@@ -90,7 +89,6 @@ interface SidebarProps {
   onCreateFolder: (parentFolderId?: string) => void;
   onRenameFolder: (id: string, newName: string) => void;
   onDeleteFolder: (id: string) => void;
-  onUpdateNoteContent?: (id: string, content: string) => void;
   onOpenDailyNote?: (targetDate?: string) => void;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
@@ -101,10 +99,10 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  notes, folders, searchQuery, activeNoteId, recentNoteIds = [],
+  notes, folders, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
-  onUpdateNoteContent, onOpenDailyNote,
+  onOpenDailyNote,
   onImportNote, onSearchTag, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
 
@@ -469,7 +467,11 @@ export default function Sidebar({
           </p>
           <div className="flex gap-1.5">
             <button
-              onClick={() => { pendingDelete.type === 'note' ? onDeleteNote(pendingDelete.id) : onDeleteFolder(pendingDelete.id); setPendingDelete(null); }}
+              onClick={() => {
+                if (pendingDelete.type === 'note') onDeleteNote(pendingDelete.id);
+                else onDeleteFolder(pendingDelete.id);
+                setPendingDelete(null);
+              }}
               className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
             >
               Delete

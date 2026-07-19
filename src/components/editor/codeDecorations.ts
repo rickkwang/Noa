@@ -1,6 +1,6 @@
+import { syntaxTree } from '@codemirror/language';
 import { RangeSetBuilder } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
 
 // Full-width line background + left rule for every line a code block spans.
 // First/last lines carry extra classes that add top/bottom padding so the

@@ -1,29 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
-import { AppErrorCode, Attachment, Folder, Note, RecoveryAction } from '../types';
-import { storage } from '../lib/storage';
-import { mdToHtml, buildBackupPayload } from '../lib/export';
-import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
-import { markExported } from '../lib/exportTimestamp';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
-import { recordErrorSnapshot } from '../lib/errorSnapshots';
-import { extractLinks, extractTags } from '../lib/noteUtils';
-import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from '../lib/frontmatter';
-import {
-  selectNoaOwnedWorkspace,
-  stripVaultMetadataFromImportedFolders,
-} from '../lib/workspaceOwnership';
-
-/** For Obsidian imports: use frontmatter tags if present, fall back to body #hashtags. */
-function resolveImportTags(content: string): string[] {
-  const fm = extractObsidianTags(content);
-  return fm.length > 0 ? fm : extractTags(content);
-}
 import {
   inferAttachmentMimeType,
   mergeAttachmentPayloads,
   type ImportedNote,
 } from '../lib/attachmentUtils';
+import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { mdToHtml, buildBackupPayload } from '../lib/export';
+import { markExported } from '../lib/exportTimestamp';
+import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from '../lib/frontmatter';
 import {
   analyzeConflicts,
   applyImportStrategy,
@@ -42,11 +29,22 @@ import {
   zipAttachmentPath,
   type ConflictSummary,
 } from '../lib/importUtils';
+import { extractLinks, extractTags } from '../lib/noteUtils';
+import { storage } from '../lib/storage';
+import {
+  selectNoaOwnedWorkspace,
+  stripVaultMetadataFromImportedFolders,
+} from '../lib/workspaceOwnership';
+import { AppErrorCode, Attachment, Folder, Note, RecoveryAction } from '../types';
+
+/** For Obsidian imports: use frontmatter tags if present, fall back to body #hashtags. */
+function resolveImportTags(content: string): string[] {
+  const fm = extractObsidianTags(content);
+  return fm.length > 0 ? fm : extractTags(content);
+}
 
 export type { ConflictSummary };
 export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, collectVaultDirectoryEntries, classifyFolderImportFile, countImportedNotes, getFolderImportPath, parseZipAttachmentPath, prepareImportedNotes, resolveImportedFolders, resolveImportedWorkspaceName, uniqueExportFilename, validateAttachmentPayloads, zipAttachmentPath };
-
-type BackupAttachment = Attachment & { dataBase64: string };
 
 interface BackupPayload {
   version: 2;
@@ -552,7 +550,7 @@ export function useDataTransfer({
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-vault.zip`);
       markExported();
-    } catch (error) {
+    } catch {
       const appError = fromImportError('unknown_error', 'Export failed. Please retry.');
       recordErrorSnapshot({
         at: new Date().toISOString(),
@@ -598,7 +596,7 @@ export function useDataTransfer({
 
       const blob = await zip.generateAsync({ type: 'blob' });
       downloadBlob(blob, `${workspaceName.replace(/\s+/g, '-').toLowerCase()}-html-export.zip`);
-    } catch (error) {
+    } catch {
       const appError = fromImportError('unknown_error', 'HTML export failed. Please retry.');
       recordErrorSnapshot({
         at: new Date().toISOString(),
@@ -996,225 +994,6 @@ export function useDataTransfer({
         },
       });
     }, [notes, folders, notify, trackedImportData, requestConfirm]);
-
-  const importZip = useCallback(
-    (file: File) => {
-      const doImport = async () => {
-        let zip: JSZip;
-        try {
-          zip = await JSZip.loadAsync(file);
-        } catch {
-          const appError = fromImportError('import_invalid_json', 'Invalid or corrupt ZIP file.');
-          notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
-          return;
-        }
-
-        const manifestFile = zip.file('manifest.json');
-        let validatedNotes: Note[] = [];
-        let newFolders: Folder[] = [];
-        let workspaceLabel = file.name.replace(/\.zip$/i, '');
-        let attachmentNoteLookup: ImportedNote[] | null = null;
-
-        if (manifestFile) {
-          try {
-            const manifest = JSON.parse(await manifestFile.async('string')) as Partial<BackupPayload>;
-            const rawNotes = Array.isArray(manifest.notes) ? manifest.notes : [];
-            const sourceById = new Map(
-              rawNotes
-                .map((note) => [note?.id, note?.source] as const)
-                .filter((pair): pair is readonly [string, 'noa' | 'obsidian-import'] => typeof pair[0] === 'string' && (pair[1] === 'noa' || pair[1] === 'obsidian-import')),
-            );
-            const { notes: normalizedNotes, report } = normalizeAndValidateNotes(rawNotes);
-            if (!report.ok) {
-              const appError = fromImportError('import_integrity_failed', 'ZIP manifest integrity check failed.');
-              notify({ type: 'error', text: report.issues.find(i => i.level === 'error')?.message ?? appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
-              return;
-            }
-            const manifestWithPayloads = prepareImportedNotes(normalizedNotes);
-            const attachmentError = validateAttachmentPayloads(rawNotes as ImportedNote[]);
-            if (attachmentError) {
-              const appError = fromImportError('import_integrity_failed', attachmentError);
-              notify({ type: 'error', text: attachmentError, code: appError.code, suggestedAction: appError.suggestedAction });
-              return;
-            }
-            validatedNotes = manifestWithPayloads.map((note) => ({
-              ...note,
-              source: sourceById.get(note.id) ?? 'obsidian-import',
-            }));
-            newFolders = Array.isArray(manifest.folders)
-              ? stripVaultMetadataFromImportedFolders(manifest.folders)
-                  .map((folder) => ({ ...folder, source: folder.source ?? 'obsidian-import' }))
-              : [];
-            workspaceLabel = manifest.workspaceName || workspaceLabel;
-            attachmentNoteLookup = rawNotes as ImportedNote[];
-          } catch {
-            // Fall back to legacy ZIP parsing below.
-          }
-        }
-
-        if (validatedNotes.length === 0) {
-          const newNotes: Note[] = [];
-          newFolders = [];
-        const noteFiles = Object.entries(zip.files).filter(
-          ([path, f]) => !f.dir && path.endsWith('.md') && path !== 'README.md'
-        );
-
-        for (const [path, zipFile] of noteFiles) {
-          const parts = path.split('/');
-          let folderId = '';
-          if (parts.length >= 2) {
-            const folderName = parts.slice(0, -1).join('/');
-            if (folderName && folderName !== 'attachments') {
-              let folder = newFolders.find((f) => f.name === folderName);
-              if (!folder) {
-                folder = { id: crypto.randomUUID(), name: folderName, source: 'obsidian-import' };
-                newFolders.push(folder);
-              }
-              folderId = folder.id;
-            }
-          }
-          const content = await zipFile.async('string');
-          const filename = parts[parts.length - 1];
-          newNotes.push({
-            id: crypto.randomUUID(),
-              title: filename.replace(/\.md$/, ''),
-              content,
-            createdAt: extractObsidianCreatedAt(content) ?? new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              folder: folderId,
-              tags: resolveImportTags(content),
-              links: extractLinks(content),
-              linkRefs: [],
-              source: 'obsidian-import',
-            });
-          }
-
-          if (newNotes.length === 0) {
-            const appError = fromImportError('import_integrity_failed', 'No Markdown files found in ZIP.');
-            notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
-            return;
-          }
-
-          const legacyReport = normalizeAndValidateNotes(newNotes);
-          if (!legacyReport.report.ok) {
-            const appError = fromImportError('import_integrity_failed', 'ZIP import integrity check failed.');
-            notify({ type: 'error', text: legacyReport.report.issues.find(i => i.level === 'error')?.message ?? appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
-            return;
-          }
-          validatedNotes = legacyReport.notes;
-          attachmentNoteLookup = newNotes as ImportedNote[];
-        }
-
-        // 恢复附件
-        const attachmentFiles = Object.entries(zip.files).filter(
-          ([path]) => path.startsWith('attachments/') && !path.endsWith('/')
-        );
-        const stagedAttachments: Array<{ attachmentId: string; blob: Blob }> = [];
-        if (attachmentFiles.length > 0) {
-          for (const [path, zipFile] of attachmentFiles) {
-            const parsedPath = parseZipAttachmentPath(path);
-            if (!parsedPath) continue;
-            const { attachmentId, filename } = parsedPath;
-            try {
-              const blob = await zipFile.async('blob');
-              stagedAttachments.push({ attachmentId, blob });
-              const mimeType = inferAttachmentMimeType({ name: filename, type: '' });
-              const noteMatch = attachmentNoteLookup?.find((note) =>
-                (note.attachments ?? []).some((attachment) => attachment.id === attachmentId)
-              );
-              if (noteMatch) {
-                const noteIdx = validatedNotes.findIndex((candidate) => candidate.id === noteMatch.id);
-                if (noteIdx !== -1) {
-                  const note = validatedNotes[noteIdx];
-                  const attachment = noteMatch.attachments?.find((candidate) => candidate.id === attachmentId);
-                  if (attachment) {
-                    validatedNotes[noteIdx] = {
-                      ...note,
-                      attachments: [...(note.attachments ?? []), {
-                        id: attachmentId,
-                        noteId: note.id,
-                        filename: attachment.filename || filename,
-                        mimeType: attachment.mimeType || mimeType,
-                        size: blob.size,
-                        createdAt: attachment.createdAt || new Date().toISOString(),
-                        vaultPath: attachment.vaultPath || `attachments/${note.id}/${attachmentId}-${attachment.filename || filename}`,
-                      }],
-                    };
-                  }
-                }
-              } else {
-                validatedNotes = validatedNotes.map((note) => {
-                  if (!note.content.includes(`![[${filename}]]`) && !note.content.includes(`[[${filename}]]`)) return note;
-                  const attachment: Attachment = {
-                    id: attachmentId,
-                    noteId: note.id,
-                    filename,
-                    mimeType,
-                    size: blob.size,
-                    createdAt: new Date().toISOString(),
-                    vaultPath: `attachments/${note.id}/${attachmentId}-${filename}`,
-                  };
-                  return { ...note, attachments: [...(note.attachments ?? []), attachment] };
-                });
-              }
-            } catch {
-              // 单个附件失败不阻塞整体导入
-            }
-          }
-        }
-
-        const attachmentResults = await Promise.allSettled(
-          stagedAttachments.map(async ({ attachmentId, blob }) => {
-            await storage.saveAttachmentBlob(attachmentId, blob);
-          })
-        );
-        if (attachmentResults.some((result) => result.status === 'rejected')) {
-          await Promise.allSettled(
-            stagedAttachments.map(async ({ attachmentId }) => {
-              await storage.deleteAttachmentBlob(attachmentId);
-            })
-          );
-          notify({ type: 'error', text: 'Failed to save one or more imported ZIP attachments.' });
-          return;
-        }
-
-        try {
-          await trackedImportData(validatedNotes as ImportedNote[], newFolders, workspaceLabel, true);
-        } catch (error) {
-          await Promise.allSettled(
-            stagedAttachments.map(async ({ attachmentId }) => {
-              await storage.deleteAttachmentBlob(attachmentId);
-            })
-          );
-          throw error;
-        }
-        notify({
-          type: 'success',
-          text: `Imported ${validatedNotes.length} note(s) from ZIP${attachmentFiles.length > 0 ? ` and ${attachmentFiles.length} attachment(s)` : ''}.`,
-        });
-      };
-
-      requestConfirm({
-        message: `Importing this ZIP will replace current data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,
-        onConfirm: async () => {
-          try {
-            await doImport();
-          } catch (error) {
-            const appError = fromStorageError(error);
-            recordErrorSnapshot({
-              at: new Date().toISOString(),
-              operation: 'import_zip',
-              code: appError.code,
-              message: error instanceof Error ? error.message : appError.userMessage,
-              suggestedAction: appError.suggestedAction,
-            });
-            notify({ type: 'error', text: appError.userMessage, code: appError.code, suggestedAction: appError.suggestedAction });
-          }
-        },
-      });
-    },
-    [notes, folders, notify, trackedImportData, requestConfirm],
-  );
 
   const connectFolder = useCallback(async () => {
     setConnectingFs(true);

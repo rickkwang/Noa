@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppSettings } from '../../../types';
-import SettingSection from '../SettingSection';
 import SettingItem from '../SettingItem';
+import SettingSection from '../SettingSection';
 import { ChevronDown } from '@/src/lib/icons';
 
 interface AppearanceSettingsProps {

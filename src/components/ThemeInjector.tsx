@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from 'react';
-import { AppSettings } from '../types';
 import { useIsDark } from '../hooks/useIsDark';
+import { AppSettings } from '../types';
 
 interface ThemeInjectorProps {
   settings: AppSettings;

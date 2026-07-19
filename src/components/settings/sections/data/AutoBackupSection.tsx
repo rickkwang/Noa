@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FolderOpen, Loader2 } from '@/src/lib/icons';
+import { AutoBackupStatus } from '../../../../hooks/useAutoBackup';
+import { isFileSystemSupported } from '../../../../lib/backupDirectoryStorage';
+import { DEFAULT_KEEP_BACKUPS } from '../../../../services/autoBackupService';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
-import { isFileSystemSupported } from '../../../../lib/backupDirectoryStorage';
-import { AutoBackupStatus } from '../../../../hooks/useAutoBackup';
-import { DEFAULT_KEEP_BACKUPS } from '../../../../services/autoBackupService';
+import { AlertTriangle, CheckCircle2, FolderOpen, Loader2 } from '@/src/lib/icons';
 
 interface AutoBackupSectionProps {
   status: AutoBackupStatus;

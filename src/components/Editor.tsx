@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
-import { Note, Folder, AppSettings } from '../types';
+import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
-import { useCodeMirror } from './editor/useCodeMirror';
+import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
+import { AttachmentPanel } from './editor/AttachmentPanel';
 import { EditorHeader } from './editor/EditorHeader';
 import { EditorToolbar } from './editor/EditorToolbar';
-import { TocPanel } from './editor/TocPanel';
-import { PreviewPane } from './editor/PreviewPane';
-import { MentionDropdown } from './editor/MentionDropdown';
-import { SlashCommandDropdown, SLASH_COMMANDS, type SlashCommand } from './editor/SlashCommandDropdown';
-import { AttachmentPanel } from './editor/AttachmentPanel';
-import { HistoryPanel } from './editor/HistoryPanel';
 import { FindReplacePanel } from './editor/FindReplacePanel';
-import { useAttachments } from '../hooks/useAttachments';
-import { NoteSnapshot } from '../types';
+import { HistoryPanel } from './editor/HistoryPanel';
+import { MentionDropdown } from './editor/MentionDropdown';
+import { PreviewPane } from './editor/PreviewPane';
+import { SlashCommandDropdown, type SlashCommand } from './editor/SlashCommandDropdown';
+import { TocPanel } from './editor/TocPanel';
+import { useCodeMirror } from './editor/useCodeMirror';
 
 const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -218,6 +217,9 @@ export default function Editor({
     setIsFindReplaceOpen(false);
     setIsEditingTitle(false);
     setImageError(null);
+    // Reset UI state only when switching notes (by id), not on every keystroke
+    // that produces a new note object (e.g. title edits).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);
 
   useEffect(() => {
@@ -314,6 +316,10 @@ export default function Editor({
       },
       []
     );
+    // scanNote is read via scanNote?.content; depending on the content string
+    // (not the scanNote object ref) avoids re-running the scan on every
+    // parent re-render that produces a new scanNote identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanNote?.content]);
 
   const handleTitleSubmit = useCallback(() => {

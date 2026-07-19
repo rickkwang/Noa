@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Attachment } from '../../types';
 import { AttachmentError } from '../../hooks/useAttachments';
+import { Attachment } from '../../types';
 
 interface AttachmentPanelProps {
   attachments: Attachment[];

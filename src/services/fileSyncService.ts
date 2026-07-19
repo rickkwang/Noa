@@ -1,5 +1,3 @@
-import { Folder, Note, VaultPendingOperation } from '../types';
-import { storage } from '../lib/storage';
 import {
   clearPersistedHandle,
   createFolderDirectory,
@@ -14,6 +12,8 @@ import {
   scanNoteFileStats,
   writeNote,
 } from '../lib/fileSystemStorage';
+import { storage } from '../lib/storage';
+import { Folder, Note, VaultPendingOperation } from '../types';
 
 export type FileSyncErrorCode = 'permission_denied' | 'io_error' | 'unknown';
 

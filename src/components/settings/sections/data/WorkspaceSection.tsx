@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
-import { FolderOpen, HardDrive, Loader2, PlusSquare, Unlink } from '@/src/lib/icons';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
+import { FolderOpen, HardDrive, Loader2, PlusSquare, Unlink } from '@/src/lib/icons';
 
 interface WorkspaceSectionProps {
   workspaceName: string;

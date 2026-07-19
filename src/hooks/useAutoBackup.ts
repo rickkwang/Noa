@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, Note } from '../types';
 import {
   clearBackupHandle,
   getBackupHandle,
@@ -15,6 +14,7 @@ import {
   runAutoBackup,
   shouldRunAutoBackup,
 } from '../services/autoBackupService';
+import { Folder, Note } from '../types';
 
 export type AutoBackupStatus = 'idle' | 'running' | 'success' | 'error' | 'needs-reauth';
 

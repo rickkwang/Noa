@@ -1,5 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { fromImportError, fromStorageError } from '../lib/appErrors';
+import {
+  inferAttachmentMimeType,
+  findInvalidAttachmentPayload,
+  mergeAttachmentPayloads,
+  type ImportedNote,
+} from '../lib/attachmentUtils';
+import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { prepareImportedNotes } from '../lib/importUtils';
+import { sortNotesByRecent } from '../lib/noteSort';
+import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
+import { isDescendantPath } from '../lib/pathUtils';
+import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
+import { lsGet, lsSet } from '../lib/safeLocalStorage';
+import { storage } from '../lib/storage';
+import { toggleTaskInNoteContent } from '../lib/taskParser';
+import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
+import {
+  matchesVaultSyncedExpectation,
+  reconcileConcurrentImportEdits,
+} from '../lib/vaultImportReconciliation';
 import {
   AppErrorCode,
   AppSettings,
@@ -10,35 +32,12 @@ import {
   NoteSnapshot,
   VaultSyncedNoteExpectation,
 } from '../types';
-import { storage } from '../lib/storage';
-import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
-import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
-import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
-import { lsGet, lsSet } from '../lib/safeLocalStorage';
-import { fromImportError, fromStorageError } from '../lib/appErrors';
-import { recordErrorSnapshot } from '../lib/errorSnapshots';
-import { sortNotesByRecent } from '../lib/noteSort';
-import { isDescendantPath } from '../lib/pathUtils';
+import { useDailyNotes } from './useDailyNotes';
 
 interface LoadErrorState {
   code: AppErrorCode;
   message: string;
 }
-
-import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
-import { toggleTaskInNoteContent } from '../lib/taskParser';
-import { useDailyNotes } from './useDailyNotes';
-import {
-  inferAttachmentMimeType,
-  findInvalidAttachmentPayload,
-  mergeAttachmentPayloads,
-  type ImportedNote,
-} from '../lib/attachmentUtils';
-import { prepareImportedNotes } from '../lib/importUtils';
-import {
-  matchesVaultSyncedExpectation,
-  reconcileConcurrentImportEdits,
-} from '../lib/vaultImportReconciliation';
 
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
@@ -199,6 +198,7 @@ export function useNotes(settings?: AppSettings) {
   const isMountedRef = useRef(true);
 
   // Cleanup all pending save/snapshot timers on unmount
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -209,6 +209,7 @@ export function useNotes(settings?: AppSettings) {
       snapshotFirstScheduled.current.clear();
     };
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const getIsImporting = useCallback(() => isImportingRef.current, []);
 
@@ -1136,7 +1137,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       let parsed: { notes?: ImportedNote[]; folders?: Folder[]; workspaceName?: string };
       try {
         parsed = JSON.parse(content) as { notes?: ImportedNote[]; folders?: Folder[]; workspaceName?: string };
-      } catch (error) {
+      } catch {
         const appError = fromImportError('import_invalid_json', 'Error parsing backup file.');
         setLoadError({ code: appError.code, message: appError.userMessage });
         return;

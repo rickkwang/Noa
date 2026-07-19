@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { createMemRoot } from './helpers/memfs';
 import {
   analyzeConflicts,
   applyImportStrategy,
@@ -16,11 +15,12 @@ import {
   validateAttachmentPayloads,
   zipAttachmentPath,
 } from '../../src/hooks/useDataTransfer';
-import { Note } from '../../src/types';
 import {
   selectNoaOwnedWorkspace,
   stripVaultMetadataFromImportedFolders,
 } from '../../src/lib/workspaceOwnership';
+import { Note } from '../../src/types';
+import { createMemRoot } from './helpers/memfs';
 
 const makeNote = (id: string, title: string): Note => ({
   id,

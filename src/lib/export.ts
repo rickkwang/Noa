@@ -1,6 +1,6 @@
 import { Attachment, Folder, Note } from '../types';
-import { storage } from './storage';
 import { blobToBase64, type ImportedNote } from './attachmentUtils';
+import { storage } from './storage';
 import { selectNoaOwnedWorkspace } from './workspaceOwnership';
 
 type BackupAttachment = Attachment & { dataBase64: string };

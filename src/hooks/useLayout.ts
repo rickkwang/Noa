@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useResizeDrag } from './useResizeDrag';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { DEFAULT_RIGHT_TAB, isRightTab, RightTab } from '../constants/rightTabs';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
+import { useResizeDrag } from './useResizeDrag';
 
 export function useLayout() {
   const [isMobile, setIsMobile] = useState(false);

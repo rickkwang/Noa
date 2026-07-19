@@ -1,22 +1,22 @@
-import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { useIsDark } from '../../hooks/useIsDark';
-import Markdown, { defaultUrlTransform } from 'react-markdown';
-import type { Components, Options as MarkdownOptions } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import remarkMath from 'remark-math';
-import remarkEmoji from 'remark-emoji';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
-import { visit } from 'unist-util-visit';
 import type { Root, Text, Parent, RootContent } from 'mdast';
-import { Note, Folder, AppSettings } from '../../types';
-import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
-import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import Markdown, { defaultUrlTransform } from 'react-markdown';
+import type { Components, Options as MarkdownOptions } from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
+import remarkBreaks from 'remark-breaks';
+import remarkEmoji from 'remark-emoji';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import { visit } from 'unist-util-visit';
 import { useAttachments } from '../../hooks/useAttachments';
+import { useIsDark } from '../../hooks/useIsDark';
+import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
+import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
+import { Note, Folder, AppSettings } from '../../types';
 import { MermaidBlock } from './MermaidBlock';
 import { canReusePreviewContextNotes } from './previewMemo';
 import { Copy, Check, FileText } from '@/src/lib/icons';
@@ -412,10 +412,6 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
   );
 }
 
-function cleanDisplayFilename(filename: string): string {
-  return filename.replace(/\s*\(\d+\)(?=\.[^.]+$)/, '');
-}
-
 function getSnippet(content: string, title: string) {
   const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(.{0,40})(\\[\\[${escapedTitle}\\]\\])(.{0,40})`, 'i');
@@ -674,7 +670,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       blockquote: ({ children }) => (
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
       ),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       mark: ({ children }: { children?: React.ReactNode }) => (
         <mark style={{
           backgroundColor: 'rgba(204,125,94,0.25)',

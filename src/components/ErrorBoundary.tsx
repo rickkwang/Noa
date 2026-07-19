@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle } from '@/src/lib/icons';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { AlertTriangle } from '@/src/lib/icons';
 
 interface Props {
   children?: ReactNode;

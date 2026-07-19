@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useDeferredValue, useCallback } from 'react';
-import { Note, Folder } from '../types';
 import { SearchEngine, SearchResult } from '../core/search';
+import { Note, Folder } from '../types';
 
 interface UseSidebarSearchOptions {
   notes: Note[];
@@ -70,6 +70,7 @@ export function useSidebarSearch({
     };
   // Query changes do not invalidate the index; both raw and deferred query are
   // intentionally excluded so typing only reruns search against the same index.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, folders, caseSensitive, fuzzySearch, ensureFreshIndex]);
 
   // Clear pending work immediately when the real query is cleared; waiting for

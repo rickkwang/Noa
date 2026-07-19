@@ -4,24 +4,24 @@
  */
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { STORAGE_KEYS } from './constants/storageKeys';
-import TopBar from './components/TopBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
-import { useGlobalTasks } from './hooks/useGlobalTasks';
-import { useSettings } from './hooks/useSettings';
-import { useNotes } from './hooks/useNotes';
-import { useLayout } from './hooks/useLayout';
-import { useFileSync } from './hooks/useFileSync';
-import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import ThemeInjector from './components/ThemeInjector';
+import TopBar from './components/TopBar';
+import { STORAGE_KEYS } from './constants/storageKeys';
 import { useAutoBackup } from './hooks/useAutoBackup';
 import { useCommandPalette } from './hooks/useCommandPalette';
+import { useFileSync } from './hooks/useFileSync';
+import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { useGlobalTasks } from './hooks/useGlobalTasks';
+import { useLayout } from './hooks/useLayout';
+import { useNotes } from './hooks/useNotes';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
-import ThemeInjector from './components/ThemeInjector';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
+import { useSettings } from './hooks/useSettings';
 import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
 import { isDescendantPath } from './lib/pathUtils';
 import { builtinTemplates, applyTemplate } from './lib/templates';
+import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import type { VaultPendingOperation } from './types';
 
 const Editor = lazy(() => import('./components/Editor'));
@@ -66,7 +66,6 @@ export default function App() {
     workspaceName,
     activeNoteId,
     setActiveNoteId,
-    recentNoteIds,
     handleUpdateNote: _handleUpdateNote,
     handleSaveNote,
     handleRenameNote: _handleRenameNote,
@@ -934,7 +933,6 @@ export default function App() {
                 folders={folders}
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
-                recentNoteIds={recentNoteIds}
                 onSelectNote={handleSidebarSelectNote}
                 onCreateNote={handleCreateNote}
                 onDeleteNote={handleDeleteNote}
@@ -943,7 +941,6 @@ export default function App() {
                 onCreateFolder={handleCreateFolder}
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
-                onUpdateNoteContent={handleUpdateNote}
                 onOpenDailyNote={handleOpenDailyNoteGuarded}
                 onImportNote={handleImportNoteGuarded}
                 onSearchTag={(tag) => setSearchQuery(`tag:${tag}`)}

@@ -7,9 +7,9 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
 .alma-snapshots
 .worktrees/
 test-results/.last-run.json
+.noa/
 CLAUDE.md
 AGENTS.md

@@ -1,7 +1,8 @@
+import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
+import { desktopCspPlugin } from './scripts/desktop-csp.mjs';
 
 export default defineConfig(() => {
   const isDesktopBuild = process.env.BUILD_TARGET === 'desktop';
@@ -41,7 +42,7 @@ export default defineConfig(() => {
       'import.meta.env.PACKAGE_VERSION': JSON.stringify(process.env.npm_package_version ?? 'dev'),
     },
     base: isDesktopBuild ? './' : '/',
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), desktopCspPlugin(isDesktopBuild)],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

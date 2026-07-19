@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { ExternalLink } from '@/src/lib/icons';
-import { Note, Folder } from '../../types';
-import { decodeLinkPath } from '../../lib/noteUtils';
 import { useOutgoingLinks } from '../../hooks/useOutgoingLinks';
+import { decodeLinkPath } from '../../lib/noteUtils';
+import { Note, Folder } from '../../types';
+import { ExternalLink } from '@/src/lib/icons';
 
 interface OutgoingLinksPanelProps {
   activeNote?: Note;

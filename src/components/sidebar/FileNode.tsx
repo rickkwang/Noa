@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FileText, Plus, Trash2, Folder, FolderOpen, FolderPlus } from '@/src/lib/icons';
-import { Folder as FolderType } from '../../types';
 import { getFolderParentPath } from '../../lib/pathUtils';
+import { Folder as FolderType } from '../../types';
+import { ChevronRight, FileText, Plus, Trash2, Folder, FolderOpen, FolderPlus } from '@/src/lib/icons';
 
 export interface FileNodeProps {
   name: string;

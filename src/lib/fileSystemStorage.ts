@@ -1,9 +1,9 @@
 import localforage from 'localforage';
 import { Note, Folder, Attachment } from '../types';
-import { storage } from './storage';
+import { blobToBase64 } from './attachmentUtils';
 import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from './frontmatter';
 import { extractLinks } from './noteUtils';
-import { blobToBase64 } from './attachmentUtils';
+import { storage } from './storage';
 
 const fsHandleStore = localforage.createInstance({
   name: 'redaction-diary-fs-db',
@@ -64,7 +64,7 @@ export async function clearPersistedHandle(): Promise<void> {
 }
 
 function sanitizeFilename(name: string): string {
-  return name.replace(/[\/\\:*?"<>|]/g, '_');
+  return name.replace(/[\\/:*?"<>|]/g, '_');
 }
 
 function sanitizePathSegment(name: string): string {

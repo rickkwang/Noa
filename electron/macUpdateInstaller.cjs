@@ -3,6 +3,7 @@ const https = require('https');
 const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
+const { createHash, timingSafeEqual } = require('crypto');
 
 const GITHUB_OWNER = 'rickkwang';
 const GITHUB_REPO = 'Noa';
@@ -36,76 +37,38 @@ function getReleaseAssetUrl(version, assetName) {
   return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v${encodeURIComponent(version)}/${encodeURIComponent(assetName)}`;
 }
 
-function buildFallbackAssetNames(version, productName) {
-  const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-  return [
-    `${productName}-${version}-${arch}-mac.zip`,
-    `${productName}-${version}-${arch}.zip`,
-    `${GITHUB_REPO}-${version}-${arch}-mac.zip`,
-    `${GITHUB_REPO}-${version}-${arch}.zip`,
-  ];
+function normalizeSha512(value) {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const normalized = value.trim();
+  const decoded = Buffer.from(normalized, 'base64');
+  return decoded.length === 64 && decoded.toString('base64') === normalized ? decoded : null;
 }
 
-async function fetchReleaseByTag(version) {
-  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tags/v${encodeURIComponent(version)}`;
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': `${GITHUB_REPO} updater`,
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`GitHub release lookup failed with status ${response.status}`);
+function resolveTrustedAssetUrl(version, candidate) {
+  if (/^https?:\/\//i.test(candidate)) {
+    return isTrustedUpdateUrl(candidate) ? candidate : null;
   }
-  return response.json();
+  const assetName = path.posix.basename(candidate);
+  return assetName.endsWith('.zip') ? getReleaseAssetUrl(version, assetName) : null;
 }
 
-function selectZipAsset(assets, version, productName) {
-  const zipAssets = (assets || []).filter((asset) => asset && typeof asset.name === 'string' && asset.name.endsWith('.zip') && typeof asset.browser_download_url === 'string');
-  if (zipAssets.length === 0) return null;
-
-  const preferredNames = buildFallbackAssetNames(version, productName);
-  for (const name of preferredNames) {
-    const match = zipAssets.find((asset) => asset.name === name);
-    if (match) return match;
-  }
-
-  const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-  const archMatch = zipAssets.find((asset) => asset.name.includes(arch));
-  if (archMatch) return archMatch;
-
-  return zipAssets[0];
-}
-
-async function resolveMacUpdateAssetUrl({ version, updateInfo, productName }) {
+function selectVerifiedUpdateAsset({ version, updateInfo }) {
   const candidates = [];
-  if (updateInfo?.path) candidates.push(updateInfo.path);
   for (const file of updateInfo?.files || []) {
-    if (file?.url) candidates.push(file.url);
+    if (file?.url) candidates.push({ url: file.url, sha512: file.sha512 });
+  }
+  if (updateInfo?.path) {
+    candidates.push({ url: updateInfo.path, sha512: updateInfo.sha512 });
   }
 
   for (const candidate of candidates) {
-    if (!candidate) continue;
-    if (/^https?:\/\//i.test(candidate)) {
-      if (isTrustedUpdateUrl(candidate)) return candidate;
-      continue;
-    }
-    const assetName = path.posix.basename(candidate);
-    if (assetName.endsWith('.zip')) {
-      return getReleaseAssetUrl(version, assetName);
-    }
+    if (typeof candidate.url !== 'string' || !candidate.url.endsWith('.zip')) continue;
+    const url = resolveTrustedAssetUrl(version, candidate.url);
+    const sha512 = normalizeSha512(candidate.sha512);
+    if (url && sha512) return { url, sha512 };
   }
 
-  const release = await fetchReleaseByTag(version);
-  const asset = selectZipAsset(release?.assets, version, productName);
-  if (asset) return asset.browser_download_url;
-
-  for (const assetName of buildFallbackAssetNames(version, productName)) {
-    return getReleaseAssetUrl(version, assetName);
-  }
-
-  throw new Error('Unable to resolve a GitHub release asset for this macOS update.');
+  throw new Error('Update metadata does not contain a trusted ZIP asset with a valid SHA-512 digest.');
 }
 
 function downloadFileWithProgress(sourceUrl, outputPath, onProgress) {
@@ -196,6 +159,27 @@ function downloadFileWithProgress(sourceUrl, outputPath, onProgress) {
 
     request(sourceUrl);
   });
+}
+
+function calculateFileSha512(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha512');
+    const stream = fs.createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', () => reject(new Error('Unable to read the downloaded update for verification.')));
+    stream.on('end', () => resolve(hash.digest()));
+  });
+}
+
+async function verifyFileSha512(filePath, expectedDigest) {
+  const expected = Buffer.isBuffer(expectedDigest)
+    ? expectedDigest
+    : normalizeSha512(expectedDigest);
+  if (!expected) throw new Error('Update metadata contains an invalid SHA-512 digest.');
+  const actual = await calculateFileSha512(filePath);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    throw new Error('Downloaded update failed SHA-512 verification.');
+  }
 }
 
 function extractZipArchive(zipPath, extractDir) {
@@ -306,7 +290,6 @@ if [ -d "$TARGET_APP" ]; then
 fi
 
 /usr/bin/ditto "$SOURCE_APP" "$TARGET_APP"
-/usr/bin/xattr -rd com.apple.quarantine "$TARGET_APP" >/dev/null 2>&1 || true
 
 if /usr/bin/open -a "$TARGET_APP"; then
   /bin/rm -rf "$BACKUP_APP" >/dev/null 2>&1 || true
@@ -341,15 +324,15 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
   const logPath = path.join(workDir, 'install.log');
   fs.mkdirSync(extractDir, { recursive: true });
 
-  const downloadUrl = await resolveMacUpdateAssetUrl({ version, updateInfo, productName });
-  await downloadFileWithProgress(downloadUrl, zipPath, onProgress);
+  const updateAsset = selectVerifiedUpdateAsset({ version, updateInfo });
+  await downloadFileWithProgress(updateAsset.url, zipPath, onProgress);
+  await verifyFileSha512(zipPath, updateAsset.sha512);
   extractZipArchive(zipPath, extractDir);
 
   const sourceAppPath = findAppBundle(extractDir, productName);
   if (!sourceAppPath) {
     throw new Error(`Extracted update package does not contain ${productName}.app.`);
   }
-
   const backupAppPath = `${targetAppPath}.backup.${Date.now()}`;
   const scriptPath = path.join(workDir, 'install.sh');
   fs.writeFileSync(
@@ -379,4 +362,7 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
 module.exports = {
   getReleasePageUrl,
   installMacUpdate,
+  normalizeSha512,
+  selectVerifiedUpdateAsset,
+  verifyFileSha512,
 };

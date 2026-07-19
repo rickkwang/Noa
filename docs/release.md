@@ -40,12 +40,21 @@ LINT_STATUS=pass BUILD_BUDGET_STATUS=pass SMOKE_STATUS=pass node scripts/release
 - CI steps:
   1. `npm ci`
   2. `npm run lint`
-  3. `npm run build:budget`
-  4. `npm run test:smoke`
-  5. Build and upload desktop release assets
+  3. `npm run check:structure`
+  4. `npm run test:unit`
+  5. `npm run build:budget`
+  6. `npm run test:smoke`
+  7. Build and verify desktop release assets before upload
 
 ## Rollback
 - Keep the previous healthy `beta` and `stable` artifacts.
 - If a P0 issue appears, roll back to the last known healthy release immediately.
 - P0 triggers: confirmed data loss, app boot failure, or import/export unavailable for normal use.
 - Record the root cause and add a regression test after rollback.
+
+## Code Signing & Notarization
+
+The current release process intentionally ships unsigned macOS artifacts.
+In-app updates use the ZIP artifact and its SHA-512 digest from
+`latest-mac.yml`; they do not require signing or notarization. Signing remains
+an optional future distribution improvement for Gatekeeper compatibility.

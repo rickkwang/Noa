@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { fromSyncError } from '../lib/appErrors';
+import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { storage } from '../lib/storage';
 import {
-  Folder,
-  Note,
-  SyncStatus,
-  VaultPendingOperation,
-  VaultSyncedNoteExpectation,
-} from '../types';
+  commitVaultPendingOperation,
+  selectVaultPendingOperations,
+  shouldReplayVaultPendingOperation,
+} from '../lib/vaultPendingOperations';
 import {
   checkExternalVaultChanges,
   classifySyncError,
@@ -24,14 +25,13 @@ import {
   syncNoteUpdate,
   syncVaultNoteSnapshot,
 } from '../services/fileSyncService';
-import { fromSyncError } from '../lib/appErrors';
-import { recordErrorSnapshot } from '../lib/errorSnapshots';
-import { storage } from '../lib/storage';
 import {
-  commitVaultPendingOperation,
-  selectVaultPendingOperations,
-  shouldReplayVaultPendingOperation,
-} from '../lib/vaultPendingOperations';
+  Folder,
+  Note,
+  SyncStatus,
+  VaultPendingOperation,
+  VaultSyncedNoteExpectation,
+} from '../types';
 
 interface UseFileSyncOptions {
   isLoaded: boolean;

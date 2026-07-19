@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronRight, ExternalLink } from '@/src/lib/icons';
-import { GlobalTask } from '../../types';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
+import { GlobalTask } from '../../types';
+import { Check, ChevronRight, ExternalLink } from '@/src/lib/icons';
 
 // Parse 'YYYY-MM-DD' as LOCAL midnight. `new Date('YYYY-MM-DD')` parses as UTC
 // midnight, which shifts the date a day earlier for users west of UTC.

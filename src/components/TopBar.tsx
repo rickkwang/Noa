@@ -1,10 +1,10 @@
 import React, { CSSProperties } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
 import { AppSettings } from '../types';
+import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
-import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from '@/src/lib/icons';
 
 interface TopBarProps {
   settings: AppSettings;

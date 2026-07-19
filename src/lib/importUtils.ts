@@ -1,6 +1,6 @@
 import { Folder, Note } from '../types';
-import { extractLinks, extractTags } from './noteUtils';
 import { findInvalidAttachmentPayload, type ImportedNote } from './attachmentUtils';
+import { extractLinks, extractTags } from './noteUtils';
 
 export const TEXT_IMPORT_EXTENSIONS = new Set([
   'md', 'markdown', 'mdown', 'txt', 'text', 'csv', 'tsv', 'json', 'xml',

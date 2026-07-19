@@ -1,14 +1,14 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { defaultKeymap } from '@codemirror/commands';
+import { markdown } from '@codemirror/lang-markdown';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { Annotation, Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, ViewUpdate, placeholder as cmPlaceholder } from '@codemirror/view';
-import { markdown } from '@codemirror/lang-markdown';
-import { defaultKeymap } from '@codemirror/commands';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
+import { useEffect, useRef, useCallback } from 'react';
 import { Note } from '../../types';
+import { codeDecorations } from './codeDecorations';
 import { buildMinimalReplaceChange } from './contentSync';
 import { hideTaskMarkers } from './hideTaskMarkers';
-import { codeDecorations } from './codeDecorations';
 
 // Annotation to mark external content syncs so history does not merge them
 // into the user's local undo stack.
@@ -285,11 +285,17 @@ export function useCodeMirror({
     return () => {
       const finalCursor = view.state.selection.main.head;
       savedCursorRef.current = finalCursor;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (note?.id) cursorByNoteIdRef.current.set(note.id, finalCursor);
       view.contentDOM.removeEventListener('compositionend', handleCompositionEnd);
       view.destroy();
       editorViewRef.current = null;
     };
+    // Refs are stable and safe to read in cleanup. containerRef/editPaneRef
+    // are not read here; note?.content is intentionally omitted — content
+    // changes are handled by a separate dispatch effect below, not by
+    // rebuilding the editor (which would drop cursor + undo history).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id, isDark]);
 
   // Dynamically update content max-width without rebuilding the editor
@@ -324,6 +330,10 @@ export function useCodeMirror({
         annotations: remoteSyncAnnotation.of(true),
       });
     }
+    // Depend on note?.content (string) rather than note (object) — the parent
+    // re-creates note on every keystroke; using content avoids re-running this
+    // effect on unrelated note field changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.content]);
 
   const insertFormatting = useCallback((before: string, after: string = '') => {

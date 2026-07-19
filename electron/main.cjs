@@ -263,8 +263,40 @@ function installPermissionHandlers() {
   });
 }
 
+// Packaged file:// pages receive their CSP as a build-time meta tag because
+// Chromium cannot attach HTTP response headers to file resources. This handler
+// is only for Vite development, where HMR needs loopback HTTP/WebSocket access
+// and the React refresh transform injects inline/eval-based development code.
+function installDevCsp() {
+  if (app.isPackaged) return;
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' http://127.0.0.1:3000 ws://127.0.0.1:3000",
+      "media-src 'self' blob:",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ');
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    });
+  });
+}
+
 if (isPrimaryInstance) app.whenReady().then(() => {
   installPermissionHandlers();
+  installDevCsp();
   setupAutoUpdater();
   buildMenu();
   createWindow();

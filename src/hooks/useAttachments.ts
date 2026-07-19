@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Attachment, Note } from '../types';
 import { storage } from '../lib/storage';
+import { Attachment, Note } from '../types';
 
 function isAllowedAttachmentMimeType(mimeType: string): boolean {
   return mimeType.startsWith('image/');
@@ -98,6 +98,10 @@ export function useAttachments(
     });
 
     return () => { cancelled = true; };
+    // attachmentSignature is a hash of note?.attachments; depending on the
+    // signature (not the array ref) avoids re-running on every note object
+    // identity change while still reloading when attachments actually change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id, attachmentSignature, revokeUrls]);
 
   // Revoke all object URLs on unmount

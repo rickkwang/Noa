@@ -1,10 +1,10 @@
 import { useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { AppSettings, Folder, Note } from '../types';
-import { applyTemplate, builtinTemplates, formatDate } from '../lib/templates';
-import { storage } from '../lib/storage';
-import { recomputeLinkRefsForNotes } from '../lib/noteUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { recomputeLinkRefsForNotes } from '../lib/noteUtils';
+import { storage } from '../lib/storage';
+import { applyTemplate, builtinTemplates, formatDate } from '../lib/templates';
+import { AppSettings, Folder, Note } from '../types';
 
 const DAILY_FOLDER_KEY = STORAGE_KEYS.DAILY_FOLDER_ID;
 

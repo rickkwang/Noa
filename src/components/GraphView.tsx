@@ -1,11 +1,11 @@
-import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
-import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
-import { Note, Folder, AppSettings } from '../types';
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { useIsDark } from '../hooks/useIsDark';
-import { computeTopologySignature } from '../lib/noteUtils';
 import { buildGraphModel } from '../lib/graphModel';
+import { computeTopologySignature } from '../lib/noteUtils';
+import { Note, Folder, AppSettings } from '../types';
+import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
 
 export type GraphColorMode = 'tag' | 'none';
 
@@ -332,6 +332,10 @@ export default function GraphView({
     }));
 
     return { nodes, links };
+    // topologyKey is a stable hash standing in for the `notes`/`folders` arrays;
+    // including them directly would recompute on every parent re-render that
+    // produces new array identities even when topology is unchanged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery, showUnresolved]);
 
   // Build neighbour set for hovered node

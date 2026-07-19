@@ -1,17 +1,17 @@
 import React, { useRef, useState } from 'react';
-import { Folder, Note, SyncStatus } from '../../../types';
-import { useDataTransfer, ConfirmRequest, DataTransferMessage } from '../../../hooks/useDataTransfer';
-import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
-import { useStorageEstimate } from '../../../hooks/useStorageEstimate';
-import BackupSection from './data/BackupSection';
-import AutoBackupSection from './data/AutoBackupSection';
-import ImportSection from './data/ImportSection';
-import WorkspaceSection from './data/WorkspaceSection';
-import { ConfirmState } from './data/types';
-import { getLastExportAt } from '../../../lib/exportTimestamp';
-import { getBackupHealth } from '../../../lib/backupHealth';
-import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
 import { UseAutoBackupResult } from '../../../hooks/useAutoBackup';
+import { useDataTransfer, ConfirmRequest, DataTransferMessage } from '../../../hooks/useDataTransfer';
+import { useStorageEstimate } from '../../../hooks/useStorageEstimate';
+import { getBackupHealth } from '../../../lib/backupHealth';
+import { getLastExportAt } from '../../../lib/exportTimestamp';
+import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
+import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
+import { Folder, Note, SyncStatus } from '../../../types';
+import AutoBackupSection from './data/AutoBackupSection';
+import BackupSection from './data/BackupSection';
+import ImportSection from './data/ImportSection';
+import { ConfirmState } from './data/types';
+import WorkspaceSection from './data/WorkspaceSection';
 
 interface DataSettingsProps {
   workspaceName: string;
