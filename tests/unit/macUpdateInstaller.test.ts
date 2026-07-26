@@ -3,7 +3,12 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { normalizeSha512, selectVerifiedUpdateAsset, verifyFileSha512 } from '../../electron/macUpdateInstaller.cjs';
+import {
+  buildInstallScript,
+  normalizeSha512,
+  selectVerifiedUpdateAsset,
+  verifyFileSha512,
+} from '../../electron/macUpdateInstaller.cjs';
 
 const tempDirs: string[] = [];
 
@@ -54,6 +59,54 @@ describe('macOS update verification', () => {
     await expect(verifyFileSha512(filePath, digest)).resolves.toBeUndefined();
     await writeFile(filePath, 'tampered update');
     await expect(verifyFileSha512(filePath, digest)).rejects.toThrow(/failed SHA-512/);
+  });
+
+  it('cleans up the extracted app and downloaded zip after a successful install', () => {
+    const script = buildInstallScript({
+      sourceAppPath: '/tmp/noa-update-abc/extracted/Noa.app',
+      targetAppPath: '/Applications/Noa.app',
+      backupAppPath: '/Applications/Noa.app.backup.123',
+      extractDir: '/tmp/noa-update-abc/extracted',
+      zipPath: '/tmp/noa-update-abc/update.zip',
+      logPath: '/tmp/noa-update-abc/install.log',
+      appPid: 1234,
+      releasePageUrl: 'https://github.com/rickkwang/Noa/releases',
+    });
+
+    const successBranch = script.slice(script.indexOf('if /usr/bin/open -a "$TARGET_APP"; then'));
+    const cleanupLine = successBranch.split('\n').find((line) => line.includes('rm -rf "$EXTRACT_DIR"'));
+    expect(cleanupLine).toBeDefined();
+    expect(script).toContain('EXTRACT_DIR=\'/tmp/noa-update-abc/extracted\'');
+    expect(script).toContain('ZIP_PATH=\'/tmp/noa-update-abc/update.zip\'');
+
+    const errorHandler = script.slice(script.indexOf('on_error()'), script.indexOf('trap on_error ERR'));
+    expect(errorHandler).toContain('rm -rf "$EXTRACT_DIR" "$ZIP_PATH"');
+
+    const launchFailureBranch = script.slice(script.indexOf('else\n  echo "[noa-update] unable to launch installed app"'));
+    expect(launchFailureBranch).toContain('rm -rf "$EXTRACT_DIR" "$ZIP_PATH"');
+  });
+
+  it('removes its temp working directory when the update aborts before install', async () => {
+    const fakeAppDir = await mkdtemp(join(tmpdir(), 'noa-fake-app-'));
+    tempDirs.push(fakeAppDir);
+    const app = {
+      getVersion: () => '1.0.0',
+      getName: () => 'Noa',
+      getPath: () => join(fakeAppDir, 'Noa.app', 'Contents', 'MacOS', 'Noa'),
+    };
+
+    const listWorkDirs = async () => {
+      const { readdir } = await import('node:fs/promises');
+      const entries = await readdir(tmpdir());
+      return entries.filter((name) => name.startsWith('noa-update-')).sort();
+    };
+
+    const before = await listWorkDirs();
+    const { installMacUpdate } = await import('../../electron/macUpdateInstaller.cjs');
+    await expect(
+      installMacUpdate({ app, updateInfo: { version: '9.9.9', files: [] }, onProgress: () => {} }),
+    ).rejects.toThrow(/trusted ZIP/);
+    expect(await listWorkDirs()).toEqual(before);
   });
 
 });

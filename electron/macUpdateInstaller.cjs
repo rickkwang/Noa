@@ -235,13 +235,15 @@ function assertWritableInstallTarget(targetAppPath) {
   }
 }
 
-function buildInstallScript({ sourceAppPath, targetAppPath, backupAppPath, logPath, appPid, releasePageUrl }) {
+function buildInstallScript({ sourceAppPath, targetAppPath, backupAppPath, extractDir, zipPath, logPath, appPid, releasePageUrl }) {
   return `#!/bin/bash
 set -euo pipefail
 
 SOURCE_APP=${shellQuote(sourceAppPath)}
 TARGET_APP=${shellQuote(targetAppPath)}
 BACKUP_APP=${shellQuote(backupAppPath)}
+EXTRACT_DIR=${shellQuote(extractDir)}
+ZIP_PATH=${shellQuote(zipPath)}
 LOG_FILE=${shellQuote(logPath)}
 RELEASE_PAGE_URL=${shellQuote(releasePageUrl)}
 APP_PID=${appPid}
@@ -262,6 +264,7 @@ on_error() {
   code=$?
   echo "[noa-update] failed with code $code"
   restore_backup
+  /bin/rm -rf "$EXTRACT_DIR" "$ZIP_PATH" >/dev/null 2>&1 || true
   /usr/bin/open "$RELEASE_PAGE_URL" >/dev/null 2>&1 || true
   exit "$code"
 }
@@ -293,10 +296,12 @@ fi
 
 if /usr/bin/open -a "$TARGET_APP"; then
   /bin/rm -rf "$BACKUP_APP" >/dev/null 2>&1 || true
+  /bin/rm -rf "$EXTRACT_DIR" "$ZIP_PATH" >/dev/null 2>&1 || true
   echo "[noa-update] install completed"
 else
   echo "[noa-update] unable to launch installed app"
   restore_backup
+  /bin/rm -rf "$EXTRACT_DIR" "$ZIP_PATH" >/dev/null 2>&1 || true
   /usr/bin/open "$RELEASE_PAGE_URL" >/dev/null 2>&1 || true
   exit 31
 fi
@@ -322,33 +327,44 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
   const zipPath = path.join(workDir, 'update.zip');
   const extractDir = path.join(workDir, 'extracted');
   const logPath = path.join(workDir, 'install.log');
-  fs.mkdirSync(extractDir, { recursive: true });
 
-  const updateAsset = selectVerifiedUpdateAsset({ version, updateInfo });
-  await downloadFileWithProgress(updateAsset.url, zipPath, onProgress);
-  await verifyFileSha512(zipPath, updateAsset.sha512);
-  extractZipArchive(zipPath, extractDir);
+  // Any failure before the detached installer takes ownership of workDir must
+  // remove it, or aborted updates leave the downloaded zip and extracted app
+  // accumulating in the temp directory.
+  try {
+    fs.mkdirSync(extractDir, { recursive: true });
 
-  const sourceAppPath = findAppBundle(extractDir, productName);
-  if (!sourceAppPath) {
-    throw new Error(`Extracted update package does not contain ${productName}.app.`);
+    const updateAsset = selectVerifiedUpdateAsset({ version, updateInfo });
+    await downloadFileWithProgress(updateAsset.url, zipPath, onProgress);
+    await verifyFileSha512(zipPath, updateAsset.sha512);
+    extractZipArchive(zipPath, extractDir);
+
+    const sourceAppPath = findAppBundle(extractDir, productName);
+    if (!sourceAppPath) {
+      throw new Error(`Extracted update package does not contain ${productName}.app.`);
+    }
+    const backupAppPath = `${targetAppPath}.backup.${Date.now()}`;
+    const scriptPath = path.join(workDir, 'install.sh');
+    fs.writeFileSync(
+      scriptPath,
+      buildInstallScript({
+        sourceAppPath,
+        targetAppPath,
+        backupAppPath,
+        extractDir,
+        zipPath,
+        logPath,
+        appPid: process.pid,
+        releasePageUrl,
+      }),
+      'utf8',
+    );
+    fs.chmodSync(scriptPath, 0o755);
+    spawnDetachedInstallScript(scriptPath);
+  } catch (error) {
+    fs.rmSync(workDir, { recursive: true, force: true });
+    throw error;
   }
-  const backupAppPath = `${targetAppPath}.backup.${Date.now()}`;
-  const scriptPath = path.join(workDir, 'install.sh');
-  fs.writeFileSync(
-    scriptPath,
-    buildInstallScript({
-      sourceAppPath,
-      targetAppPath,
-      backupAppPath,
-      logPath,
-      appPid: process.pid,
-      releasePageUrl,
-    }),
-    'utf8',
-  );
-  fs.chmodSync(scriptPath, 0o755);
-  spawnDetachedInstallScript(scriptPath);
 
   return {
     ok: true,
@@ -360,6 +376,7 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
 }
 
 module.exports = {
+  buildInstallScript,
   getReleasePageUrl,
   installMacUpdate,
   normalizeSha512,
