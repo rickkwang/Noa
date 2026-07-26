@@ -732,7 +732,7 @@ export default function GraphView({
         className="absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md"
         style={{
           background: isDark ? 'rgba(249,249,247,0.04)' : 'rgba(45,45,43,0.03)',
-          border: `1px solid ${isDark ? 'rgba(249,249,247,0.07)' : 'rgba(45,45,43,0.08)'}`,
+          border: '1px solid var(--divider-subtle, #E6E2DA)',
         }}
       >
         {zoomControls.map(({ icon, title, action }) => (

@@ -43,7 +43,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
 
       {/* Center Section: Search */}
       <div className="flex items-center justify-center min-w-0 px-4">
-        <div className="flex h-[22px] items-center border px-3 rounded-md shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] w-full max-w-md min-w-0" style={{ ...noDragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7', borderColor: 'var(--panel-divider, #2D2D2B)' }}>
+        <div className="flex h-[22px] items-center border px-3 rounded-md w-full max-w-md min-w-0" style={{ ...noDragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7', borderColor: isDark ? 'var(--panel-divider, rgba(249,249,247,0.15))' : 'var(--border-default, #E6E2DA)' }}>
           <Search size={14} className="text-[#2D2D2B]/50 mr-2 shrink-0" />
           <input
             ref={searchInputRef}

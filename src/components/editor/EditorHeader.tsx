@@ -25,7 +25,7 @@ function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark:
         <Download size={14} />
       </button>
       {open && (
-        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#2D2D2B] border border-[#F9F9F7]/10' : 'bg-[#F9F9F7] border border-[#2D2D2B]/15'}`}>
+        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'} border border-[var(--divider-subtle)]`}>
           <button
             onClick={() => { onExportMd(); setOpen(false); }}
             className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
@@ -204,7 +204,7 @@ export function EditorHeader({
     : {};
 
   return (
-    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#252523] after:bg-[#F9F9F7]/15' : 'bg-[#EFEAE3] after:bg-[#2D2D2B]'}`}>
+    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#252523] after:bg-[#F9F9F7]/15' : 'bg-[#EFEAE3] after:bg-[#E6E2DA]'}`}>
       {/* Tab strip */}
       <div className="min-w-0 flex-1 flex items-end overflow-visible">
         {/* z-[1] keeps the strip above the header's bottom line even when the
@@ -240,7 +240,7 @@ export function EditorHeader({
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/15' : 'bg-[#2D2D2B]/20'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/15' : 'bg-[#E6E2DA]'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
                       />
                     )}
@@ -389,7 +389,7 @@ export function EditorHeader({
           </button>
         </div>
 
-        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#2D2D2B]/20'}`} />
+         <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
 
         {/* Group 2: actions */}
         <div className="flex items-center gap-1 shrink-0">
@@ -397,7 +397,7 @@ export function EditorHeader({
           {onToggleHistory && (
             <button
               onClick={onToggleHistory}
-              className={`p-1.5 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
+              className={`px-1.5 py-1 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
               title="Version History"
             >
               <History size={14} />
@@ -405,7 +405,7 @@ export function EditorHeader({
           )}
         </div>
 
-        <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#2D2D2B]/20'}`} />
+         <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
 
         {/* Group 3: timestamp */}
         <div

@@ -91,7 +91,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                   tagList.length > 0 ? (
                     <div className="flex flex-wrap gap-1 flex-1 min-w-0">
                       {tagList.map(tag => (
-                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-redaction font-bold border border-[#CC7D5E]/40 text-[#CC7D5E] bg-[#CC7D5E]/10 leading-none">
+                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-redaction font-bold border text-[#CC7D5E] bg-[#CC7D5E]/10 leading-none" style={{ borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
                           #{tag}
                         </span>
                       ))}

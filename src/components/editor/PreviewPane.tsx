@@ -652,7 +652,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         }
         if (!src || src === 'note-attachment://missing') {
           return (
-            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(249,249,247,0.35)' : 'rgba(45,45,43,0.4)', border: `1px dashed ${isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.2)'}` }}>
+            <span className="text-xs italic px-2 py-1" style={{ color: isDark ? 'rgba(249,249,247,0.35)' : 'rgba(45,45,43,0.4)', border: '1px dashed var(--divider-subtle, #E6E2DA)' }}>
               [{alt ?? 'Attachment not found'}]
             </span>
           );
@@ -680,7 +680,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         }}>{children}</mark>
       ),
       hr: () => (
-        <hr style={{ border: 'none', borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, margin: '1.5rem 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', margin: '1.5rem 0' }} />
       ),
       code: ({ className, children }) => {
         const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? '';
@@ -718,7 +718,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           return (
             <section
               style={{
-                borderTop: `1px dashed ${isDark ? 'rgba(249,249,247,0.12)' : 'rgba(45,45,43,0.2)'}`,
+                borderTop: '1px dashed var(--divider-subtle, #E6E2DA)',
                 marginTop: '2rem',
                 paddingTop: '0.75rem',
                 fontSize: '0.8em',
@@ -742,13 +742,13 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       ),
       tbody: ({ children }) => <tbody>{children}</tbody>,
       tr: ({ children }) => (
-        <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}>{children}</tr>
+        <tr style={{ borderBottom: '1px solid var(--divider-subtle, #E6E2DA)' }}>{children}</tr>
       ),
       th: ({ children }) => (
-        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderBottom: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderLeft: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderRight: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, color: isDark ? '#F9F9F7' : '#2D2D2B', whiteSpace: 'nowrap' }}>{children}</th>
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, borderTop: '1px solid var(--divider-subtle, #E6E2DA)', borderBottom: '1px solid var(--divider-subtle, #E6E2DA)', borderLeft: '1px solid var(--divider-subtle, #E6E2DA)', borderRight: '1px solid var(--divider-subtle, #E6E2DA)', color: isDark ? '#F9F9F7' : '#2D2D2B', whiteSpace: 'nowrap' }}>{children}</th>
       ),
       td: ({ children }) => (
-        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderLeft: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, borderRight: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}`, color: isDark ? '#F9F9F7' : '#2D2D2B' }}>{children}</td>
+        <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', borderLeft: '1px solid var(--divider-subtle, #E6E2DA)', borderRight: '1px solid var(--divider-subtle, #E6E2DA)', color: isDark ? '#F9F9F7' : '#2D2D2B' }}>{children}</td>
       ),
       li: ({ children, className, ...props }) => {
         const isTask = className?.includes('task-list-item');
@@ -862,7 +862,7 @@ function NoteEmbed({
   }, [visitedIds, noteId]);
 
   const mutedColor = isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.45)';
-  const borderColor = isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.2)';
+  const borderColor = isDark ? 'rgba(249,249,247,0.15)' : 'var(--divider-subtle, #E6E2DA)';
 
   if (!target || !embeddedNote) {
     return (
@@ -956,11 +956,10 @@ export const PreviewPane = React.memo(function PreviewPane({
       className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]/50'}
       style={printMode ? style : {
         paddingRight: '2rem',
-        // Preview mode has no toolbar below the tab bar, so scrolled content
-        // would butt right against it. Fade the top edge via mask (theme-agnostic
-        // — works over any background, unlike a colored gradient overlay).
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 16px)',
-        maskImage: 'linear-gradient(to bottom, transparent 0, black 16px)',
+        // A full but gradual fade keeps scrolled content from meeting the tab
+        // strip abruptly, with enough range to read as a deliberate transition.
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 48px)',
+        maskImage: 'linear-gradient(to bottom, transparent 0, black 48px)',
         ...style,
       }}
     >
@@ -968,7 +967,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#F9F9F7] prose-headings:text-[#F9F9F7] prose-p:text-[#F9F9F7] prose-li:text-[#F9F9F7] prose-strong:text-[#F9F9F7] prose-em:text-[#F9F9F7] prose-blockquote:text-[#F9F9F7] prose-ol:text-[#F9F9F7] prose-ul:text-[#F9F9F7] prose-a:text-[#CC7D5E] prose-pre:text-[#F9F9F7] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F9F9F7] prose-hr:border-[#3A3A37] prose-th:text-[#F9F9F7] prose-td:text-[#F9F9F7]'
+              ? 'text-[#F9F9F7] prose-headings:text-[#F9F9F7] prose-p:text-[#F9F9F7] prose-li:text-[#F9F9F7] prose-strong:text-[#F9F9F7] prose-em:text-[#F9F9F7] prose-blockquote:text-[#F9F9F7] prose-ol:text-[#F9F9F7] prose-ul:text-[#F9F9F7] prose-a:text-[#CC7D5E] prose-pre:text-[#F9F9F7] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F9F9F7] prose-hr:border-[var(--divider-subtle)] prose-th:text-[#F9F9F7] prose-td:text-[#F9F9F7]'
               : 'text-[#2D2D2B] prose-headings:text-[#2D2D2B] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2B] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2B]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
@@ -990,7 +989,7 @@ export const PreviewPane = React.memo(function PreviewPane({
       </div>
 
       {!printMode && backlinks.length > 0 && (
-        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: `1px dashed ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}>
+        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)' }}>
           <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
             <span>{backlinks.length}</span>
             <span>Linked Mentions</span>
@@ -1000,7 +999,7 @@ export const PreviewPane = React.memo(function PreviewPane({
               <div
                 key={backlink.id}
                 className="px-2 py-1.5 cursor-pointer transition-colors group"
-                style={{ border: `1px solid ${isDark ? 'rgba(249,249,247,0.5)' : '#2D2D2B'}` }}
+                style={{ border: '1px solid var(--divider-subtle, #E6E2DA)' }}
                 onClick={() => onNavigateToNoteById(backlink.id)}
               >
                 <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>

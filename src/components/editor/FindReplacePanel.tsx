@@ -160,7 +160,7 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
   }, [goNext, goPrev, onClose]);
 
   const bg = isDark ? '#252523' : '#F9F9F7';
-  const border = isDark ? '#3A3A37' : '#2D2D2B';
+  const border = 'var(--divider-subtle, #E6E2DA)';
   const text = isDark ? '#F9F9F7' : '#2D2D2B';
   const inputBg = isDark ? '#302F2C' : '#FBF8F4';
   const mutedText = isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.55)';

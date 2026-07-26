@@ -1053,7 +1053,7 @@ export default function App() {
         </div>
       </div>
       {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,43,0.15)]">
+        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md shadow-[0_4px_12px_rgba(45,45,43,0.10)]">
           <div className="text-xs font-bold text-[#A26721] uppercase tracking-wider mb-1">Warning · Save</div>
           <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
           <button
@@ -1065,7 +1065,7 @@ export default function App() {
         </div>
       )}
       {externalUpdateNotice && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[4px_4px_0px_0px_rgba(45,45,43,0.15)]">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[0_4px_12px_rgba(45,45,43,0.10)]">
           <div className="text-xs font-bold text-[#CC7D5E] uppercase tracking-wider mb-0.5">Vault Sync</div>
           <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
         </div>
@@ -1101,7 +1101,7 @@ export default function App() {
         </div>
       )}
       {showStorageNotice && (
-        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)]">
+        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction shadow-[0_4px_12px_rgba(45,45,43,0.12)]">
           <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Local Storage Only</div>
           <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
             {LOCAL_DATA_BOUNDARY_COPY}
@@ -1119,7 +1119,7 @@ export default function App() {
       )}
       {loadError && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl bg-[#F9F9F7] border-2 border-[#2D2D2B] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] p-4 font-redaction space-y-3 slide-down">
+          <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] shadow-[0_4px_12px_rgba(45,45,43,0.12)] p-4 font-redaction space-y-3 slide-down">
             <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
             <p className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
             <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
@@ -1127,13 +1127,13 @@ export default function App() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={retryInitialization}
-                className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border-2 border-[#2D2D2B] hover:bg-[#EFEAE3]"
+                className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
               >
                 Retry Read
               </button>
               <button
                 onClick={() => recoveryImportInputRef.current?.click()}
-                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border-2 border-[#2D2D2B] hover:opacity-90"
+                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90"
               >
                 Import Backup
               </button>
@@ -1141,7 +1141,7 @@ export default function App() {
                 onClick={() => {
                   void resetWorkspaceFromRecovery();
                 }}
-                className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border-2 border-[#D45555]/60 hover:bg-[#D45555]/30"
+                className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border border-[#D45555]/60 hover:bg-[#D45555]/30"
               >
                 New Empty Workspace
               </button>
@@ -1165,7 +1165,7 @@ export default function App() {
       {commandPalette.isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
           <div
-            className="w-full max-w-xl border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down"
+            className="w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">
@@ -1232,7 +1232,7 @@ export default function App() {
       )}
       {navigationConflict && (
         <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
-          <div className="w-full max-w-lg border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3]">
               <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
               <div className="text-sm text-[#2D2D2B] mt-1">
@@ -1279,7 +1279,7 @@ export default function App() {
         const dateFormat = settings.dailyNotes.dateFormat;
         return (
           <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
-            <div className="w-full max-w-sm border-2 border-[#2D2D2B] bg-[#F9F9F7] shadow-[4px_4px_0px_0px_rgba(45,45,43,0.25)] slide-down" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down" onClick={(e) => e.stopPropagation()}>
               <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Choose Template</div>

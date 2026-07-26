@@ -31,7 +31,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark
   }, [activeNote, backlinks]);
 
   const txtMuted = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/50';
-  const cardBorder = isDark ? 'border-[rgba(249,249,247,0.25)]' : 'border-[#2D2D2B]';
+  const cardBorder = 'var(--divider-subtle, #E6E2DA)';
   const cardBg = isDark ? 'bg-[#252523] hover:bg-[#302F2C]' : 'bg-[#EFEAE3]/40 hover:bg-[#EFEAE3]/70';
   const titleColor = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
   const snippetColor = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/60';
@@ -49,7 +49,7 @@ export function BacklinksPanel({ activeNote, notes, onNavigateToNoteById, isDark
           {backlinks.map(note => {
             const snippet = backlinkSnippets.get(note.id);
             return (
-              <div key={note.id} className={`border px-3 py-2.5 transition-colors cursor-pointer ${cardBorder} ${cardBg}`}>
+              <div key={note.id} className={`border rounded-md px-3 py-2.5 transition-colors cursor-pointer ${cardBg}`} style={{ borderColor: cardBorder }}>
                 <button
                   onClick={() => onNavigateToNoteById(note.id)}
                   className={`font-bold text-sm hover:text-[#CC7D5E] transition-colors flex items-center space-x-1.5 w-full text-left ${titleColor}`}

@@ -19,7 +19,11 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-tertiary', '#302F2C');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
-      root.style.setProperty('--border-primary', '#3A3A37');
+      root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');
+      root.style.setProperty('--border-default', 'var(--divider-subtle)');
+      root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');
+      root.style.setProperty('--border-primary', 'var(--divider-subtle)');
+      root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
     } else {
       root.removeAttribute('data-theme');
       root.style.setProperty('--bg-primary', '#F9F9F7');
@@ -27,7 +31,11 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-tertiary', '#E5DCD2');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
-      root.style.setProperty('--border-primary', '#2D2D2B');
+      root.style.setProperty('--divider-subtle', '#E6E2DA');
+      root.style.setProperty('--border-default', 'var(--divider-subtle)');
+      root.style.setProperty('--border-strong', '#E6E2DA');
+      root.style.setProperty('--border-primary', 'var(--border-default)');
+      root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
     }
 
     // Accent is a fixed theme token (coral in both themes), not user-configurable.
@@ -76,23 +84,24 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .hover\\:text-\\[\\#2D2D2B\\]:hover { color: var(--text-primary) !important; }
       .group:hover .group-hover\\:text-\\[\\#CC7D5E\\] { color: var(--accent-color) !important; }
 
-      .border-\\[\\#2D2D2B\\]      { border-color: var(--border-primary) !important; }
+      .border-\\[\\#2D2D2B\\]      { border-color: var(--border-default) !important; }
       .border-\\[\\#CC7D5E\\]      { border-color: var(--accent-color) !important; }
-      .border-\\[\\#2D2D2B\\]\\/10 { border-color: color-mix(in srgb, var(--border-primary) 10%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/20 { border-color: color-mix(in srgb, var(--border-primary) 20%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/30 { border-color: color-mix(in srgb, var(--border-primary) 30%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/40 { border-color: color-mix(in srgb, var(--border-primary) 40%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/50 { border-color: color-mix(in srgb, var(--border-primary) 50%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/60 { border-color: color-mix(in srgb, var(--border-primary) 60%, transparent) !important; }
-      .border-\\[\\#2D2D2B\\]\\/90 { border-color: color-mix(in srgb, var(--border-primary) 90%, transparent) !important; }
-      .hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-primary) !important; }
+      .border-\\[\\#2D2D2B\\]\\/10 { border-color: var(--divider-subtle) !important; }
+      .border-\\[\\#2D2D2B\\]\\/15 { border-color: var(--divider-subtle) !important; }
+      .border-\\[\\#2D2D2B\\]\\/20 { border-color: var(--divider-subtle) !important; }
+      .border-\\[\\#2D2D2B\\]\\/30 { border-color: var(--border-default) !important; }
+      .border-\\[\\#2D2D2B\\]\\/40 { border-color: var(--border-strong) !important; }
+      .border-\\[\\#2D2D2B\\]\\/50 { border-color: var(--border-strong) !important; }
+      .border-\\[\\#2D2D2B\\]\\/60 { border-color: var(--border-strong) !important; }
+      .border-\\[\\#2D2D2B\\]\\/90 { border-color: color-mix(in srgb, var(--text-primary) 90%, transparent) !important; }
+      .hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-strong) !important; }
       .hover\\:border-\\[\\#CC7D5E\\]:hover  { border-color: var(--accent-color) !important; }
       .focus\\:border-\\[\\#CC7D5E\\]:focus  { border-color: var(--accent-color) !important; }
       .border-\\[\\#CC7D5E\\]\\/50 { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent) !important; }
       .border-\\[\\#CC7D5E\\]\\/60 { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent) !important; }
 
-      .shadow-\\[4px_4px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 4px 4px 0 0 var(--border-primary) !important; }
-      .shadow-\\[2px_2px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 2px 2px 0 0 var(--border-primary) !important; }
+      .shadow-\\[4px_4px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 4px 12px 0 color-mix(in srgb, var(--border-strong) 28%, transparent) !important; }
+      .shadow-\\[2px_2px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 2px 6px 0 color-mix(in srgb, var(--border-strong) 24%, transparent) !important; }
       .shadow-\\[inset_4px_0px_0px_0px_\\#CC7D5E\\]          { box-shadow: inset 4px 0px 0px 0px var(--accent-color) !important; }
 
       .selection\\:bg-\\[\\#CC7D5E\\] *::selection { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }

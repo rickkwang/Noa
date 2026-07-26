@@ -226,7 +226,7 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border-2 border-[#2D2D2B] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)] min-w-[160px]"
+            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border border-[#2D2D2B] shadow-[0_4px_12px_rgba(45,45,43,0.10)] min-w-[160px]"
           >
             {builtinTemplates.map(t => (
               <button
@@ -535,7 +535,7 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
         <div className="pt-1 pb-2">
           {searchQuery ? (
-              <div className="-mr-[5px]">
+              <div>
                 <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
                   <span>Search Results ({searchResults.length})</span>
                   {onClearSearch && (
@@ -551,7 +551,7 @@ export default function Sidebar({
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
+                    className={`p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">

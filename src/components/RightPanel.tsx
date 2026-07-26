@@ -119,14 +119,14 @@ export default function RightPanel({
     <div className={`w-full h-full flex flex-col shrink-0 relative ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
       {/* Tab bar — rounded segmented control with a raised pill for the active tab */}
       <div
-        className="h-8 shrink-0 border-b flex items-center px-1"
+        className="h-8 shrink-0 border-b flex items-center pl-1 pr-[5px]"
         style={{
           background: isDark ? '#252523' : '#EFEAE3',
-          borderColor: isDark ? 'rgba(249,249,247,0.18)' : '#2D2D2B',
+          borderColor: 'var(--divider-subtle, #E6E2DA)',
         }}
       >
         <div
-          className="w-full flex items-stretch gap-0.5 rounded-lg p-0.5"
+          className="w-full flex items-stretch gap-0.5 rounded-lg p-0"
           style={{ background: isDark ? '#252523' : '#EFEAE3' }}
         >
           {([
@@ -143,7 +143,7 @@ export default function RightPanel({
                   color: isDark ? '#F9F9F7' : '#2D2D2B',
                   boxShadow: isDark
                     ? '0 0 2px rgba(0,0,0,0.3)'
-                    : '0 0 2px rgba(45,45,43,0.12)',
+                    : 'none',
                 }
               : {
                   color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.55)',
@@ -155,7 +155,7 @@ export default function RightPanel({
                 title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
                 aria-label={tab.label}
                 aria-pressed={isActive}
-                className={`relative flex-1 flex items-center justify-center h-6 rounded-md transition-colors active:opacity-70 ${
+                className={`relative flex-1 flex items-center justify-center h-7 rounded-md transition-colors active:opacity-70 ${
                   isActive
                     ? ''
                     : isDark ? 'hover:text-[#F9F9F7] hover:bg-[#F9F9F7]/[0.05]' : 'hover:text-[#2D2D2B] hover:bg-[#F9F9F7]/60'
@@ -204,7 +204,7 @@ export default function RightPanel({
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (
-            <div className={`border px-3 py-2 text-xs leading-relaxed ${isDark ? 'border-[rgba(249,249,247,0.15)] bg-[#252523] text-[rgba(249,249,247,0.65)]' : 'border-[#2D2D2B]/30 bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
+            <div className={`border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[#252523] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
               <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
               <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
               <button
@@ -218,11 +218,11 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className="flex flex-col border rounded-md overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: isDark ? 'rgba(249,249,247,0.15)' : 'rgba(45,45,43,0.9)' }}>
-            <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523] border-[rgba(249,249,247,0.1)]' : 'bg-[#EFEAE3] border-[#2D2D2B]/50'}`}>
+          <div className="flex flex-col border rounded-md overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
+            <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
               <Network size={11} className="text-[#CC7D5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix</span>
-              <div className={`noa-graph-filter-control flex items-center h-5 rounded-md border transition-colors ${isDark ? 'border-[rgba(249,249,247,0.07)]' : 'border-[rgba(45,45,43,0.1)]'}`}
+              <div className="noa-graph-filter-control flex items-center h-5 rounded-md border border-[var(--divider-subtle)] transition-colors"
                 role="group"
                 aria-label="Graph filter controls"
                 style={{ background: isDark ? 'rgba(249,249,247,0.05)' : 'rgba(45,45,43,0.04)' }}>
@@ -233,7 +233,7 @@ export default function RightPanel({
                     placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-12 min-w-0"
                     style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
                 </div>
-                <div className="w-px self-stretch my-1" style={{ background: isDark ? 'rgba(249,249,247,0.08)' : 'rgba(45,45,43,0.1)' }} />
+                <div className="w-px self-stretch my-1" style={{ background: isDark ? 'rgba(249,249,247,0.08)' : 'var(--divider-subtle, #E6E2DA)' }} />
                 <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
                   className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors shrink-0"
                   style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.5)') }}>
@@ -348,8 +348,8 @@ function GraphInfoPanel({
   );
 
   return (
-    <div className={`flex-1 flex flex-col border rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'border-[rgba(249,249,247,0.15)] bg-[#2D2D2B]' : 'border-[#2D2D2B]/90 bg-[#F9F9F7]'}`}>
-      <div className={`h-7 border-b flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523] border-[rgba(249,249,247,0.1)]' : 'bg-[#EFEAE3] border-[#2D2D2B]/50'}`}>
+    <div className={`flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+      <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
         <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix Stats</span>
       </div>
@@ -357,7 +357,7 @@ function GraphInfoPanel({
       <div className="p-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
-            <div key={label} className={`border p-2 text-center ${isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]'}`}>
+            <div key={label} className="border border-[var(--divider-subtle)] p-2 text-center">
               <div className={`text-sm font-bold leading-none tabular-nums ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}>{value}</div>
               <div className={`text-[10px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>{label}</div>
             </div>
@@ -451,7 +451,7 @@ function GraphFilterPanel({
 }: GraphFilterPanelProps) {
   const labelCls = `text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/55'}`;
   const valueCls = `text-[10px] tabular-nums ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/80'}`;
-  const borderCol = isDark ? 'rgba(249,249,247,0.12)' : 'rgba(45,45,43,0.45)';
+  const borderCol = isDark ? 'rgba(249,249,247,0.12)' : 'var(--divider-subtle, #E6E2DA)';
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
   };

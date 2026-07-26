@@ -55,12 +55,12 @@ function ToggleSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-14 border-[1.75px] border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${
+      className={`relative h-7 w-14 border border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${
         checked ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'
       }`}
     >
       <span
-        className={`absolute left-1 top-1 h-4 w-4 border-[1.75px] border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${
+        className={`absolute left-1 top-1 h-4 w-4 border border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${
           checked ? 'translate-x-7' : 'translate-x-0'
         }`}
       />
@@ -107,7 +107,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             <select
               value={settings.appearance.theme}
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
-              className="appearance-none bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
+              className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
@@ -127,7 +127,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
                 onChange={(e) => {
                   updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: e.target.value } }));
                 }}
-                className="appearance-none bg-[#F9F9F7] border-[1.75px] border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
+                className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
               >
                 {/* Built-in bundled fonts */}
                 <option value="font-iosevka">Iosevka Nerd Font Mono (Default)</option>
