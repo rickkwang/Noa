@@ -602,6 +602,11 @@ export default function App() {
   }, []);
 
   const markEnteringTab = useCallback((id: string, fromId: string | null) => {
+    // Mirror handleTabClose. Under reduced motion the enter keyframes are off,
+    // so flagging the tab only leaves it squeezed (min-width:0) until the 190ms
+    // fallback fires — animationend never arrives to clear it early. That pop is
+    // worse than the motion it replaces.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     enteringTabIdRef.current = id;
     setEnteringTabId(id);
     setEnteringFromTabId(fromId);
@@ -738,12 +743,21 @@ export default function App() {
     setEnteringFromTabId(null);
   }, []);
 
+  // Only ids and titles are rendered, but `notes` changes on every keystroke.
+  // Handing EditorHeader a fresh array each time would re-run its layout
+  // effects mid-typing — a smooth scrollIntoView restart plus a forced
+  // scrollLeft/scrollWidth read per character. Reuse the previous array
+  // whenever the visible tab set is unchanged.
+  const openTabsRef = useRef<{ id: string; title: string }[]>([]);
   const openTabs = useMemo(() => {
-    const noteById = new Map(notes.map(n => [n.id, n]));
-    return openTabIds.flatMap(id => {
-      const n = noteById.get(id);
-      return n ? [{ id: n.id, title: n.title }] : [];
-    });
+    const titleById = new Map(notes.map(n => [n.id, n.title]));
+    const next = openTabIds.flatMap(id => (titleById.has(id) ? [{ id, title: titleById.get(id) as string }] : []));
+    const prev = openTabsRef.current;
+    if (prev.length === next.length && prev.every((t, i) => t.id === next[i].id && t.title === next[i].title)) {
+      return prev;
+    }
+    openTabsRef.current = next;
+    return next;
   }, [openTabIds, notes]);
 
   const globalTasks = useGlobalTasks(notes);

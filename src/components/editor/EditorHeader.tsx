@@ -61,8 +61,18 @@ function formatRelativeTime(timestamp: string | number | Date): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   if (diffDay < 7) return `${diffDay}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+  // Past a week the relative form stops being useful, but a full numeric date
+  // ("7/12/2026") is wide and noisy in the header — drop the year unless the
+  // note is from a different one. Hover still shows the full timestamp.
+  const date = new Date(timestamp);
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return date.toLocaleDateString(undefined, sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+// Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css.
+const TAB_ANIM_MS = 170;
 
 interface EditorTab {
   id: string;
@@ -129,7 +139,6 @@ export function EditorHeader({
   readOnly = false,
 }: EditorHeaderProps) {
   const tabStripRef = useRef<HTMLDivElement>(null);
-  const pendingInstantTabScrollRef = useRef(false);
   // Track IME composition so we don't commit a half-typed CJK title when the
   // user presses Enter or blurs mid-selection.
   const isComposingRef = useRef(false);
@@ -159,17 +168,32 @@ export function EditorHeader({
   useLayoutEffect(() => {
     const scrollEl = tabStripRef.current;
     if (!scrollEl) return;
-    // Keep the active tab in view when it changes (e.g. activated via keyboard or
-    // sidebar while scrolled off-screen). Skip during the entrance animation and
-    // snap into view afterward so the tab strip itself doesn't leave a trail.
+    // A new tab is always appended at the end, so follow the strip's right edge
+    // while it widens and it reads as sliding in at that edge. Letting the
+    // entrance finish and snapping into view afterward instead teleported the
+    // whole strip a full tab-width in a single frame (measured: 73px, 3/3).
     if (enteringTabId && enteringTabId === note.id) {
-      pendingInstantTabScrollRef.current = true;
-      return;
+      // Ease to the edge rather than pinning to it: the strip is often parked
+      // far from the right (browsing older tabs, then opening a note that isn't
+      // open yet), and jumping straight to scrollWidth teleported it by up to
+      // 1098px in a single frame. Duration matches editor-tab-slot-enter.
+      const from = scrollEl.scrollLeft;
+      const start = performance.now();
+      let raf = 0;
+      const followRightEdge = () => {
+        const p = Math.min(1, (performance.now() - start) / TAB_ANIM_MS);
+        const eased = 1 - (1 - p) ** 3;
+        const max = scrollEl.scrollWidth - scrollEl.clientWidth;
+        scrollEl.scrollLeft = from + (max - from) * eased;
+        if (p < 1) raf = requestAnimationFrame(followRightEdge);
+      };
+      followRightEdge();
+      return () => cancelAnimationFrame(raf);
     }
+    // Otherwise keep the active tab in view when it changes (e.g. activated via
+    // keyboard or the sidebar while scrolled off-screen).
     const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
-    const behavior = pendingInstantTabScrollRef.current ? 'auto' : 'smooth';
-    pendingInstantTabScrollRef.current = false;
-    active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior });
+    active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }, [tabs, note.id, enteringTabId]);
 
   useEffect(() => {
@@ -192,6 +216,22 @@ export function EditorHeader({
   }, []);
 
   useLayoutEffect(updateEdgeFade, [tabs]);
+
+  // Mirror of what the close button does for the exit animation: stamp the
+  // entering tab with the width it is animating toward. Siblings are already at
+  // that width (once the strip overflows every tab sits at its 4.5rem minimum),
+  // and the entering tab is still at max-width:0 on this frame, so measuring one
+  // is safe. markEnteringTab only fires when tabs already exist, so there is
+  // always a sibling to measure.
+  useLayoutEffect(() => {
+    if (!shouldAnimateEnteringTab || !enteringTabId) return;
+    const strip = tabStripRef.current;
+    if (!strip) return;
+    const tabEls = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab-id]'));
+    const entering = tabEls.find(el => el.dataset.tabId === enteringTabId);
+    const settled = tabEls.find(el => el !== entering && !el.dataset.closingTab);
+    if (entering && settled) entering.style.setProperty('--noa-tab-w', `${settled.offsetWidth}px`);
+  }, [shouldAnimateEnteringTab, enteringTabId]);
 
   // Fade the tab content itself out at overflowing edges (a colored overlay
   // would need to match the themed header background exactly, which the theme

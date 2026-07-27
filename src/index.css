@@ -303,18 +303,24 @@ body {
   transition: opacity 140ms ease-out;
 }
 
+/* Both animations drive `width` against a measured `--noa-tab-w`, and take the
+   tab out of flex sizing (`flex: 0 0 auto`) for the duration.
+   Animating max-width instead does not work once the strip overflows: the
+   min-width:0 below makes the animating tab the only shrinkable item in the
+   row, so flex-shrink alone squeezes it to ~26px and max-width never binds. The
+   tab then snapped 26px -> 72px the instant the class was removed. */
 @keyframes editor-tab-slot-enter {
   from {
     opacity: 0;
     transform: translateX(-8px) scale(0.96);
-    max-width: 0;
+    width: 0;
     padding-left: 0;
     padding-right: 0;
   }
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
-    max-width: 9rem;
+    width: var(--noa-tab-w, 9rem);
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
@@ -322,6 +328,7 @@ body {
 .editor-tab-enter {
   transform-origin: left center;
   animation: editor-tab-slot-enter 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  flex: 0 0 auto;
   min-width: 0 !important;
   overflow: hidden;
   will-change: transform, opacity;
@@ -335,14 +342,14 @@ body {
   from {
     opacity: 1;
     transform: translateX(0) scale(1);
-    max-width: var(--noa-tab-w, 9rem);
+    width: var(--noa-tab-w, 9rem);
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
   to {
     opacity: 0;
     transform: translateX(-8px) scale(0.96);
-    max-width: 0;
+    width: 0;
     padding-left: 0;
     padding-right: 0;
   }
@@ -351,6 +358,7 @@ body {
   pointer-events: none;
   transform-origin: left center;
   animation: editor-tab-slot-exit 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  flex: 0 0 auto;
   min-width: 0 !important;
   overflow: hidden;
   will-change: transform, opacity;
