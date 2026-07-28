@@ -35,6 +35,8 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
             onClick={onToggleSidebar}
             className={`p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
             title="Toggle Sidebar"
+            aria-label="Toggle sidebar"
+            aria-pressed={isSidebarOpen}
           >
             <PanelLeft size={16} />
           </button>
@@ -57,6 +59,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
             <button
               onClick={() => onSearchChange && onSearchChange('')}
               className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 shrink-0 ml-1"
+              aria-label="Clear search"
             >
               <X size={14} />
             </button>
@@ -72,6 +75,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
               onClick={onOpenDailyNote}
               className="p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
               title="Today's note"
+              aria-label="Open today's daily note"
             >
               <Calendar size={16} />
             </button>
@@ -80,6 +84,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
             onClick={onOpenSettings}
             className="p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
             title="Settings"
+            aria-label="Open settings"
           >
             <Settings size={16} />
           </button>
@@ -87,6 +92,8 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
             onClick={onToggleRightPanel}
             className={`p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
             title="Toggle Panel"
+            aria-label="Toggle right panel"
+            aria-pressed={isRightPanelOpen}
           >
             <PanelRight size={16} className="scale-x-[-1]" />
           </button>

@@ -21,11 +21,14 @@ function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark:
         onClick={() => setOpen(v => !v)}
         className={`flex items-center p-1.5 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
         title="Export"
+        aria-label="Export note"
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
         <Download size={14} />
       </button>
       {open && (
-        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] shadow-md ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'} border border-[var(--divider-subtle)]`}>
+        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] noa-floating-panel ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'} border border-[var(--divider-subtle)]`}>
           <button
             onClick={() => { onExportMd(); setOpen(false); }}
             className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
@@ -382,7 +385,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}>
+                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`} aria-label="Close tab" title="Close tab">
                     <X size={11} />
                   </button>
                 )}
@@ -396,6 +399,7 @@ export function EditorHeader({
             onClick={onNewTab}
             className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/70 hover:bg-[#2D2D2B]' : 'text-[#2D2D2B]/40 hover:text-[#2D2D2B] hover:bg-[#EFEAE3]'}`}
             title="New tab"
+            aria-label="New tab"
           >
             <Plus size={14} />
           </button>
@@ -410,6 +414,8 @@ export function EditorHeader({
             onClick={() => setViewMode('edit')}
             className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Edit Only"
+            aria-label="Edit only"
+            aria-pressed={viewMode === 'edit'}
           >
             <Edit2 size={14} />
           </button>
@@ -417,6 +423,8 @@ export function EditorHeader({
             onClick={() => setViewMode('split')}
             className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Split View"
+            aria-label="Split view"
+            aria-pressed={viewMode === 'split'}
           >
             <Columns size={14} />
           </button>
@@ -424,6 +432,8 @@ export function EditorHeader({
             onClick={() => setViewMode('preview')}
             className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
             title="Preview Only"
+            aria-label="Preview only"
+            aria-pressed={viewMode === 'preview'}
           >
             <Eye size={14} />
           </button>
@@ -439,6 +449,8 @@ export function EditorHeader({
               onClick={onToggleHistory}
               className={`px-1.5 py-1 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
               title="Version History"
+              aria-label="Version history"
+              aria-pressed={isHistoryOpen ?? false}
             >
               <History size={14} />
             </button>

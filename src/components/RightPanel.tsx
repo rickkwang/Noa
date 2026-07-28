@@ -218,7 +218,7 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className="flex flex-col border rounded-md overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
+          <div className="noa-elevated-panel flex flex-col border rounded-lg overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
             <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
               <Network size={11} className="text-[#CC7D5E] shrink-0" />
               <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix</span>
@@ -348,7 +348,7 @@ function GraphInfoPanel({
   );
 
   return (
-    <div className={`flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+    <div className={`noa-elevated-panel flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-lg overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
       <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
         <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix Stats</span>

@@ -226,7 +226,7 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border border-[#2D2D2B] shadow-[0_4px_12px_rgba(45,45,43,0.10)] min-w-[160px]"
+            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel min-w-[160px]"
           >
             {builtinTemplates.map(t => (
               <button
@@ -368,7 +368,7 @@ export default function Sidebar({
     >
       {isDragOver && (
         <div className="absolute inset-0 bg-[#CC7D5E]/10 border-2 border-dashed border-[#CC7D5E] z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] shadow-lg font-redaction font-bold text-[#CC7D5E] flex items-center">
+          <div className="noa-floating-panel bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] font-redaction font-bold text-[#CC7D5E] flex items-center">
             <Plus size={16} className="mr-2" />
             Drop files to import
           </div>
@@ -379,6 +379,7 @@ export default function Sidebar({
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New note"
+          aria-label="New note"
         >
           <SquarePen size={14} />
         </button>
@@ -386,6 +387,7 @@ export default function Sidebar({
           onClick={() => onCreateFolder()}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New folder"
+          aria-label="New folder"
         >
           <FolderPlus size={14} />
         </button>
@@ -396,6 +398,7 @@ export default function Sidebar({
           }}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
+          aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
           {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
         </button>
@@ -403,6 +406,7 @@ export default function Sidebar({
           onClick={() => onOpenDailyNote?.()}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open today's daily note"
+          aria-label="Open today's daily note"
         >
           <Calendar size={14} />
         </button>
@@ -414,6 +418,7 @@ export default function Sidebar({
           }}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open random note"
+          aria-label="Open random note"
         >
           <Dices size={14} />
         </button>
@@ -422,6 +427,7 @@ export default function Sidebar({
           className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2B]/50 hover:text-[#CC7D5E]"
           style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
           title="Click to cycle sort order"
+          aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
           <ArrowUpDown size={14} />
           <span className="text-[10px] uppercase tracking-wide leading-none">
