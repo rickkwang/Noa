@@ -18,18 +18,14 @@ import { useLayout } from './hooks/useLayout';
 import { useNotes } from './hooks/useNotes';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
 import { useSettings } from './hooks/useSettings';
-import { deleteNoteWithLocalFirst } from './lib/deleteFlow';
-import { isDescendantPath } from './lib/pathUtils';
+import { useTabs } from './hooks/useTabs';
+import { useVaultOperations } from './hooks/useVaultOperations';
 import { builtinTemplates, applyTemplate } from './lib/templates';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
-import type { VaultPendingOperation } from './types';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
-
-const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
-const MAX_OPEN_TABS = 20;
 
 export default function App() {
   useGlobalScrollingClass();
@@ -37,18 +33,6 @@ export default function App() {
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [openTabIds, setOpenTabIds] = useState<string[]>([]);
-  const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
-  const [enteringFromTabId, setEnteringFromTabId] = useState<string | null>(null);
-  const [closingTabIds, setClosingTabIds] = useState<Set<string>>(() => new Set());
-  const [tabLimitWarning, setTabLimitWarning] = useState(false);
-  const restoredOpenTabsRef = useRef(false);
-  const openTabIdsRef = useRef<string[]>([]);
-  const activeNoteIdRef = useRef('');
-  const enteringTabIdRef = useRef<string | null>(null);
-  const enteringTabResetRef = useRef<number | null>(null);
-  const closingTabTimeoutsRef = useRef<Map<string, number>>(new Map());
-  const tabLimitWarningTimeoutRef = useRef<number | null>(null);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
       return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
@@ -99,7 +83,19 @@ export default function App() {
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
-  useEffect(() => { activeNoteIdRef.current = activeNoteId; }, [activeNoteId]);
+
+  const {
+    openTabs,
+    enteringTabId,
+    enteringFromTabId,
+    closingTabIds,
+    tabLimitWarning,
+    openTabForNote,
+    closeTabById,
+    handleTabClose,
+    handleTabEnterComplete,
+    handleTabCloseAnimationComplete,
+  } = useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId });
 
   const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
   const {
@@ -155,12 +151,6 @@ export default function App() {
         : 'Vault is the source of truth. Reconnect or retry sync before making changes.');
     return true;
   }, [isAnyVaultStructuralOperationPending, isAuthoritativeSyncActive, setSaveError, vaultCacheReadOnly]);
-
-  const blockPendingVaultEntityOperation = useCallback((entityKey: string) => {
-    if (!isVaultEntityOperationPending(entityKey)) return false;
-    setSaveError('A vault file operation is still pending for this item. Retry sync before changing it again.');
-    return true;
-  }, [isVaultEntityOperationPending, setSaveError]);
 
   const autoBackup = useAutoBackup({
     notes,
@@ -271,251 +261,34 @@ export default function App() {
     _handleCreateFolder(parentFolderId);
   }, [_handleCreateFolder, blockVaultCacheWrite, folders]);
 
-  const handleRenameFolder = useCallback((id: string, newName: string) => {
-    const oldFolder = folders.find((folder) => folder.id === id);
-    if (!oldFolder) return;
-    if (blockVaultCacheWrite(oldFolder.origin === 'vault')) return;
-    const entityKey = `folder:${id}`;
-    const needsVaultReservation = oldFolder.origin === 'vault';
-    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
-    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
-      setSaveError('A vault file operation is still pending. Retry sync before changing this folder.');
-      return;
-    }
-    const previousName = oldFolder.name;
-    const nextName = newName.trim() || 'Untitled Folder';
-    const targetIsVault = oldFolder.origin === 'vault';
-    const nextFolders = folders.map((folder) => {
-      if (folder.id === id) return { ...folder, name: nextName };
-      if ((folder.origin === 'vault') === targetIsVault && isDescendantPath(folder.name, previousName)) {
-        return { ...folder, name: nextName + folder.name.slice(previousName.length) };
-      }
-      return folder;
-    });
-
-    if (!needsVaultReservation) {
-      void _handleRenameFolder(id, newName).catch(() => {});
-      return;
-    }
-
-    const operation: VaultPendingOperation = {
-      key: `${entityKey}:rename:${crypto.randomUUID()}`,
-      entityKey,
-      kind: 'rename-folder',
-      phase: 'prepared',
-      folderId: id,
-      previousName,
-      nextFolders,
-    };
-    void (async () => {
-      try {
-        await prepareVaultStructuralOperations([operation]);
-        await _handleRenameFolder(id, newName);
-        syncFolderOnRename(id, previousName, nextFolders, operation);
-      } catch (error) {
-        await cancelVaultStructuralOperations([operation]).catch(() => {
-          releaseVaultStructuralOperation(entityKey);
-        });
-        setSaveError(error instanceof Error ? error.message : 'Failed to prepare the vault folder rename.');
-      }
-    })();
-  }, [_handleRenameFolder, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, folders, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncFolderOnRename]);
-
-  const closeTabById = useCallback((id: string) => {
-    const current = openTabIdsRef.current;
-    const idx = current.indexOf(id);
-    if (idx === -1) {
-      setClosingTabIds((prev) => {
-        if (!prev.has(id)) return prev;
-        const nextClosing = new Set(prev);
-        nextClosing.delete(id);
-        return nextClosing;
-      });
-      return;
-    }
-
-    const closeTimeout = closingTabTimeoutsRef.current.get(id);
-    if (closeTimeout !== undefined) {
-      window.clearTimeout(closeTimeout);
-      closingTabTimeoutsRef.current.delete(id);
-    }
-
-    const next = current.filter(t => t !== id);
-    openTabIdsRef.current = next;
-    setClosingTabIds((prev) => {
-      if (!prev.has(id)) return prev;
-      const nextClosing = new Set(prev);
-      nextClosing.delete(id);
-      return nextClosing;
-    });
-    setOpenTabIds(next);
-    if (id === activeNoteIdRef.current) {
-      if (next.length === 0) {
-        setActiveNoteId('');
-      } else {
-        // Prefer the tab to the right; fall back to the one to the left
-        const nextActive = next[idx] ?? next[idx - 1];
-        setActiveNoteId(nextActive);
-      }
-    }
-  }, [setActiveNoteId]);
-
-  const handleDeleteNote = useCallback((id: string) => {
-    const note = notesRef.current.find((item) => item.id === id);
-    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
-    if (!note) return;
-    const entityKey = `note:${note.id}`;
-    const needsVaultReservation = note.origin === 'vault';
-    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
-    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
-      setSaveError('A vault file operation is still pending. Retry sync before deleting this note.');
-      return;
-    }
-    const operation: VaultPendingOperation | undefined = needsVaultReservation ? {
-      key: `${entityKey}:delete:${crypto.randomUUID()}`,
-      entityKey,
-      kind: 'delete-note',
-      phase: 'prepared',
-      note,
-      folders: folders.filter((folder) => folder.origin === 'vault'),
-    } : undefined;
-    void (async () => {
-      try {
-        if (operation) await prepareVaultStructuralOperations([operation]);
-        const deleted = await deleteNoteWithLocalFirst({
-          id,
-          deleteLocal: _handleDeleteNote,
-          closeTab: closeTabById,
-          syncDelete: () => syncNoteOnDelete(note, operation),
-        });
-        if (!deleted && operation) await cancelVaultStructuralOperations([operation]);
-      } catch (error) {
-        if (operation) {
-          await cancelVaultStructuralOperations([operation]).catch(() => {
-            releaseVaultStructuralOperation(entityKey);
-          });
-        }
-        console.error('[App] handleDeleteNote failed:', error);
-        setSaveError(error instanceof Error ? error.message : 'Failed to prepare the vault note delete.');
-      }
-    })();
-  }, [_handleDeleteNote, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, closeTabById, folders, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncNoteOnDelete]);
-
-  const handleDeleteFolder = useCallback((id: string) => {
-    const deletedFolder = folders.find((folder) => folder.id === id);
-    if (blockVaultCacheWrite(deletedFolder?.origin === 'vault')) return;
-    const entityKey = `folder:${id}`;
-    const needsVaultReservation = deletedFolder?.origin === 'vault';
-    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
-    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
-      setSaveError('A vault file operation is still pending. Retry sync before deleting this folder.');
-      return;
-    }
-    const notesBeforeDelete = new Map(notesRef.current.map((note) => [note.id, note]));
-    const targetIsVault = deletedFolder?.origin === 'vault';
-    const folderIdsToDelete = new Set(
-      folders
-        .filter((folder) => (
-          folder.id === id
-          || ((folder.origin === 'vault') === targetIsVault
-            && isDescendantPath(folder.name, deletedFolder?.name ?? ''))
-        ))
-        .map((folder) => folder.id),
-    );
-    const candidateNotes = Array.from(notesBeforeDelete.values()).filter(
-      (note) => note.origin === 'vault' && folderIdsToDelete.has(note.folder),
-    );
-    const noteOperations = new Map(candidateNotes.map((note) => {
-      const noteEntityKey = `note:${note.id}`;
-      const operation: VaultPendingOperation = {
-        key: `${noteEntityKey}:delete:${crypto.randomUUID()}`,
-        entityKey: noteEntityKey,
-        kind: 'delete-note',
-        phase: 'prepared',
-        note,
-        folders: folders.filter((folder) => folder.origin === 'vault'),
-      };
-      return [note.id, operation] as const;
-    }));
-    const folderOperation: VaultPendingOperation | undefined = deletedFolder?.origin === 'vault' ? {
-      key: `${entityKey}:delete:${crypto.randomUUID()}`,
-      entityKey,
-      kind: 'delete-folder',
-      phase: 'prepared',
-      folder: deletedFolder,
-    } : undefined;
-    const preparedOperations = [
-      ...noteOperations.values(),
-      ...(folderOperation ? [folderOperation] : []),
-    ];
-    const handedOffOperationKeys = new Set<string>();
-    void (async () => {
-      try {
-        if (preparedOperations.length > 0) await prepareVaultStructuralOperations(preparedOperations);
-        const { deletedNoteIds, foldersDeleted } = await _handleDeleteFolder(id);
-        const deletedSet = new Set(deletedNoteIds);
-        deletedNoteIds.forEach((noteId) => closeTabById(noteId));
-        deletedNoteIds.forEach((noteId) => {
-          const deletedNote = notesBeforeDelete.get(noteId);
-          const operation = noteOperations.get(noteId);
-          if (deletedNote && operation) {
-            syncNoteOnDelete(deletedNote, operation);
-            handedOffOperationKeys.add(operation.key);
-          }
-        });
-        const canceledOperations: VaultPendingOperation[] = candidateNotes
-          .filter((note) => !deletedSet.has(note.id))
-          .flatMap((note) => noteOperations.get(note.id) ?? []);
-        // Mirror mode: only a vault folder has a directory on disk to remove.
-        // A Noa-owned folder never touched the vault, and its name could match
-        // an unrelated vault directory — so never run the disk cleanup for it.
-        if (deletedFolder && folderOperation && foldersDeleted) {
-          syncFolderOnDelete(deletedFolder, folderOperation);
-          handedOffOperationKeys.add(folderOperation.key);
-        } else if (folderOperation) {
-          canceledOperations.push(folderOperation);
-        }
-        if (canceledOperations.length > 0) await cancelVaultStructuralOperations(canceledOperations);
-      } catch (err) {
-        const unclaimedOperations = preparedOperations.filter(
-          (operation) => !handedOffOperationKeys.has(operation.key),
-        );
-        if (unclaimedOperations.length > 0) {
-          await cancelVaultStructuralOperations(unclaimedOperations).catch(() => {
-            if (needsVaultReservation) releaseVaultStructuralOperation(entityKey);
-          });
-        } else if (needsVaultReservation) {
-          releaseVaultStructuralOperation(entityKey);
-        }
-        console.error('[App] handleDeleteFolder failed:', err);
-        setSaveError(err instanceof Error ? err.message : 'Failed to prepare the vault folder delete.');
-      }
-    })();
-  }, [_handleDeleteFolder, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, closeTabById, folders, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncFolderOnDelete, syncNoteOnDelete]);
-
-  const handleDisconnectFolder = useCallback(async () => {
-    let disconnectStarted = false;
-    try {
-      if (notesRef.current.some((note) => note.origin === 'vault' && note.vaultDirty)) {
-        throw new Error('Some vault edits have not reached disk yet. Retry sync before disconnecting.');
-      }
-      if (hasPendingStructuralOperations) {
-        throw new Error('Vault file operations are still pending. Retry sync before disconnecting.');
-      }
-      beginDisconnect();
-      disconnectStarted = true;
-      const deletedNoteIds = await clearWorkspaceAfterDisconnect();
-      deletedNoteIds.forEach((id) => closeTabById(id));
-      await disconnect();
-    } catch (err) {
-      if (disconnectStarted) cancelDisconnect();
-      console.error('[App] handleDisconnectFolder failed:', err);
-      setSaveError(err instanceof Error
-        ? err.message
-        : 'Failed to disconnect vault. Check folder permissions and retry.');
-      throw err;
-    }
-  }, [beginDisconnect, cancelDisconnect, disconnect, clearWorkspaceAfterDisconnect, closeTabById, hasPendingStructuralOperations, setSaveError]);
+  const {
+    handleDeleteNote,
+    handleRenameFolder,
+    handleDeleteFolder,
+    handleDisconnectFolder,
+  } = useVaultOperations({
+    notes,
+    folders,
+    setSaveError,
+    closeTabById,
+    blockVaultCacheWrite,
+    handleDeleteNote: _handleDeleteNote,
+    handleRenameFolder: _handleRenameFolder,
+    handleDeleteFolder: _handleDeleteFolder,
+    clearWorkspaceAfterDisconnect,
+    isVaultEntityOperationPending,
+    reserveVaultStructuralOperation,
+    releaseVaultStructuralOperation,
+    prepareVaultStructuralOperations,
+    cancelVaultStructuralOperations,
+    hasPendingStructuralOperations,
+    beginDisconnect,
+    cancelDisconnect,
+    disconnect,
+    syncNoteOnDelete,
+    syncFolderOnRename,
+    syncFolderOnDelete,
+  });
 
   const {
     isMobile,
@@ -529,6 +302,10 @@ export default function App() {
     isDraggingRightPanel,
     setIsDraggingSidebar,
     setIsDraggingRightPanel,
+    sidebarWidth,
+    rightPanelWidth,
+    nudgeSidebarWidth,
+    nudgeRightPanelWidth,
     editorViewMode,
     setEditorViewMode,
     isFocusMode,
@@ -547,38 +324,6 @@ export default function App() {
     return () => window.cancelAnimationFrame(frame);
   }, [hasMountedRightPanel, isLoaded, isRightPanelOpen]);
 
-  // Restore openTabIds from localStorage after notes load
-  useEffect(() => {
-    if (!isLoaded || restoredOpenTabsRef.current) return;
-    restoredOpenTabsRef.current = true;
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(OPEN_TABS_KEY); } catch { /* quota exceeded */ }
-    if (!saved) return;
-    try {
-      const ids: string[] = JSON.parse(saved);
-      const validIds = ids.filter(id => notes.some(n => n.id === id)).slice(-MAX_OPEN_TABS);
-      if (validIds.length > 0) {
-        openTabIdsRef.current = validIds;
-        setOpenTabIds(validIds);
-      }
-    } catch { /* ignore */ }
-  }, [isLoaded, notes]);
-
-  // Persist openTabIds to localStorage (debounced — tabs open/close rapidly)
-  useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
-      } catch { /* quota exceeded — ignore */ }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [openTabIds]);
-
-  // Keep openTabIdsRef in sync for use in other effects
-  useEffect(() => {
-    openTabIdsRef.current = openTabIds;
-  }, [openTabIds]);
-
   // Warm the lazy settings chunk while idle so the first open doesn't spend a
   // beat fetching it before anything renders (its Suspense fallback is null).
   useEffect(() => {
@@ -589,83 +334,6 @@ export default function App() {
     );
     return () => window.cancelIdleCallback(id);
   }, []);
-
-  const showTabLimitWarning = useCallback(() => {
-    setTabLimitWarning(true);
-    if (tabLimitWarningTimeoutRef.current !== null) {
-      window.clearTimeout(tabLimitWarningTimeoutRef.current);
-    }
-    tabLimitWarningTimeoutRef.current = window.setTimeout(() => {
-      setTabLimitWarning(false);
-      tabLimitWarningTimeoutRef.current = null;
-    }, 3000);
-  }, []);
-
-  const markEnteringTab = useCallback((id: string, fromId: string | null) => {
-    // Mirror handleTabClose. Under reduced motion the enter keyframes are off,
-    // so flagging the tab only leaves it squeezed (min-width:0) until the 190ms
-    // fallback fires — animationend never arrives to clear it early. That pop is
-    // worse than the motion it replaces.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    enteringTabIdRef.current = id;
-    setEnteringTabId(id);
-    setEnteringFromTabId(fromId);
-    if (enteringTabResetRef.current !== null) {
-      window.clearTimeout(enteringTabResetRef.current);
-    }
-    enteringTabResetRef.current = window.setTimeout(() => {
-      if (enteringTabIdRef.current === id) {
-        enteringTabIdRef.current = null;
-        setEnteringTabId(null);
-        setEnteringFromTabId(null);
-      }
-      if (enteringTabResetRef.current !== null) {
-        enteringTabResetRef.current = null;
-      }
-    }, 190);
-  }, []);
-
-  const openTabForNote = useCallback((id: string, animate: boolean) => {
-    const wasOpen = openTabIdsRef.current.includes(id);
-    const hadTabs = openTabIdsRef.current.length > 0;
-    if (!wasOpen && openTabIdsRef.current.length >= MAX_OPEN_TABS) {
-      showTabLimitWarning();
-    }
-    setOpenTabIds((prev) => {
-      if (prev.includes(id)) return prev;
-      const next = prev.length < MAX_OPEN_TABS
-        ? [...prev, id]
-        : (() => {
-            const dropIndex = prev.findIndex((tabId) => tabId !== id);
-            if (dropIndex === -1) return [id];
-            return [...prev.slice(0, dropIndex), ...prev.slice(dropIndex + 1), id];
-          })();
-      openTabIdsRef.current = next;
-      return next;
-    });
-    if (animate && !wasOpen && hadTabs) {
-      markEnteringTab(id, activeNoteIdRef.current || null);
-    }
-  }, [markEnteringTab, showTabLimitWarning]);
-
-  useEffect(() => () => {
-    if (enteringTabResetRef.current !== null) {
-      window.clearTimeout(enteringTabResetRef.current);
-    }
-    if (tabLimitWarningTimeoutRef.current !== null) {
-      window.clearTimeout(tabLimitWarningTimeoutRef.current);
-    }
-    closingTabTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
-    closingTabTimeoutsRef.current.clear();
-  }, []);
-
-  // Sync activeNoteId into openTabIds. Animate: openTabForNote only marks the
-  // tab as entering when it's genuinely new and other tabs already exist, so
-  // sidebar/search-opened notes get the same entrance as the "+" button.
-  useEffect(() => {
-    if (!activeNoteId) return;
-    openTabForNote(activeNoteId, true);
-  }, [activeNoteId, openTabForNote]);
 
   // When a note is created with waitingForTemplateRef set, pop the template picker
   useEffect(() => {
@@ -693,72 +361,10 @@ export default function App() {
     });
   }, [activeNoteId, setActiveNoteId, flushAllPendingSaves]);
 
-  const handleTabClose = useCallback((id: string) => {
-    const current = openTabIdsRef.current;
-    const idx = current.indexOf(id);
-    if (idx === -1 || closingTabIds.has(id)) return;
-
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      closeTabById(id);
-      return;
-    }
-
-    const next = current.filter(t => t !== id);
-    if (id === activeNoteIdRef.current && next.length > 0) {
-      const nextActive = next[idx] ?? next[idx - 1];
-      setActiveNoteId(nextActive);
-    }
-
-    setClosingTabIds((prev) => {
-      if (prev.has(id)) return prev;
-      const nextClosing = new Set(prev);
-      nextClosing.add(id);
-      return nextClosing;
-    });
-
-    const timeoutId = window.setTimeout(() => {
-      closingTabTimeoutsRef.current.delete(id);
-      closeTabById(id);
-    }, 220);
-    closingTabTimeoutsRef.current.set(id, timeoutId);
-  }, [closeTabById, closingTabIds, setActiveNoteId]);
-
-  const handleTabCloseAnimationComplete = useCallback((id: string) => {
-    closeTabById(id);
-  }, [closeTabById]);
-
   const handleNewTab = useCallback(() => {
     const createdId = handleCreateNote(primaryNoaFolderId);
     if (createdId) openTabForNote(createdId, true);
   }, [primaryNoaFolderId, handleCreateNote, openTabForNote]);
-
-  const handleTabEnterComplete = useCallback((id: string) => {
-    if (enteringTabIdRef.current !== id) return;
-    enteringTabIdRef.current = null;
-    if (enteringTabResetRef.current !== null) {
-      window.clearTimeout(enteringTabResetRef.current);
-      enteringTabResetRef.current = null;
-    }
-    setEnteringTabId(null);
-    setEnteringFromTabId(null);
-  }, []);
-
-  // Only ids and titles are rendered, but `notes` changes on every keystroke.
-  // Handing EditorHeader a fresh array each time would re-run its layout
-  // effects mid-typing — a smooth scrollIntoView restart plus a forced
-  // scrollLeft/scrollWidth read per character. Reuse the previous array
-  // whenever the visible tab set is unchanged.
-  const openTabsRef = useRef<{ id: string; title: string }[]>([]);
-  const openTabs = useMemo(() => {
-    const titleById = new Map(notes.map(n => [n.id, n.title]));
-    const next = openTabIds.flatMap(id => (titleById.has(id) ? [{ id, title: titleById.get(id) as string }] : []));
-    const prev = openTabsRef.current;
-    if (prev.length === next.length && prev.every((t, i) => t.id === next[i].id && t.title === next[i].title)) {
-      return prev;
-    }
-    openTabsRef.current = next;
-    return next;
-  }, [openTabIds, notes]);
 
   const globalTasks = useGlobalTasks(notes);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
@@ -968,6 +574,17 @@ export default function App() {
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
                 onMouseDown={() => setIsDraggingSidebar(true)}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize sidebar"
+                aria-valuenow={Math.round(sidebarWidth)}
+                aria-valuemin={310}
+                aria-valuemax={480}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeSidebarWidth(-16); }
+                  if (e.key === 'ArrowRight') { e.preventDefault(); nudgeSidebarWidth(16); }
+                }}
               />
             )}
           </div>
@@ -992,7 +609,7 @@ export default function App() {
                 tabs={openTabs}
                 enteringTabId={enteringTabId}
                 enteringFromTabId={enteringFromTabId}
-                closingTabIds={Array.from(closingTabIds)}
+                closingTabIds={closingTabIds}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}
                 onNewTab={handleNewTab}
@@ -1042,6 +659,17 @@ export default function App() {
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"
                 onMouseDown={() => setIsDraggingRightPanel(true)}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize right panel"
+                aria-valuenow={Math.round(rightPanelWidth)}
+                aria-valuemin={310}
+                aria-valuemax={480}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeRightPanelWidth(16); }
+                  if (e.key === 'ArrowRight') { e.preventDefault(); nudgeRightPanelWidth(-16); }
+                }}
               />
             )}
             {hasMountedRightPanel && <div className="flex-1 overflow-hidden" data-noa-right-panel-content>
@@ -1067,7 +695,7 @@ export default function App() {
         </div>
       </div>
       {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md shadow-[0_4px_12px_rgba(45,45,43,0.10)]">
+        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md noa-floating-panel">
           <div className="text-xs font-bold text-[#A26721] uppercase tracking-wider mb-1">Warning · Save</div>
           <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
           <button
@@ -1079,7 +707,7 @@ export default function App() {
         </div>
       )}
       {externalUpdateNotice && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md shadow-[0_4px_12px_rgba(45,45,43,0.10)]">
+        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md noa-floating-panel">
           <div className="text-xs font-bold text-[#CC7D5E] uppercase tracking-wider mb-0.5">Vault Sync</div>
           <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
         </div>
@@ -1115,7 +743,7 @@ export default function App() {
         </div>
       )}
       {showStorageNotice && (
-        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction shadow-[0_4px_12px_rgba(45,45,43,0.12)]">
+        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction noa-floating-panel">
           <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Local Storage Only</div>
           <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
             {LOCAL_DATA_BOUNDARY_COPY}
@@ -1133,7 +761,7 @@ export default function App() {
       )}
       {loadError && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] shadow-[0_4px_12px_rgba(45,45,43,0.12)] p-4 font-redaction space-y-3 slide-down">
+          <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel p-4 font-redaction space-y-3 slide-down">
             <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
             <p className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
             <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
@@ -1179,7 +807,7 @@ export default function App() {
       {commandPalette.isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
           <div
-            className="w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down"
+            className="w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">
@@ -1246,7 +874,7 @@ export default function App() {
       )}
       {navigationConflict && (
         <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
-          <div className="w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3]">
               <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
               <div className="text-sm text-[#2D2D2B] mt-1">
@@ -1293,7 +921,7 @@ export default function App() {
         const dateFormat = settings.dailyNotes.dateFormat;
         return (
           <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
-            <div className="w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_4px_12px_rgba(45,45,43,0.12)] slide-down" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
               <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Choose Template</div>
