@@ -3,7 +3,7 @@
 // Replaces the old string-based scripts/check-architecture.mjs with AST-level
 // enforcement of the App.tsx → hooks → services/lib layering rule.
 //
-// Key rules (matching AGENTS.md):
+// Key rules (matching CLAUDE.md):
 //   1. App.tsx must NOT import directly from:
 //      - lib/fileSystemStorage, lib/dataIntegrity, lib/exportTimestamp,
 //        lib/export, lib/storage, lib/backupDirectoryStorage
@@ -18,7 +18,7 @@ module.exports = {
   extends: 'dependency-cruiser/configs/recommended',
 
   forbidden: [
-    // ─── App.tsx must go through hooks — mirror of AGENTS.md hard rule ───
+    // ─── App.tsx must go through hooks — mirror of CLAUDE.md hard rule ───
     {
       name: 'app-shell-must-use-hooks',
       severity: 'error',
@@ -36,7 +36,7 @@ module.exports = {
         ],
       },
       comment:
-        'App.tsx must not import storage/sync/data-integrity modules directly — go through hooks (useFileSync, useDataTransfer, useAutoBackup). This is the AGENTS.md hard rule, previously enforced by a string-`includes` script that aliases could bypass.',
+        'App.tsx must not import storage/sync/data-integrity modules directly — go through hooks (useFileSync, useDataTransfer, useAutoBackup). This is the CLAUDE.md hard rule, previously enforced by a string-`includes` script that aliases could bypass.',
     },
 
     // ─── Override recommended's not-to-unresolvable to allow type-only and
