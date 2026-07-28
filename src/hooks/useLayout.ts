@@ -26,14 +26,19 @@ export function useLayout() {
       : 'split';
   });
 
+  // Single clamp for both pointer drag and keyboard nudge (min 310,
+  // max min(480, 35vw)) — the two input paths must never diverge.
+  const clampPanelWidth = useCallback(
+    (v: number) => Math.max(310, Math.min(v, Math.min(480, window.innerWidth * 0.35))),
+    []
+  );
+
   const getSidebarValue = useCallback((e: MouseEvent) => {
-    const maxWidth = Math.min(480, window.innerWidth * 0.35);
-    return Math.min(e.clientX, maxWidth);
+    return Math.min(e.clientX, Math.min(480, window.innerWidth * 0.35));
   }, []);
 
   const getRightPanelValue = useCallback((e: MouseEvent) => {
-    const maxWidth = Math.min(480, window.innerWidth * 0.35);
-    return Math.min(window.innerWidth - e.clientX, maxWidth);
+    return Math.min(window.innerWidth - e.clientX, Math.min(480, window.innerWidth * 0.35));
   }, []);
 
   const previewSidebarWidth = useCallback((size: number) => {
@@ -45,14 +50,27 @@ export function useLayout() {
 
   const {
     size: sidebarWidth,
+    setSize: setSidebarWidth,
     isDragging: isDraggingSidebar,
     setIsDragging: setIsDraggingSidebar,
   } = useResizeDrag(310, 310, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
   const {
     size: rightPanelWidth,
+    setSize: setRightPanelWidth,
     isDragging: isDraggingRightPanel,
     setIsDragging: setIsDraggingRightPanel,
   } = useResizeDrag(310, 310, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
+
+  // Keyboard path for the separator handles — shares clampPanelWidth with
+  // the drag handlers above so mouse and keyboard can never disagree.
+  const nudgeSidebarWidth = useCallback(
+    (delta: number) => setSidebarWidth(w => clampPanelWidth(w + delta)),
+    [clampPanelWidth, setSidebarWidth]
+  );
+  const nudgeRightPanelWidth = useCallback(
+    (delta: number) => setRightPanelWidth(w => clampPanelWidth(w + delta)),
+    [clampPanelWidth, setRightPanelWidth]
+  );
 
   useEffect(() => {
     previewSidebarWidth(sidebarWidth);
@@ -107,6 +125,8 @@ export function useLayout() {
     isDraggingRightPanel,
     setIsDraggingSidebar,
     setIsDraggingRightPanel,
+    nudgeSidebarWidth,
+    nudgeRightPanelWidth,
     editorViewMode,
     setEditorViewMode,
     isFocusMode,
