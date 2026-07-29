@@ -79,6 +79,7 @@ export default function App() {
     clearWorkspaceAfterDisconnect,
     importBackupFromRecovery,
     markVaultNotesSynced,
+    advanceVaultNoteBaseline,
     isLoaded,
     isDataReady,
     setWorkspaceName,
@@ -141,6 +142,7 @@ export default function App() {
     ensureInitialNote,
     onImportData: handleImportData,
     onVaultNotesSynced: markVaultNotesSynced,
+    onVaultNoteBaselineAdvanced: advanceVaultNoteBaseline,
   });
 
   const blockVaultCacheWrite = useCallback((isVaultOwned: boolean) => {

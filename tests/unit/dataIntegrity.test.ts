@@ -97,6 +97,7 @@ describe('normalizeAndValidateNotes', () => {
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
       vaultDirty: true,
+      vaultBaseText: 'trusted only',
     }]);
 
     expect(report.ok).toBe(true);
@@ -104,6 +105,7 @@ describe('normalizeAndValidateNotes', () => {
     expect(notes[0]).not.toHaveProperty('vaultId');
     expect(notes[0]).not.toHaveProperty('vaultPath');
     expect(notes[0]).not.toHaveProperty('vaultDirty');
+    expect(notes[0]).not.toHaveProperty('vaultBaseText');
   });
 
   it('preserves vault cache identity metadata only for trusted cache normalization', () => {
@@ -113,6 +115,7 @@ describe('normalizeAndValidateNotes', () => {
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
       vaultDirty: true,
+      vaultBaseText: 'disk baseline',
     }], { preserveVaultMetadata: true });
 
     expect(report.ok).toBe(true);
@@ -121,7 +124,24 @@ describe('normalizeAndValidateNotes', () => {
       vaultId: 'external-note-id',
       vaultPath: 'Projects/Noa.md',
       vaultDirty: true,
+      vaultBaseText: 'disk baseline',
     });
+  });
+
+  it('preserves an exact clean vault baseline only for trusted cache normalization', () => {
+    const trusted = normalizeAndValidateNotes([{
+      ...validNote,
+      origin: 'vault',
+      vaultBaseText: 'exact disk bytes',
+    }], { preserveVaultMetadata: true });
+    const untrusted = normalizeAndValidateNotes([{
+      ...validNote,
+      origin: 'vault',
+      vaultBaseText: 'must be stripped',
+    }]);
+
+    expect(trusted.notes[0].vaultBaseText).toBe('exact disk bytes');
+    expect(untrusted.notes[0]).not.toHaveProperty('vaultBaseText');
   });
 
   it('includes note id in attachment warning message', () => {

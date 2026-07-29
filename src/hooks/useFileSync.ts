@@ -24,6 +24,7 @@ import {
   syncNoteRename,
   syncNoteUpdate,
   syncVaultNoteSnapshot,
+  VaultWriteConflictError,
 } from '../services/fileSyncService';
 import {
   Folder,
@@ -42,6 +43,7 @@ interface UseFileSyncOptions {
   ensureInitialNote: () => void;
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[]) => Promise<void>;
   onVaultNotesSynced: (expectations: VaultSyncedNoteExpectation[]) => void;
+  onVaultNoteBaselineAdvanced: (id: string, baselineText: string) => void | Promise<void>;
 }
 
 interface UseFileSyncResult {
@@ -93,11 +95,37 @@ const SYNC_WATCHDOG_INTERVAL_MS = 45_000;
 const EXTERNAL_POLL_INTERVAL_MS = 60_000;
 const VAULT_AUTHORITATIVE_MERGE = { mode: 'vault-authoritative' as const };
 
+export function shouldAutoRetrySyncFailure(error: unknown): boolean {
+  return !(error instanceof VaultWriteConflictError)
+    && classifySyncError(error).code !== 'permission_denied';
+}
+
+export function getSyncFailureMessage(error: unknown): string {
+  if (error instanceof VaultWriteConflictError) return error.message;
+  const normalized = classifySyncError(error);
+  const appError = fromSyncError(error);
+  return appError.userMessage || normalized.message;
+}
+
 interface TrackedSyncOperation {
   run: () => Promise<void>;
   expectation?: VaultSyncedNoteExpectation;
   failed: boolean;
   durable: boolean;
+  durableOperation?: VaultPendingOperation;
+}
+
+/** Resolve a conflict as an aborted durable mutation, then return the exact
+ * remaining journal entries that should keep the vault structurally locked. */
+export async function settleDurableVaultConflict(
+  operation: VaultPendingOperation,
+  vaultId: string,
+): Promise<VaultPendingOperation[]> {
+  await storage.removeVaultPendingOperation(operation.key);
+  return selectVaultPendingOperations(
+    await storage.getVaultPendingOperations(),
+    vaultId,
+  );
 }
 
 export type SyncWatchdogVerdict = 'wait' | 'land-ready' | 'stalled';
@@ -155,6 +183,7 @@ export function useFileSync({
   ensureInitialNote,
   onImportData,
   onVaultNotesSynced,
+  onVaultNoteBaselineAdvanced,
 }: UseFileSyncOptions): UseFileSyncResult {
   const [fsHandle, setFsHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
@@ -251,7 +280,7 @@ export function useFileSync({
     const normalized = classifySyncError(error);
     const appError = fromSyncError(error);
     setSyncStatus('error');
-    setFsSyncError(appError.userMessage || normalized.message);
+    setFsSyncError(getSyncFailureMessage(error));
     setVaultHydrated(false);
     setVaultHydrationPending(false);
     if (normalized.code === 'permission_denied') {
@@ -292,8 +321,9 @@ export function useFileSync({
 
   const prepareNotesForAuthoritativeScan = useCallback(async (
     handle: FileSystemDirectoryHandle,
-  ): Promise<{ notes: Note[]; folders: Folder[] }> => {
+  ): Promise<{ notes: Note[]; folders: Folder[]; conflicts: VaultWriteConflictError[] }> => {
     const syncedNoteIds = new Set<string>();
+    const conflicts: VaultWriteConflictError[] = [];
 
     const vaultId = await getVaultIdentity(handle);
     vaultIdRef.current = vaultId;
@@ -315,7 +345,15 @@ export function useFileSync({
       }
       const committed = commitVaultPendingOperation(operation);
       if (operation.phase === 'prepared') await storage.upsertVaultPendingOperation(committed);
-      await replayVaultPendingOperation(handle, committed, notesRef.current);
+      try {
+        await replayVaultPendingOperation(handle, committed, notesRef.current);
+      } catch (error) {
+        if (!(error instanceof VaultWriteConflictError)) throw error;
+        await storage.removeVaultPendingOperation(operation.key);
+        trackedOperationsRef.current.delete(operation.entityKey);
+        conflicts.push(error);
+        continue;
+      }
       await storage.removeVaultPendingOperation(operation.key);
       trackedOperationsRef.current.delete(operation.entityKey);
     }
@@ -332,7 +370,21 @@ export function useFileSync({
     // authoritative again.
     for (const [key, operation] of Array.from(trackedOperationsRef.current.entries())) {
       if (!operation.failed) continue;
-      await operation.run();
+      try {
+        await operation.run();
+      } catch (error) {
+        if (!(error instanceof VaultWriteConflictError)) throw error;
+        if (operation.durableOperation) {
+          const remaining = await settleDurableVaultConflict(operation.durableOperation, vaultId);
+          applyPendingStructuralOperations(remaining);
+        }
+        if (trackedOperationsRef.current.get(key) === operation) {
+          trackedOperationsRef.current.delete(key);
+          if (operation.expectation) syncedNoteIds.add(operation.expectation.id);
+        }
+        conflicts.push(error);
+        continue;
+      }
       if (trackedOperationsRef.current.get(key) === operation) {
         trackedOperationsRef.current.delete(key);
         if (operation.expectation) syncedNoteIds.add(operation.expectation.id);
@@ -345,7 +397,8 @@ export function useFileSync({
       (note) => note.origin === 'vault' && note.vaultDirty,
     );
     for (const note of dirtySnapshots) {
-      await syncVaultNoteSnapshot(handle, note, foldersRef.current);
+      const conflict = await syncVaultNoteSnapshot(handle, note, foldersRef.current);
+      if (conflict) conflicts.push(conflict);
       syncedNoteIds.add(note.id);
     }
 
@@ -358,7 +411,11 @@ export function useFileSync({
       if (!syncedNoteIds.has(note.id)) return note;
       const expectedVersion = dirtyVersions.get(note.id);
       if (expectedVersion && expectedVersion !== note.updatedAt) return note;
-      const { vaultDirty: _vaultDirty, ...syncedNote } = note;
+      const {
+        vaultDirty: _vaultDirty,
+        vaultBaseText: _vaultBaseText,
+        ...syncedNote
+      } = note;
       clearedNoteIds.push(note.id);
       return syncedNote;
     });
@@ -373,7 +430,7 @@ export function useFileSync({
         updatedAt: note.updatedAt,
       }] : [];
     }));
-    return { notes: scanNotes, folders: foldersRef.current };
+    return { notes: scanNotes, folders: foldersRef.current, conflicts };
   }, [applyPendingStructuralOperations, onVaultNotesSynced]);
 
   const syncFromAuthoritativeDisk = useCallback(async (
@@ -387,7 +444,7 @@ export function useFileSync({
     authoritativeWorkCountRef.current += 1;
     setAuthoritativeSyncInProgress(true);
     try {
-      const { notes: currentNotes, folders: currentFolders } = await prepareNotesForAuthoritativeScan(handle);
+      const { notes: currentNotes, folders: currentFolders, conflicts } = await prepareNotesForAuthoritativeScan(handle);
       const { notes: merged, folders: mergedFolders, deletedNoteIds, updatedNoteIds } = await mergeScannedNotes(
         handle,
         currentNotes,
@@ -397,6 +454,7 @@ export function useFileSync({
       if (generation !== retryGeneration.current || disconnectingRef.current) return null;
       await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
       if (generation !== retryGeneration.current || disconnectingRef.current) return null;
+      if (conflicts.length > 0) throw conflicts[0];
       return { deletedNoteIds, updatedNoteIds };
     } finally {
       authoritativeWorkCountRef.current = Math.max(0, authoritativeWorkCountRef.current - 1);
@@ -449,9 +507,9 @@ export function useFileSync({
         .catch((error) => {
           if (generation !== retryGeneration.current) return;
           recordFailure(error);
-          // Permission errors need user re-auth; don't burn the retry budget on
-          // them — recordFailure has already raised needsReauth.
-          if (classifySyncError(error).code === 'permission_denied') return;
+          // Permission errors need user re-auth. A conflict already has a
+          // durable copy, so retrying would only repeat the same decision.
+          if (!shouldAutoRetrySyncFailure(error)) return;
           scheduleRetry();
         });
     }, delay);
@@ -478,7 +536,13 @@ export function useFileSync({
       await run();
       if (durableOperation) await storage.removeVaultPendingOperation(durableOperation.key);
     };
-    const operation = { run: execute, expectation, failed: false, durable: Boolean(durableOperation) };
+    const operation = {
+      run: execute,
+      expectation,
+      failed: false,
+      durable: Boolean(durableOperation),
+      durableOperation,
+    };
     // A newer mutation for the same entity supersedes an older failed closure.
     trackedOperationsRef.current.set(key, operation);
     if (durableOperation) {
@@ -503,14 +567,52 @@ export function useFileSync({
       refreshStructuralPendingState();
       if (expectation) onVaultNotesSynced([expectation]);
       recordSuccess();
-    }).catch((error) => {
+    }).catch(async (error) => {
       if (generation !== retryGeneration.current || disconnectingRef.current) return;
       if (trackedOperationsRef.current.get(key) !== operation) return;
+      if (error instanceof VaultWriteConflictError) {
+        if (durableOperation) {
+          const vaultId = vaultIdRef.current;
+          if (!vaultId) {
+            operation.failed = true;
+            recordFailure(new Error('Vault conflict cleanup could not resolve the active vault identity.'));
+            return;
+          }
+          try {
+            const remaining = await settleDurableVaultConflict(durableOperation, vaultId);
+            applyPendingStructuralOperations(remaining);
+          } catch (cleanupError) {
+            operation.failed = true;
+            recordFailure(cleanupError);
+            return;
+          }
+        }
+        trackedOperationsRef.current.delete(key);
+        refreshStructuralPendingState();
+        if (expectation) {
+          const {
+            confirmedVaultBaseText: _confirmedVaultBaseText,
+            ...conflictExpectation
+          } = expectation;
+          onVaultNotesSynced([conflictExpectation]);
+        }
+        const handle = fsHandleRef.current;
+        if (handle) {
+          try {
+            await syncFromAuthoritativeDisk(handle, generation);
+          } catch (reconcileError) {
+            recordFailure(reconcileError);
+            return;
+          }
+        }
+        recordFailure(error);
+        return;
+      }
       operation.failed = true;
       recordFailure(error);
-      scheduleRetry();
+      if (shouldAutoRetrySyncFailure(error)) scheduleRetry();
     });
-  }, [applyPendingStructuralOperations, onVaultNotesSynced, recordFailure, recordSuccess, refreshStructuralPendingState, scheduleRetry]);
+  }, [applyPendingStructuralOperations, onVaultNotesSynced, recordFailure, recordSuccess, refreshStructuralPendingState, scheduleRetry, syncFromAuthoritativeDisk]);
 
   const retry = useCallback(() => {
     if (!fsHandle || syncStatus === 'syncing') return;
@@ -786,11 +888,17 @@ export function useFileSync({
 
       runTrackedOperation(
         `note:${id}`,
-        () => syncNoteUpdate(fsHandle, note, content, foldersRef.current),
+        () => syncNoteUpdate(
+          fsHandle,
+          note,
+          content,
+          foldersRef.current,
+          onVaultNoteBaselineAdvanced,
+        ),
         { id, content },
       );
     },
-    [fsHandle, runTrackedOperation],
+    [fsHandle, onVaultNoteBaselineAdvanced, runTrackedOperation],
   );
 
   const syncNoteOnMove = useCallback(
@@ -806,7 +914,13 @@ export function useFileSync({
       runTrackedOperation(
         `note:${note.id}`,
         () => syncNoteMove(fsHandle, previousNote, movedNote, foldersRef.current),
-        { id: note.id, folder: nextFolderId },
+        {
+          id: note.id,
+          folder: nextFolderId,
+          ...(!note.vaultDirty && note.vaultBaseText !== undefined
+            ? { confirmedVaultBaseText: note.vaultBaseText }
+            : {}),
+        },
       );
     },
     [fsHandle, runTrackedOperation],
@@ -820,7 +934,13 @@ export function useFileSync({
       runTrackedOperation(
         `note:${note.id}`,
         () => syncNoteRename(fsHandle, note, newTitle, foldersRef.current),
-        { id: note.id, title: newTitle },
+        {
+          id: note.id,
+          title: newTitle,
+          ...(!note.vaultDirty && note.vaultBaseText !== undefined
+            ? { confirmedVaultBaseText: note.vaultBaseText }
+            : {}),
+        },
       );
     },
     [fsHandle, runTrackedOperation],

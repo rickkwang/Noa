@@ -9,6 +9,7 @@ import {
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { serializeNoteForVault } from '../lib/fileSystemStorage';
 import { prepareImportedNotes } from '../lib/importUtils';
 import { sortNotesByRecent } from '../lib/noteSort';
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
@@ -42,8 +43,18 @@ interface LoadErrorState {
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
 
-function markVaultDirty(note: Note): Note {
-  return note.origin === 'vault' ? { ...note, vaultDirty: true } : note;
+function markVaultDirty(note: Note, previous: Note): Note {
+  if (note.origin !== 'vault') return note;
+  if (previous.vaultDirty) {
+    return previous.vaultBaseText === undefined
+      ? { ...note, vaultDirty: true }
+      : { ...note, vaultDirty: true, vaultBaseText: previous.vaultBaseText };
+  }
+  return {
+    ...note,
+    vaultDirty: true,
+    vaultBaseText: previous.vaultBaseText ?? serializeNoteForVault(previous),
+  };
 }
 
 export function useNotes(settings?: AppSettings) {
@@ -407,15 +418,37 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [folders, isDataReady]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
+    const updatedAt = new Date().toISOString();
+    const updateTarget = (note: Note) => markVaultDirty({
+      ...note,
+      content,
+      updatedAt,
+      // Obsidian notes own their tags via frontmatter; don't re-derive from body
+      ...(note.source === 'obsidian-import'
+        ? {}
+        : { links: extractLinks(content), tags: extractTags(content) }),
+    }, note);
+
+    // React may defer the functional state updater. Keep the latest snapshot
+    // ref synchronous with the user event so an overlapping partial-write
+    // callback never persists the previous content over this edit.
+    const eagerPrevious = notesRef.current;
+    const eagerCurrent = eagerPrevious.find((note) => note.id === id);
+    if (eagerCurrent) {
+      const eagerNext = updateTarget(eagerCurrent);
+      const eagerUpdated = eagerPrevious.map((note) => note.id === id ? eagerNext : note);
+      notesRef.current = sameStringArray(eagerCurrent.links ?? [], eagerNext.links ?? [])
+        ? eagerUpdated
+        : recomputeLinkRefsForSubset(eagerUpdated, new Set([id]), foldersRef.current);
+    }
+
     setNotes(prev => {
       let nextNote: Note | undefined;
       let prevLinks: string[] | undefined;
       const updated = prev.map(n => {
         if (n.id !== id) return n;
         prevLinks = n.links;
-        nextNote = markVaultDirty({ ...n, content, updatedAt: new Date().toISOString(),
-          // Obsidian notes own their tags via frontmatter; don't re-derive from body
-          ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(content), tags: extractTags(content) }) });
+        nextNote = updateTarget(n);
         return nextNote;
       });
       if (!nextNote) return prev;
@@ -435,7 +468,8 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   const handleSaveNote = useCallback((note: Note) => {
     setNotes(prev => {
-      const nextNote = markVaultDirty({ ...note, updatedAt: new Date().toISOString() });
+      const previous = prev.find((item) => item.id === note.id) ?? note;
+      const nextNote = markVaultDirty({ ...note, updatedAt: new Date().toISOString() }, previous);
       const updated = prev.map(n => n.id === note.id ? nextNote : n);
       debounceSave(nextNote);
       return updated;
@@ -452,7 +486,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       const escapedOld = oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const renameRegex = new RegExp(`\\[\\[${escapedOld}(?=[\\]|#])`, 'g');
       const updated = prev.map(n => {
-        if (n.id === id) return markVaultDirty({ ...n, title: newTitle, updatedAt: new Date().toISOString() });
+        if (n.id === id) return markVaultDirty({ ...n, title: newTitle, updatedAt: new Date().toISOString() }, n);
         // Link-text rewriting is a Noa-owned convenience. Never mutate vault
         // file content as a side effect of a rename: Obsidian owns those files,
         // and cross-domain links are intentionally resolution-only.
@@ -546,7 +580,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         if (!targetFolder) return prev;
         if ((targetFolder.origin === 'vault') !== noteIsVault) return prev;
       }
-      const nextNote = markVaultDirty({ ...target, folder: folderId, updatedAt: new Date().toISOString() });
+      const nextNote = markVaultDirty({ ...target, folder: folderId, updatedAt: new Date().toISOString() }, target);
       const updated = prev.map((note) => (note.id === id ? nextNote : note));
       void storage.saveNote(nextNote).catch(() => {
         setSaveError('Failed to move note. Storage may be full.');
@@ -849,17 +883,24 @@ Export regularly: use Settings → Data → Export Backup.`,
     if (!targetNote) return undefined;
     const { updatedContent, updated: didUpdate } = toggleTaskInNoteContent(targetNote.content, task);
     if (!didUpdate) return undefined;
-    setNotes(prev => {
-      const updated = prev.map(n =>
+    const updatedAt = new Date().toISOString();
+    const applyToggle = (current: Note[]) => {
+      const updated = current.map(n =>
         n.id === task.noteId
-          ? markVaultDirty({ ...n, content: updatedContent, updatedAt: new Date().toISOString(),
-              ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(updatedContent), tags: extractTags(updatedContent) }) })
+          ? markVaultDirty({ ...n, content: updatedContent, updatedAt,
+              ...(n.source === 'obsidian-import' ? {} : { links: extractLinks(updatedContent), tags: extractTags(updatedContent) }) }, n)
           : n
       );
-      const withRefs = syncLinkRefs(updated, prev, new Set([task.noteId]));
-      const updatedNote = withRefs.find(n => n.id === task.noteId);
-      if (updatedNote) debounceSave(updatedNote);
-      return withRefs;
+      return syncLinkRefs(updated, current, new Set([task.noteId]));
+    };
+    const eager = applyToggle(notesRef.current);
+    notesRef.current = eager;
+    const updatedNote = eager.find(n => n.id === task.noteId);
+    if (updatedNote) debounceSave(updatedNote);
+    setNotes(prev => {
+      const next = applyToggle(prev);
+      notesRef.current = next;
+      return next;
     });
     // Returned so the caller can write the toggle through to the vault —
     // storage-only mutations get reverted by the next disk-authoritative scan.
@@ -1203,20 +1244,30 @@ Export regularly: use Settings → Data → Export Backup.`,
     } catch { /* non-fatal */ }
 
     // Apply the restored content, re-deriving links/tags so graph and search stay consistent
-    const restoredBase: Note = markVaultDirty({
-      ...currentNote,
-      content: snapshot.content,
-      updatedAt: new Date().toISOString(),
-      ...(currentNote.source === 'obsidian-import'
-        ? {}
-        : { links: extractLinks(snapshot.content), tags: extractTags(snapshot.content) }),
-    });
+    const restoredAt = new Date().toISOString();
+    const applyRestore = (current: Note[]) => {
+      const updated = current.map((note) => note.id === currentNote.id
+        ? markVaultDirty({
+            ...note,
+            content: snapshot.content,
+            updatedAt: restoredAt,
+            ...(note.source === 'obsidian-import'
+              ? {}
+              : { links: extractLinks(snapshot.content), tags: extractTags(snapshot.content) }),
+          }, note)
+        : note);
+      return syncLinkRefs(updated, current, new Set([currentNote.id]));
+    };
+    const eager = applyRestore(notesRef.current);
+    notesRef.current = eager;
+    const restoredNote = eager.find((note) => note.id === currentNote.id);
     setNotes(prev => {
-      const updated = prev.map(n => n.id === restoredBase.id ? restoredBase : n);
-      return syncLinkRefs(updated, prev, new Set([restoredBase.id]));
+      const next = applyRestore(prev);
+      notesRef.current = next;
+      return next;
     });
     try {
-      await storage.saveNote(restoredBase);
+      if (restoredNote) await storage.saveNote(restoredNote);
     } catch {
       setSaveError('Failed to save restored note. Storage may be full.');
     }
@@ -1225,16 +1276,59 @@ Export regularly: use Settings → Data → Export Backup.`,
   const markVaultNotesSynced = useCallback((expectations: VaultSyncedNoteExpectation[]) => {
     if (expectations.length === 0) return;
     const expectedById = new Map(expectations.map((expectation) => [expectation.id, expectation]));
-    setNotes((prev) => prev.map((note) => {
-      const expectation = expectedById.get(note.id);
-      if (!expectation || !note.vaultDirty || !matchesVaultSyncedExpectation(note, expectation)) return note;
-      const { vaultDirty: _vaultDirty, ...syncedNote } = note;
-      void storage.saveNote(syncedNote).catch(() => {
-        // Keeping a stale dirty marker in IndexedDB is conservative: the next
-        // launch rewrites the same note instead of risking data loss.
+    const persistedIds = new Set<string>();
+    const acknowledge = (current: Note[]) => current.map((note) => {
+        const expectation = expectedById.get(note.id);
+        if (!expectation || !note.vaultDirty || !matchesVaultSyncedExpectation(note, expectation)) return note;
+        const {
+          vaultDirty: _vaultDirty,
+          vaultBaseText: _vaultBaseText,
+          ...syncedNote
+        } = note;
+        const confirmedNote = expectation.confirmedVaultBaseText === undefined
+          ? syncedNote
+          : { ...syncedNote, vaultBaseText: expectation.confirmedVaultBaseText };
+        if (!persistedIds.has(note.id)) {
+          persistedIds.add(note.id);
+          void storage.saveNote(confirmedNote).catch(() => {
+            // Keeping a stale dirty marker in IndexedDB is conservative: the next
+            // launch rewrites the same note instead of risking data loss.
+          });
+        }
+        return confirmedNote;
       });
-      return syncedNote;
-    }));
+
+    // Authoritative import can start in the same async turn. Update the shared
+    // ref immediately so conflict-preserved rows are not rebased over the disk
+    // scan while React is still scheduling the visible state update.
+    notesRef.current = acknowledge(notesRef.current);
+    setNotes((prev) => {
+      const next = acknowledge(prev);
+      notesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const advanceVaultNoteBaseline = useCallback(async (id: string, vaultBaseText: string) => {
+    let advancedNote: Note | undefined;
+    const advance = (current: Note[]) => current.map((note) => {
+      if (note.id !== id || note.origin !== 'vault' || !note.vaultDirty) return note;
+      const advanced = { ...note, vaultBaseText };
+      advancedNote = advanced;
+      return advanced;
+    });
+    notesRef.current = advance(notesRef.current);
+    setNotes((prev) => {
+      const next = advance(prev);
+      notesRef.current = next;
+      return next;
+    });
+    if (advancedNote) {
+      await storage.saveNote(advancedNote).catch(() => {
+        // The in-memory baseline still prevents a false conflict this run.
+        // A failed cache write remains conservative after restart.
+      });
+    }
   }, []);
 
   return {
@@ -1274,5 +1368,6 @@ Export regularly: use Settings → Data → Export Backup.`,
     importBackupFromRecovery,
     restoreSnapshot,
     markVaultNotesSynced,
+    advanceVaultNoteBaseline,
   };
 }

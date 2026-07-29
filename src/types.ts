@@ -29,6 +29,9 @@ export interface Note {
   /** Internal cache marker: local vault edits must reach disk before an
    * authoritative scan may replace this row. Never trusted from imports. */
   vaultDirty?: boolean;
+  /** Exact Markdown payload last read from or confirmed on disk. Clean rows
+   * keep it only when the disk bytes cannot be reconstructed canonically. */
+  vaultBaseText?: string;
   frontmatter?: Record<string, unknown>;
   /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
    *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
@@ -45,6 +48,9 @@ export interface VaultSyncedNoteExpectation {
   title?: string;
   folder?: string;
   updatedAt?: string;
+  /** Exact non-canonical payload confirmed by a byte-preserving structural
+   * write. Omit after canonical writes so the reconstructable baseline clears. */
+  confirmedVaultBaseText?: string;
 }
 
 export interface Link {

@@ -163,6 +163,11 @@ function parseFrontMatter(text: string): {
   };
 }
 
+export function extractContentFromVaultText(exactText: string): string {
+  const text = exactText.startsWith('\uFEFF') ? exactText.slice(1) : exactText;
+  return parseFrontMatter(text).content;
+}
+
 function yamlScalar(value: string): string {
   if (/[:#\n\r"']/.test(value) || value.startsWith(' ') || value.endsWith(' ')) {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
@@ -363,6 +368,29 @@ async function fileExists(dirHandle: FileSystemDirectoryHandle, filename: string
   }
 }
 
+async function fileExistsAtPath(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string,
+): Promise<boolean> {
+  const segments = path.split('/').filter(Boolean);
+  const filename = segments.pop();
+  if (!filename) return false;
+  const parent = segments.length > 0
+    ? await ensureDirectory(rootHandle, segments, false)
+    : rootHandle;
+  return parent ? fileExists(parent, filename) : false;
+}
+
+async function readUtf8TextPreservingBom(file: Blob): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const hasBom = bytes.length >= 3
+    && bytes[0] === 0xef
+    && bytes[1] === 0xbb
+    && bytes[2] === 0xbf;
+  const text = new TextDecoder('utf-8').decode(hasBom ? bytes.subarray(3) : bytes);
+  return hasBom ? `\uFEFF${text}` : text;
+}
+
 /**
  * Materialise a folder as a real directory on disk. Folders are first-class
  * vault objects (as in Obsidian): an empty folder must exist as a directory,
@@ -442,6 +470,10 @@ function rewriteAttachmentEmbedsForVault(note: Note): string {
   });
 }
 
+export function serializeNoteForVault(note: Note): string {
+  return buildFrontMatter(note) + rewriteAttachmentEmbedsForVault(note);
+}
+
 export interface WrittenNoteFile {
   path: string;
   lastModified: number;
@@ -450,7 +482,8 @@ export interface WrittenNoteFile {
 export async function writeNote(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
-  folders: Folder[]
+  folders: Folder[],
+  payloadOverride?: string,
 ): Promise<WrittenNoteFile | null> {
   // Defense in depth for mirror mode: only vault-origin notes are ever
   // materialised on disk. A Noa-owned note (no origin marker) reaching this
@@ -482,7 +515,7 @@ export async function writeNote(
     ? `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`
     : defaultFilename;
 
-  const payload = buildFrontMatter(note) + rewriteAttachmentEmbedsForVault(note);
+  const payload = payloadOverride ?? serializeNoteForVault(note);
   const nextPath = relativeNotePath(folder?.name, filename);
   if (filename !== defaultFilename) {
     const alternateOwner = manifest.notes[nextPath];
@@ -506,7 +539,7 @@ export async function writeNote(
     (!existingManifestEntry || existingManifestEntry[0] === nextPath);
   try {
     const existingFile = await (await dirHandle.getFileHandle(filename)).getFile();
-    if ((await existingFile.text()) === payload) {
+    if ((await readUtf8TextPreservingBom(existingFile)) === payload) {
       if (!manifestUnchanged) {
         if (existingManifestEntry && existingManifestEntry[0] !== nextPath) {
           delete manifest.notes[existingManifestEntry[0]];
@@ -640,8 +673,12 @@ export async function getNoteFilePath(
   const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
   const manifestEntry = manifestEntryForId(manifest, diskNoteId);
-  if (manifestEntry) return manifestEntry[0];
-  if (note.vaultPath) return note.vaultPath;
+  if (manifestEntry && await fileExistsAtPath(rootHandle, manifestEntry[0])) {
+    return manifestEntry[0];
+  }
+  if (note.vaultPath && await fileExistsAtPath(rootHandle, note.vaultPath)) {
+    return note.vaultPath;
+  }
 
   const folder = folders.find((item) => item.id === note.folder);
   if (note.folder && folder?.origin !== 'vault') return null;
@@ -652,6 +689,32 @@ export async function getNoteFilePath(
     if (await fileExists(dirHandle, filename)) return relativeNotePath(folder?.name, filename);
   }
   return null;
+}
+
+/** Read the exact current payload of the managed Markdown file. */
+export async function readVaultNoteText(
+  rootHandle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+): Promise<string | null> {
+  const path = await getNoteFilePath(rootHandle, note, folders);
+  if (!path) return null;
+  const segments = path.split('/').filter(Boolean);
+  const filename = segments.pop();
+  if (!filename) return null;
+  const parent = segments.length > 0
+    ? await ensureDirectory(rootHandle, segments, false)
+    : rootHandle;
+  if (!parent) return null;
+  try {
+    const file = await (await parent.getFileHandle(filename)).getFile();
+    return readUtf8TextPreservingBom(file);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'name' in error && String(error.name) === 'NotFoundError') {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /** Remove one exact note path without consulting or mutating the manifest. */
@@ -791,7 +854,8 @@ export async function scanDirectory(
       if (name.startsWith('.')) continue;
       if (isFileHandle(handle) && name.endsWith('.md')) {
         const file = await handle.getFile();
-        const text = await file.text();
+        const exactText = await readUtf8TextPreservingBom(file);
+        const text = exactText.startsWith('\uFEFF') ? exactText.slice(1) : exactText;
         const { meta, rawBlock, content, eol } = parseFrontMatter(text);
         const notePath = currentPath.join('/');
         const manifestEntry = manifest.notes[notePath];
@@ -833,6 +897,10 @@ export async function scanDirectory(
           // merge and write-path guards can tell vault rows from Noa-owned notes.
           origin: 'vault',
           vaultPath: notePath,
+          // Keep the exact bytes until attachments have been associated below;
+          // the serializer can then decide whether a clean row needs this
+          // non-canonical baseline persisted.
+          vaultBaseText: exactText,
           // Preserved verbatim (minus Noa's own keys on Noa-authored files) for
           // byte-exact round-trip write-back.
           ...(eol ? { rawFrontmatter: preservedFrontmatter, frontmatterEol: eol } : {}),
@@ -897,6 +965,12 @@ export async function scanDirectory(
     const noteAttachments = attachmentsByNoteId.get(sanitizePathSegment(note.id)) ?? attachmentsByNoteId.get(note.id);
     if (noteAttachments?.length) {
       note.attachments = noteAttachments;
+    }
+    // Canonical files can be reconstructed exactly without duplicating their
+    // full content in IndexedDB. Non-canonical but valid files retain their
+    // exact last-read bytes so the first edit does not create a false conflict.
+    if (note.vaultBaseText === serializeNoteForVault(note)) {
+      delete note.vaultBaseText;
     }
   });
   // Note ids the manifest tracked when the scan started: any of these whose

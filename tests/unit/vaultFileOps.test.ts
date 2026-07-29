@@ -100,6 +100,198 @@ describe('deleteNoteFile with duplicate titles', () => {
 });
 
 describe('syncNoteRename', () => {
+  it('preserves an external edit and writes the Noa edit to a conflict copy', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, 'Sample.md', 'external edit');
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'Noa edit', []))
+      .rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Sample.md')).toBe('external edit');
+    const conflictPath = listPaths(root).find((path) => /^Sample \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    expect(await readFileText(root, conflictPath as string)).toBe('Noa edit');
+  });
+
+  it('never overwrites a conflict copy that was later edited externally', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, 'Sample.md', 'external edit');
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'Noa edit', []))
+      .rejects.toThrow('Vault conflict');
+    const firstConflictPath = listPaths(root).find((path) =>
+      /^Sample \(Noa conflict [^)]+\)\.md$/.test(path)
+    );
+    expect(firstConflictPath).toBeDefined();
+    await writeRawFile(root, firstConflictPath as string, 'external edit of conflict copy');
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'Noa edit', []))
+      .rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, firstConflictPath as string)).toBe('external edit of conflict copy');
+    const conflictPaths = listPaths(root).filter((path) => path.includes('Noa conflict'));
+    expect(conflictPaths).toHaveLength(2);
+    const secondConflictPath = conflictPaths.find((path) => path !== firstConflictPath);
+    expect(await readFileText(root, secondConflictPath as string)).toBe('Noa edit');
+  });
+
+  it('uses the first debounced edit as the disk baseline during rapid typing', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+
+    const first = syncNoteUpdate(asFsHandle(root), note, 'first edit', []);
+    const second = syncNoteUpdate(
+      asFsHandle(root),
+      { ...note, content: 'first edit', vaultDirty: true },
+      'second edit',
+      [],
+    );
+    await Promise.all([first, second]);
+
+    expect(await readFileText(root, 'Sample.md')).toBe('second edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
+  it('retains the original disk baseline across a failed write and later edit', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    const file = resolvePath(root, 'Sample.md');
+    expect(file?.kind).toBe('file');
+    const fileHandle = file as NonNullable<typeof file> & {
+      createWritable: () => Promise<unknown>;
+    };
+    const createWritable = fileHandle.createWritable.bind(fileHandle);
+    fileHandle.createWritable = async () => {
+      throw new DOMException('blocked', 'NotAllowedError');
+    };
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'first edit', []))
+      .rejects.toThrow();
+    fileHandle.createWritable = createWritable;
+
+    await syncNoteUpdate(
+      asFsHandle(root),
+      { ...note, content: 'first edit', vaultDirty: true },
+      'second edit',
+      [],
+    );
+
+    expect(await readFileText(root, 'Sample.md')).toBe('second edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
+  it('uses the retained update baseline when a failed edit is followed by a rename', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    const file = resolvePath(root, 'Sample.md');
+    expect(file?.kind).toBe('file');
+    const fileHandle = file as NonNullable<typeof file> & {
+      createWritable: () => Promise<unknown>;
+    };
+    const createWritable = fileHandle.createWritable.bind(fileHandle);
+    fileHandle.createWritable = async () => {
+      throw new DOMException('blocked', 'NotAllowedError');
+    };
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'local edit', []))
+      .rejects.toThrow();
+    fileHandle.createWritable = createWritable;
+
+    await syncNoteRename(
+      asFsHandle(root),
+      { ...note, content: 'local edit', vaultDirty: true },
+      'Renamed',
+      [],
+    );
+
+    expect(resolvePath(root, 'Sample.md')).toBeNull();
+    expect(await readFileText(root, 'Renamed.md')).toBe('local edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
+  it('does not manufacture a conflict when Markdown landed before a later write step failed', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    const manifest = resolvePath(root, '.noa/manifest.json');
+    expect(manifest?.kind).toBe('file');
+    const manifestHandle = manifest as NonNullable<typeof manifest> & {
+      createWritable: () => Promise<unknown>;
+    };
+    const createWritable = manifestHandle.createWritable.bind(manifestHandle);
+    manifestHandle.createWritable = async () => {
+      throw new DOMException('manifest blocked', 'NotAllowedError');
+    };
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'local edit', []))
+      .rejects.toThrow();
+    expect(await readFileText(root, 'Sample.md')).toBe('local edit');
+    manifestHandle.createWritable = createWritable;
+
+    await syncNoteUpdate(
+      asFsHandle(root),
+      { ...note, content: 'local edit', vaultDirty: true },
+      'local edit',
+      [],
+    );
+
+    expect(await readFileText(root, 'Sample.md')).toBe('local edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
+  it('advances the accepted baseline when B lands before failure and queued C follows', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'version A' });
+    await writeNote(asFsHandle(root), note, []);
+    const manifest = resolvePath(root, '.noa/manifest.json');
+    expect(manifest?.kind).toBe('file');
+    const manifestHandle = manifest as NonNullable<typeof manifest> & {
+      createWritable: () => Promise<unknown>;
+    };
+    const createWritable = manifestHandle.createWritable.bind(manifestHandle);
+    let releaseManifestFailure: (() => void) | undefined;
+    let markManifestStarted: (() => void) | undefined;
+    const manifestStarted = new Promise<void>((resolve) => { markManifestStarted = resolve; });
+    const manifestFailureReleased = new Promise<void>((resolve) => { releaseManifestFailure = resolve; });
+    manifestHandle.createWritable = async () => {
+      markManifestStarted?.();
+      await manifestFailureReleased;
+      throw new DOMException('manifest blocked', 'NotAllowedError');
+    };
+    const advanced: Array<{ id: string; text: string }> = [];
+
+    const writeB = syncNoteUpdate(
+      asFsHandle(root),
+      note,
+      'version B',
+      [],
+      (id, text) => { advanced.push({ id, text }); },
+    );
+    await manifestStarted;
+    expect(await readFileText(root, 'Sample.md')).toBe('version B');
+    const writeC = syncNoteUpdate(
+      asFsHandle(root),
+      { ...note, content: 'version B', vaultDirty: true, vaultBaseText: 'version A' },
+      'version C',
+      [],
+    );
+    releaseManifestFailure?.();
+    await expect(writeB).rejects.toThrow();
+    manifestHandle.createWritable = createWritable;
+    await writeC;
+
+    expect(advanced).toEqual([{ id: note.id, text: 'version B' }]);
+    expect(await readFileText(root, 'Sample.md')).toBe('version C');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
   it('flushes a pending content update before renaming so the old path cannot reappear', async () => {
     const root = createMemRoot();
     const note = makeNote({ content: 'old content' });
@@ -113,6 +305,22 @@ describe('syncNoteRename', () => {
     expect(await readFileText(root, 'Renamed.md')).toBe('latest content');
   });
 
+  it('does not rename over an external content edit', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, 'Sample.md', 'external edit');
+
+    await expect(syncNoteRename(asFsHandle(root), note, 'Renamed', []))
+      .rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Sample.md')).toBe('external edit');
+    expect(resolvePath(root, 'Renamed.md')).toBeNull();
+    const conflictPath = listPaths(root).find((path) => /^Renamed \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    expect(await readFileText(root, conflictPath as string)).toBe('common base');
+  });
+
   it('cancels a pending content update when deletion supersedes it', async () => {
     const root = createMemRoot();
     const note = makeNote({ content: 'old content' });
@@ -123,6 +331,40 @@ describe('syncNoteRename', () => {
     await pendingUpdate;
 
     expect(resolvePath(root, 'Sample.md')).toBeNull();
+  });
+
+  it('does not delete a vault file that changed externally after Noa last read it', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, 'Sample.md', 'external edit before delete');
+
+    await expect(syncNoteDelete(asFsHandle(root), note, []))
+      .rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Sample.md')).toBe('external edit before delete');
+  });
+
+  it('checks the fallback vaultPath before deleting through a stale manifest', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ content: 'common base', vaultPath: 'Sample.md' });
+    await writeNote(asFsHandle(root), note, []);
+    await writeRawFile(root, '.noa/manifest.json', JSON.stringify({
+      version: 1,
+      notes: {
+        'Renamed.md': {
+          id: note.id,
+          createdAt: note.createdAt,
+          source: note.source,
+        },
+      },
+    }));
+    await writeRawFile(root, 'Sample.md', 'external edit at fallback path');
+
+    await expect(syncNoteDelete(asFsHandle(root), note, []))
+      .rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Sample.md')).toBe('external edit at fallback path');
   });
 
   it('keeps the vault attachments directory of the renamed note', async () => {
@@ -192,6 +434,25 @@ describe('syncNoteRename', () => {
 });
 
 describe('syncVaultNoteSnapshot', () => {
+  it('preserves both versions when recovering a dirty cache row over changed disk content', async () => {
+    const root = createMemRoot();
+    const original = makeNote({ title: 'Recovery', content: 'common base' });
+    await writeNote(asFsHandle(root), original, []);
+    await writeRawFile(root, 'Recovery.md', 'external edit');
+
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), {
+      ...original,
+      content: 'recovered Noa edit',
+      vaultDirty: true,
+    }, []);
+
+    expect(conflict?.message).toContain('Vault conflict');
+    expect(await readFileText(root, 'Recovery.md')).toBe('external edit');
+    const conflictPath = listPaths(root).find((path) => /^Recovery \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    expect(await readFileText(root, conflictPath as string)).toBe('recovered Noa edit');
+  });
+
   it('writes the latest dirty snapshot and removes the obsolete vault path', async () => {
     const root = createMemRoot();
     const original = makeNote({ title: 'Old title', content: 'old content' });
@@ -204,10 +465,30 @@ describe('syncVaultNoteSnapshot', () => {
       vaultPath: 'Old title.md',
       vaultDirty: true,
     };
+    // Model a crash after the desired file landed but before obsolete-path
+    // cleanup and the IndexedDB dirty marker were cleared.
+    await writeNote(asFsHandle(root), recovered, []);
     await syncVaultNoteSnapshot(asFsHandle(root), recovered, []);
 
     expect(resolvePath(root, 'Old title.md')).toBeNull();
     expect(await readFileText(root, 'Recovered title.md')).toBe('latest local edit');
+  });
+
+  it('recovers a dirty cache row after restart when disk still matches its persisted baseline', async () => {
+    const root = createMemRoot();
+    const original = makeNote({ title: 'Recovery', content: 'common base' });
+    await writeNote(asFsHandle(root), original, []);
+
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), {
+      ...original,
+      content: 'recovered Noa edit',
+      vaultDirty: true,
+      vaultBaseText: 'common base',
+    }, []);
+
+    expect(conflict).toBeNull();
+    expect(await readFileText(root, 'Recovery.md')).toBe('recovered Noa edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
   });
 });
 
@@ -266,6 +547,29 @@ describe('replayVaultPendingOperation', () => {
 describe('syncFolderRename', () => {
   const folderId = 'f1f1f1f1-0000-4000-8000-00000000000f';
 
+  it('does not move a folder note over an external content edit', async () => {
+    const root = createMemRoot();
+    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
+    const note = makeNote({ folder: folderId, content: 'common base' });
+    await writeNote(asFsHandle(root), note, oldFolders);
+    await writeRawFile(root, 'Old Folder/Sample.md', 'external edit');
+    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
+
+    await expect(syncFolderRename(
+      asFsHandle(root),
+      folderId,
+      'Old Folder',
+      newFolders,
+      [note],
+    )).rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Old Folder/Sample.md')).toBe('external edit');
+    expect(resolvePath(root, 'New Folder/Sample.md')).toBeNull();
+    const conflictPath = listPaths(root).find((path) => /^New Folder\/Sample \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    expect(await readFileText(root, conflictPath as string)).toBe('common base');
+  });
+
   it('moves managed notes but preserves files Noa does not track', async () => {
     const root = createMemRoot();
     const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
@@ -285,6 +589,29 @@ describe('syncFolderRename', () => {
     expect(resolvePath(root, 'Old Folder/Sample.md')).toBeNull();
     // Untracked file must survive in place.
     expect(resolvePath(root, 'Old Folder/reference.pdf')).not.toBeNull();
+  });
+
+  it('preserves a clean note exact-byte baseline while moving its folder', async () => {
+    const root = createMemRoot();
+    const originalText = [
+      '---\r\n',
+      `id: ${makeNote().id}\r\n`,
+      'createdAt: 2026-04-09T12:00:00.000Z\r\n',
+      'noaSource: noa\r\n',
+      '---\r\n',
+      'body from disk',
+    ].join('');
+    await writeRawFile(root, 'Old Folder/Exact.md', originalText);
+    const oldFolders = [{ id: folderId, name: 'Old Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
+    const { notes } = await scanDirectory(asFsHandle(root), oldFolders);
+    const newFolders = [{ id: folderId, name: 'New Folder', source: 'obsidian-import' as const, origin: 'vault' as const }];
+
+    await syncFolderRename(asFsHandle(root), folderId, 'Old Folder', newFolders, notes);
+
+    expect(await readFileText(root, 'New Folder/Exact.md')).toBe(originalText);
+    await syncNoteUpdate(asFsHandle(root), notes[0], 'edited after move', newFolders);
+    expect(await readFileText(root, 'New Folder/Exact.md')).toContain('edited after move');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
   });
 
   it('removes the old directory tree when it only contained managed notes', async () => {
@@ -717,6 +1044,62 @@ describe('vault origin marking and write guard', () => {
     expect(resolvePath(root, 'Private/Sample.md')).toBeNull();
   });
 
+  it('does not move a stale cache row over an external content edit', async () => {
+    const root = createMemRoot();
+    const sourceFolder = { id: 'source', name: 'Source', source: 'obsidian-import' as const, origin: 'vault' as const };
+    const targetFolder = { id: 'target', name: 'Target', source: 'obsidian-import' as const, origin: 'vault' as const };
+    const folders = [sourceFolder, targetFolder];
+    const note = makeNote({ folder: sourceFolder.id, content: 'common base' });
+    await writeNote(asFsHandle(root), note, folders);
+    await writeRawFile(root, 'Source/Sample.md', 'external edit');
+
+    await expect(syncNoteMove(
+      asFsHandle(root),
+      note,
+      { ...note, folder: targetFolder.id },
+      folders,
+    )).rejects.toThrow('Vault conflict');
+
+    expect(await readFileText(root, 'Source/Sample.md')).toBe('external edit');
+    expect(resolvePath(root, 'Target/Sample.md')).toBeNull();
+    const conflictPath = listPaths(root).find((path) => /^Target\/Sample \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    expect(await readFileText(root, conflictPath as string)).toBe('common base');
+  });
+
+  it('uses the retained update baseline when a failed edit is followed by a move', async () => {
+    const root = createMemRoot();
+    const sourceFolder = { id: 'source', name: 'Source', source: 'obsidian-import' as const, origin: 'vault' as const };
+    const targetFolder = { id: 'target', name: 'Target', source: 'obsidian-import' as const, origin: 'vault' as const };
+    const folders = [sourceFolder, targetFolder];
+    const note = makeNote({ folder: sourceFolder.id, content: 'common base' });
+    await writeNote(asFsHandle(root), note, folders);
+    const file = resolvePath(root, 'Source/Sample.md');
+    expect(file?.kind).toBe('file');
+    const fileHandle = file as NonNullable<typeof file> & {
+      createWritable: () => Promise<unknown>;
+    };
+    const createWritable = fileHandle.createWritable.bind(fileHandle);
+    fileHandle.createWritable = async () => {
+      throw new DOMException('blocked', 'NotAllowedError');
+    };
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'local edit', folders))
+      .rejects.toThrow();
+    fileHandle.createWritable = createWritable;
+
+    await syncNoteMove(
+      asFsHandle(root),
+      { ...note, content: 'local edit', vaultDirty: true },
+      { ...note, content: 'local edit', folder: targetFolder.id, vaultDirty: true },
+      folders,
+    );
+
+    expect(resolvePath(root, 'Source/Sample.md')).toBeNull();
+    expect(await readFileText(root, 'Target/Sample.md')).toBe('local edit');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
   it('uses vaultId rather than the namespaced cache id for disk identity', async () => {
     const root = createMemRoot();
     const note = makeNote({
@@ -736,6 +1119,27 @@ describe('vault origin marking and write guard', () => {
 });
 
 describe('vault files stay untouched on first connect', () => {
+  it('carries exact non-canonical bytes into the first edit baseline', async () => {
+    const root = createMemRoot();
+    const originalText = [
+      '---\r\n',
+      `id: ${makeNote().id}\r\n`,
+      'createdAt: 2026-04-09T12:00:00.000Z\r\n',
+      'noaSource: noa\r\n',
+      '---\r\n',
+      'body from disk',
+    ].join('');
+    await writeRawFile(root, 'Exact.md', originalText);
+
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    expect(notes[0].vaultBaseText).toBe(originalText);
+
+    await syncNoteUpdate(asFsHandle(root), notes[0], 'edited body', []);
+
+    expect(await readFileText(root, 'Exact.md')).toContain('edited body');
+    expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
   it('registers a manifest entry without rewriting a byte-identical obsidian file', async () => {
     const root = createMemRoot();
     const original = [
@@ -773,6 +1177,103 @@ describe('vault files stay untouched on first connect', () => {
     await writeNote(asFsHandle(root), notes[0], []);
 
     expect(await readFileText(root, 'Windows.md')).toBe(original);
+  });
+
+  it('preserves a UTF-8 BOM through a byte-preserving rename', async () => {
+    const root = createMemRoot();
+    const original = '\uFEFF# Sample\r\n\r\nBody\r\n';
+    await writeRawFile(root, 'Sample.md', original);
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+
+    expect(notes[0].content).not.toContain('\uFEFF');
+    expect(notes[0].vaultBaseText).toBe(original);
+
+    await syncNoteRename(asFsHandle(root), notes[0], 'Renamed', folders);
+
+    const renamed = resolvePath(root, 'Renamed.md');
+    expect(renamed?.kind).toBe('file');
+    const file = await (renamed as unknown as { getFile(): Promise<File> }).getFile();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it('preserves a UTF-8 BOM when a structural dirty snapshot is recovered', async () => {
+    const root = createMemRoot();
+    const original = '\uFEFF# Sample\r\n\r\nBody\r\n';
+    await writeRawFile(root, 'Sample.md', original);
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), {
+      ...notes[0],
+      title: 'Renamed',
+      vaultDirty: true,
+    }, folders);
+
+    expect(conflict).toBeNull();
+    const renamed = resolvePath(root, 'Renamed.md');
+    expect(renamed?.kind).toBe('file');
+    const file = await (renamed as unknown as { getFile(): Promise<File> }).getFile();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it('preserves the exact local BOM payload in a structural conflict copy', async () => {
+    const root = createMemRoot();
+    const original = '\uFEFF# Sample\r\n\r\nBody\r\n';
+    await writeRawFile(root, 'Sample.md', original);
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+    await writeRawFile(root, 'Sample.md', 'external edit');
+
+    await expect(syncNoteRename(asFsHandle(root), notes[0], 'Renamed', folders))
+      .rejects.toThrow('Vault conflict');
+
+    const conflictPath = listPaths(root).find((path) => /^Renamed \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    const conflict = resolvePath(root, conflictPath as string);
+    const file = await (conflict as unknown as { getFile(): Promise<File> }).getFile();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it('does not copy the original embedded Noa identity into a conflict file', async () => {
+    const root = createMemRoot();
+    const original = [
+      '---',
+      'id: original-note-id',
+      'createdAt: 2026-04-09T12:00:00.000Z',
+      'noaSource: noa',
+      '---',
+      'Body',
+    ].join('\n');
+    await writeRawFile(root, 'Sample.md', original);
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+    await writeRawFile(root, 'Sample.md', 'external edit');
+
+    await expect(syncNoteRename(asFsHandle(root), notes[0], 'Renamed', folders))
+      .rejects.toThrow('Vault conflict');
+
+    const conflictPath = listPaths(root).find((path) => /^Renamed \(Noa conflict [^)]+\)\.md$/.test(path));
+    expect(conflictPath).toBeDefined();
+    const conflictText = await readFileText(root, conflictPath as string);
+    expect(conflictText).not.toContain('id: original-note-id');
+    expect(conflictText).not.toContain('noaSource: noa');
+  });
+
+  it('caps conflict-copy filenames by UTF-8 bytes', async () => {
+    const root = createMemRoot();
+    const longTitle = '界'.repeat(78);
+    const note = makeNote({ title: longTitle, content: 'common base' });
+    await writeNote(asFsHandle(root), note, []);
+    const originalPath = listPaths(root).find((path) => path.endsWith('.md') && !path.startsWith('.noa/'));
+    expect(originalPath).toBeDefined();
+    await writeRawFile(root, originalPath as string, 'external edit');
+
+    await expect(syncNoteUpdate(asFsHandle(root), note, 'Noa edit', []))
+      .rejects.toThrow('Vault conflict');
+
+    const conflictPath = listPaths(root).find((path) => path.includes('(Noa conflict '));
+    expect(conflictPath).toBeDefined();
+    expect(new TextEncoder().encode(conflictPath).byteLength).toBeLessThanOrEqual(255);
   });
 
   it('keeps one-line CRLF frontmatter byte-identical through scan and write-back', async () => {

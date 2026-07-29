@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseTasksFromNotes } from '../../src/lib/taskParser';
 
 const makeNote = () => ({
   id: 'n1',
@@ -224,10 +225,11 @@ describe('useNotes handleImportData attachment rollback', () => {
 // Like createReactHarness, but useEffect actually runs effects with React-like
 // dependency comparison — needed by flows that read notesRef/foldersRef
 // (synced via effects) instead of functional setState.
-function createEffectHarness() {
+function createEffectHarness({ deferState = false } = {}) {
   const states: any[] = [];
   const refs: Array<{ current: unknown }> = [];
   const effectDeps: Array<unknown[] | undefined> = [];
+  const pendingStateUpdates: Array<() => void> = [];
   let stateIndex = 0;
   let refIndex = 0;
   let effectIndex = 0;
@@ -242,9 +244,13 @@ function createEffectHarness() {
             : initial;
         }
         const setState = (next: T | ((prev: T) => T)) => {
-          states[idx] = typeof next === 'function'
-            ? (next as (prev: T) => T)(states[idx])
-            : next;
+          const apply = () => {
+            states[idx] = typeof next === 'function'
+              ? (next as (prev: T) => T)(states[idx])
+              : next;
+          };
+          if (deferState) pendingStateUpdates.push(apply);
+          else apply();
         };
         return [states[idx], setState] as const;
       },
@@ -274,6 +280,9 @@ function createEffectHarness() {
       stateIndex = 0;
       refIndex = 0;
       effectIndex = 0;
+    },
+    flushStateUpdates() {
+      for (const apply of pendingStateUpdates.splice(0)) apply();
     },
   };
 }
@@ -424,6 +433,257 @@ describe('useNotes handleUpdateNote link-index hot path', () => {
 
     api.handleUpdateNote('n1', 'Body now links to [[Other]]');
     expect(subsetSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useNotes vault conflict acknowledgement', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  it('persists the exact clean Markdown baseline with the first dirty vault edit', async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness();
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const clean = {
+      ...makeNote(),
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([clean], [], 'Vault', true);
+    harness.resetRender();
+    api = useNotes();
+    storageMock.saveNote.mockClear();
+
+    api.handleUpdateNote(clean.id, 'local edit');
+    harness.resetRender();
+    api = useNotes();
+    await vi.advanceTimersByTimeAsync(500);
+
+    const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
+      vaultDirty?: boolean;
+      vaultBaseText?: string;
+    }]>;
+    const saved = saveCalls.at(-1)?.[0];
+    expect(saved?.vaultDirty).toBe(true);
+    expect(saved?.vaultBaseText).toBe('Body');
+  });
+
+  it('persists an advanced landed baseline without replacing a newer local edit', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness({ deferState: true });
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const dirty = {
+      ...makeNote(),
+      content: 'version B',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultDirty: true,
+      vaultBaseText: 'version A',
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([dirty], [], 'Vault', true);
+    harness.flushStateUpdates();
+    harness.resetRender();
+    api = useNotes();
+    storageMock.saveNote.mockClear();
+
+    // Queue C in React without committing the updater. The synchronous latest
+    // ref must still let the B failure callback persist C/base=B.
+    api.handleUpdateNote(dirty.id, 'version C');
+    await api.advanceVaultNoteBaseline(dirty.id, 'version B');
+
+    const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
+      content: string;
+      vaultBaseText?: string;
+    }]>;
+    expect(saveCalls.at(-1)?.[0]).toMatchObject({
+      content: 'version C',
+      vaultBaseText: 'version B',
+    });
+  });
+
+  it('keeps a deferred task toggle when an earlier write advances the baseline', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness({ deferState: true });
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const dirty = {
+      ...makeNote(),
+      content: '- [ ] task',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultDirty: true,
+      vaultBaseText: 'version A',
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([dirty], [], 'Vault', true);
+    harness.flushStateUpdates();
+    harness.resetRender();
+    api = useNotes();
+    storageMock.saveNote.mockClear();
+
+    const task = parseTasksFromNotes([dirty])[0];
+    api.handleToggleTask(task);
+    await api.advanceVaultNoteBaseline(dirty.id, dirty.content);
+
+    const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
+      content: string;
+      vaultBaseText?: string;
+    }]>;
+    expect(saveCalls.at(-1)?.[0].content).toContain('- [x] task');
+    expect(saveCalls.at(-1)?.[0].vaultBaseText).toBe(dirty.content);
+  });
+
+  it('keeps a deferred snapshot restore when an earlier write advances the baseline', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness({ deferState: true });
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const dirty = {
+      ...makeNote(),
+      content: 'version B',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultDirty: true,
+      vaultBaseText: 'version A',
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([dirty], [], 'Vault', true);
+    harness.flushStateUpdates();
+    harness.resetRender();
+    api = useNotes();
+    storageMock.saveNote.mockClear();
+
+    await api.restoreSnapshot({
+      noteId: dirty.id,
+      content: 'version C from snapshot',
+      title: dirty.title,
+      savedAt: new Date().toISOString(),
+    });
+    await api.advanceVaultNoteBaseline(dirty.id, dirty.content);
+
+    const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
+      content: string;
+      vaultBaseText?: string;
+    }]>;
+    expect(saveCalls.at(-1)?.[0]).toMatchObject({
+      content: 'version C from snapshot',
+      vaultBaseText: dirty.content,
+    });
+  });
+
+  it('retains the confirmed exact baseline after a byte-preserving structural write', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness();
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const dirty = {
+      ...makeNote(),
+      title: 'Renamed',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultDirty: true,
+      vaultBaseText: '---\r\ntitle: Note\r\n---\r\nBody\r\n',
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([dirty], [], 'Vault', true);
+    harness.resetRender();
+    api = useNotes();
+    storageMock.saveNote.mockClear();
+
+    api.markVaultNotesSynced([{
+      id: dirty.id,
+      title: dirty.title,
+      confirmedVaultBaseText: dirty.vaultBaseText,
+    }]);
+
+    const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
+      vaultDirty?: boolean;
+      vaultBaseText?: string;
+    }]>;
+    const saved = saveCalls.at(-1)?.[0];
+    expect(saved?.vaultDirty).toBeUndefined();
+    expect(saved?.vaultBaseText).toBe(dirty.vaultBaseText);
+  });
+
+  it('makes a conflict acknowledgement visible to an immediate authoritative import', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness();
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+    const dirty = {
+      ...makeNote(),
+      content: 'preserved conflict copy',
+      source: 'obsidian-import' as const,
+      origin: 'vault' as const,
+      vaultDirty: true,
+      vaultBaseText: 'Body',
+      vaultPath: 'Note.md',
+    };
+    await api.handleImportData([dirty], [], 'Vault', true);
+    harness.resetRender();
+    api = useNotes();
+
+    api.markVaultNotesSynced([{ id: dirty.id, content: dirty.content }]);
+    const authoritative = {
+      ...dirty,
+      content: 'external disk version',
+      vaultDirty: undefined,
+      vaultBaseText: undefined,
+    };
+    await api.handleImportData([authoritative], [], 'Vault', true);
+
+    const calls = storageMock.saveNotes.mock.calls as unknown as Array<[Array<{
+      id: string;
+      content: string;
+      vaultDirty?: boolean;
+      vaultBaseText?: string;
+    }>]>;
+    const finalPersisted = calls.at(-1)?.[0]?.find((note) => note.id === dirty.id);
+    expect(finalPersisted?.content).toBe('external disk version');
+    expect(finalPersisted?.vaultDirty).toBeUndefined();
+    expect(finalPersisted?.vaultBaseText).toBeUndefined();
   });
 });
 

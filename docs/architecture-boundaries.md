@@ -15,6 +15,10 @@
 - `fileSyncService`: all file-sync primitives and error classification.
 - UI components consume hooks and should not call service functions directly.
 
+## Vault Sync Invariants
+- `vaultBaseText` is the exact UTF-8 payload last read or confirmed on disk for dirty or non-canonical rows, including a BOM when present. Preserve it across local mutations and byte-preserving rename/move operations; clear it only after a confirmed canonical write.
+- Conflict copies are write-once. An existing conflict path may be reused only when its payload is byte-identical; user-edited conflict files must never be overwritten.
+
 ## UI Layer
 - `DataSettings` is an orchestration shell for message + confirm states.
 - `WorkspaceSection`, `BackupSection`, `ImportSection` render controls only.

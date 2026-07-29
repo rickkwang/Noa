@@ -99,6 +99,9 @@ function normalizeNote(
   const vaultId = preserveVaultMetadata && isString(obj.vaultId) && obj.vaultId.trim() ? obj.vaultId : undefined;
   const vaultPath = preserveVaultMetadata && isString(obj.vaultPath) && obj.vaultPath.trim() ? obj.vaultPath : undefined;
   const vaultDirty = preserveVaultMetadata && obj.origin === 'vault' && obj.vaultDirty === true;
+  const vaultBaseText = preserveVaultMetadata && obj.origin === 'vault' && isString(obj.vaultBaseText)
+    ? obj.vaultBaseText
+    : undefined;
   const rawFrontmatter = isString(obj.rawFrontmatter) ? obj.rawFrontmatter : undefined;
   const frontmatterEol = obj.frontmatterEol === '\r\n' || obj.frontmatterEol === '\n'
     ? obj.frontmatterEol
@@ -129,6 +132,7 @@ function normalizeNote(
       ...(vaultId ? { vaultId } : {}),
       ...(vaultPath ? { vaultPath } : {}),
       ...(vaultDirty ? { vaultDirty: true } : {}),
+      ...(vaultBaseText !== undefined ? { vaultBaseText } : {}),
       ...(rawFrontmatter !== undefined ? { rawFrontmatter } : {}),
       ...(frontmatterEol ? { frontmatterEol } : {}),
     },
