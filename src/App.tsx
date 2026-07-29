@@ -4,6 +4,7 @@
  */
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
 import ThemeInjector from './components/ThemeInjector';
@@ -31,6 +32,7 @@ export default function App() {
   useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const recoveryImportInputRef = useRef<HTMLInputElement>(null);
+  const recoveryRetryButtonRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
@@ -78,6 +80,7 @@ export default function App() {
     importBackupFromRecovery,
     markVaultNotesSynced,
     isLoaded,
+    isDataReady,
     setWorkspaceName,
   } = useNotes(settings);
 
@@ -95,7 +98,7 @@ export default function App() {
     handleTabClose,
     handleTabEnterComplete,
     handleTabCloseAnimationComplete,
-  } = useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId });
+  } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId });
 
   const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
   const {
@@ -130,7 +133,7 @@ export default function App() {
     syncNoteOnDelete,
     externalUpdateNotice,
   } = useFileSync({
-    isLoaded,
+    isLoaded: isDataReady,
     notes,
     folders,
     workspaceName,
@@ -141,6 +144,7 @@ export default function App() {
   });
 
   const blockVaultCacheWrite = useCallback((isVaultOwned: boolean) => {
+    if (!isDataReady) return true;
     const authoritativeSyncActive = isAuthoritativeSyncActive();
     const structuralOperationPending = isAnyVaultStructuralOperationPending();
     if (!isVaultOwned || (!vaultCacheReadOnly && !authoritativeSyncActive && !structuralOperationPending)) return false;
@@ -150,13 +154,13 @@ export default function App() {
         ? 'Vault changes are being applied from disk. Wait for sync to finish before editing.'
         : 'Vault is the source of truth. Reconnect or retry sync before making changes.');
     return true;
-  }, [isAnyVaultStructuralOperationPending, isAuthoritativeSyncActive, setSaveError, vaultCacheReadOnly]);
+  }, [isAnyVaultStructuralOperationPending, isAuthoritativeSyncActive, isDataReady, setSaveError, vaultCacheReadOnly]);
 
   const autoBackup = useAutoBackup({
     notes,
     folders,
     workspaceName,
-    isLoaded,
+    isLoaded: isDataReady,
     autoBackupEnabled: settings.backup?.autoBackupEnabled ?? false,
     onSettingsUpdate: useCallback((patch: { autoBackupEnabled: boolean }) => {
       updateSettings((prev) => ({
@@ -179,12 +183,12 @@ export default function App() {
   const setWorkspaceNameRef = useRef(setWorkspaceName);
   useEffect(() => { setWorkspaceNameRef.current = setWorkspaceName; }, [setWorkspaceName]);
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isDataReady) return;
     if (fsHandle !== null) return;
     if (syncStatus !== 'idle') return;
     if (workspaceNameRef.current === 'Default Workspace') return;
     setWorkspaceNameRef.current('Default Workspace');
-  }, [isLoaded, fsHandle, syncStatus]);
+  }, [isDataReady, fsHandle, syncStatus]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
     const note = notesRef.current.find((item) => item.id === id);
@@ -226,8 +230,9 @@ export default function App() {
   }, [blockVaultCacheWrite, folders, handleImportNote]);
 
   const handleOpenDailyNoteGuarded = useCallback(() => {
+    if (!isDataReady) return;
     handleOpenDailyNote();
-  }, [handleOpenDailyNote]);
+  }, [handleOpenDailyNote, isDataReady]);
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
     const note = notesRef.current.find((item) => item.id === task.noteId);
@@ -267,6 +272,7 @@ export default function App() {
     handleDeleteFolder,
     handleDisconnectFolder,
   } = useVaultOperations({
+    isDataReady,
     notes,
     folders,
     setSaveError,
@@ -450,7 +456,32 @@ export default function App() {
     };
   }, [flushAllPendingSaves]);
 
+  useEffect(() => {
+    if (!loadError) return;
+    recoveryRetryButtonRef.current?.focus();
+  }, [loadError]);
+
+  const handleRecoveryKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
+    const focusable = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])')
+    );
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+
+    const focusIsOutsideDialog = !event.currentTarget.contains(document.activeElement);
+    if (event.shiftKey && (document.activeElement === first || focusIsOutsideDialog)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || focusIsOutsideDialog)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, []);
+
   useGlobalShortcuts({
+    enabled: isDataReady,
     searchQuery,
     searchInputRef,
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
@@ -504,7 +535,12 @@ export default function App() {
   }
 
   return (
-    <div className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white">
+    <>
+    <div
+      inert={loadError ? true : undefined}
+      aria-hidden={loadError ? true : undefined}
+      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white"
+    >
       <ThemeInjector settings={settings} />
       {!isFocusMode && <TopBar
         settings={settings}
@@ -617,7 +653,7 @@ export default function App() {
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
                 onRestoreSnapshot={restoreSnapshotGuarded}
                 readOnly={(vaultCacheReadOnly || authoritativeSyncInProgress || hasPendingStructuralOperations) && activeNote?.origin === 'vault'}
-                attachmentMutationsDisabled={activeNote?.origin === 'vault'}
+                attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2B]/30 font-redaction select-none">
@@ -757,51 +793,6 @@ export default function App() {
           >
             Got it
           </button>
-        </div>
-      )}
-      {loadError && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel p-4 font-redaction space-y-3 slide-down">
-            <h3 className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
-            <p className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
-            <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
-            <p className="text-xs text-[#2D2D2B]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={retryInitialization}
-                className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
-              >
-                Retry Read
-              </button>
-              <button
-                onClick={() => recoveryImportInputRef.current?.click()}
-                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90"
-              >
-                Import Backup
-              </button>
-              <button
-                onClick={() => {
-                  void resetWorkspaceFromRecovery();
-                }}
-                className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border border-[#D45555]/60 hover:bg-[#D45555]/30"
-              >
-                New Empty Workspace
-              </button>
-            </div>
-            <input
-              ref={recoveryImportInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  void importBackupFromRecovery(file);
-                }
-                e.currentTarget.value = '';
-              }}
-            />
-          </div>
         </div>
       )}
       {commandPalette.isOpen && (
@@ -967,5 +958,60 @@ export default function App() {
         </div>
       )}
     </div>
+    {loadError && createPortal(
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recovery-dialog-title"
+        aria-describedby="recovery-dialog-message recovery-dialog-actions"
+        onKeyDown={handleRecoveryKeyDown}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4"
+      >
+        <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel p-4 font-redaction space-y-3 slide-down">
+          <h3 id="recovery-dialog-title" className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
+          <p id="recovery-dialog-message" className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
+          <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
+          <p id="recovery-dialog-actions" className="text-xs text-[#2D2D2B]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              ref={recoveryRetryButtonRef}
+              onClick={retryInitialization}
+              className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
+            >
+              Retry Read
+            </button>
+            <button
+              onClick={() => recoveryImportInputRef.current?.click()}
+              className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90"
+            >
+              Import Backup
+            </button>
+            <button
+              onClick={() => {
+                void resetWorkspaceFromRecovery();
+              }}
+              className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border border-[#D45555]/60 hover:bg-[#D45555]/30"
+            >
+              New Empty Workspace
+            </button>
+          </div>
+          <input
+            ref={recoveryImportInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                void importBackupFromRecovery(file);
+              }
+              e.currentTarget.value = '';
+            }}
+          />
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }

@@ -299,6 +299,51 @@ const baseStorageMock = () => ({
   deleteAttachmentBlob: vi.fn(async () => undefined),
   listAttachmentBlobIds: vi.fn(async () => [] as string[]),
   saveNotes: vi.fn(async () => undefined),
+  clearLegacyLocalStorage: vi.fn(),
+});
+
+describe('useNotes bootstrap recovery write gate', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  it('does not persist default workspace state after a storage read failure', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    storageMock.getNotes = vi.fn(async () => {
+      throw new Error('notes database unavailable');
+    });
+    const harness = createEffectHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+
+    for (let i = 0; i < 20 && !api.isLoaded; i += 1) {
+      await Promise.resolve();
+      harness.resetRender();
+      api = useNotes();
+    }
+
+    expect(api.isLoaded).toBe(true);
+    expect(api.loadError).not.toBeNull();
+    expect(api.isDataReady).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(storageMock.saveWorkspaceName).not.toHaveBeenCalled();
+    expect(storageMock.saveFolders).not.toHaveBeenCalled();
+    expect(storageMock.saveNote).not.toHaveBeenCalled();
+  });
 });
 
 describe('useNotes debounceSave failure fallback', () => {

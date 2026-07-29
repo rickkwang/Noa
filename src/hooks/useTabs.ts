@@ -80,13 +80,14 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
 
   // Persist openTabIds to localStorage (debounced — tabs open/close rapidly)
   useEffect(() => {
+    if (!isLoaded) return;
     const t = setTimeout(() => {
       try {
         localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabIds));
       } catch { /* quota exceeded — ignore */ }
     }, 300);
     return () => clearTimeout(t);
-  }, [openTabIds]);
+  }, [isLoaded, openTabIds]);
 
   // Keep openTabIdsRef in sync for use in other effects
   useEffect(() => {

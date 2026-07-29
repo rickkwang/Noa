@@ -7,6 +7,7 @@ const MAX_SNAPSHOTS_PER_NOTE = 60;
 // This gives dense history for the last few minutes and sparse history hours back,
 // instead of the previous "last 10 minutes only" behavior at 20/30s cadence.
 const DECAY_BASE_SPACING_MS = 30_000;
+const LEGACY_LOCAL_STORAGE_KEYS = ['pixel-notes', 'pixel-folders', 'pixel-workspace'] as const;
 
 // Initialize localforage instances
 const notesStore = localforage.createInstance({
@@ -99,18 +100,13 @@ export const storage = {
   },
 
   async getNotes(): Promise<Note[] | null> {
-    try {
-      const notes: Note[] = [];
-      await notesStore.iterate<Note, void>((value, key) => {
-        if (key.startsWith('note:')) {
-          notes.push(value);
-        }
-      });
-      return notes.length > 0 ? notes : null;
-    } catch (err) {
-      console.error('Error loading notes:', err);
-      return null;
-    }
+    const notes: Note[] = [];
+    await notesStore.iterate<Note, void>((value, key) => {
+      if (key.startsWith('note:')) {
+        notes.push(value);
+      }
+    });
+    return notes.length > 0 ? notes : null;
   },
 
   // Batch save for import. Writes sequentially so we can roll back on failure
@@ -124,41 +120,32 @@ export const storage = {
   // all writes succeed. If the process dies mid-flight the migration flag
   // is never set, so we will retry (idempotent because setItem overwrites).
   async migrateToPerNoteStorage(): Promise<void> {
-    try {
-      const done = await notesStore.getItem<boolean>('migration:per-note-done');
-      if (done) return;
-      const legacy = await notesStore.getItem<Note[]>('all-notes');
-      if (!legacy) {
-        await notesStore.setItem('migration:per-note-done', true);
-        return;
-      }
-      // Write all per-note keys first. If any fail we abort and leave the
-      // legacy key intact so the next startup can retry.
-      const results = await Promise.allSettled(
-        legacy.map(n => notesStore.setItem(`note:${n.id}`, n))
-      );
-      const failed = results.filter(r => r.status === 'rejected');
-      if (failed.length > 0) {
-        console.error(`Migration: ${failed.length}/${legacy.length} writes failed — will retry next startup.`);
-        return; // Do NOT remove legacy key or set done flag
-      }
-      // All writes succeeded — safe to remove legacy blob and mark done.
-      await notesStore.removeItem('all-notes');
+    const done = await notesStore.getItem<boolean>('migration:per-note-done');
+    if (done) return;
+    const legacy = await notesStore.getItem<Note[]>('all-notes');
+    if (!legacy) {
       await notesStore.setItem('migration:per-note-done', true);
-    } catch (err) {
-      console.error('Error migrating to per-note storage:', err);
-      // Do not set migration:per-note-done so we retry next time.
+      return;
     }
+    // Write all per-note keys first. If any fail, leave the legacy key and
+    // surface the failure so bootstrap enters recovery instead of loading a
+    // partial workspace. The next retry remains idempotent.
+    const results = await Promise.allSettled(
+      legacy.map(n => notesStore.setItem(`note:${n.id}`, n))
+    );
+    const failed = results.filter(r => r.status === 'rejected');
+    if (failed.length > 0) {
+      throw new Error(
+        `Migration failed after writing ${legacy.length - failed.length}/${legacy.length} notes.`
+      );
+    }
+    // All writes succeeded — safe to remove the legacy blob and mark done.
+    await notesStore.removeItem('all-notes');
+    await notesStore.setItem('migration:per-note-done', true);
   },
 
   async getFolders(): Promise<Folder[] | null> {
-    try {
-      const folders = await foldersStore.getItem<Folder[]>('all-folders');
-      return folders;
-    } catch (err) {
-      console.error('Error loading folders:', err);
-      return null;
-    }
+    return foldersStore.getItem<Folder[]>('all-folders');
   },
 
   async saveFolders(folders: Folder[]): Promise<void> {
@@ -166,13 +153,7 @@ export const storage = {
   },
 
   async getWorkspaceName(): Promise<string | null> {
-    try {
-      const name = await workspaceStore.getItem<string>('workspace-name');
-      return name;
-    } catch (err) {
-      console.error('Error loading workspace name:', err);
-      return null;
-    }
+    return workspaceStore.getItem<string>('workspace-name');
   },
 
   async saveWorkspaceName(name: string): Promise<void> {
@@ -244,6 +225,13 @@ export const storage = {
       attachmentsStore.clear(),
       historyStore.clear(),
     ]);
+    this.clearLegacyLocalStorage();
+  },
+
+  clearLegacyLocalStorage(): void {
+    for (const key of LEGACY_LOCAL_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
   },
 
   // Attachment Blob storage
@@ -361,63 +349,58 @@ export const storage = {
 
   // Migration from localStorage
   async migrateFromLocalStorage(): Promise<boolean> {
-    try {
-      const lsNotes = localStorage.getItem('pixel-notes');
-      const lsFolders = localStorage.getItem('pixel-folders');
-      const lsWorkspace = localStorage.getItem('pixel-workspace');
+    const lsNotes = localStorage.getItem('pixel-notes');
+    const lsFolders = localStorage.getItem('pixel-folders');
+    const lsWorkspace = localStorage.getItem('pixel-workspace');
 
-      let migrated = false;
+    let migrated = false;
 
-      if (lsNotes) {
-        const parsed: unknown = JSON.parse(lsNotes);
-        if (!Array.isArray(parsed)) throw new Error('pixel-notes is not an array');
-        const migratedNotes: Note[] = parsed
-          .filter((n): n is Record<string, unknown> => n !== null && typeof n === 'object')
-          .map((n) => ({
-            id: typeof n.id === 'string' ? n.id : crypto.randomUUID(),
-            title: typeof n.title === 'string' ? n.title : 'Untitled',
-            content: typeof n.content === 'string' ? n.content : '',
-            folder: typeof n.folder === 'string' ? n.folder : '',
-            createdAt: typeof n.createdAt === 'string' ? n.createdAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
-            updatedAt: typeof n.updatedAt === 'string' ? n.updatedAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
-            tags: Array.isArray(n.tags) ? n.tags.filter((t): t is string => typeof t === 'string') : [],
-            links: Array.isArray(n.links) ? n.links.filter((l): l is string => typeof l === 'string') : [],
-            linkRefs: Array.isArray(n.linkRefs) ? n.linkRefs.filter((r): r is string => typeof r === 'string') : [],
+    if (lsNotes) {
+      const parsed: unknown = JSON.parse(lsNotes);
+      if (!Array.isArray(parsed)) throw new Error('pixel-notes is not an array');
+      const migratedNotes: Note[] = parsed
+        .filter((n): n is Record<string, unknown> => n !== null && typeof n === 'object')
+        .map((n) => ({
+          id: typeof n.id === 'string' ? n.id : crypto.randomUUID(),
+          title: typeof n.title === 'string' ? n.title : 'Untitled',
+          content: typeof n.content === 'string' ? n.content : '',
+          folder: typeof n.folder === 'string' ? n.folder : '',
+          createdAt: typeof n.createdAt === 'string' ? n.createdAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
+          updatedAt: typeof n.updatedAt === 'string' ? n.updatedAt : (typeof n.date === 'string' ? n.date : new Date().toISOString()),
+          tags: Array.isArray(n.tags) ? n.tags.filter((t): t is string => typeof t === 'string') : [],
+          links: Array.isArray(n.links) ? n.links.filter((l): l is string => typeof l === 'string') : [],
+          linkRefs: Array.isArray(n.linkRefs) ? n.linkRefs.filter((r): r is string => typeof r === 'string') : [],
+        }));
+      await this.saveNotes(migratedNotes);
+      localStorage.removeItem('pixel-notes');
+      migrated = true;
+    }
+
+    if (lsFolders) {
+      const parsedFolders: unknown = JSON.parse(lsFolders);
+      if (Array.isArray(parsedFolders)) {
+        const validFolders: Folder[] = parsedFolders
+          .filter((f): f is Record<string, unknown> => f !== null && typeof f === 'object')
+          .filter((f) => typeof f.id === 'string' && typeof f.name === 'string')
+          .map((f) => ({
+            id: f.id as string,
+            name: f.name as string,
+            ...(typeof f.parentId === 'string' ? { parentId: f.parentId } : {}),
           }));
-        await this.saveNotes(migratedNotes);
-        localStorage.removeItem('pixel-notes');
+        await this.saveFolders(validFolders);
+        localStorage.removeItem('pixel-folders');
         migrated = true;
       }
-
-      if (lsFolders) {
-        const parsedFolders: unknown = JSON.parse(lsFolders);
-        if (Array.isArray(parsedFolders)) {
-          const validFolders: Folder[] = parsedFolders
-            .filter((f): f is Record<string, unknown> => f !== null && typeof f === 'object')
-            .filter((f) => typeof f.id === 'string' && typeof f.name === 'string')
-            .map((f) => ({
-              id: f.id as string,
-              name: f.name as string,
-              ...(typeof f.parentId === 'string' ? { parentId: f.parentId } : {}),
-            }));
-          await this.saveFolders(validFolders);
-          localStorage.removeItem('pixel-folders');
-          migrated = true;
-        }
-      }
-
-      if (lsWorkspace) {
-        if (typeof lsWorkspace === 'string' && lsWorkspace.length > 0) {
-          await this.saveWorkspaceName(lsWorkspace);
-          localStorage.removeItem('pixel-workspace');
-          migrated = true;
-        }
-      }
-
-      return migrated;
-    } catch (err) {
-      console.error('Error migrating from localStorage:', err);
-      return false;
     }
+
+    if (lsWorkspace) {
+      if (typeof lsWorkspace === 'string' && lsWorkspace.length > 0) {
+        await this.saveWorkspaceName(lsWorkspace);
+        localStorage.removeItem('pixel-workspace');
+        migrated = true;
+      }
+    }
+
+    return migrated;
   }
 };

@@ -56,6 +56,7 @@ export function useNotes(settings?: AppSettings) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState('');
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(loadRecentNoteIds);
+  const isDataReady = isLoaded && loadError === null;
 
   // Per-note debounce timers
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -394,16 +395,16 @@ Export regularly: use Settings → Data → Export Backup.`,
   }, [loadAttempt]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isDataReady) return;
     const t = setTimeout(() => storage.saveWorkspaceName(workspaceName), 500);
     return () => clearTimeout(t);
-  }, [workspaceName, isLoaded]);
+  }, [workspaceName, isDataReady]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isDataReady) return;
     const t = setTimeout(() => storage.saveFolders(folders), 500);
     return () => clearTimeout(t);
-  }, [folders, isLoaded]);
+  }, [folders, isDataReady]);
 
   const handleUpdateNote = useCallback((id: string, content: string) => {
     setNotes(prev => {
@@ -1168,6 +1169,7 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
 
       await handleImportData(normalizedWithPayloads, parsed.folders || [], parsed.workspaceName || 'Recovered Workspace', true);
+      storage.clearLegacyLocalStorage();
       setLoadError(null);
     } catch (error) {
       const importErrorCode = error instanceof Error && error.message.startsWith('Attachment payload is invalid')
@@ -1237,6 +1239,7 @@ Export regularly: use Settings → Data → Export Backup.`,
 
   return {
     isLoaded,
+    isDataReady,
     loadError,
     saveError,
     setSaveError,

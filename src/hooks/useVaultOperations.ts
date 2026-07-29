@@ -10,6 +10,7 @@ import {
 import type { Folder, Note, VaultPendingOperation } from '../types';
 
 interface UseVaultOperationsOptions {
+  isDataReady: boolean;
   notes: Note[];
   folders: Folder[];
   setSaveError: (message: string) => void;
@@ -36,6 +37,7 @@ interface UseVaultOperationsOptions {
 }
 
 export function useVaultOperations({
+  isDataReady,
   notes,
   folders,
   setSaveError,
@@ -221,6 +223,7 @@ export function useVaultOperations({
   }, [_handleDeleteFolder, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, closeTabById, folders, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncFolderOnDelete, syncNoteOnDelete]);
 
   const handleDisconnectFolder = useCallback(async () => {
+    if (!isDataReady) return;
     let disconnectStarted = false;
     try {
       if (notesRef.current.some((note) => note.origin === 'vault' && note.vaultDirty)) {
@@ -242,7 +245,7 @@ export function useVaultOperations({
         : 'Failed to disconnect vault. Check folder permissions and retry.');
       throw err;
     }
-  }, [beginDisconnect, cancelDisconnect, disconnect, clearWorkspaceAfterDisconnect, closeTabById, hasPendingStructuralOperations, setSaveError]);
+  }, [beginDisconnect, cancelDisconnect, disconnect, clearWorkspaceAfterDisconnect, closeTabById, hasPendingStructuralOperations, isDataReady, setSaveError]);
 
   return {
     handleDeleteNote,

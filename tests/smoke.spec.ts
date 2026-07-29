@@ -502,6 +502,74 @@ test('reset and import recovery flow uses confirmation', async ({ page }) => {
   await expect(page.getByText(/this will clear current data/i)).toBeHidden();
 });
 
+test('recovery dialog isolates the writable application keyboard surface', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('recovery-legacy-seeded')) return;
+    sessionStorage.setItem('recovery-legacy-seeded', '1');
+    localStorage.setItem('pixel-notes', '{invalid legacy json');
+  });
+  await page.goto('/');
+
+  const dialog = page.getByRole('dialog', { name: 'Recovery Needed' });
+  const appShell = page.locator('.noa-app-shell');
+  await expect(dialog).toBeVisible();
+  await expect(appShell).toHaveAttribute('inert', '');
+  await expect(appShell).toHaveAttribute('aria-hidden', 'true');
+  await expect(dialog.getByRole('button', { name: 'Retry Read' })).toBeFocused();
+
+  for (let index = 0; index < 4; index += 1) {
+    await page.keyboard.press('Tab');
+    await expect.poll(() => page.evaluate(() => (
+      document.querySelector('[role="dialog"]')?.contains(document.activeElement) ?? false
+    ))).toBe(true);
+  }
+
+  await dialog.getByRole('button', { name: 'New Empty Workspace' }).click();
+  await expect(dialog).toBeHidden();
+  await page.reload();
+  await expect(page.locator('.noa-app-shell')).not.toHaveAttribute('inert', '');
+  await expect(page.getByRole('dialog', { name: 'Recovery Needed' })).toHaveCount(0);
+  await expect(page.getByTestId('sidebar-file-tree')).toBeVisible();
+});
+
+test('successful recovery import clears corrupt legacy data across reloads', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('recovery-import-legacy-seeded')) return;
+    sessionStorage.setItem('recovery-import-legacy-seeded', '1');
+    localStorage.setItem('pixel-notes', '{invalid legacy json');
+  });
+  await page.goto('/');
+
+  const dialog = page.getByRole('dialog', { name: 'Recovery Needed' });
+  await expect(dialog).toBeVisible();
+  const timestamp = new Date().toISOString();
+  await dialog.locator('input[type="file"][accept=".json"]').setInputFiles({
+    name: 'recovery.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      notes: [{
+        id: 'recovered-note',
+        title: 'Recovered Note',
+        content: '# Recovered',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        folder: 'diary',
+        tags: [],
+        links: [],
+        linkRefs: [],
+      }],
+      folders: [{ id: 'diary', name: 'Diary' }],
+      workspaceName: 'Recovered Workspace',
+    })),
+  });
+
+  await expect(dialog).toBeHidden();
+  await page.reload();
+  await expect(page.locator('.noa-app-shell')).not.toHaveAttribute('inert', '');
+  await expect(page.getByRole('dialog', { name: 'Recovery Needed' })).toHaveCount(0);
+  await expect(page.getByTestId('sidebar-file-tree').getByText('Recovered Note.md')).toBeVisible();
+});
+
 test('graph tab opens in right panel', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Toggle Panel').click();
