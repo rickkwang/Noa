@@ -130,9 +130,26 @@ async function waitForAttachmentPersisted(page: import('@playwright/test').Page,
   );
 }
 
+type EditorMode = 'edit' | 'split' | 'preview';
+
+async function ensureEditorMode(page: import('@playwright/test').Page, targetMode: EditorMode) {
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
+  await expect(modeButton).toBeVisible();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await modeButton.getAttribute('aria-description') === `Current view: ${targetMode}`) return;
+    await modeButton.click();
+  }
+  await expect(modeButton).toHaveAttribute('aria-description', `Current view: ${targetMode}`);
+}
+
 async function ensureEditMode(page: import('@playwright/test').Page) {
-  await page.locator('[title="Edit Only"]').click();
+  await ensureEditorMode(page, 'edit');
   await expect(page.locator('.cm-content').first()).toBeVisible();
+}
+
+async function ensurePreviewMode(page: import('@playwright/test').Page) {
+  await ensureEditorMode(page, 'preview');
+  await expect(page.locator('.prose').last()).toBeVisible();
 }
 
 async function createNewNote(page: import('@playwright/test').Page) {
@@ -365,8 +382,8 @@ test('wiki-link preview mode is reachable', async ({ page }) => {
   await createNewNote(page);
   await page.locator('.cm-content').first().click();
   await page.keyboard.type(`Jump to [[${linkedTitle}]]`);
-  await page.getByTitle('Preview Only').click();
-  await expect(page.getByTitle('Preview Only')).toBeVisible();
+  await ensurePreviewMode(page);
+  await expect(page.getByRole('button', { name: 'Switch to edit view' })).toBeVisible();
 });
 
 test('preview renders headings, table, math, callout, footnote, and task list', async ({ page }) => {
@@ -400,7 +417,7 @@ Footnote ref[^1]
 `);
 
   await waitForMarkerPersisted(page, marker);
-  await page.getByTitle('Preview Only').click();
+  await ensurePreviewMode(page);
 
   const preview = page.locator('.prose').last();
   await expect(preview.getByText(marker, { exact: true })).toBeVisible();
@@ -454,7 +471,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
   // Titled multi-line callout: styled chrome shows the custom title and the
   // raw [!NOTE] marker is consumed, not leaked into a plain blockquote.
   await page.getByTestId('sidebar-file-tree').getByText('CalloutTitled.md').click();
-  await page.getByTitle('Preview Only').click();
+  await ensurePreviewMode(page);
   const titledPreview = page.locator('.prose').last();
   await expect(titledPreview.getByText('Callout Title', { exact: true })).toBeVisible();
   await expect(titledPreview.getByText('[!NOTE]')).toHaveCount(0);
@@ -462,9 +479,9 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
 
   // No-title multi-line callout: default type label; the body line must not
   // be promoted into the title.
-  await page.getByTitle('Edit Only').click();
+  await ensureEditMode(page);
   await page.getByTestId('sidebar-file-tree').getByText('CalloutUntitled.md').click();
-  await page.getByTitle('Preview Only').click();
+  await ensurePreviewMode(page);
   const untitledPreview = page.locator('.prose').last();
   await expect(untitledPreview.getByText('Tip', { exact: true })).toBeVisible();
   await expect(untitledPreview.getByText('tip body')).toBeVisible();

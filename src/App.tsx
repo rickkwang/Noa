@@ -35,6 +35,18 @@ export default function App() {
   const recoveryRetryButtonRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const openSearch = useCallback(() => {
+    setIsSearchOpen(true);
+  }, []);
+  const toggleSearch = useCallback(() => {
+    if (isSearchOpen) {
+      setSearchQuery('');
+      setIsSearchOpen(false);
+      return;
+    }
+    openSearch();
+  }, [isSearchOpen, openSearch]);
   const [showStorageNotice, setShowStorageNotice] = useState(() => {
     try {
       return !localStorage.getItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN);
@@ -321,6 +333,29 @@ export default function App() {
     exitFocusMode,
   } = useLayout();
 
+  const pendingSearchFocusRef = useRef(false);
+  const focusSearch = useCallback(() => {
+    if (isFocusMode) {
+      pendingSearchFocusRef.current = true;
+      exitFocusMode();
+      return;
+    }
+    openSearch();
+  }, [isFocusMode, exitFocusMode, openSearch]);
+  useEffect(() => {
+    if (isFocusMode || !pendingSearchFocusRef.current) return;
+    pendingSearchFocusRef.current = false;
+    openSearch();
+  }, [isFocusMode, openSearch]);
+  useEffect(() => {
+    if (!isSearchOpen || isFocusMode) return;
+    const frameId = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isFocusMode, isSearchOpen]);
+
   // Keep the graph/tasks bundle out of the first render. If the panel was
   // restored as open, mount it on the next frame so the app shell can paint
   // first. Once mounted, retain it across toggles to preserve panel state and
@@ -432,10 +467,7 @@ export default function App() {
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
     onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenSettings: () => setIsSettingsOpen(true),
-    onFocusSearch: () => {
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
-    },
+    onFocusSearch: focusSearch,
     onOpenNoteById: (id) => navigateById(id),
   });
 
@@ -489,10 +521,7 @@ export default function App() {
     onCreateNote: () => handleCreateNote(primaryNoaFolderId),
     onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenCommandPalette: () => commandPalette.setIsOpen(true),
-    onFocusSearch: () => {
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
-    },
+    onFocusSearch: focusSearch,
     onClearSearch: () => setSearchQuery(''),
     onForceSave: () => void flushAllPendingSaves(),
     onToggleFocusMode: toggleFocusMode,
@@ -541,9 +570,39 @@ export default function App() {
     <div
       inert={loadError ? true : undefined}
       aria-hidden={loadError ? true : undefined}
-      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden selection:bg-[#CC7D5E] selection:text-white"
+      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
+      style={{
+        '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
+      } as React.CSSProperties}
     >
       <ThemeInjector settings={settings} />
+      {!isMobile && !isFocusMode && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 bottom-0 z-20"
+          style={{
+            // Keep the separator in the same animated track as the sidebar,
+            // then finish one pixel outside the viewport instead of leaving a
+            // dark endpoint at the app's left edge.
+            left: isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '-1px',
+            width: '1px',
+            backgroundColor: 'var(--panel-divider, #2D2D2B)',
+            transition: isDraggingSidebar ? 'none' : 'left 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      )}
+      {!isMobile && !isFocusMode && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 bottom-0 z-20"
+          style={{
+            right: isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '-1px',
+            width: '1px',
+            backgroundColor: 'var(--panel-divider, #2D2D2B)',
+            transition: isDraggingRightPanel ? 'none' : 'right 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      )}
       {!isFocusMode && <TopBar
         settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -551,13 +610,18 @@ export default function App() {
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isSidebarOpen={isSidebarOpen}
         isRightPanelOpen={isRightPanelOpen}
+        isMobile={isMobile}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        showDailyNote={settings.corePlugins.dailyNotes}
+        isSearchOpen={isSearchOpen}
+        onToggleSearch={toggleSearch}
+        onCloseSearch={() => {
+          setSearchQuery('');
+          setIsSearchOpen(false);
+        }}
         searchInputRef={searchInputRef}
-        onOpenDailyNote={handleOpenDailyNoteGuarded}
       />}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex min-h-0 overflow-visible relative">
         {isMobile && isSidebarOpen && (
           <div
             className="absolute inset-0 bg-black/20 z-30"
@@ -569,13 +633,14 @@ export default function App() {
         <div
           className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#F9F9F7] shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isSidebarOpen ? '80%' : '0') : (isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '0')),
+            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 310px)',
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
+            marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 310px))' : '0px',
+            transform: isMobile
+              ? (isFocusMode || !isSidebarOpen ? 'translateX(-100%)' : 'translateX(0)')
+              : undefined,
+            transition: isDraggingSidebar ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
             minWidth: 0,
-            borderRightWidth: isFocusMode ? 0 : 1,
-            borderRightStyle: 'solid',
-            borderRightColor: (isSidebarOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2B)' : 'transparent',
           }}
         >
           <div
@@ -585,7 +650,7 @@ export default function App() {
             }}
             className="flex h-full shrink-0"
           >
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <Sidebar
                 notes={notes}
                 folders={folders}
@@ -653,6 +718,9 @@ export default function App() {
                 onNewTab={handleNewTab}
                 onTabEnterComplete={handleTabEnterComplete}
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
+                liftTabStrip={!isMobile && !isFocusMode}
+                reserveTitlebarTraffic={!isMobile && !isFocusMode && !isSidebarOpen}
+                reserveTitlebarActions={!isMobile && !isFocusMode && !isRightPanelOpen}
                 onRestoreSnapshot={restoreSnapshotGuarded}
                 readOnly={(vaultCacheReadOnly || authoritativeSyncInProgress || hasPendingStructuralOperations) && activeNote?.origin === 'vault'}
                 attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
@@ -675,15 +743,16 @@ export default function App() {
 
         {/* Right Panel — always rendered for slide animation */}
         <div
-          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
+          className={`flex shrink-0 min-h-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
-            width: isFocusMode ? '0' : (isMobile ? (isRightPanelOpen ? '80%' : '0') : (isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '0')),
+            width: isMobile ? '80%' : 'var(--noa-right-panel-width, 310px)',
             maxWidth: isMobile ? '320px' : undefined,
-            transition: isDraggingRightPanel ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), border-color 220ms',
+            marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px',
+            transform: isMobile
+              ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
+              : undefined,
+            transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
             minWidth: 0,
-            borderLeftWidth: isFocusMode ? 0 : 1,
-            borderLeftStyle: 'solid',
-            borderLeftColor: (isRightPanelOpen && !isFocusMode) ? 'var(--panel-divider, #2D2D2B)' : 'transparent',
           }}
         >
           <div
@@ -691,7 +760,7 @@ export default function App() {
               width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 310px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
-            className="flex h-full shrink-0"
+            className="flex h-full min-h-0 shrink-0"
           >
             {!isMobile && (
               <div
@@ -710,7 +779,7 @@ export default function App() {
                 }}
               />
             )}
-            {hasMountedRightPanel && <div className="flex-1 overflow-hidden" data-noa-right-panel-content>
+            {hasMountedRightPanel && <div className="flex-1 min-h-0 overflow-hidden" data-noa-right-panel-content>
               <ErrorBoundary>
               <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading panel…</div>}>
                 <RightPanel

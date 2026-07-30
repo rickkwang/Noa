@@ -116,18 +116,19 @@ export default function RightPanel({
   }, [topologyNotes, topologyFolders, activeNoteId]);
 
   return (
-    <div className={`w-full h-full flex flex-col shrink-0 relative ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+    <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
       {/* Tab bar — rounded segmented control with a raised pill for the active tab */}
       <div
-        className="h-8 shrink-0 border-b flex items-center pl-1 pr-[5px]"
-        style={{
-          background: isDark ? '#252523' : '#EFEAE3',
-          borderColor: 'var(--divider-subtle, #E6E2DA)',
-        }}
+        className="h-10 shrink-0 flex items-center px-2"
       >
         <div
-          className="w-full flex items-stretch gap-0.5 rounded-lg p-0"
-          style={{ background: isDark ? '#252523' : '#EFEAE3' }}
+          className="w-full flex items-stretch gap-0.5 rounded-md p-0.5"
+          style={{
+            background: isDark ? '#252523' : '#ECEAE6',
+            boxShadow: isDark
+              ? 'inset 0 0 0 1px rgba(249,249,247,0.08)'
+              : 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)',
+          }}
         >
           {([
             { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
@@ -142,8 +143,8 @@ export default function RightPanel({
                   background: isDark ? '#3A3A37' : '#FBFAF6',
                   color: isDark ? '#F9F9F7' : '#2D2D2B',
                   boxShadow: isDark
-                    ? '0 0 2px rgba(0,0,0,0.3)'
-                    : 'none',
+                    ? '0 1px 2px rgba(0,0,0,0.28), 0 0 0 1px rgba(249,249,247,0.06)'
+                    : '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)',
                 }
               : {
                   color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.55)',
@@ -155,7 +156,7 @@ export default function RightPanel({
                 title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
                 aria-label={tab.label}
                 aria-pressed={isActive}
-                className={`relative flex-1 flex items-center justify-center h-7 rounded-md transition-colors active:opacity-70 ${
+                className={`relative flex-1 flex items-center justify-center h-6 rounded-md transition-colors active:opacity-70 ${
                   isActive
                     ? ''
                     : isDark ? 'hover:text-[#F9F9F7] hover:bg-[#F9F9F7]/[0.05]' : 'hover:text-[#2D2D2B] hover:bg-[#F9F9F7]/60'
@@ -200,7 +201,7 @@ export default function RightPanel({
       )}
       {(hasVisitedGraph || activeTab === 'graph') && (
         <div
-          className="flex-1 flex-col overflow-hidden p-2 gap-2"
+          className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-0 gap-2"
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (

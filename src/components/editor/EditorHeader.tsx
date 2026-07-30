@@ -2,6 +2,9 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Note } from '../../types';
 import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from '@/src/lib/icons';
 
+const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
+const dragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
+
 function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void; onExportPdf: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -19,7 +22,7 @@ function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark:
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center p-1.5 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
+        className={`flex items-center p-1 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
         title="Export"
         aria-label="Export note"
         aria-expanded={open}
@@ -51,27 +54,6 @@ function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark:
       )}
     </div>
   );
-}
-
-function formatRelativeTime(timestamp: string | number | Date): string {
-  const then = new Date(timestamp).getTime();
-  const now = Date.now();
-  const diffSec = Math.floor((now - then) / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  // Past a week the relative form stops being useful, but a full numeric date
-  // ("7/12/2026") is wide and noisy in the header — drop the year unless the
-  // note is from a different one. Hover still shows the full timestamp.
-  const date = new Date(timestamp);
-  const sameYear = date.getFullYear() === new Date(now).getFullYear();
-  return date.toLocaleDateString(undefined, sameYear
-    ? { month: 'short', day: 'numeric' }
-    : { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css.
@@ -108,6 +90,9 @@ interface EditorHeaderProps {
   titleInputRef: React.RefObject<HTMLInputElement | null>;
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
+  liftTabStrip?: boolean;
+  reserveTitlebarTraffic?: boolean;
+  reserveTitlebarActions?: boolean;
   isDark: boolean;
   readOnly?: boolean;
 }
@@ -138,6 +123,9 @@ export function EditorHeader({
   titleInputRef,
   onToggleHistory,
   isHistoryOpen,
+  liftTabStrip = false,
+  reserveTitlebarTraffic = false,
+  reserveTitlebarActions = false,
   isDark,
   readOnly = false,
 }: EditorHeaderProps) {
@@ -245,11 +233,32 @@ export function EditorHeader({
   const tabStripMaskStyle: React.CSSProperties = maskGradient
     ? { maskImage: maskGradient, WebkitMaskImage: maskGradient }
     : {};
+  const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';
+  const nextViewModeLabel = nextViewMode === 'edit' ? 'edit' : nextViewMode === 'split' ? 'split' : 'preview';
+  // Show the destination rather than the already-active mode: a lone icon then
+  // visibly changes on every click, making the three-step cycle legible.
+  const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;
 
   return (
-    <div className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 pl-1 pr-2 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${isDark ? 'bg-[#252523] after:bg-[#F9F9F7]/15' : 'bg-[#EFEAE3] after:bg-[#E6E2DA]'}`}>
+    <div
+      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${liftTabStrip ? '-mt-8' : ''} ${isDark ? 'bg-[#2D2D2B] after:bg-[#F9F9F7]/15' : 'bg-[#F9F9F7] after:bg-[#E6E2DA]'}`}
+      style={{
+        ...dragRegion,
+        paddingLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : '0.25rem',
+        paddingRight: reserveTitlebarActions ? '7.25rem' : '0.5rem',
+        transition: liftTabStrip ? 'padding 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined,
+      }}
+    >
       {/* Tab strip */}
-      <div className="min-w-0 flex-1 flex items-end overflow-visible">
+      <div
+        className="min-w-0 flex-1 flex items-end overflow-visible"
+        style={{
+          marginLeft: liftTabStrip && reserveTitlebarTraffic
+            ? 'var(--noa-titlebar-search-extra, 0px)'
+            : undefined,
+          transition: liftTabStrip ? 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined,
+        }}
+      >
         {/* z-[1] keeps the strip above the header's bottom line even when the
             mask-image below forces this subtree into its own stacking context */}
         <div className="relative z-[1] min-w-0 flex items-end overflow-visible">
@@ -302,7 +311,7 @@ export function EditorHeader({
                           ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#2D2D2B] text-[#F9F9F7]' : 'bg-[#F9F9F7] text-[#2D2D2B]'}`
                           : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'}`
                       }`}
-                      style={tabStyle}
+                      style={{ ...tabStyle, ...noDragRegion }}
                     >
                       <FileText size={12} className={isActiveTab ? (isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0') : 'shrink-0'} />
                       {isActiveTab && isEditingTitle ? (
@@ -359,6 +368,7 @@ export function EditorHeader({
                   borderColor: 'var(--border-primary)',
                   borderBottomColor: 'transparent',
                   paddingBottom: '6px',
+                  ...noDragRegion,
                 }}
               >
                 <FileText size={12} className={isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0'} />
@@ -398,6 +408,7 @@ export function EditorHeader({
           <button
             onClick={onNewTab}
             className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/70 hover:bg-[#2D2D2B]' : 'text-[#2D2D2B]/40 hover:text-[#2D2D2B] hover:bg-[#EFEAE3]'}`}
+            style={noDragRegion}
             title="New tab"
             aria-label="New tab"
           >
@@ -407,42 +418,28 @@ export function EditorHeader({
       </div>
 
       {/* Right controls */}
-      <div className={`flex items-center gap-3 shrink-0 whitespace-nowrap self-center px-1 ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}>
+      <div
+        className={`flex items-center gap-3 shrink-0 translate-x-[10px] whitespace-nowrap self-center px-1 ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}
+        style={noDragRegion}
+      >
         {/* Group 1: view modes */}
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => setViewMode('edit')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'edit' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
-            title="Edit Only"
-            aria-label="Edit only"
-            aria-pressed={viewMode === 'edit'}
-          >
-            <Edit2 size={14} />
-          </button>
-          <button
-            onClick={() => setViewMode('split')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'split' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
-            title="Split View"
-            aria-label="Split view"
-            aria-pressed={viewMode === 'split'}
-          >
-            <Columns size={14} />
-          </button>
-          <button
-            onClick={() => setViewMode('preview')}
-            className={`p-1.5 rounded-md active:opacity-70 transition-colors ${viewMode === 'preview' ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
-            title="Preview Only"
-            aria-label="Preview only"
-            aria-pressed={viewMode === 'preview'}
-          >
-            <Eye size={14} />
-          </button>
-        </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => setViewMode(nextViewMode)}
+              className="p-1 rounded-md text-[#CC7D5E] bg-[#CC7D5E]/15 hover:text-[#CC7D5E] active:opacity-70 transition-colors"
+              title={`Switch to ${nextViewModeLabel} view`}
+              aria-label={`Switch to ${nextViewModeLabel} view`}
+              aria-description={`Current view: ${viewMode}`}
+            >
+              <NextViewModeIcon size={14} />
+            </button>
+          </div>
 
-         <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
+          <div className={`h-4 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
 
         {/* Group 2: actions */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} onExportPdf={onExportPdf} />
           {onToggleHistory && (
             <button
@@ -456,15 +453,6 @@ export function EditorHeader({
             </button>
           )}
         </div>
-
-         <div className={`self-stretch w-px shrink-0 my-1.5 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
-
-        {/* Group 3: timestamp */}
-        <div
-          className="text-xs shrink min-w-0 truncate opacity-60 tracking-wide"
-          title={new Date(note.updatedAt).toLocaleString()}
-        >
-          {formatRelativeTime(note.updatedAt)}
         </div>
       </div>
     </div>

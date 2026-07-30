@@ -243,9 +243,9 @@ export default function Sidebar({
           </div>
         )}
         <FileNode
-          name={leafName}
-          isFolder
-          defaultOpen={foldersExpandedByDefault}
+        name={leafName}
+        isFolder
+        defaultOpen={foldersExpandedByDefault}
           icon={Folder}
           onAdd={canCreateInsideFolder ? () => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id) : undefined}
           onAddFolder={canCreateInsideFolder ? () => onCreateFolder(node.folder.id) : undefined}
@@ -361,7 +361,7 @@ export default function Sidebar({
 
   return (
     <div 
-      className="w-full h-full flex flex-col bg-[#F9F9F7] shrink-0 relative"
+      className="w-full h-full min-h-0 flex flex-col bg-[#F9F9F7] shrink-0 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -374,7 +374,7 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 bg-[#EFEAE3] z-10 overflow-hidden" style={{ borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
+      <div className="h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
@@ -538,7 +538,7 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
@@ -617,10 +617,8 @@ export default function Sidebar({
                 {/* Connected vault section — ownership is origin, not import provenance. */}
                 {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
-                    <div className="flex items-center gap-2 px-2 py-1.5 -mr-[5px]">
-                      <div className="flex-1 border-t border-[#2D2D2B]/20" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction shrink-0">Obsidian Vault</span>
-                      <div className="flex-1 border-t border-[#2D2D2B]/20" />
+                    <div className="mx-1 pl-2 pr-2 pt-3 pb-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction">Obsidian Vault</span>
                     </div>
                     <div
                       onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}

@@ -6,6 +6,7 @@ import { ChevronRight, FileText, Plus, Trash2, Folder, FolderOpen, FolderPlus } 
 export interface FileNodeProps {
   name: string;
   isFolder?: boolean;
+  showFolderChevron?: boolean;
   children?: React.ReactNode;
   defaultOpen?: boolean;
   isActive?: boolean;
@@ -70,7 +71,7 @@ export function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
 }
 
 export const FileNode = React.memo(({
-  name, isFolder, children, defaultOpen = false, isActive, isSelected,
+  name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText, iconColor,
   onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver,
   onDrop, onDragEnd, isDropTarget, addButtonProps = {}, depth = 0,
@@ -131,7 +132,7 @@ export const FileNode = React.memo(({
               : (isActive ? 'bg-[#EFEAE3]' : 'hover:bg-[#EFEAE3]/50')
         }`}
         style={{
-          paddingLeft: `${depth === 0 ? 4 : 2}px`,
+          paddingLeft: `${depth === 0 ? 8 : 2}px`,
           // Extend row fill beneath the stable 5px scrollbar gutter,
           // leaving 4px visible so the rounded right corner still shows.
           marginRight: '-1px',
@@ -149,9 +150,11 @@ export const FileNode = React.memo(({
         onDoubleClick={handleDoubleClick}
       >
         <div className="flex items-center overflow-hidden flex-1">
-          <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2B]/50">
-            {isFolder ? <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} /> : null}
-          </span>
+          {isFolder && showFolderChevron && (
+            <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2B]/50">
+              <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
+            </span>
+          )}
           <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#CC7D5E]' : (isActive ? 'text-[#CC7D5E]' : (iconColor ? '' : 'text-[#2D2D2B]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;

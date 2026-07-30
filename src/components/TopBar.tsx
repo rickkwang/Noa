@@ -1,7 +1,7 @@
 import React, { CSSProperties } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
 import { AppSettings } from '../types';
-import { Search, Settings, PanelLeft, PanelRight, X, Calendar } from '@/src/lib/icons';
+import { Search, Settings, PanelLeft, PanelRight, X } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -13,24 +13,26 @@ interface TopBarProps {
   onToggleRightPanel: () => void;
   isSidebarOpen: boolean;
   isRightPanelOpen: boolean;
+  isMobile: boolean;
   searchQuery: string;
-  onSearchChange?: (query: string) => void;
-  showDailyNote?: boolean;
+  onSearchChange: (query: string) => void;
+  isSearchOpen: boolean;
+  onToggleSearch: () => void;
+  onCloseSearch: () => void;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
-  onOpenDailyNote?: () => void;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, searchQuery, onSearchChange, showDailyNote = true, searchInputRef, onOpenDailyNote }: TopBarProps) {
+export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   // Accent coral is the active-state color everywhere else, but on the dark
   // charcoal titlebar it reads as too loud right next to the traffic lights —
   // use a bright neutral instead so "open" still reads as brighter-than-idle.
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   return (
-    <div className="h-8 border-b grid grid-cols-3 items-center shrink-0 font-redaction" style={{ ...dragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7', borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
+    <div className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px ${!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'} ${isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'}`} style={{ ...dragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7' }}>
       {/* Left Section: Traffic lights space + icon + title */}
-      <div className="flex items-center justify-start pl-[78px] pr-4">
-        <div className="flex items-center gap-2" style={noDragRegion}>
+      <div className={`flex min-w-0 items-center justify-start ${isMobile ? 'pl-2 pr-1' : 'pl-[78px] pr-4'}`}>
+        <div className={`relative z-30 flex min-w-0 items-center gap-0.5 ${isMobile ? 'w-full' : ''}`} style={noDragRegion}>
           <button
             onClick={onToggleSidebar}
             className={`p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
@@ -40,46 +42,69 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
           >
             <PanelLeft size={16} />
           </button>
+          <div
+            className={`flex h-7 min-w-7 items-center overflow-hidden rounded-md border transition-[width] duration-200 ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
+            style={{
+              width: isSearchOpen
+                ? (isMobile ? 'auto' : 'max(1.75rem, min(11rem, calc(100vw - 12rem)))')
+                : '1.75rem',
+              backgroundColor: isSearchOpen ? 'var(--bg-primary, #F9F9F7)' : 'transparent',
+              borderColor: isSearchOpen ? 'var(--divider-subtle, #E6E2DA)' : 'transparent',
+            }}
+          >
+            <button
+              onMouseDown={(event) => {
+                if (isSearchOpen) event.preventDefault();
+              }}
+              onClick={onToggleSearch}
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
+              title="Search notes"
+              aria-label="Search notes"
+              aria-pressed={isSearchOpen}
+            >
+              <Search size={16} />
+            </button>
+            {isSearchOpen && (
+              <>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  placeholder="Search notes, tags..."
+                  aria-label="Search notes"
+                  className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
+                  onChange={(event) => onSearchChange(event.target.value)}
+                  onBlur={onCloseSearch}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onSearchChange('');
+                      onCloseSearch();
+                    }
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onSearchChange('')}
+                    className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70"
+                    aria-label="Clear search"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Center Section: Search */}
-      <div className="flex items-center justify-center min-w-0 px-4">
-        <div className="flex h-[22px] items-center border px-3 rounded-md w-full max-w-md min-w-0" style={{ ...noDragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7', borderColor: isDark ? 'var(--panel-divider, rgba(249,249,247,0.15))' : 'var(--border-default, #E6E2DA)' }}>
-          <Search size={14} className="text-[#2D2D2B]/50 mr-2 shrink-0" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            placeholder="Search notes, tags..."
-            className="h-full bg-transparent outline-none w-full text-[#2D2D2B] placeholder-[#2D2D2B]/50 font-redaction leading-none min-w-0"
-            onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => onSearchChange && onSearchChange('')}
-              className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 shrink-0 ml-1"
-              aria-label="Clear search"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
+      {!isMobile && <div aria-hidden="true" className="min-w-0" />}
 
       {/* Right Section: Actions */}
-      <div className="flex items-center justify-end pr-4">
-        <div className="flex items-center space-x-2" style={noDragRegion}>
-          {showDailyNote && (
-            <button
-              onClick={onOpenDailyNote}
-              className="p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
-              title="Today's note"
-              aria-label="Open today's daily note"
-            >
-              <Calendar size={16} />
-            </button>
-          )}
+      <div className={`flex items-center justify-end ${isMobile ? 'pr-2' : 'pr-4'}`}>
+        <div className="relative z-30 flex items-center space-x-2" style={noDragRegion}>
           <button
             onClick={onOpenSettings}
             className="p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"

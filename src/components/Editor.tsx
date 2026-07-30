@@ -45,6 +45,9 @@ interface EditorProps {
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
+  liftTabStrip?: boolean;
+  reserveTitlebarTraffic?: boolean;
+  reserveTitlebarActions?: boolean;
   readOnly?: boolean;
   attachmentMutationsDisabled?: boolean;
 }
@@ -71,6 +74,9 @@ export default function Editor({
   onNewTab,
   onTabEnterComplete,
   onTabCloseAnimationComplete,
+  liftTabStrip = false,
+  reserveTitlebarTraffic = false,
+  reserveTitlebarActions = false,
   onRestoreSnapshot,
   readOnly = false,
   attachmentMutationsDisabled = false,
@@ -479,6 +485,9 @@ export default function Editor({
         onTabCloseAnimationComplete={onTabCloseAnimationComplete}
         onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
         isHistoryOpen={isHistoryOpen}
+        liftTabStrip={liftTabStrip}
+        reserveTitlebarTraffic={reserveTitlebarTraffic}
+        reserveTitlebarActions={reserveTitlebarActions}
         readOnly={readOnly}
       />
 
