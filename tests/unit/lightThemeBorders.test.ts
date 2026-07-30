@@ -164,9 +164,11 @@ describe('light theme border tokens', () => {
     expect(topBar).toContain('relative z-30 flex min-w-0 items-center gap-0.5');
     expect(editorHeader).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editorHeader).toContain('reserveTitlebarTraffic = false,');
-    expect(editorHeader).toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : '0.25rem'");
-    expect(editorHeader).toContain("paddingRight: reserveTitlebarActions ? '7.25rem' : '0.5rem'");
-    expect(editorHeader).toContain("transition: liftTabStrip ? 'padding 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined");
+    expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
+    expect(editorHeader).toContain("marginRight: reserveTitlebarActions ? '7.25rem' : undefined");
+    expect(editorHeader).toContain("transition: liftTabStrip ? 'margin 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined");
+    expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
+    expect(editorHeader).not.toContain("paddingRight: reserveTitlebarActions");
     expect(editor).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editor).toContain('reserveTitlebarTraffic={reserveTitlebarTraffic}');
     expect(app).toContain('reserveTitlebarTraffic={!isMobile && !isFocusMode && !isSidebarOpen}');
