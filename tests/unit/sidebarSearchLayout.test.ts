@@ -67,7 +67,11 @@ describe('sidebar search result layout', () => {
 
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
     expect(app).toContain('className="flex-1 min-h-0 overflow-hidden"');
-    expect(sidebar).toContain('className="w-full h-full min-h-0 flex flex-col');
+    // Matched unanchored from the quote: what this guards is the height chain
+    // (h-full + min-h-0 + flex-col) that keeps the bottom sections on screen,
+    // not the class list's leading position. Surface classes like
+    // noa-sidebar-surface legitimately sit in front of it.
+    expect(sidebar).toMatch(/className="[^"]*\bw-full h-full min-h-0 flex flex-col/);
     expect(sidebar).toContain('className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
     expect(rightPanel).toContain('className={`w-full h-full min-h-0 flex flex-col');
   });

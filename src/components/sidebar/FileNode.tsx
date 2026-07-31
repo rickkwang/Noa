@@ -129,7 +129,7 @@ export const FileNode = React.memo(({
             ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
             : isSelected
               ? 'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'
-              : (isActive ? 'bg-[#EFEAE3]' : 'hover:bg-[#EFEAE3]/50')
+              : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{
           paddingLeft: `${depth === 0 ? 8 : 2}px`,

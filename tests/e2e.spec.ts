@@ -182,6 +182,31 @@ test('expanded desktop search does not cover the first tab when the sidebar is c
   expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(tabBox!.x);
 });
 
+test('narrow desktop keeps the sidebar default stable on first pointer and keyboard resize', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 700 });
+  await page.goto('/');
+
+  const readSidebarWidth = () => page.evaluate(() =>
+    Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--noa-sidebar-width')),
+  );
+  const separator = page.getByRole('separator', { name: 'Resize sidebar' });
+
+  await expect.poll(readSidebarWidth).toBe(325);
+  const separatorBox = await separator.boundingBox();
+  expect(separatorBox).not.toBeNull();
+  await page.mouse.move(separatorBox!.x + separatorBox!.width / 2, separatorBox!.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(340, separatorBox!.y + 20);
+  await page.mouse.up();
+  await expect.poll(readSidebarWidth).toBe(325);
+
+  await page.reload();
+  await expect.poll(readSidebarWidth).toBe(325);
+  await separator.focus();
+  await separator.press('ArrowRight');
+  await expect.poll(readSidebarWidth).toBe(325);
+});
+
 test('expanded mobile search keeps its clear button above the title-bar actions', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto('/');

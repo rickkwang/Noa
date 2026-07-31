@@ -14,6 +14,7 @@ interface TopBarProps {
   onToggleRightPanel: () => void;
   isSidebarOpen: boolean;
   isRightPanelOpen: boolean;
+  isDraggingSidebar?: boolean;
   isMobile: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -23,14 +24,33 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onToggleRightPanel, isSidebarOpen, isRightPanelOpen, isDraggingSidebar, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   // Accent coral is the active-state color everywhere else, but on the dark
   // charcoal titlebar it reads as too loud right next to the traffic lights —
   // use a bright neutral instead so "open" still reads as brighter-than-idle.
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   return (
-    <div className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px ${!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'} ${isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'}`} style={{ ...dragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7' }}>
+    <div className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px ${!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'} ${isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'}`} style={{ ...dragRegion, backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7' }}>
+      {/* Carries the sidebar plane up through the titlebar so the two read as
+          one column. Without it the sidebar appears to start 32px down the
+          window, with a lighter band capping it. The bottom hairline already
+          skips this span (see after:left-… above), so the titlebar was always
+          treated as sidebar territory — this just finishes the thought.
+          pointer-events-none keeps the native drag region intact. */}
+      {!isMobile && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 pointer-events-none"
+          style={{
+            width: isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : 0,
+            backgroundColor: 'var(--bg-sidebar, #F4F4F2)',
+            // Match the shell's own sidebar timing, and drop the transition
+            // while dragging or the band lags behind the edge being dragged.
+            transition: isDraggingSidebar ? 'none' : 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      )}
       {/* Left Section: Traffic lights space + icon + title */}
       <div className={`flex min-w-0 items-center justify-start ${isMobile ? 'pl-2 pr-1' : 'pl-[78px] pr-4'}`}>
         <div className={`relative z-30 flex min-w-0 items-center gap-0.5 ${isMobile ? 'w-full' : ''}`} style={noDragRegion}>

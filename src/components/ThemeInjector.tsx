@@ -17,6 +17,20 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-primary', '#2D2D2B');
       root.style.setProperty('--bg-secondary', '#252523');
       root.style.setProperty('--bg-tertiary', '#302F2C');
+      // Sidebar sits one step below the editor plane: -1.2% OKLCH lightness
+      // here, -1.5% in light. Far under the 4% an app shell would normally
+      // use, because the brief was a plane change you notice without being
+      // able to point at it. Critically it is the SAME hue: 45/45/43 scaled to
+      // 42/42/40 keeps the red-blue spread at 2, so the step reads as depth
+      // rather than as a colour cast.
+      root.style.setProperty('--bg-sidebar', '#2A2A28');
+      // Dark row highlights are restated per-rule in index.css (translucent
+      // white, which re-adapts to any floor), so nothing reads this token
+      // today — the dark rules there outrank the shared one that consumes it.
+      // It exists so the pair is symmetric: any rule added later that reaches
+      // for --bg-sidebar-raised resolves to a dark value instead of silently
+      // taking the light #EAE5DE fallback baked into the shared rule.
+      root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.13)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
       root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');
@@ -29,6 +43,17 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-primary', '#F9F9F7');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
       root.style.setProperty('--bg-tertiary', '#E5DCD2');
+      // Same hue as the editor plane, one step down: 249/249/247 scaled to
+      // 244/244/242 holds the red-blue spread at 2. An earlier pass used the
+      // palette's warm paper tone here (#F3EFE7, spread 12) and it read as the
+      // sidebar turning yellow rather than going deeper — at this size a hue
+      // shift is far louder than a lightness shift.
+      root.style.setProperty('--bg-sidebar', '#F4F4F2');
+      // The paired highlight token, light mode only: the row highlight has to
+      // move down with the floor or it lands level with it. Kept on the warm
+      // paper tone, which is the brand at row scale, and placed so the solid
+      // highlight keeps exactly the 4.3% gap it had over the editor plane.
+      root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
       root.style.setProperty('--divider-subtle', '#E6E2DA');

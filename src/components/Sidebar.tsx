@@ -231,7 +231,7 @@ export default function Sidebar({
             {builtinTemplates.map(t => (
               <button
                 key={t.id}
-                className="w-full text-left px-3 py-1.5 text-sm font-redaction hover:bg-[#EFEAE3] text-[#2D2D2B]"
+                className="noa-sidebar-hover-surface w-full text-left px-3 py-1.5 text-sm font-redaction text-[#2D2D2B]"
                 onClick={() => {
                   onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                   setTemplateMenuFolderId(null);
@@ -361,7 +361,7 @@ export default function Sidebar({
 
   return (
     <div 
-      className="w-full h-full min-h-0 flex flex-col bg-[#F9F9F7] shrink-0 relative"
+      className="noa-sidebar-surface w-full h-full min-h-0 flex flex-col shrink-0 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -484,7 +484,7 @@ export default function Sidebar({
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
+              className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B]"
             >
               Cancel
             </button>
@@ -507,7 +507,7 @@ export default function Sidebar({
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3] active:opacity-70"
+                  className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -527,7 +527,7 @@ export default function Sidebar({
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3] active:opacity-70"
+                  className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -547,7 +547,7 @@ export default function Sidebar({
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="text-[#2D2D2B]/40 hover:text-[#CC7D5E] hover:bg-[#EFEAE3] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
+                      className="noa-sidebar-hover-surface text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
                       title="Close search"
                     >
                       <X size={13} />
@@ -557,7 +557,7 @@ export default function Sidebar({
                 {searchResults.map(result => (
                   <div 
                     key={result.note.id}
-                    className={`p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent hover:bg-[#EFEAE3]/50'} transition-colors`}
+                    className={`p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">

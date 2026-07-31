@@ -106,8 +106,50 @@ body {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 30%, transparent);
 }
 
+/* The sidebar is a plane, not a page. Its separation from the editor is the
+   background step alone — no border, no shadow, no accent tint — and the step
+   is deliberately tiny: 1.5% OKLCH lightness in light, 1.2% in dark. It works
+   at that size only because the hue is identical to the editor plane, so the
+   eye reads depth rather than a colour change. */
+.noa-sidebar-surface {
+  background-color: var(--bg-sidebar, #F4F4F2);
+}
+
+/* Sections (CalendarPanel, TagBrowser) are only ever rendered inside the
+   sidebar, so they share its floor and let their border-t do the separating.
+   One flat rule, not a descendant-scoped override plus a --bg-primary base:
+   the base could never win against the scoped rule and was dead the moment
+   the sidebar got its own floor. */
 .noa-sidebar-section-surface {
-  background-color: var(--bg-primary, #F9F9F7);
+  background-color: var(--bg-sidebar, #F4F4F2);
+}
+
+/* Semantic sidebar interaction states. Components opt into these explicitly;
+   their meaning no longer depends on a particular Tailwind palette utility or
+   on the order of the global dark-mode overrides below. Hover rules stay
+   important so they can override the app's important base-surface utilities
+   on compact sidebar buttons. */
+.noa-sidebar-active-surface {
+  background-color: var(--bg-sidebar-raised, #EAE5DE) !important;
+}
+.noa-sidebar-hover-surface:hover {
+  background-color: var(--bg-sidebar-raised, #EAE5DE) !important;
+}
+.noa-sidebar-hover-surface-subtle:hover {
+  background-color: color-mix(in srgb, var(--bg-sidebar-raised, #EAE5DE) 55%, transparent) !important;
+}
+
+/* Dark translucent white re-adapts to the lowered floor. The theme-qualified
+   semantic selectors out-specify their light counterparts, independent of
+   stylesheet order. */
+[data-theme="dark"] .noa-sidebar-active-surface {
+  background-color: rgba(249, 249, 247, 0.13) !important;
+}
+[data-theme="dark"] .noa-sidebar-hover-surface:hover {
+  background-color: rgba(249, 249, 247, 0.10) !important;
+}
+[data-theme="dark"] .noa-sidebar-hover-surface-subtle:hover {
+  background-color: rgba(249, 249, 247, 0.06) !important;
 }
 
 /* Soft elevation. Blur stays under the 8px container padding so the

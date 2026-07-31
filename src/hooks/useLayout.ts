@@ -4,6 +4,15 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { useResizeDrag } from './useResizeDrag';
 
+const SIDEBAR_DEFAULT_WIDTH = 325;
+const PANEL_MIN_WIDTH = 310;
+const PANEL_MAX_WIDTH = 480;
+const PANEL_MAX_VIEWPORT_RATIO = 0.35;
+
+export function getResponsivePanelMaxWidth(viewportWidth: number, floor = PANEL_MIN_WIDTH): number {
+  return Math.max(floor, Math.min(PANEL_MAX_WIDTH, viewportWidth * PANEL_MAX_VIEWPORT_RATIO));
+}
+
 export function useLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -26,19 +35,36 @@ export function useLayout() {
       : 'split';
   });
 
-  // Single clamp for both pointer drag and keyboard nudge (min 310,
-  // max min(480, 35vw)) — the two input paths must never diverge.
-  const clampPanelWidth = useCallback(
-    (v: number) => Math.max(310, Math.min(v, Math.min(480, window.innerWidth * 0.35))),
+  // Pointer and keyboard paths share the same responsive maximum. The sidebar
+  // keeps its 325px default as the maximum floor so a narrow desktop cannot
+  // paint at 325px and jump down on the first resize interaction.
+  const clampSidebarWidth = useCallback(
+    (v: number) => Math.max(PANEL_MIN_WIDTH, Math.min(
+      v,
+      getResponsivePanelMaxWidth(window.innerWidth, SIDEBAR_DEFAULT_WIDTH),
+    )),
+    []
+  );
+  const clampRightPanelWidth = useCallback(
+    (v: number) => Math.max(PANEL_MIN_WIDTH, Math.min(
+      v,
+      getResponsivePanelMaxWidth(window.innerWidth),
+    )),
     []
   );
 
   const getSidebarValue = useCallback((e: MouseEvent) => {
-    return Math.min(e.clientX, Math.min(480, window.innerWidth * 0.35));
+    return Math.min(
+      e.clientX,
+      getResponsivePanelMaxWidth(window.innerWidth, SIDEBAR_DEFAULT_WIDTH),
+    );
   }, []);
 
   const getRightPanelValue = useCallback((e: MouseEvent) => {
-    return Math.min(window.innerWidth - e.clientX, Math.min(480, window.innerWidth * 0.35));
+    return Math.min(
+      window.innerWidth - e.clientX,
+      getResponsivePanelMaxWidth(window.innerWidth),
+    );
   }, []);
 
   const previewSidebarWidth = useCallback((size: number) => {
@@ -53,7 +79,7 @@ export function useLayout() {
     setSize: setSidebarWidth,
     isDragging: isDraggingSidebar,
     setIsDragging: setIsDraggingSidebar,
-  } = useResizeDrag(310, 310, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
+  } = useResizeDrag(SIDEBAR_DEFAULT_WIDTH, 310, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
   const {
     size: rightPanelWidth,
     setSize: setRightPanelWidth,
@@ -61,15 +87,14 @@ export function useLayout() {
     setIsDragging: setIsDraggingRightPanel,
   } = useResizeDrag(310, 310, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
 
-  // Keyboard path for the separator handles — shares clampPanelWidth with
-  // the drag handlers above so mouse and keyboard can never disagree.
+  // Keyboard nudges use the same limits as the corresponding pointer path.
   const nudgeSidebarWidth = useCallback(
-    (delta: number) => setSidebarWidth(w => clampPanelWidth(w + delta)),
-    [clampPanelWidth, setSidebarWidth]
+    (delta: number) => setSidebarWidth(w => clampSidebarWidth(w + delta)),
+    [clampSidebarWidth, setSidebarWidth]
   );
   const nudgeRightPanelWidth = useCallback(
-    (delta: number) => setRightPanelWidth(w => clampPanelWidth(w + delta)),
-    [clampPanelWidth, setRightPanelWidth]
+    (delta: number) => setRightPanelWidth(w => clampRightPanelWidth(w + delta)),
+    [clampRightPanelWidth, setRightPanelWidth]
   );
 
   useEffect(() => {

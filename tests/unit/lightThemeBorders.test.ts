@@ -81,7 +81,7 @@ describe('light theme border tokens', () => {
     const topBar = await readFile(topBarPath, 'utf8');
 
     expect(topBar).not.toContain('after:inset-x-0');
-    expect(topBar).toContain("!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'");
+    expect(topBar).toContain("!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
     expect(topBar).toContain('after:absolute after:right-0 after:bottom-0 after:h-px');
     expect(topBar).toContain("isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'");
   });
@@ -165,7 +165,7 @@ describe('light theme border tokens', () => {
     expect(topBar).not.toContain('className="pointer-events-none absolute bottom-0 right-0 h-px transition-[left]"');
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
     expect(app).toContain('className="pointer-events-none absolute top-0 bottom-0 z-20"');
-    expect(app).toContain("left: isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '-1px'");
+    expect(app).toContain("left: isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
     expect(app).toContain("right: isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '-1px'");
     expect(app).not.toContain('borderRightWidth: isFocusMode ? 0 : 1');
     expect(app).not.toContain('borderLeftWidth: isFocusMode ? 0 : 1');
@@ -195,7 +195,7 @@ describe('light theme border tokens', () => {
   it('slides fixed-width side panels instead of cropping them with width animation', async () => {
     const app = await readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8');
 
-    expect(app).toContain("marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 310px))' : '0px'");
+    expect(app).toContain("marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 325px))' : '0px'");
     expect(app).toContain("transition: isDraggingSidebar ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px'");
     expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");

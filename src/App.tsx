@@ -584,7 +584,7 @@ export default function App() {
             // Keep the separator in the same animated track as the sidebar,
             // then finish one pixel outside the viewport instead of leaving a
             // dark endpoint at the app's left edge.
-            left: isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '-1px',
+            left: isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px',
             width: '1px',
             backgroundColor: 'var(--panel-divider, #2D2D2B)',
             transition: isDraggingSidebar ? 'none' : 'left 220ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -610,6 +610,7 @@ export default function App() {
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isSidebarOpen={isSidebarOpen}
         isRightPanelOpen={isRightPanelOpen}
+        isDraggingSidebar={isDraggingSidebar}
         isMobile={isMobile}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -631,11 +632,11 @@ export default function App() {
 
         {/* Sidebar — always rendered for slide animation */}
         <div
-          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 left-0 z-40 bg-[#F9F9F7] shadow-xl' : ''}`}
+          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : ''}`}
           style={{
-            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 310px)',
+            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 325px)',
             maxWidth: isMobile ? '320px' : undefined,
-            marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 310px))' : '0px',
+            marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 325px))' : '0px',
             transform: isMobile
               ? (isFocusMode || !isSidebarOpen ? 'translateX(-100%)' : 'translateX(0)')
               : undefined,
@@ -645,7 +646,7 @@ export default function App() {
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 310px)',
+              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 325px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"

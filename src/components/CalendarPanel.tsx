@@ -110,7 +110,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
               let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction rounded-md transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
               if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
               else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-              else if (hasNote) cellClass += 'text-[#2D2D2B] hover:bg-[#EFEAE3]';
+              else if (hasNote) cellClass += 'text-[#2D2D2B] noa-sidebar-hover-surface';
               else cellClass += 'text-[#2D2D2B] opacity-40';
               return (
                 <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
