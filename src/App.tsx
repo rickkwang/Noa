@@ -794,6 +794,9 @@ export default function App() {
                   settings={settings}
                   activeNoteId={activeNote?.id}
                   onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
+                  // Stays true while the panel is closed so the strip can play
+                  // its slide-out; TopBar drives the open/closed transform.
+                  tabsInTitlebar={!isMobile && !isFocusMode}
                 />
               </Suspense>
               </ErrorBoundary>

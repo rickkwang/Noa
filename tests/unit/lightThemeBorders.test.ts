@@ -6,6 +6,7 @@ const themeInjectorPath = fileURLToPath(new URL('../../src/components/ThemeInjec
 const previewPanePath = fileURLToPath(new URL('../../src/components/editor/PreviewPane.tsx', import.meta.url));
 const rightPanelPath = fileURLToPath(new URL('../../src/components/RightPanel.tsx', import.meta.url));
 const editorHeaderPath = fileURLToPath(new URL('../../src/components/editor/EditorHeader.tsx', import.meta.url));
+const editorActionsPath = fileURLToPath(new URL('../../src/components/editor/EditorActions.tsx', import.meta.url));
 const topBarPath = fileURLToPath(new URL('../../src/components/TopBar.tsx', import.meta.url));
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 const settingsModalPath = fileURLToPath(new URL('../../src/components/settings/SettingsModal.tsx', import.meta.url));
@@ -48,7 +49,10 @@ describe('light theme border tokens', () => {
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
     expect(rightPanel).toContain("background: isDark ? '#252523' : '#ECEAE6'");
     expect(rightPanel).toContain(": 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)'");
-    expect(rightPanel).toContain('flex-1 flex items-center justify-center h-6 rounded-md');
+    expect(rightPanel).toContain('relative flex items-center justify-center rounded-md');
+    expect(rightPanel).toContain("inTitlebar ? 'h-6 w-7 shrink-0 cursor-pointer' : 'flex-1 h-6'");
+    // Titlebar tabs sit on the bare bar: a soft fill, no raised-pill shadow.
+    expect(rightPanel).toContain("'rgba(45,45,43,0.07)'");
     expect(rightPanel).toContain(": '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)'");
   });
 
@@ -82,32 +86,46 @@ describe('light theme border tokens', () => {
     expect(topBar).toContain("isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'");
   });
 
-  it('keeps the active version-history control vertically compact', async () => {
-    const editorHeader = await readFile(editorHeaderPath, 'utf8');
+  it('collapses export and version history into one overflow menu', async () => {
+    const [editorHeader, editorActions] = await Promise.all([
+      readFile(editorHeaderPath, 'utf8'),
+      readFile(editorActionsPath, 'utf8'),
+    ]);
 
-    expect(editorHeader).toContain("className={`px-1.5 py-1 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen");
+    // The header renders them through its actions slot, not inline.
+    expect(editorHeader).not.toContain('ExportMenu');
+    expect(editorHeader).not.toContain('onToggleHistory');
+    expect(editorHeader).not.toContain('setViewMode');
+
+    expect(editorActions).toContain('<MoreHorizontal size={14} />');
+    expect(editorActions).toContain('aria-haspopup="menu"');
+    expect(editorActions).toContain('Version History');
+    expect(editorActions).toContain('Export as Markdown');
+    expect(editorActions).toContain('Export as HTML');
+    expect(editorActions).toContain('Export as PDF');
   });
 
   it('cycles editor view modes through one next-mode icon', async () => {
-    const editorHeader = await readFile(editorHeaderPath, 'utf8');
+    const [editorHeader, editorActions] = await Promise.all([
+      readFile(editorHeaderPath, 'utf8'),
+      readFile(editorActionsPath, 'utf8'),
+    ]);
 
     expect(editorHeader).not.toContain('rounded-lg p-0.5 border');
     expect(editorHeader).not.toContain('shadow-[inset_0_1px_2px');
-    expect(editorHeader).toContain('h-4 w-px shrink-0');
     expect(editorHeader).not.toContain('formatRelativeTime(note.updatedAt)');
-    expect(editorHeader).toContain("const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';");
-    expect(editorHeader).toContain('onClick={() => setViewMode(nextViewMode)}');
-    expect(editorHeader).toContain('aria-label={`Switch to ${nextViewModeLabel} view`}');
-    expect(editorHeader).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;");
-    expect(editorHeader).toContain('<NextViewModeIcon size={14} />');
-    expect(editorHeader).not.toContain('<ViewModeIcon size={14} />');
-    expect(editorHeader).not.toContain('aria-label="Edit only"');
-    expect(editorHeader).not.toContain('aria-label="Split view"');
-    expect(editorHeader).not.toContain('aria-label="Preview only"');
-    expect(editorHeader).toContain('className={`flex items-center p-1 active:opacity-70 transition-colors ${open');
-    expect(editorHeader).toContain('shrink-0 translate-x-[10px] whitespace-nowrap');
     expect(editorHeader).toContain("const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };");
     expect(editorHeader).toContain('style={noDragRegion}');
+
+    expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';");
+    expect(editorActions).toContain('onClick={() => setViewMode(nextViewMode)}');
+    expect(editorActions).toContain('aria-label={`Switch to ${nextViewModeLabel} view`}');
+    expect(editorActions).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;");
+    expect(editorActions).toContain('<NextViewModeIcon size={14} />');
+    expect(editorActions).not.toContain('<ViewModeIcon size={14} />');
+    expect(editorActions).not.toContain('aria-label="Edit only"');
+    expect(editorActions).not.toContain('aria-label="Split view"');
+    expect(editorActions).not.toContain('aria-label="Preview only"');
   });
 
   it('uses the shared divider for the compact title-bar search without an accent focus ring', async () => {

@@ -1,4 +1,5 @@
 import React, { CSSProperties } from 'react';
+import { TITLEBAR_PANEL_TABS_SLOT_ID } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
 import { AppSettings } from '../types';
 import { Search, Settings, PanelLeft, PanelRight, X } from '@/src/lib/icons';
@@ -101,6 +102,31 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
       </div>
 
       {!isMobile && <div aria-hidden="true" className="min-w-0" />}
+
+      {/* Portal target for the right panel's tab strip — RightPanel fills this
+          while it is open on desktop, so the tabs share the titlebar row
+          instead of stacking a second band of chrome beneath it. Anchored to
+          the panel's own left edge (not the grid column) so the strip reads as
+          belonging to the panel it controls. */}
+      <div
+        id={TITLEBAR_PANEL_TABS_SLOT_ID}
+        className="absolute inset-y-0 z-20 flex items-center pl-2"
+        style={{
+          ...noDragRegion,
+          left: 'calc(100% - var(--noa-right-panel-width, 310px))',
+          // Travel with the panel on collapse instead of popping out: same
+          // distance, same curve. Opacity clears well before the strip reaches
+          // the actions on the right, so the two never visibly overlap.
+          transform: isRightPanelOpen ? 'translateX(0)' : 'translateX(var(--noa-right-panel-width, 310px))',
+          opacity: isRightPanelOpen ? 1 : 0,
+          // visibility (not just opacity) keeps the hidden tabs out of the tab
+          // order and the a11y tree; it flips only after the slide finishes.
+          visibility: isRightPanelOpen ? 'visible' : 'hidden',
+          transition: isRightPanelOpen
+            ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease-out 60ms, visibility 0s'
+            : 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease-out, visibility 0s linear 220ms',
+        }}
+      />
 
       {/* Right Section: Actions */}
       <div className={`flex items-center justify-end ${isMobile ? 'pr-2' : 'pr-4'}`}>

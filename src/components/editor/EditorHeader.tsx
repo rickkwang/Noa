@@ -1,60 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Note } from '../../types';
-import { FileText, X, Eye, Edit2, Columns, Plus, History, Download } from '@/src/lib/icons';
+import { FileText, X, Plus } from '@/src/lib/icons';
 
 const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
 const dragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
-
-function ExportMenu({ isDark, onExportMd, onExportHtml, onExportPdf }: { isDark: boolean; onExportMd: () => void; onExportHtml: () => void; onExportPdf: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className={`flex items-center p-1 active:opacity-70 transition-colors ${open ? (isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
-        title="Export"
-        aria-label="Export note"
-        aria-expanded={open}
-        aria-haspopup="menu"
-      >
-        <Download size={14} />
-      </button>
-      {open && (
-        <div className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[100px] noa-floating-panel ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'} border border-[var(--divider-subtle)]`}>
-          <button
-            onClick={() => { onExportMd(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
-          >
-            Markdown (.md)
-          </button>
-          <button
-            onClick={() => { onExportHtml(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
-          >
-            HTML (.html)
-          </button>
-          <button
-            onClick={() => { onExportPdf(); setOpen(false); }}
-            className={`px-3 py-1.5 text-xs text-left transition-colors ${isDark ? 'hover:bg-[#F9F9F7]/08 text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/06 text-[#2D2D2B]'}`}
-          >
-            PDF (.pdf)
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css.
 const TAB_ANIM_MS = 170;
@@ -69,7 +18,6 @@ interface EditorHeaderProps {
   tabs?: EditorTab[];
   isEditingTitle: boolean;
   titleInput: string;
-  viewMode: 'edit' | 'preview' | 'split';
   enteringTabId?: string | null;
   enteringFromTabId?: string | null;
   closingTabIds?: string[];
@@ -83,18 +31,14 @@ interface EditorHeaderProps {
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
   onClose?: () => void;
-  setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
-  onExportMd: () => void;
-  onExportHtml: () => void;
-  onExportPdf: () => void;
   titleInputRef: React.RefObject<HTMLInputElement | null>;
-  onToggleHistory?: () => void;
-  isHistoryOpen?: boolean;
   liftTabStrip?: boolean;
   reserveTitlebarTraffic?: boolean;
   reserveTitlebarActions?: boolean;
   isDark: boolean;
   readOnly?: boolean;
+  /** Note-level controls pinned to the right end of the strip. */
+  actions?: React.ReactNode;
 }
 
 export function EditorHeader({
@@ -102,7 +46,6 @@ export function EditorHeader({
   tabs,
   isEditingTitle,
   titleInput,
-  viewMode,
   enteringTabId,
   enteringFromTabId,
   closingTabIds,
@@ -116,18 +59,13 @@ export function EditorHeader({
   onTabEnterComplete,
   onTabCloseAnimationComplete,
   onClose,
-  setViewMode,
-  onExportMd,
-  onExportHtml,
-  onExportPdf,
   titleInputRef,
-  onToggleHistory,
-  isHistoryOpen,
   liftTabStrip = false,
   reserveTitlebarTraffic = false,
   reserveTitlebarActions = false,
   isDark,
   readOnly = false,
+  actions,
 }: EditorHeaderProps) {
   const tabStripRef = useRef<HTMLDivElement>(null);
   // Track IME composition so we don't commit a half-typed CJK title when the
@@ -233,11 +171,6 @@ export function EditorHeader({
   const tabStripMaskStyle: React.CSSProperties = maskGradient
     ? { maskImage: maskGradient, WebkitMaskImage: maskGradient }
     : {};
-  const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';
-  const nextViewModeLabel = nextViewMode === 'edit' ? 'edit' : nextViewMode === 'split' ? 'split' : 'preview';
-  // Show the destination rather than the already-active mode: a lone icon then
-  // visibly changes on every click, making the three-step cycle legible.
-  const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;
 
   return (
     <div
@@ -419,44 +352,14 @@ export function EditorHeader({
         )}
       </div>
 
-      {/* Right controls */}
-      <div
-        className={`flex items-center gap-3 shrink-0 translate-x-[10px] whitespace-nowrap self-center px-1 ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}
-        style={noDragRegion}
-      >
-        {/* Group 1: view modes */}
-        <div className="flex items-center gap-1 shrink-0">
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={() => setViewMode(nextViewMode)}
-              className="p-1 rounded-md text-[#CC7D5E] bg-[#CC7D5E]/15 hover:text-[#CC7D5E] active:opacity-70 transition-colors"
-              title={`Switch to ${nextViewModeLabel} view`}
-              aria-label={`Switch to ${nextViewModeLabel} view`}
-              aria-description={`Current view: ${viewMode}`}
-            >
-              <NextViewModeIcon size={14} />
-            </button>
-          </div>
-
-          <div className={`h-4 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/10' : 'bg-[#E6E2DA]'}`} />
-
-        {/* Group 2: actions */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          <ExportMenu isDark={isDark} onExportMd={onExportMd} onExportHtml={onExportHtml} onExportPdf={onExportPdf} />
-          {onToggleHistory && (
-            <button
-              onClick={onToggleHistory}
-              className={`px-1.5 py-1 rounded-md active:opacity-70 transition-colors shrink-0 ${isHistoryOpen ? (isDark ? 'text-[#CC7D5E] bg-[#CC7D5E]/15' : 'text-[#CC7D5E] bg-[#CC7D5E]/15') : (isDark ? 'hover:text-[#CC7D5E]' : 'hover:text-[#CC7D5E]')}`}
-              title="Version History"
-              aria-label="Version history"
-              aria-pressed={isHistoryOpen ?? false}
-            >
-              <History size={14} />
-            </button>
-          )}
+      {actions && (
+        <div
+          className={`flex items-center shrink-0 translate-x-[10px] whitespace-nowrap self-center ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}
+          style={noDragRegion}
+        >
+          {actions}
         </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
   Copy as PhCopy,
   Database as PhDatabase,
   DiceFive,
+  DotsThree,
   DownloadSimple,
   PencilSimple,
   ArrowSquareOut,
@@ -112,6 +113,7 @@ export const Italic = icon(TextItalic);
 export const List = icon(PhList);
 export const Loader2 = icon(CircleNotch);
 export const Maximize2 = icon(ArrowsOut);
+export const MoreHorizontal = icon(DotsThree);
 export const Network = icon(Graph);
 export const Palette = icon(PhPalette);
 export const PanelLeft = icon(SidebarSimple);

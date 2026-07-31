@@ -5,6 +5,7 @@ import { useIsDark } from '../hooks/useIsDark';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
+import { EditorActions } from './editor/EditorActions';
 import { EditorHeader } from './editor/EditorHeader';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { FindReplacePanel } from './editor/FindReplacePanel';
@@ -464,7 +465,6 @@ export default function Editor({
         tabs={tabs}
         isEditingTitle={isEditingTitle}
         titleInput={titleInput}
-        viewMode={viewMode}
         onTitleInputChange={setTitleInput}
         onTitleSubmit={handleTitleSubmit}
         onTitleKeyDown={handleTitleKeyDown}
@@ -473,22 +473,28 @@ export default function Editor({
         onTabClose={onTabClose}
         onNewTab={onNewTab}
         onClose={onClose}
-        setViewMode={setViewMode}
-        onExportMd={() => exportNoteAsMd(note)}
-        onExportHtml={() => exportNoteAsHtml(note)}
-        onExportPdf={() => setPrintNote(note)}
         titleInputRef={titleInputRef}
         enteringTabId={enteringTabId}
         enteringFromTabId={enteringFromTabId}
         closingTabIds={closingTabIds}
         onTabEnterComplete={onTabEnterComplete}
         onTabCloseAnimationComplete={onTabCloseAnimationComplete}
-        onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
-        isHistoryOpen={isHistoryOpen}
         liftTabStrip={liftTabStrip}
         reserveTitlebarTraffic={reserveTitlebarTraffic}
         reserveTitlebarActions={reserveTitlebarActions}
         readOnly={readOnly}
+        actions={
+          <EditorActions
+            isDark={isDark}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            onExportMd={() => exportNoteAsMd(note)}
+            onExportHtml={() => exportNoteAsHtml(note)}
+            onExportPdf={() => setPrintNote(note)}
+            onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
+            isHistoryOpen={isHistoryOpen}
+          />
+        }
       />
 
       {viewMode !== 'preview' && (

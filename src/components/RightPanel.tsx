@@ -1,5 +1,6 @@
-import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { RightTab } from '../constants/rightTabs';
+import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { TITLEBAR_PANEL_TABS_SLOT_ID, type RightTab } from '../constants/rightTabs';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { computeOutgoingLinks } from '../hooks/useOutgoingLinks';
@@ -48,11 +49,14 @@ interface RightPanelProps {
   settings: AppSettings;
   activeNoteId?: string;
   onUpdateNote?: (content: string) => void;
+  /** Desktop with the titlebar visible: render the tab strip up in the titlebar. */
+  tabsInTitlebar?: boolean;
 }
 
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
   activeTab, onTabChange, notes, folders, settings, activeNoteId, onUpdateNote,
+  tabsInTitlebar = false,
 }: RightPanelProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const [hideIsolated, setHideIsolated] = useState(false);
@@ -102,6 +106,15 @@ export default function RightPanel({
     if (activeTab === 'graph') setHasVisitedGraph(true);
   }, [activeTab]);
 
+  // The slot lives in TopBar, which unmounts in focus mode — re-resolve on every
+  // toggle rather than caching the node once. Layout effect so the portal is in
+  // place before first paint; a passive effect would let the in-panel fallback
+  // strip render for a frame on cold start.
+  const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setTitlebarSlot(tabsInTitlebar ? document.getElementById(TITLEBAR_PANEL_TABS_SLOT_ID) : null);
+  }, [tabsInTitlebar]);
+
   const activeTasks = useMemo(() => tasks.filter(t => !t.completed), [tasks]);
   // Badge counts only read structural fields (linkRefs/links/titles), so
   // resolve the active note inside the topology snapshot — keying on the
@@ -115,68 +128,95 @@ export default function RightPanel({
     return computeOutgoingLinks(active, topologyNotes, topologyFolders ?? []).resolved.length;
   }, [topologyNotes, topologyFolders, activeNoteId]);
 
+  const tabs = ([
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
+    { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
+    { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
+    { id: 'graph', label: 'Graph', icon: Network, badge: null },
+    { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
+  ] as const);
+
+  const renderTab = (tab: typeof tabs[number], variant: 'titlebar' | 'segmented') => {
+    const isActive = activeTab === tab.id;
+    const inTitlebar = variant === 'titlebar';
+    // Titlebar tabs sit on the bare bar, so the active state is a soft filled
+    // chip. The in-panel segmented control instead raises the active tab out of
+    // an inset track, which needs a shadow to read.
+    const style: React.CSSProperties = isActive
+      ? {
+          background: inTitlebar
+            ? (isDark ? 'rgba(249,249,247,0.10)' : 'rgba(45,45,43,0.07)')
+            : (isDark ? '#3A3A37' : '#FBFAF6'),
+          color: isDark ? '#F9F9F7' : '#2D2D2B',
+          boxShadow: inTitlebar
+            ? undefined
+            : isDark
+              ? '0 1px 2px rgba(0,0,0,0.28), 0 0 0 1px rgba(249,249,247,0.06)'
+              : '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)',
+        }
+      : { color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.55)' };
+    return (
+      <button
+        key={tab.id}
+        onClick={() => onTabChange(tab.id)}
+        title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
+        aria-label={tab.label}
+        aria-pressed={isActive}
+        className={`relative flex items-center justify-center rounded-md transition-colors active:opacity-70 ${
+          inTitlebar ? 'h-6 w-7 shrink-0 cursor-pointer' : 'flex-1 h-6'
+        } ${
+          isActive
+            ? ''
+            : isDark ? 'hover:text-[#F9F9F7] hover:bg-[#F9F9F7]/[0.05]' : 'hover:text-[#2D2D2B] hover:bg-[#2D2D2B]/[0.05]'
+        }`}
+        style={style}
+      >
+        <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+        {tab.badge !== null && (
+          <span
+            aria-label={`${tab.badge} pending`}
+            className={`absolute top-0 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E] ${inTitlebar ? 'right-0.5' : 'right-1'}`}
+          >
+            {tab.badge > 9 ? '9+' : tab.badge}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
-      {/* Tab bar — rounded segmented control with a raised pill for the active tab */}
-      <div
-        className="h-10 shrink-0 flex items-center px-2"
-      >
-        <div
-          className="w-full flex items-stretch gap-0.5 rounded-md p-0.5"
-          style={{
-            background: isDark ? '#252523' : '#ECEAE6',
-            boxShadow: isDark
-              ? 'inset 0 0 0 1px rgba(249,249,247,0.08)'
-              : 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)',
-          }}
-        >
-          {([
-            { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
-            { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
-            { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
-            { id: 'graph', label: 'Graph', icon: Network, badge: null },
-            { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
-          ] as const).map((tab) => {
-            const isActive = activeTab === tab.id;
-            const activeStyle: React.CSSProperties = isActive
-              ? {
-                  background: isDark ? '#3A3A37' : '#FBFAF6',
-                  color: isDark ? '#F9F9F7' : '#2D2D2B',
-                  boxShadow: isDark
-                    ? '0 1px 2px rgba(0,0,0,0.28), 0 0 0 1px rgba(249,249,247,0.06)'
-                    : '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)',
-                }
-              : {
-                  color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.55)',
-                };
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
-                aria-label={tab.label}
-                aria-pressed={isActive}
-                className={`relative flex-1 flex items-center justify-center h-6 rounded-md transition-colors active:opacity-70 ${
-                  isActive
-                    ? ''
-                    : isDark ? 'hover:text-[#F9F9F7] hover:bg-[#F9F9F7]/[0.05]' : 'hover:text-[#2D2D2B] hover:bg-[#F9F9F7]/60'
-                }`}
-                style={activeStyle}
-              >
-                <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
-                {tab.badge !== null && (
-                  <span
-                    aria-label={`${tab.badge} pending`}
-                    className="absolute top-0 right-1 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E]"
-                  >
-                    {tab.badge > 9 ? '9+' : tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {tabsInTitlebar && titlebarSlot
+        ? (
+          <>
+            {createPortal(
+              <div className="flex items-center gap-0.5">
+                {tabs.map((tab) => renderTab(tab, 'titlebar'))}
+              </div>,
+              titlebarSlot,
+            )}
+            {/* The tab row used to supply the gap under the titlebar divider.
+                With the tabs moved up, match the panel's own px-2 gutter so
+                content is inset the same on all four sides. */}
+            <div aria-hidden="true" className="h-2 shrink-0" />
+          </>
+        )
+        : (
+          /* Fallback (mobile / titlebar hidden) — segmented control inside the panel */
+          <div className="h-10 shrink-0 flex items-center px-2">
+            <div
+              className="w-full flex items-stretch gap-0.5 rounded-md p-0.5"
+              style={{
+                background: isDark ? '#252523' : '#ECEAE6',
+                boxShadow: isDark
+                  ? 'inset 0 0 0 1px rgba(249,249,247,0.08)'
+                  : 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)',
+              }}
+            >
+              {tabs.map((tab) => renderTab(tab, 'segmented'))}
+            </div>
+          </div>
+        )}
 
       {/* Tab content — key={activeTab} forces remount on every tab switch, triggering fade-in */}
       {activeTab === 'tasks' && (
@@ -354,7 +394,14 @@ function GraphInfoPanel({
         <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix Stats</span>
       </div>
-      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable] min-h-0">
+      {/* No scrollbar-gutter here, unlike the other scrollers: the gutter is
+          carved out of the content box, so it survives any padding and offsets
+          the body relative to the header above (which sits outside this
+          scroller and cannot reserve a matching one). Dropping it lets p-2
+          set both insets to 8px and line the cards up with the header's px-2.
+          macOS overlay scrollbars float over that padding; on classic
+          scrollbars they overlap the 8px inset rather than shifting content. */}
+      <div className="flex-1 overflow-y-auto min-h-0">
       <div className="p-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
