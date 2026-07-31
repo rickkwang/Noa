@@ -36,7 +36,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
         <div className={`relative z-30 flex min-w-0 items-center gap-0.5 ${isMobile ? 'w-full' : ''}`} style={noDragRegion}>
           <button
             onClick={onToggleSidebar}
-            className={`p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
+            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
             title="Toggle Sidebar"
             aria-label="Toggle sidebar"
             aria-pressed={isSidebarOpen}
@@ -110,7 +110,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
           belonging to the panel it controls. */}
       <div
         id={TITLEBAR_PANEL_TABS_SLOT_ID}
-        className="absolute inset-y-0 z-20 flex items-center pl-2"
+        className="absolute inset-y-0 z-20 flex items-center pl-1"
         style={{
           ...noDragRegion,
           left: 'calc(100% - var(--noa-right-panel-width, 310px))',
@@ -129,11 +129,11 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
       />
 
       {/* Right Section: Actions */}
-      <div className={`flex items-center justify-end ${isMobile ? 'pr-2' : 'pr-4'}`}>
-        <div className="relative z-30 flex items-center space-x-2" style={noDragRegion}>
+      <div className="flex items-center justify-end pr-3">
+        <div className="relative z-30 flex items-center gap-1" style={noDragRegion}>
           <button
             onClick={onOpenSettings}
-            className="p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
+            className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
             title="Settings"
             aria-label="Open settings"
           >
@@ -141,7 +141,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, onTo
           </button>
           <button
             onClick={onToggleRightPanel}
-            className={`p-1.5 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
+            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
             title="Toggle Panel"
             aria-label="Toggle right panel"
             aria-pressed={isRightPanelOpen}

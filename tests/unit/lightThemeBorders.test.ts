@@ -49,8 +49,8 @@ describe('light theme border tokens', () => {
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
     expect(rightPanel).toContain("background: isDark ? '#252523' : '#ECEAE6'");
     expect(rightPanel).toContain(": 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)'");
-    expect(rightPanel).toContain('relative flex items-center justify-center rounded-md');
-    expect(rightPanel).toContain("inTitlebar ? 'h-6 w-7 shrink-0 cursor-pointer' : 'flex-1 h-6'");
+    expect(rightPanel).toContain('relative flex items-center justify-center transition-colors');
+    expect(rightPanel).toContain("inTitlebar ? 'h-[26px] w-9 shrink-0 cursor-pointer rounded' : 'flex-1 h-6 rounded-md'");
     // Titlebar tabs sit on the bare bar: a soft fill, no raised-pill shadow.
     expect(rightPanel).toContain("'rgba(45,45,43,0.07)'");
     expect(rightPanel).toContain(": '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)'");

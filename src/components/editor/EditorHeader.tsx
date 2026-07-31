@@ -37,8 +37,6 @@ interface EditorHeaderProps {
   reserveTitlebarActions?: boolean;
   isDark: boolean;
   readOnly?: boolean;
-  /** Note-level controls pinned to the right end of the strip. */
-  actions?: React.ReactNode;
 }
 
 export function EditorHeader({
@@ -65,7 +63,6 @@ export function EditorHeader({
   reserveTitlebarActions = false,
   isDark,
   readOnly = false,
-  actions,
 }: EditorHeaderProps) {
   const tabStripRef = useRef<HTMLDivElement>(null);
   // Track IME composition so we don't commit a half-typed CJK title when the
@@ -351,15 +348,6 @@ export function EditorHeader({
           </button>
         )}
       </div>
-
-      {actions && (
-        <div
-          className={`flex items-center shrink-0 translate-x-[10px] whitespace-nowrap self-center ${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'}`}
-          style={noDragRegion}
-        >
-          {actions}
-        </div>
-      )}
     </div>
   );
 }

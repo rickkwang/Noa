@@ -57,10 +57,12 @@ export function EditorActions({
   }`;
 
   return (
-    <div className="flex items-center gap-1 shrink-0 whitespace-nowrap self-center px-1">
+    <div className="flex items-center gap-1 shrink-0">
       <button
         onClick={() => setViewMode(nextViewMode)}
-        className="p-1 rounded-md text-[#CC7D5E] bg-[#CC7D5E]/15 active:opacity-70 transition-colors cursor-pointer"
+        className={`p-1 rounded-md active:opacity-70 transition-colors cursor-pointer ${
+          isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
+        }`}
         title={`Switch to ${nextViewModeLabel} view`}
         aria-label={`Switch to ${nextViewModeLabel} view`}
         aria-description={`Current view: ${viewMode}`}

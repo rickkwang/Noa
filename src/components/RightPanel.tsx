@@ -162,8 +162,8 @@ export default function RightPanel({
         title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
         aria-label={tab.label}
         aria-pressed={isActive}
-        className={`relative flex items-center justify-center rounded-md transition-colors active:opacity-70 ${
-          inTitlebar ? 'h-6 w-7 shrink-0 cursor-pointer' : 'flex-1 h-6'
+        className={`relative flex items-center justify-center transition-colors active:opacity-70 ${
+          inTitlebar ? 'h-[26px] w-9 shrink-0 cursor-pointer rounded' : 'flex-1 h-6 rounded-md'
         } ${
           isActive
             ? ''
@@ -171,11 +171,11 @@ export default function RightPanel({
         }`}
         style={style}
       >
-        <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+        <tab.icon size={inTitlebar ? 17 : 15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
         {tab.badge !== null && (
           <span
             aria-label={`${tab.badge} pending`}
-            className={`absolute top-0 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E] ${inTitlebar ? 'right-0.5' : 'right-1'}`}
+            className={`absolute text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E] ${inTitlebar ? 'top-0.5 right-0.5' : 'top-0 right-1'}`}
           >
             {tab.badge > 9 ? '9+' : tab.badge}
           </span>

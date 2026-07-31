@@ -455,6 +455,19 @@ export default function Editor({
     );
   }
 
+  const editorActions = (
+    <EditorActions
+      isDark={isDark}
+      viewMode={viewMode}
+      setViewMode={setViewMode}
+      onExportMd={() => exportNoteAsMd(note)}
+      onExportHtml={() => exportNoteAsHtml(note)}
+      onExportPdf={() => setPrintNote(note)}
+      onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
+      isHistoryOpen={isHistoryOpen}
+    />
+  );
+
   return (
     <div
       className="flex-1 flex flex-col min-w-0 bg-[#F9F9F7] relative"
@@ -483,18 +496,6 @@ export default function Editor({
         reserveTitlebarTraffic={reserveTitlebarTraffic}
         reserveTitlebarActions={reserveTitlebarActions}
         readOnly={readOnly}
-        actions={
-          <EditorActions
-            isDark={isDark}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            onExportMd={() => exportNoteAsMd(note)}
-            onExportHtml={() => exportNoteAsHtml(note)}
-            onExportPdf={() => setPrintNote(note)}
-            onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
-            isHistoryOpen={isHistoryOpen}
-          />
-        }
       />
 
       {viewMode !== 'preview' && (
@@ -503,6 +504,7 @@ export default function Editor({
           hasToc={tocHeadings.length > 0}
           isTocOpen={isTocOpen}
           onToggleToc={() => setIsTocOpen((v) => !v)}
+          actions={editorActions}
         />
       )}
 
@@ -533,6 +535,16 @@ export default function Editor({
         ref={splitContainerRef}
         className="flex-1 flex overflow-hidden z-10 relative"
       >
+        {/* Preview has no toolbar row, so the note-level controls float over
+            the content instead. h-8 + items-center keeps them on the exact
+            line the toolbar row would occupy, and pb-px mirrors the row's
+            1px border-b so the buttons don't shift half a pixel when
+            switching modes. */}
+        {viewMode === 'preview' && (
+          <div className="absolute top-0 right-4 z-20 h-8 pb-px flex items-center">
+            {editorActions}
+          </div>
+        )}
         {isHistoryOpen && onRestoreSnapshot && (
           <HistoryPanel
             noteId={note.id}
