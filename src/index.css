@@ -79,8 +79,31 @@ body {
   user-select: text;
 }
 
-.noa-graph-filter-control:focus-within {
-  border-color: #CC7D5E;
+/* Shared surface for the graph's small control clusters (header filter field,
+   canvas zoom pad). No frame — a border at this size draws more attention than
+   the control deserves; a warm accent wash is enough to read as one object. */
+.noa-graph-control-surface {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 9%, transparent);
+  transition: background-color 120ms ease;
+}
+.noa-graph-control-surface:hover,
+.noa-graph-control-surface:focus-within {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, transparent);
+}
+.noa-graph-control-button:hover {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
+}
+
+/* Same wash reads fainter on the dark surface — step each level up. */
+[data-theme="dark"] .noa-graph-control-surface {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 14%, transparent);
+}
+[data-theme="dark"] .noa-graph-control-surface:hover,
+[data-theme="dark"] .noa-graph-control-surface:focus-within {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
+}
+[data-theme="dark"] .noa-graph-control-button:hover {
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 30%, transparent);
 }
 
 .noa-sidebar-section-surface {

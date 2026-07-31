@@ -12,8 +12,43 @@ import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 import { TasksPanel } from './rightPanel/TasksPanel';
-import { CheckSquare, Network, Search, GitBranch, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
+import { CheckSquare, Network, Search, BarChart, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 export type RightPanelTab = RightTab;
+
+// Shared chrome for the two knowledge-matrix panels. They stack directly on top
+// of each other, so any drift in height, padding, icon weight or label styling
+// reads as a misalignment — keep both headers going through here.
+function MatrixPanelHeader({
+  icon: Icon,
+  label,
+  isDark,
+  children,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  isDark?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    // Neither a fill nor a rule: both draw an edge across the card. The header
+    // separates by whitespace alone — it shares the panel's surface and sits in
+    // a band taller than its 10px label needs, so the air around the label does
+    // the work a bar or a border used to.
+    <div className="h-9 flex items-center px-2.5 gap-1.5 shrink-0">
+      {/* Full accent, not a softened one. The label beside it was pushed UP to a
+          contrast floor (see below); dimming the icon in the same header would
+          have moved the two in opposite directions. At 80%/70% this mark lands
+          at 2.4:1 / 2.9:1 — under the 3:1 that WCAG 1.4.11 asks of a meaningful
+          graphic. It is decorative here, so that is not a violation, but full
+          strength costs nothing and keeps the header internally consistent. */}
+      <Icon size={12} className="shrink-0 text-[#CC7D5E]" />
+      {/* 70% is the floor here, not a style choice: at 10px this label clears
+          4.5:1 on the light surface only from ~67% up (45% lands at 2.6:1). */}
+      <span className={`text-[10px] font-bold uppercase tracking-[0.14em] font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>{label}</span>
+      {children}
+    </div>
+  );
+}
 
 // Backlinks: single link with a bold arrow pointing IN (incoming links)
 function BacklinksIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
@@ -259,34 +294,39 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className="noa-elevated-panel flex flex-col border rounded-lg overflow-hidden" style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
-            <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
-              <Network size={11} className="text-[#CC7D5E] shrink-0" />
-              <span className={`text-[10px] font-bold uppercase tracking-wider font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix</span>
-              <div className="noa-graph-filter-control flex items-center h-5 rounded-md border border-[var(--divider-subtle)] transition-colors"
+          <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
+            <MatrixPanelHeader icon={Network} label="Knowledge Matrix" isDark={isDark}>
+              <div className="noa-graph-control-surface flex items-center h-5 gap-0.5 rounded-md px-1.5"
                 role="group"
-                aria-label="Graph filter controls"
-                style={{ background: isDark ? 'rgba(249,249,247,0.05)' : 'rgba(45,45,43,0.04)' }}>
-                <div className="flex items-center gap-1 pl-1.5 pr-1">
-                  <Search size={9} style={{ color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.5)' }} className="shrink-0" />
+                aria-label="Graph filter controls">
+                <div className="flex items-center gap-1 pr-0.5">
+                  <Search size={10} style={{ color: isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)' }} className="shrink-0" />
                   <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                     aria-label="Filter graph nodes"
-                    placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-12 min-w-0"
+                    placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-11 min-w-0"
                     style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
                 </div>
-                <div className="w-px self-stretch my-1" style={{ background: isDark ? 'rgba(249,249,247,0.08)' : 'var(--divider-subtle, #E6E2DA)' }} />
+                {/* Name stays fixed and aria-pressed carries the state. Letting the
+                    name flip too (as `title` does) would have a screen reader
+                    announce "Show all nodes, pressed" — the label and the state
+                    then contradict each other. `title` still flips: as a tooltip
+                    it should say what the click will do. */}
                 <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
-                  className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors shrink-0"
-                  style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.5)') }}>
+                  aria-label="Hide isolated nodes"
+                  aria-pressed={hideIsolated}
+                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded active:opacity-70 transition-colors shrink-0"
+                  style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Network size={10} />
                 </button>
                 <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
-                  className="flex items-center justify-center w-5 h-5 active:opacity-70 transition-colors shrink-0"
-                  style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.5)') }}>
+                  aria-label="Filters"
+                  aria-pressed={showFilters}
+                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded active:opacity-70 transition-colors shrink-0"
+                  style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Filter size={10} />
                 </button>
               </div>
-            </div>
+            </MatrixPanelHeader>
             {showFilters && (
               <GraphFilterPanel
                 isDark={isDark}
@@ -389,11 +429,8 @@ function GraphInfoPanel({
   );
 
   return (
-    <div className={`noa-elevated-panel flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-lg overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
-      <div className={`h-7 border-b border-[var(--divider-subtle)] flex items-center px-2 gap-1.5 shrink-0 ${isDark ? 'bg-[#252523]' : 'bg-[#EFEAE3]'}`}>
-        <GitBranch size={11} className="text-[#CC7D5E] shrink-0" />
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>Knowledge Matrix Stats</span>
-      </div>
+    <div className={`noa-elevated-panel flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+      <MatrixPanelHeader icon={BarChart} label="Matrix Stats" isDark={isDark} />
       {/* No scrollbar-gutter here, unlike the other scrollers: the gutter is
           carved out of the content box, so it survives any padding and offsets
           the body relative to the header above (which sits outside this

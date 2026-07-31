@@ -231,7 +231,46 @@ describe('light theme border tokens', () => {
 
     expect(findReplace).toContain("const border = 'var(--divider-subtle, #E6E2DA)'");
     expect(historyPanel).toContain("const border = 'var(--divider-subtle, #E6E2DA)'");
-    expect(graphView).toContain("border: '1px solid var(--divider-subtle, #E6E2DA)'");
+    // The zoom pad dropped its frame for the shared accent wash
+    // (.noa-graph-control-surface), so there is no longer a border to route
+    // through the token. Guard the file instead: no raw hex border colour may
+    // reappear in an inline style. Tailwind `border-[#…]` classes are NOT caught
+    // here on purpose — those are class-name handles that ThemeInjector remaps
+    // onto tokens, so they are the sanctioned form. Inline styles bypass that
+    // remapping, which is exactly what this guards. var() fallbacks legitimately
+    // carry a hex, so neutralize them before scanning.
+    //
+    // The value side must stay unanchored from the quote: `isDark ? '#A' : '#B'`
+    // is the dominant inline-style shape in this file, so a pattern that only
+    // matched a quote directly after the colon would miss the most likely way
+    // for a hex to come back. Stopping at , ; } newline keeps it from bridging
+    // into an unrelated property on the same line. Not covered: a hex reached
+    // through an intermediate const (`borderColor: someVar`) — that needs data
+    // flow, not a regex.
+    const HEX_BORDER = /border(?:[A-Z]\w+|-\w+)*\s*[:=][^\n;},]*#[0-9a-fA-F]{3,8}/;
+
+    // Guard the guard: these are the shapes it must keep catching if someone
+    // rewrites the pattern later.
+    for (const shape of [
+      "border: '1px solid #E6E2DA'",
+      'borderColor: isDark ? "#3A3A37" : "#E6E2DA"',
+      'borderTop: `1px solid ${isDark ? "#333" : "#E6E2DA"}`',
+      "borderBottomColor: '#E6E2DA'",
+    ]) {
+      expect(HEX_BORDER.test(shape)).toBe(true);
+    }
+    // …and these must stay clean, or the guard just becomes noise.
+    for (const shape of [
+      "border: '1px solid var(--token)'",
+      "borderRadius: 4, background: '#CC7D5E'",
+      'className="border rounded-md border-[#2D2D2B]"',
+    ]) {
+      expect(HEX_BORDER.test(shape)).toBe(false);
+    }
+
+    const graphViewSansVars = graphView.replace(/var\([^)]*\)/g, 'var(--token)');
+    expect(graphView).toContain('noa-graph-control-surface');
+    expect(graphViewSansVars).not.toMatch(HEX_BORDER);
   });
 
   it('uses soft elevation instead of hard offset outlines for floating surfaces', async () => {

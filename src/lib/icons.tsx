@@ -16,6 +16,7 @@ import {
   CaretRight,
   CaretUpDown,
   CaretUp,
+  ChartBar,
   Circle as PhCircle,
   Clock as PhClock,
   Code as PhCode,
@@ -34,7 +35,6 @@ import {
   Folder as PhFolder,
   FolderOpen as PhFolderOpen,
   FolderPlus as PhFolderPlus,
-  GitBranch as PhGitBranch,
   Tag as PhTag,
   HardDrives,
   ClockCounterClockwise,
@@ -75,6 +75,7 @@ function icon(Cmp: Icon) {
 export const AlertTriangle = icon(Warning);
 export const AlignLeft = icon(TextAlignLeft);
 export const ArrowUpDown = icon(ArrowsDownUp);
+export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
 export const Book = icon(PhBook);
 export const Calendar = icon(CalendarBlank);
@@ -104,7 +105,6 @@ export const Filter = icon(Funnel);
 export const Folder = icon(PhFolder);
 export const FolderOpen = icon(PhFolderOpen);
 export const FolderPlus = icon(PhFolderPlus);
-export const GitBranch = icon(PhGitBranch);
 export const Tag = icon(PhTag);
 export const HardDrive = icon(HardDrives);
 export const History = icon(ClockCounterClockwise);

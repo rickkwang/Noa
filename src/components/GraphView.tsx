@@ -471,9 +471,9 @@ export default function GraphView({
   }, []);
 
   const zoomControls = [
-    { icon: <ZoomIn size={12} />, title: 'Zoom in', action: () => zoomBy(1.3) },
-    { icon: <ZoomOut size={12} />, title: 'Zoom out', action: () => zoomBy(0.77) },
-    { icon: <Maximize2 size={12} />, title: 'Reset view', action: () => {
+    { icon: <ZoomIn size={11} />, title: 'Zoom in', action: () => zoomBy(1.3) },
+    { icon: <ZoomOut size={11} />, title: 'Zoom out', action: () => zoomBy(0.77) },
+    { icon: <Maximize2 size={11} />, title: 'Reset view', action: () => {
       clearPinnedPositions();
       if (resetAnimationRef.current != null) {
         cancelAnimationFrame(resetAnimationRef.current);
@@ -728,20 +728,14 @@ export default function GraphView({
         }}
       />
       </div>
-      <div
-        className="absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md"
-        style={{
-          background: isDark ? 'rgba(249,249,247,0.04)' : 'rgba(45,45,43,0.03)',
-          border: '1px solid var(--divider-subtle, #E6E2DA)',
-        }}
-      >
+      <div className="noa-graph-control-surface absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md p-0.5 gap-0.5">
         {zoomControls.map(({ icon, title, action }) => (
           <button
             key={title}
             onClick={action}
             title={title}
-            className={`w-7 h-6 active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
-              isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[rgba(45,45,43,0.5)]'
+            className={`noa-graph-control-button w-6 h-6 rounded active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
+              isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[rgba(45,45,43,0.6)]'
             }`}
           >
             {icon}

@@ -151,7 +151,9 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
   expect(rightPanelTabBox).not.toBeNull();
   expect(tabBox!.y).toBeLessThanOrEqual(searchBox!.y + 4);
   expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchBox!.y + 24);
-  expect(rightPanelTabBox!.y).toBeGreaterThanOrEqual(searchBox!.y + 24);
+  // The panel tabs moved up into the title bar too, so they now share the row
+  // with search rather than sitting a header row below it.
+  expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchBox!.y + 4);
 });
 
 test('lifted title-bar tab controls opt out of the native drag region', async ({ page }) => {
@@ -280,13 +282,20 @@ test('version history content remains selectable', async ({ page }) => {
   const marker = `history-selection-${Date.now()}`;
   await page.goto('/');
 
-  await page.getByTitle('Version History').click();
+  // Version History moved out of the toolbar into the editor overflow menu, so
+  // it is a menuitem now and no longer carries a title attribute of its own.
+  const toggleHistory = async () => {
+    await page.getByTitle('More actions').click();
+    await page.getByRole('menuitem', { name: 'Version History' }).click();
+  };
+
+  await toggleHistory();
   await expect(page.getByText('No history yet.', { exact: false })).toBeVisible();
-  await page.getByTitle('Version History').click();
+  await toggleHistory();
 
   await saveHistorySnapshotForNote(page, 'Welcome to Noa', marker);
 
-  await page.getByTitle('Version History').click();
+  await toggleHistory();
   const historyText = page.getByText(marker, { exact: true });
   await historyText.first().click();
   await expect(historyText).toHaveCount(2);
@@ -303,12 +312,15 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
   });
   await page.goto('/');
 
+  // The filter cluster no longer has a frame to tint on focus — it reads as a
+  // field from an accent wash instead. Focus is now carried by the global
+  // input:focus-visible rule in index.css, so assert the affordance that
+  // actually renders rather than the group border that used to.
   const input = page.getByPlaceholder('filter...');
   await input.focus();
-  await expect(page.getByRole('group', { name: 'Graph filter controls' })).toHaveCSS(
-    'border-top-color',
-    'rgb(204, 125, 94)',
-  );
+  await expect(input).toHaveCSS('outline-style', 'solid');
+  await expect(input).toHaveCSS('outline-width', '2px');
+  await expect(input).toHaveCSS('outline-color', 'rgb(204, 125, 94)');
 
   const zoomIn = page.getByTitle('Zoom in');
   await zoomIn.hover();

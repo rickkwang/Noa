@@ -587,12 +587,20 @@ test('successful recovery import clears corrupt legacy data across reloads', asy
   await expect(page.getByTestId('sidebar-file-tree').getByText('Recovered Note.md')).toBeVisible();
 });
 
-test('graph tab opens in right panel', async ({ page }) => {
+test('right panel tabs render by default and hide when the panel is toggled shut', async ({ page }) => {
   await page.goto('/');
-  await page.getByTitle('Toggle Panel').click();
+  // The right panel defaults to open (useLayout), and its tabs render into the
+  // title bar. Clicking Toggle Panel here used to be the "open" step; it now
+  // closes the panel instead, which drops the tab strip to visibility:hidden
+  // and makes every assertion below fail. Assert the default state directly.
   await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Links' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Backlinks', exact: true })).toBeVisible();
+
+  // …and that toggling really does hide them, so the assertion above is not
+  // just passing on a strip that is always present.
+  await page.getByTitle('Toggle Panel').click();
+  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeHidden();
 });
 
 test('vault import entry is labeled as migration', async ({ page }) => {
