@@ -352,6 +352,39 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
   await expect(zoomIn).toHaveCSS('color', 'rgb(204, 125, 94)');
 });
 
+test('disabled Graph View setting removes the graph tab', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ corePlugins: { graphView: false } }));
+    localStorage.setItem('app-right-panel-open', 'true');
+    localStorage.setItem('app-right-tab', 'graph');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+  });
+  await page.goto('/');
+
+  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toHaveCount(0);
+});
+
+test('graph nodes expose a keyboard navigation surface', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-right-panel-open', 'true');
+    localStorage.setItem('app-right-tab', 'graph');
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-graph-guide-seen', '1');
+  });
+  await page.goto('/');
+
+  const nodeNavigation = page.getByRole('navigation', { name: 'Graph nodes' });
+  const node = nodeNavigation.getByRole('button').first();
+  const nodeName = (await node.textContent())?.trim();
+  expect(nodeName).toBeTruthy();
+  await node.focus();
+  await expect(node).toBeVisible();
+  await node.press('Enter');
+  await expect(page.getByTitle('Double-click to rename')).toHaveText(nodeName!);
+});
+
 test('closed right panel defers its lazy content until first open', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('app-right-panel-open', 'false');

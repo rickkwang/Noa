@@ -162,6 +162,8 @@ export default function GraphView({
   // bails). The next visible apply() performs the missed fit; without this the
   // graph can stay at the unfitted default camera forever.
   const pendingFitRef = useRef(false);
+  const pendingInitialCaptureRef = useRef(true);
+  const lastFittedViewRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   // Stable world-coord center for forceX/forceY — pinned per graph, not per
   // resize. Tracking width/height here would yank nodes toward a moving target
   // on every sidebar drag (visible as a viewport jump when grabbing a node).
@@ -195,8 +197,14 @@ export default function GraphView({
     // Cap at 2 so a small graph doesn't blow up to fill the canvas (matches the
     // previous zoom-to-fit behaviour).
     const k = Math.min(2, (rect.width - PAD * 2) / bboxW, (rect.height - PAD * 2) / bboxH);
-    fg.centerAt((bbox.x[0] + bbox.x[1]) / 2, (bbox.y[0] + bbox.y[1]) / 2, duration);
-    fg.zoom(Math.max(0.01, k), duration);
+    const nextView = {
+      x: (bbox.x[0] + bbox.x[1]) / 2,
+      y: (bbox.y[0] + bbox.y[1]) / 2,
+      zoom: Math.max(0.01, k),
+    };
+    lastFittedViewRef.current = nextView;
+    fg.centerAt(nextView.x, nextView.y, duration);
+    fg.zoom(nextView.zoom, duration);
     return true;
   }, []);
 
@@ -408,39 +416,26 @@ export default function GraphView({
     // Graph identity changed (topology, filter, etc.) — re-anchor physics center
     // to the current viewport so the new layout settles centered.
     physicsCenterRef.current = null;
-    let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
-    let isActive = true;
-    const timer = setTimeout(() => {
-      if (!isActive) return;
-      // Fit to the visible area (zoom cap is built into fitView). While the tab
-      // is hidden the container rect is 0 and the fit is skipped — flag it so
-      // the next visible apply() performs it.
-      pendingFitRef.current = !fitView(300);
-      // Save initial positions after layout has settled
-      snapshotTimer = setTimeout(() => {
-        if (!isActive) return;
-        const snapshot = new Map<string, { x: number; y: number }>();
-        graphData.nodes.forEach((node) => {
-          if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
-        });
-        initialPositions.current = snapshot;
-        // With a fit still pending the current camera is the unfitted one —
-        // don't record it, or reset-view would restore a bad viewport. The
-        // deferred fit records the camera instead.
-        if (!pendingFitRef.current) {
-          const center = fgRef.current?.centerAt();
-          const zoom = fgRef.current?.zoom();
-          if (center && zoom != null) {
-            initialView.current = { x: center.x, y: center.y, zoom };
-          }
-        }
-      }, 1000);
-    }, 600);
-    return () => {
-      isActive = false;
-      clearTimeout(timer);
-      clearTimeout(snapshotTimer);
-    };
+    pendingInitialCaptureRef.current = true;
+  }, [graphData]);
+
+  const captureInitialLayout = useCallback(() => {
+    if (!pendingInitialCaptureRef.current) return;
+    pendingInitialCaptureRef.current = false;
+
+    const snapshot = new Map<string, { x: number; y: number }>();
+    graphData.nodes.forEach((node) => {
+      if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
+    });
+    initialPositions.current = snapshot;
+
+    // Fit only after the force engine has frozen the layout. Hidden graph tabs
+    // defer the fit until their container has non-zero dimensions.
+    const didFit = fitView(300);
+    pendingFitRef.current = !didFit;
+    if (didFit && lastFittedViewRef.current) {
+      initialView.current = lastFittedViewRef.current;
+    }
   }, [graphData, fitView]);
 
   const fontFamily = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
@@ -629,6 +624,7 @@ export default function GraphView({
         cooldownTime={graphData.nodes.length > 200 ? 1200 : graphData.nodes.length > 30 ? 2500 : 1500}
         d3AlphaDecay={graphData.nodes.length > 200 ? 0.05 : 0.025}
         d3VelocityDecay={graphData.nodes.length > 200 ? 0.65 : 0.5}
+        onEngineStop={captureInitialLayout}
         onNodeDrag={(node: GraphNode) => {
           node.fx = node.x;
           node.fy = node.y;
@@ -728,6 +724,27 @@ export default function GraphView({
         }}
       />
       </div>
+      <nav aria-label="Graph nodes" className="absolute left-2 top-2 z-20">
+        {graphData.nodes.filter((node) => !node.ghost).map((node) => {
+          const degree = node.degree ?? 0;
+          return (
+            <button
+              key={String(node.id)}
+              type="button"
+              aria-current={String(node.id) === activeNoteId ? 'page' : undefined}
+              aria-label={`${node.name}, ${degree} connection${degree === 1 ? '' : 's'}`}
+              onClick={() => onNavigateToNoteById(String(node.id))}
+              onFocus={() => setHoveredNodeId(String(node.id))}
+              onBlur={() => setHoveredNodeId(null)}
+              className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:border-[#CC7D5E] focus:px-2 focus:py-1 focus:text-xs focus:font-redaction focus:outline-none ${
+                isDark ? 'focus:bg-[#252523] focus:text-[#F9F9F7]' : 'focus:bg-[#F9F9F7] focus:text-[#2D2D2B]'
+              }`}
+            >
+              {node.name}
+            </button>
+          );
+        })}
+      </nav>
       <div className="noa-graph-control-surface absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md p-0.5 gap-0.5">
         {zoomControls.map(({ icon, title, action }) => (
           <button

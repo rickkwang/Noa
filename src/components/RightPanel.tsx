@@ -4,7 +4,7 @@ import { TITLEBAR_PANEL_TABS_SLOT_ID, type RightTab } from '../constants/rightTa
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { computeOutgoingLinks } from '../hooks/useOutgoingLinks';
-import { buildGraphModel } from '../lib/graphModel';
+import { buildGraphModel, pruneGraphTagFilter } from '../lib/graphModel';
 import { computeTopologySignature, getBacklinks } from '../lib/noteUtils';
 import { GlobalTask, Note, Folder, AppSettings } from '../types';
 import GraphView, { type GraphColorMode } from './GraphView';
@@ -94,6 +94,7 @@ export default function RightPanel({
   tabsInTitlebar = false,
 }: RightPanelProps) {
   const isDark = useIsDark(settings.appearance.theme);
+  const graphEnabled = settings.corePlugins.graphView;
   const [hideIsolated, setHideIsolated] = useState(false);
   const [showUnresolved, setShowUnresolved] = useState(true);
   const [graphSearch, setGraphSearch] = useState('');
@@ -130,16 +131,22 @@ export default function RightPanel({
     }
     return out;
   }, [topologyNotes]);
+  useLayoutEffect(() => {
+    setTagFilter((selected) => pruneGraphTagFilter(selected, allTags));
+  }, [allTags]);
   const [showGraphGuide, setShowGraphGuide] = useState(() => {
     try { return !localStorage.getItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN); } catch { return true; }
   });
   // Once the graph tab is opened, keep it mounted across tab switches so the
   // force simulation and viewport survive — otherwise switching back replays the
   // "explode and zoom-to-fit" animation every time.
-  const [hasVisitedGraph, setHasVisitedGraph] = useState(activeTab === 'graph');
+  const [hasVisitedGraph, setHasVisitedGraph] = useState(activeTab === 'graph' && graphEnabled);
   useEffect(() => {
-    if (activeTab === 'graph') setHasVisitedGraph(true);
-  }, [activeTab]);
+    if (activeTab === 'graph' && graphEnabled) setHasVisitedGraph(true);
+  }, [activeTab, graphEnabled]);
+  useLayoutEffect(() => {
+    if (!graphEnabled && activeTab === 'graph') onTabChange('tasks');
+  }, [activeTab, graphEnabled, onTabChange]);
 
   // The slot lives in TopBar, which unmounts in focus mode — re-resolve on every
   // toggle rather than caching the node once. Layout effect so the portal is in
@@ -167,7 +174,7 @@ export default function RightPanel({
     { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
     { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
     { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
-    { id: 'graph', label: 'Graph', icon: Network, badge: null },
+    ...(graphEnabled ? [{ id: 'graph' as const, label: 'Graph', icon: Network, badge: null }] : []),
     { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
   ] as const);
 
@@ -274,7 +281,7 @@ export default function RightPanel({
           <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} isDark={isDark} />
         </div>
       )}
-      {(hasVisitedGraph || activeTab === 'graph') && (
+      {graphEnabled && (hasVisitedGraph || activeTab === 'graph') && (
         <div
           className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-0 gap-2"
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}

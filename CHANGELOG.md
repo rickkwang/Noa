@@ -24,6 +24,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Removed
 - Recurring backup reminder banner.
 
+## [1.0.21] - 2026-08-03
+
+### Added
+- Keyboard navigation for graph nodes and broader desktop smoke coverage.
+
+### Changed
+- Refined the desktop title bar, panel layout, sidebar surfaces, graph controls, and responsive sizing.
+- Improved graph lifecycle handling, filtering, and plugin-disable behavior.
+
+### Fixed
+- Prevented vault sync data loss and hardened storage bootstrap and recovery paths.
+- Restored native title-bar control hit areas and cleaned up failed macOS update installs.
+
 ## [1.0.16] - 2026-06-08
 
 ### Added

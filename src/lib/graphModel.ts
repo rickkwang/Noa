@@ -57,6 +57,12 @@ function intersectIds(left: Set<string> | null, right: Set<string>): Set<string>
   return left ? new Set([...left].filter((id) => right.has(id))) : right;
 }
 
+export function pruneGraphTagFilter(selected: string[], available: string[]): string[] {
+  const availableTags = new Set(available);
+  const next = selected.filter((tag) => availableTags.has(tag));
+  return next.length === selected.length ? selected : next;
+}
+
 export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOptions = {}): GraphModel {
   const showUnresolved = options.showUnresolved ?? true;
   // Edges are resolved fresh from `links` via the shared Obsidian-aligned

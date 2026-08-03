@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGraphModel } from '../../src/lib/graphModel';
+import { buildGraphModel, pruneGraphTagFilter } from '../../src/lib/graphModel';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -156,5 +156,10 @@ describe('buildGraphModel', () => {
       note({ id: 'nested', title: 'Dup', folder: 'f1' }),
     ], { folders: [{ id: 'f1', name: 'Projects' }] });
     expect(model.links).toEqual([{ source: 'a', target: 'nested', bidirectional: false }]);
+  });
+
+  it('drops selected tags that no longer exist in the graph', () => {
+    expect(pruneGraphTagFilter(['daily', 'removed'], ['daily', 'project'])).toEqual(['daily']);
+    expect(pruneGraphTagFilter(['removed'], [])).toEqual([]);
   });
 });
