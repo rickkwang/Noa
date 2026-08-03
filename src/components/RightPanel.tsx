@@ -167,10 +167,10 @@ export default function RightPanel({
   }, [topologyNotes, topologyFolders, activeNoteId]);
 
   const tabs = ([
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
     { id: 'backlinks', label: 'Backlinks', icon: BacklinksIcon, badge: backlinksCount > 0 ? backlinksCount : null },
     { id: 'outgoing', label: 'Outgoing', icon: OutgoingIcon, badge: outgoingCount > 0 ? outgoingCount : null },
     { id: 'graph' as const, label: 'Graph', icon: Network, badge: null },
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare, badge: activeTasks.length > 0 ? activeTasks.length : null },
     { id: 'properties', label: 'Properties', icon: SlidersHorizontal, badge: null },
   ] as const);
 

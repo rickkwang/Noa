@@ -156,6 +156,18 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
   expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchBox!.y + 4);
 });
 
+test('right panel keeps Tasks as the penultimate tab', async ({ page }) => {
+  await page.goto('/');
+
+  const tabs = page.locator('#noa-titlebar-panel-tabs button');
+  await expect(tabs).toHaveCount(5);
+  const labels = await tabs.evaluateAll((buttons) => (
+    buttons.map((button) => button.getAttribute('aria-label'))
+  ));
+
+  expect(labels).toEqual(['Backlinks', 'Outgoing', 'Graph', 'Tasks', 'Properties']);
+});
+
 test('lifted title-bar tab controls opt out of the native drag region', async ({ page }) => {
   await page.goto('/');
 
