@@ -22,6 +22,14 @@ describe('loadSettings', () => {
     expect(loaded.settings.editor).toEqual(defaultSettings.editor);
   });
 
+  it('ignores the retired Graph View preference while loading legacy settings', () => {
+    const loaded = loadSettings({
+      getItem: () => JSON.stringify({ corePlugins: { graphView: false, dailyNotes: false } }),
+    });
+
+    expect(loaded.settings.corePlugins).toEqual({ dailyNotes: false });
+  });
+
   it('does not overwrite the settings key after a transient read failure', () => {
     const loaded = loadSettings({
       getItem: () => {

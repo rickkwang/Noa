@@ -154,7 +154,6 @@ export interface AppSettings {
     fuzzySearch: boolean;
   };
   corePlugins: {
-    graphView: boolean;
     dailyNotes: boolean;
   };
   templates: {

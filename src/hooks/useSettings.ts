@@ -22,7 +22,6 @@ export const defaultSettings: AppSettings = {
     fuzzySearch: true,
   },
   corePlugins: {
-    graphView: true,
     dailyNotes: true,
   },
   templates: {
@@ -146,7 +145,6 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
           fuzzySearch: setting(search, 'fuzzySearch', defaultSettings.search.fuzzySearch, isBoolean),
         },
         corePlugins: {
-          graphView: setting(corePlugins, 'graphView', defaultSettings.corePlugins.graphView, isBoolean),
           dailyNotes: setting(corePlugins, 'dailyNotes', defaultSettings.corePlugins.dailyNotes, isBoolean),
         },
         templates: {

@@ -352,7 +352,7 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
   await expect(zoomIn).toHaveCSS('color', 'rgb(204, 125, 94)');
 });
 
-test('disabled Graph View setting removes the graph tab', async ({ page }) => {
+test('legacy Graph View preference cannot hide the graph tab', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('app-settings', JSON.stringify({ corePlugins: { graphView: false } }));
     localStorage.setItem('app-right-panel-open', 'true');
@@ -361,9 +361,10 @@ test('disabled Graph View setting removes the graph tab', async ({ page }) => {
   });
   await page.goto('/');
 
-  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Editor' }).click();
+  await expect(page.getByRole('switch', { name: 'Graph View' })).toHaveCount(0);
 });
 
 test('graph nodes expose a keyboard navigation surface', async ({ page }) => {

@@ -240,13 +240,6 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
       </SettingSection>
 
       <SettingSection title="Core Plugins" description="Enable or disable optional features.">
-        <SettingItem label="Graph View" description="Show the knowledge graph button in the toolbar.">
-          <Toggle
-            value={settings.corePlugins.graphView}
-            label="Graph View"
-            onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, graphView: v } }))}
-          />
-        </SettingItem>
         <SettingItem label="Daily Notes" description="Show the daily note button in the toolbar.">
           <Toggle
             value={settings.corePlugins.dailyNotes}
