@@ -144,6 +144,11 @@ describe('sidebar surface tokens', () => {
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
     expect(electronMain).toContain('nativeTheme.themeSource = themeSource;');
     expect(electronMain).toContain("setVibrancy(resolved.vibrancy, { animationDuration: 160 })");
+    // Native vibrancy later clears the window backing. The BrowserWindow must
+    // opt into alpha compositing at construction time; switching an opaque
+    // window to #00000000 at runtime leaves stale surfaces visible when a GPU
+    // canvas (the graph) joins the compositor tree.
+    expect(electronMain).toMatch(/new BrowserWindow\(\{[\s\S]*transparent:\s*isMac,/);
     expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
     expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
     expect(app).toContain("'--noa-sidebar-material-width': isSidebarOpen");

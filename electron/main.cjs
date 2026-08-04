@@ -171,6 +171,11 @@ function createWindow() {
     title: 'Noa',
     icon: iconPath,
     frame: false,
+    // The optional macOS sidebar material clears the native backing after the
+    // renderer loads. Opt into alpha compositing when the window is created;
+    // converting an opaque compositor surface at runtime can expose stale
+    // colours when GraphView mounts its GPU-backed canvas.
+    transparent: isMac,
     hasShadow: true,
     // Light-theme default; the renderer re-syncs this to the active theme via
     // 'window:set-sidebar-translucency'. macOS paints this color at the window
