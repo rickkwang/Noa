@@ -24,6 +24,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // 42/42/40 keeps the red-blue spread at 2, so the step reads as depth
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
+      root.style.setProperty('--sidebar-material-tint', '58%');
+      root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
@@ -50,6 +52,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // sidebar turning yellow rather than going deeper — at this size a hue
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
+      root.style.setProperty('--sidebar-material-tint', '48%');
+      root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm
@@ -68,14 +72,18 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     // Accent is a fixed theme token (coral in both themes), not user-configurable.
     root.style.setProperty('--accent-color', '#CC7D5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
+    root.dataset.translucentSidebar = settings.appearance.translucentSidebar ? 'enabled' : 'disabled';
 
-    // BrowserWindow is the backing plane for the whole renderer, so it follows
-    // the primary canvas during startup and live resize. The sidebar preview's
-    // full-height renderer layer also paints --bg-primary, while the expanded
-    // sidebar keeps its separate --bg-sidebar floor.
-    void window.noaDesktop?.appearance?.setWindowBackgroundColor(isDark ? '#2D2D2B' : '#F9F9F7')
+    // Main owns the exact alpha and vibrancy values; the renderer sends only
+    // the preference plus the opaque theme fallback used when translucency is
+    // disabled or the platform does not support native sidebar material.
+    void window.noaDesktop?.appearance?.setSidebarTranslucency(
+      settings.appearance.translucentSidebar,
+      isDark ? '#2D2D2B' : '#F9F9F7',
+      settings.appearance.theme,
+    )
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
-  }, [isDark, settings.appearance.usePointerCursors]);
+  }, [isDark, settings.appearance.theme, settings.appearance.translucentSidebar, settings.appearance.usePointerCursors]);
 
   const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
                           settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :

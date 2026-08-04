@@ -116,6 +116,16 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
           </div>
         </SettingItem>
+        <SettingItem label="Translucent sidebar" description="Give the expanded desktop sidebar a softly frosted surface.">
+          <ToggleSwitch
+            checked={settings.appearance.translucentSidebar}
+            label="Translucent sidebar"
+            onChange={(checked) => updateSettings(s => ({
+              ...s,
+              appearance: { ...s.appearance, translucentSidebar: checked },
+            }))}
+          />
+        </SettingItem>
       </SettingSection>
 
       <SettingSection title="Typography" description="Customize fonts and text sizing.">

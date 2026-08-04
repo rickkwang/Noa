@@ -16,6 +16,7 @@ interface TopBarProps {
   onSidebarPreviewLeave: () => void;
   onToggleRightPanel: () => void;
   isSidebarOpen: boolean;
+  isSidebarMaterialActive: boolean;
   isSidebarPreviewOpen: boolean;
   isRightPanelOpen: boolean;
   isMobile: boolean;
@@ -27,7 +28,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarPreviewOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#F9F9F7';
@@ -37,6 +38,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   return (
     <div
+      data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
       className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px ${!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'} ${isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'}`}
       style={{
         ...dragRegion,

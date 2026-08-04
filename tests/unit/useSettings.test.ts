@@ -22,6 +22,23 @@ describe('loadSettings', () => {
     expect(loaded.settings.editor).toEqual(defaultSettings.editor);
   });
 
+  it('defaults the translucent sidebar off for existing settings', () => {
+    const loaded = loadSettings({
+      getItem: () => JSON.stringify({ appearance: { theme: 'dark' } }),
+    });
+
+    expect(loaded.settings.appearance.translucentSidebar).toBe(false);
+  });
+
+  it('restores the translucent sidebar preference when it is valid', () => {
+    const loaded = loadSettings({
+      getItem: () => JSON.stringify({ appearance: { translucentSidebar: true } }),
+    });
+
+    expect(loaded.canPersist).toBe(true);
+    expect(loaded.settings.appearance.translucentSidebar).toBe(true);
+  });
+
   it('ignores the retired Graph View preference while loading legacy settings', () => {
     const loaded = loadSettings({
       getItem: () => JSON.stringify({ corePlugins: { graphView: false, dailyNotes: false } }),
@@ -58,6 +75,7 @@ describe('loadSettings', () => {
     { appearance: 'damaged' },
     { editor: [] },
     { appearance: { theme: 'midnight' } },
+    { appearance: { translucentSidebar: 'yes' } },
     { editor: { fontSize: -100 } },
   ])('preserves syntactically valid but unsafe settings: %j', (saved) => {
     const loaded = loadSettings({ getItem: () => JSON.stringify(saved) });

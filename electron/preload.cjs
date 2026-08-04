@@ -16,7 +16,9 @@ contextBridge.exposeInMainWorld('noaDesktop', {
     },
   },
   appearance: {
-    setWindowBackgroundColor: (color) => ipcRenderer.invoke('window:set-background-color', color),
+    setSidebarTranslucency: (enabled, fallbackColor, themeSource) => (
+      ipcRenderer.invoke('window:set-sidebar-translucency', enabled, fallbackColor, themeSource)
+    ),
   },
   lifecycle: {
     onBeforeQuit: (listener) => {

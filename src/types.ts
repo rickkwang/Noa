@@ -144,6 +144,7 @@ export interface AppSettings {
     fontFamily: string;
     maxWidth: number;
     usePointerCursors: boolean;
+    translucentSidebar: boolean;
   };
   dailyNotes: {
     template: string;

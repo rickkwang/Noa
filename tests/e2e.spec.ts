@@ -1007,6 +1007,109 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await expect(page.getByRole('combobox').nth(1)).toHaveValue('font-redaction');
 });
 
+test('translucent sidebar persists and keeps its material through the closing motion', async ({ page }) => {
+  await page.goto('/');
+
+  const root = page.locator('html');
+  const separator = page.locator('[data-sidebar-separator="true"]');
+  await expect(root).toHaveAttribute('data-translucent-sidebar', 'disabled');
+  await expect(separator).toHaveCSS('z-index', '30');
+  await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
+    .toContain('drop-shadow');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  const translucentSwitch = page.getByRole('switch', { name: 'Translucent sidebar' });
+  await expect(translucentSwitch).not.toBeChecked();
+  await translucentSwitch.click();
+  await expect(translucentSwitch).toBeChecked();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+
+  const shell = page.locator('.noa-app-shell');
+  const column = page.locator('[data-sidebar-column-surface="true"]');
+  await expect(root).toHaveAttribute('data-translucent-sidebar', 'enabled');
+  await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
+  await expect.poll(() => column.evaluate((element) => getComputedStyle(element).backdropFilter))
+    .toBe('none');
+  await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
+    .toContain('drop-shadow');
+
+  await page.reload();
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+  await expect(page.getByRole('switch', { name: 'Translucent sidebar' })).toBeChecked();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+
+  await page.getByTitle('Toggle Sidebar').click();
+  await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
+  await expect(shell).toHaveCSS('transition-property', '--noa-sidebar-material-width');
+  await expect.poll(() => shell.evaluate((element) => (
+    (element as HTMLElement).style.getPropertyValue('--noa-sidebar-material-width')
+  ))).toBe('0px');
+  await page.waitForTimeout(260);
+  await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
+
+  await page.mouse.move(700, 500);
+  await page.getByTitle('Toggle Sidebar').hover();
+  await expect(page.locator('[data-sidebar-preview-shell="true"]')).toBeVisible();
+  await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
+});
+
+test('closing the mobile sidebar does not leave desktop material state active', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => {
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+  });
+  await page.setViewportSize({ width: 1000, height: 760 });
+  await page.goto('/');
+
+  const toggle = page.getByTitle('Toggle Sidebar');
+  const sidebar = page.locator('[data-sidebar-container]');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await page.setViewportSize({ width: 700, height: 760 });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(false);
+  await page.waitForTimeout(50);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(260);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await page.waitForTimeout(260);
+
+  await sidebar.evaluate((element) => {
+    const expandedStates: Array<string | null> = [];
+    const observer = new MutationObserver(() => {
+      expandedStates.push(element.getAttribute('data-sidebar-expanded'));
+    });
+    observer.observe(element, { attributes: true, attributeFilter: ['data-sidebar-expanded'] });
+    (window as typeof window & { __sidebarExpandedStates?: Array<string | null> }).__sidebarExpandedStates = expandedStates;
+  });
+  await page.setViewportSize({ width: 1000, height: 760 });
+  await page.waitForTimeout(300);
+  const expandedStates = await page.evaluate(() => (
+    (window as typeof window & { __sidebarExpandedStates?: Array<string | null> }).__sidebarExpandedStates ?? []
+  ));
+  expect(expandedStates).not.toContain('true');
+  expect(await sidebar.getAttribute('data-sidebar-expanded')).toBeNull();
+});
+
+test('translucent sidebar material does not animate with reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({
+      appearance: { translucentSidebar: true },
+    }));
+  });
+  await page.goto('/');
+
+  const shell = page.locator('.noa-app-shell');
+  await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
+  await expect(shell).toHaveCSS('transition-property', 'none');
+  await page.getByTitle('Toggle Sidebar').click();
+  await expect(shell).toHaveCSS('transition-property', 'none');
+});
+
 test('a recovered settings read merges and persists a queued change', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('redaction-storage-notice-seen', '1');

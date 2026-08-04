@@ -1,9 +1,9 @@
-const { app, BrowserWindow, ipcMain, Menu, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
 const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
-const { resolveBackgroundColor } = require('./windowBackground.cjs');
+const { resolveSidebarWindowAppearance } = require('./windowBackground.cjs');
 const { installSingleInstanceGuard } = require('./singleInstance.cjs');
 
 const isDev = !app.isPackaged;
@@ -173,7 +173,7 @@ function createWindow() {
     frame: false,
     hasShadow: true,
     // Light-theme default; the renderer re-syncs this to the active theme via
-    // 'window:set-background-color'. macOS paints this color at the window
+    // 'window:set-sidebar-translucency'. macOS paints this color at the window
     // edges while renderer frames lag during live resize, so a mismatch with
     // the page background shows as bright ghosting along the frame.
     backgroundColor: '#F9F9F7',
@@ -288,10 +288,16 @@ if (isPrimaryInstance) app.whenReady().then(() => {
   createWindow();
 
   ipcMain.handle('app-info:get-version', () => app.getVersion());
-  ipcMain.handle('window:set-background-color', (_event, color) => {
-    const resolved = resolveBackgroundColor(color);
+  ipcMain.handle('window:set-sidebar-translucency', (_event, enabled, fallbackColor, themeSource) => {
+    const allowedThemeSources = new Set(['system', 'light', 'dark']);
+    if (!allowedThemeSources.has(themeSource)) return false;
+    const resolved = resolveSidebarWindowAppearance(enabled, fallbackColor, isMac);
     if (!resolved || !win || win.isDestroyed()) return false;
-    win.setBackgroundColor(resolved);
+    nativeTheme.themeSource = themeSource;
+    if (isMac) {
+      win.setVibrancy(resolved.vibrancy, { animationDuration: 160 });
+    }
+    win.setBackgroundColor(resolved.backgroundColor);
     return true;
   });
   ipcMain.handle('app-updater:get-status', () => updateState);

@@ -14,7 +14,7 @@ declare global {
         onStatusChange: (listener: (status: UpdateStatus) => void) => () => void;
       };
       appearance: {
-        setWindowBackgroundColor: (color: string) => Promise<boolean>;
+        setSidebarTranslucency: (enabled: boolean, fallbackColor: string, themeSource: 'system' | 'light' | 'dark') => Promise<boolean>;
       };
       lifecycle: {
         onBeforeQuit: (listener: () => void) => () => void;

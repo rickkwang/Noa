@@ -12,6 +12,7 @@ export const defaultSettings: AppSettings = {
     fontFamily: 'font-iosevka',
     maxWidth: 680,
     usePointerCursors: true,
+    translucentSidebar: false,
   },
   dailyNotes: {
     template: '',
@@ -135,6 +136,7 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
           fontFamily,
           maxWidth: setting(appearance, 'maxWidth', defaultSettings.appearance.maxWidth, isMaxWidth),
           usePointerCursors: setting(appearance, 'usePointerCursors', defaultSettings.appearance.usePointerCursors, isBoolean),
+          translucentSidebar: setting(appearance, 'translucentSidebar', defaultSettings.appearance.translucentSidebar, isBoolean),
         },
         dailyNotes: {
           template: setting(dailyNotes, 'template', defaultSettings.dailyNotes.template, isString),

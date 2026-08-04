@@ -9,4 +9,15 @@ function resolveBackgroundColor(color) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null;
 }
 
-module.exports = { resolveBackgroundColor };
+function resolveSidebarWindowAppearance(enabled, fallbackColor, supportsVibrancy) {
+  if (typeof enabled !== 'boolean' || typeof supportsVibrancy !== 'boolean') return null;
+  const resolvedFallback = resolveBackgroundColor(fallbackColor);
+  if (!resolvedFallback) return null;
+
+  if (enabled && supportsVibrancy) {
+    return { backgroundColor: '#00000000', vibrancy: 'sidebar' };
+  }
+  return { backgroundColor: resolvedFallback, vibrancy: null };
+}
+
+module.exports = { resolveBackgroundColor, resolveSidebarWindowAppearance };

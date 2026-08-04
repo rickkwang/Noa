@@ -12,6 +12,12 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+@property --noa-sidebar-material-width {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
 button {
   appearance: none;
   -webkit-appearance: none;
@@ -122,6 +128,44 @@ body {
    the sidebar got its own floor. */
 .noa-sidebar-section-surface {
   background-color: var(--bg-sidebar, #F4F4F2);
+}
+
+/* Codex-style separation: keep the existing one-pixel divider and give that
+   same animated edge a very small, blurred shadow toward the sidebar. This
+   avoids painting a visible gradient band over the sidebar surface. */
+[data-sidebar-separator="true"] {
+  filter: drop-shadow(-3px 0 4px var(--sidebar-divider-shadow));
+}
+
+/* Optional glass treatment for the docked desktop sidebar. Electron supplies
+   the native macOS sidebar material; this layer only adds the theme tint. */
+html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
+  background-color: color-mix(in srgb, var(--bg-sidebar, #F4F4F2) var(--sidebar-material-tint, 48%), transparent) !important;
+}
+
+html[data-translucent-sidebar="enabled"] body {
+  background-color: transparent;
+}
+
+html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expanded="true"]) {
+  background: linear-gradient(
+    to right,
+    transparent 0 var(--noa-sidebar-material-width),
+    var(--bg-primary, #F9F9F7) var(--noa-sidebar-material-width)
+  ) !important;
+}
+
+html[data-translucent-sidebar="enabled"] [data-translucent-sidebar-titlebar="true"] {
+  background: linear-gradient(
+    to right,
+    transparent 0 var(--noa-sidebar-material-width),
+    var(--bg-primary, #F9F9F7) var(--noa-sidebar-material-width)
+  ) !important;
+}
+
+html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-surface,
+html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-section-surface {
+  background-color: transparent;
 }
 
 /* Preview is painted once by the full-height shell. Its mounted sidebar and
@@ -576,6 +620,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html[data-translucent-sidebar="enabled"] .noa-app-shell {
+    transition: none !important;
+  }
+
   .noa-sidebar-preview-motion,
   .noa-sidebar-preview-motion[data-sidebar-preview-closing="true"] {
     transition: none;

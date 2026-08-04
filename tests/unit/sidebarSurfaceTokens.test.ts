@@ -10,6 +10,7 @@ const calendarPath = fileURLToPath(new URL('../../src/components/CalendarPanel.t
 const topBarPath = fileURLToPath(new URL('../../src/components/TopBar.tsx', import.meta.url));
 const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
 const electronMainPath = fileURLToPath(new URL('../../electron/main.cjs', import.meta.url));
+const appearanceSettingsPath = fileURLToPath(new URL('../../src/components/settings/sections/AppearanceSettings.tsx', import.meta.url));
 
 describe('sidebar surface tokens', () => {
   it('defines the sidebar floor for both themes', async () => {
@@ -36,7 +37,7 @@ describe('sidebar surface tokens', () => {
     // The preview itself uses --bg-primary, but BrowserWindow is the backing
     // plane for the whole app and must continue matching --bg-primary during
     // startup and live resize.
-    expect(injector).toContain("setWindowBackgroundColor(isDark ? '#2D2D2B' : '#F9F9F7')");
+    expect(injector).toContain("isDark ? '#2D2D2B' : '#F9F9F7'");
     expect(electronMain).toContain("backgroundColor: '#F9F9F7'");
   });
 
@@ -121,5 +122,61 @@ describe('sidebar surface tokens', () => {
     expect(darkActive).not.toBeNull();
     expect(darkHover).not.toBeNull();
     expect(Number(darkActive![1])).toBeGreaterThan(Number(darkHover![1]));
+  });
+
+  it('applies the optional translucent material only to the expanded desktop sidebar', async () => {
+    const [injector, css, app, appearanceSettings, electronMain] = await Promise.all([
+      readFile(themeInjectorPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+      readFile(appPath, 'utf8'),
+      readFile(appearanceSettingsPath, 'utf8'),
+      readFile(electronMainPath, 'utf8'),
+    ]);
+
+    expect(injector).toContain("root.dataset.translucentSidebar = settings.appearance.translucentSidebar ? 'enabled' : 'disabled';");
+    expect(injector).toMatch(
+      /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#F9F9F7',\s*settings\.appearance\.theme/,
+    );
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '58%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '48%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');");
+    expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
+    expect(electronMain).toContain('nativeTheme.themeSource = themeSource;');
+    expect(electronMain).toContain("setVibrancy(resolved.vibrancy, { animationDuration: 160 })");
+    expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
+    expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
+    expect(app).toContain("'--noa-sidebar-material-width': isSidebarOpen");
+    expect(css).toMatch(
+      /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
+    );
+    expect(css).toMatch(
+      /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 48%\), transparent\)/,
+    );
+    expect(css).toMatch(
+      /\[data-sidebar-separator="true"\]\s*\{[^}]*filter:\s*drop-shadow\(-3px 0 4px var\(--sidebar-divider-shadow\)\)/,
+    );
+    expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
+    // Electron supplies the native macOS sidebar material. A CSS backdrop blur
+    // on this boundary samples the white editor plane outside the sidebar and
+    // paints it back inside as a wide, bright edge halo.
+    expect(css).not.toMatch(
+      /\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*backdrop-filter:/,
+    );
+    expect(css).toMatch(
+      /html\[data-translucent-sidebar="enabled"\]\s+\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+    );
+    expect(css).toMatch(
+      /html\[data-translucent-sidebar="enabled"\]\s+\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+    );
+    expect(css).toMatch(
+      /html\[data-translucent-sidebar="enabled"\]\s+body\s*\{[^}]*background-color:\s*transparent/,
+    );
+    expect(css).not.toMatch(
+      /html\[data-translucent-sidebar="enabled"\][^{]*\[data-sidebar-preview-shell="true"\][^{]*\{/,
+    );
+    expect(appearanceSettings).toContain('label="Translucent sidebar"');
+    expect(appearanceSettings).toContain('checked={settings.appearance.translucentSidebar}');
+    expect(appearanceSettings).toContain('translucentSidebar: checked');
   });
 });

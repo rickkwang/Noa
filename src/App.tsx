@@ -342,6 +342,13 @@ export default function App() {
     || sidebarPreviewPhase === 'promoting-close';
   const isReversingSidebarPromotion = sidebarPreviewPhase === 'promoting-close';
   const isSettlingSidebarPromotionClose = sidebarPreviewPhase === 'settling-close';
+  const [isSidebarDockClosing, setIsSidebarDockClosing] = useState(false);
+  const isSidebarMaterialActive = !isMobile && (
+    isSidebarOpen
+    || isSidebarDockClosing
+    || isPromotingSidebarPreview
+    || isSettlingSidebarPromotionClose
+  );
   const sidebarToggleRef = useRef<HTMLButtonElement>(null);
   const sidebarPreviewCloseTimerRef = useRef<number | null>(null);
   const isDraggingSidebarRef = useRef(isDraggingSidebar);
@@ -398,8 +405,14 @@ export default function App() {
       return;
     }
     setSidebarPreviewPhase('idle');
-    setIsSidebarOpen(!isSidebarOpen);
-  }, [cancelSidebarPreviewClose, isSidebarOpen, isSidebarPreviewOpen, setIsSidebarOpen, sidebarPreviewPhase]);
+    const nextOpen = !isSidebarOpen;
+    setIsSidebarDockClosing(!isMobile && !nextOpen && !reduceMotion);
+    setIsSidebarOpen(nextOpen);
+  }, [cancelSidebarPreviewClose, isMobile, isSidebarOpen, isSidebarPreviewOpen, setIsSidebarOpen, sidebarPreviewPhase]);
+  const finishSidebarDockMotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'margin-left') return;
+    setIsSidebarDockClosing(false);
+  }, []);
   const finishSidebarPromotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget || event.propertyName !== 'width') return;
     setSidebarPreviewPhase((phase) => (
@@ -415,6 +428,7 @@ export default function App() {
     if (isMobile || isFocusMode) {
       cancelSidebarPreviewClose();
       setSidebarPreviewPhase('idle');
+      setIsSidebarDockClosing(false);
       return;
     }
     if (isSidebarOpen && (sidebarPreviewPhase === 'open' || sidebarPreviewPhase === 'closing')) {
@@ -427,6 +441,7 @@ export default function App() {
     if (!reducedMotion) return;
     const settleInterruptedTransition = () => {
       if (!reducedMotion.matches) return;
+      setIsSidebarDockClosing(false);
       setSidebarPreviewPhase((phase) => (
         phase === 'closing' || phase.startsWith('promoting-') ? 'idle' : phase
       ));
@@ -700,6 +715,12 @@ export default function App() {
       className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
       style={{
         '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
+        '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
+          ? 'var(--noa-sidebar-width, 325px)'
+          : '0px',
+        transition: isDraggingSidebar
+          ? 'none'
+          : '--noa-sidebar-material-width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
       } as React.CSSProperties}
     >
       <ThemeInjector settings={settings} />
@@ -707,7 +728,7 @@ export default function App() {
         <div
           aria-hidden="true"
           data-sidebar-separator="true"
-          className={`pointer-events-none absolute top-0 bottom-0 z-20 ${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}`}
+          className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}`}
           style={{
             // Keep the separator in the same animated track as the sidebar,
             // then finish one pixel outside the viewport instead of leaving a
@@ -743,6 +764,7 @@ export default function App() {
         <div
           aria-hidden="true"
           data-sidebar-column-surface="true"
+          data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}
           data-sidebar-preview-shell={isSidebarPreviewOpen ? 'true' : undefined}
           data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}
           onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
@@ -774,6 +796,7 @@ export default function App() {
         onSidebarPreviewLeave={scheduleSidebarPreviewClose}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isSidebarOpen={isSidebarOpen}
+        isSidebarMaterialActive={isSidebarMaterialActive}
         isSidebarPreviewOpen={isSidebarPreviewOpen}
         isRightPanelOpen={isRightPanelOpen}
         isMobile={isMobile}
@@ -808,11 +831,14 @@ export default function App() {
         {/* Sidebar — always rendered for slide animation */}
         <div
           data-sidebar-container
+          data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}
           inert={isFocusMode || (!isSidebarOpen && !isSidebarPreviewOpen) ? true : undefined}
           data-sidebar-preview={isSidebarPreviewOpen ? 'true' : undefined}
           data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}
           onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
           onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
+          onTransitionEnd={finishSidebarDockMotion}
+          onTransitionCancel={finishSidebarDockMotion}
           className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
             width: isMobile ? '80%' : 'var(--noa-sidebar-width, 325px)',
