@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 const electronMainPath = fileURLToPath(new URL('../../electron/main.cjs', import.meta.url));
 
 describe('macOS traffic-light position', () => {
-  it('leaves the position to macOS defaults', async () => {
+  it('aligns with the sidebar’s original menu rail', async () => {
     const electronMain = await readFile(electronMainPath, 'utf8');
 
-    expect(electronMain).not.toContain('trafficLightPosition:');
+    expect(electronMain).toContain('trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,');
     expect(electronMain).not.toContain('setWindowButtonPosition');
   });
 });

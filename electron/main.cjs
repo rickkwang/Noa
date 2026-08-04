@@ -183,6 +183,7 @@ function createWindow() {
     // the page background shows as bright ghosting along the frame.
     backgroundColor: '#F9F9F7',
     titleBarStyle: 'hidden',
+    trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
