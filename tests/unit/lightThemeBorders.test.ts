@@ -156,6 +156,12 @@ describe('light theme border tokens', () => {
     expect(topBar).not.toContain('fixed inset-0 z-[75]');
   });
 
+  it('balances the desktop title-bar icon group against the native traffic lights', async () => {
+    const topBar = await readFile(topBarPath, 'utf8');
+
+    expect(topBar).toContain("isMobile ? 'pl-2 pr-1' : 'pl-[82.5px] pr-4'");
+  });
+
   it('animates the separator with direct toggles but keeps it fixed during preview promotion', async () => {
     const [topBar, app, indexCss] = await Promise.all([
       readFile(topBarPath, 'utf8'),
