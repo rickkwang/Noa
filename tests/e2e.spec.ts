@@ -219,6 +219,428 @@ test('narrow desktop keeps the sidebar default stable on first pointer and keybo
   await expect.poll(readSidebarWidth).toBe(325);
 });
 
+test('hovering the collapsed sidebar toggle previews the sidebar in its expanded position without changing layout state', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const sidebar = page.locator('.noa-sidebar-surface').first();
+  const editor = page.locator('.cm-editor').first();
+
+  const expandedSidebarBox = await sidebar.boundingBox();
+  expect(expandedSidebarBox).not.toBeNull();
+  const expandedSurface = page.locator('[data-sidebar-column-surface="true"]');
+  await expect(expandedSurface).toBeVisible();
+  expect(await expandedSurface.boundingBox()).toEqual({
+    x: 0,
+    y: 0,
+    width: expandedSidebarBox!.width,
+    height: 720,
+  });
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(244, 244, 242)');
+  await expect.poll(() => expandedSurface.evaluate((surface) => (
+    getComputedStyle(surface).backgroundColor
+      === getComputedStyle(document.querySelector<HTMLElement>('.noa-sidebar-surface')!).backgroundColor
+  ))).toBe(true);
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const collapsedEditorBox = await editor.boundingBox();
+  expect(collapsedEditorBox).not.toBeNull();
+
+  // Closing by click leaves the pointer over the toggle; preview begins only
+  // after a genuine leave-and-reenter hover gesture.
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  const previewShell = page.locator('[data-sidebar-preview-shell="true"]');
+  await expect(previewShell).toBeVisible();
+  await expect.poll(() => previewShell.evaluate((layer) => {
+    const appShell = document.querySelector<HTMLElement>('.noa-app-shell');
+    return appShell ? getComputedStyle(layer).backgroundColor === getComputedStyle(appShell).backgroundColor : false;
+  })).toBe(true);
+  await expect.poll(() => sidebar.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe('rgba(0, 0, 0, 0)');
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+
+  const [previewShellBox, previewSidebarBox, previewEditorBox] = await Promise.all([
+    previewShell.boundingBox(),
+    sidebar.boundingBox(),
+    editor.boundingBox(),
+  ]);
+  expect(previewShellBox).not.toBeNull();
+  expect(previewSidebarBox).not.toBeNull();
+  expect(previewEditorBox).not.toBeNull();
+  expect(previewShellBox).toEqual({
+    x: 0,
+    y: 0,
+    width: expandedSidebarBox!.width,
+    height: 720,
+  });
+  expect(await previewShell.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.borderTopRightRadius, style.borderBottomRightRadius].every((radius) => parseFloat(radius) > 0);
+  })).toBe(true);
+  expect(await previewShell.evaluate((element) => getComputedStyle(element).boxShadow))
+    .toBe('rgba(45, 45, 43, 0.07) 6px 0px 14px 0px');
+  expect(previewSidebarBox).toEqual(expandedSidebarBox);
+  expect(previewEditorBox).toEqual(collapsedEditorBox);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('app-sidebar-open'))).toBe('false');
+
+  await sidebar.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+
+  await page.mouse.move(700, 400);
+  await page.waitForTimeout(160);
+  await expect(previewShell).toHaveAttribute('data-sidebar-preview-closing', 'true');
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+  await expect(previewShell).toHaveCount(0);
+});
+
+test('dark mode sidebar preview uses the main canvas plane without creating a titlebar seam', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ appearance: { theme: 'dark' } }));
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+  });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const sidebar = page.locator('.noa-sidebar-surface').first();
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(42, 42, 40)');
+  expect(await page.locator('[data-sidebar-column-surface="true"]').evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgb(42, 42, 40)');
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+
+  const previewShell = page.locator('[data-sidebar-preview-shell="true"]');
+  await expect(previewShell).toBeVisible();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const palette = await previewShell.evaluate((shell) => {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const sidebar = document.querySelector<HTMLElement>('.noa-sidebar-surface');
+    const appShell = document.querySelector<HTMLElement>('.noa-app-shell');
+    return {
+      sidebarToken: rootStyle.getPropertyValue('--bg-sidebar').trim(),
+      primaryToken: rootStyle.getPropertyValue('--bg-primary').trim(),
+      previewColor: getComputedStyle(shell).backgroundColor,
+      sidebarColor: sidebar ? getComputedStyle(sidebar).backgroundColor : null,
+      primaryColor: appShell ? getComputedStyle(appShell).backgroundColor : null,
+      previewShadow: getComputedStyle(shell).boxShadow,
+      previewBounds: shell.getBoundingClientRect().toJSON(),
+    };
+  });
+
+  expect(palette).toMatchObject({
+    sidebarToken: '#2A2A28',
+    primaryToken: '#2D2D2B',
+    previewColor: 'rgb(45, 45, 43)',
+    sidebarColor: 'rgba(0, 0, 0, 0)',
+    primaryColor: 'rgb(45, 45, 43)',
+    previewShadow: 'rgba(18, 18, 16, 0.14) 6px 0px 14px 0px',
+    previewBounds: { x: 0, y: 0, height: 720 },
+  });
+});
+
+test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing the editor right', async ({ page }) => {
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const sidebar = page.locator('.noa-sidebar-surface').first();
+  const editor = page.locator('.cm-editor').first();
+  const expandedSidebarBox = await sidebar.boundingBox();
+  const expandedEditorBox = await editor.boundingBox();
+  expect(expandedSidebarBox).not.toBeNull();
+  expect(expandedEditorBox).not.toBeNull();
+
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const collapsedEditorBox = await editor.boundingBox();
+  expect(collapsedEditorBox).not.toBeNull();
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+
+  await toggle.click();
+  const promotionMidpoint = await page.locator('[data-sidebar-promotion-spacer="true"]').evaluate(async (spacer) => {
+    const animation = spacer.getAnimations()[0];
+    if (!animation) throw new Error('Sidebar promotion animation did not start.');
+    await animation.ready;
+    animation.pause();
+    const duration = Number(animation.effect?.getTiming().duration);
+    animation.currentTime = duration / 2;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const sidebar = document.querySelector<HTMLElement>('.noa-sidebar-surface')!;
+    const editor = document.querySelector<HTMLElement>('.cm-editor')!;
+    const separator = document.querySelector<HTMLElement>('[data-sidebar-separator="true"]')!;
+    const sample = {
+      sidebarX: sidebar.getBoundingClientRect().x,
+      separatorX: separator.getBoundingClientRect().x,
+      editorX: editor.getBoundingClientRect().x,
+    };
+    animation.play();
+    return sample;
+  });
+
+  expect(Math.abs(promotionMidpoint.sidebarX - expandedSidebarBox!.x)).toBeLessThan(0.5);
+  expect(promotionMidpoint.editorX).toBeGreaterThan(collapsedEditorBox!.x);
+  expect(promotionMidpoint.editorX).toBeLessThan(expandedEditorBox!.x);
+  expect(Math.abs(promotionMidpoint.separatorX - (expandedSidebarBox!.x + expandedSidebarBox!.width))).toBeLessThan(0.5);
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  expect(await editor.boundingBox()).toEqual(expandedEditorBox);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('app-sidebar-open'))).toBe('true');
+});
+
+test('entering focus mode cancels an in-flight sidebar preview promotion', async ({ page }) => {
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const editor = page.locator('.cm-editor').first();
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const collapsedEditorBox = await editor.boundingBox();
+  expect(collapsedEditorBox).not.toBeNull();
+
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  await toggle.click();
+  await page.keyboard.press('Meta+Shift+f');
+
+  await expect(page.getByRole('button', { name: 'Esc' })).toBeVisible();
+  expect(await page.locator('[data-sidebar-promotion-spacer="true"]').count()).toBe(0);
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  expect((await editor.boundingBox())!.x).toBe(collapsedEditorBox!.x);
+});
+
+test('direct sidebar toggle keeps the separator attached to the moving sidebar edge', async ({ page }) => {
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const sidebar = page.locator('[data-sidebar-container]');
+  const separator = page.locator('[data-sidebar-separator="true"]');
+  const expandedSidebarBox = await sidebar.boundingBox();
+  expect(expandedSidebarBox).not.toBeNull();
+
+  const sampleEdgeMidpoint = async () => sidebar.evaluate(async (element) => {
+    const separator = document.querySelector<HTMLElement>('[data-sidebar-separator="true"]')!;
+    const surface = document.querySelector<HTMLElement>('[data-sidebar-column-surface="true"]')!;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const animations = [element, separator, surface].flatMap((target) => target.getAnimations());
+    if (animations.length === 0) throw new Error('Direct sidebar transition did not start.');
+    await Promise.all(animations.map((animation) => animation.ready));
+    animations.forEach((animation) => {
+      animation.pause();
+      animation.currentTime = Number(animation.effect?.getTiming().duration) / 2;
+    });
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const box = element.getBoundingClientRect();
+    const sample = {
+      edge: box.right,
+      surfaceEdge: surface.getBoundingClientRect().right,
+      separator: separator.getBoundingClientRect().x,
+      opacity: Number(getComputedStyle(separator).opacity),
+    };
+    animations.forEach((animation) => animation.play());
+    return sample;
+  });
+
+  await toggle.click();
+  const closing = await sampleEdgeMidpoint();
+  expect(closing.edge).toBeGreaterThan(expandedSidebarBox!.x);
+  expect(closing.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
+  expect(Math.abs(closing.edge - closing.separator)).toBeLessThan(1.5);
+  expect(Math.abs(closing.edge - closing.surfaceEdge)).toBeLessThan(1.5);
+  expect(closing.opacity).toBe(1);
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await expect(separator).toHaveCSS('opacity', '0');
+
+  await toggle.evaluate((element) => (element as HTMLButtonElement).click());
+  const opening = await sampleEdgeMidpoint();
+  expect(opening.edge).toBeGreaterThan(expandedSidebarBox!.x);
+  expect(opening.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
+  expect(Math.abs(opening.edge - opening.separator)).toBeLessThan(1.5);
+  expect(Math.abs(opening.edge - opening.surfaceEdge)).toBeLessThan(1.5);
+  expect(opening.opacity).toBe(1);
+});
+
+test('Escape closes the sidebar preview and returns focus to its toggle', async ({ page }) => {
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+
+  await page.getByRole('button', { name: 'New note' }).focus();
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+  await expect(toggle).toBeFocused();
+  await expect(page.locator('[data-sidebar-container]')).toHaveAttribute('inert', '');
+});
+
+test('expanded sidebar surface follows the resize edge without a trailing transition', async ({ page }) => {
+  await page.goto('/');
+
+  const sidebar = page.locator('[data-sidebar-container]');
+  const surface = page.locator('[data-sidebar-column-surface="true"]');
+  const separator = page.getByRole('separator', { name: 'Resize sidebar' });
+  const separatorBox = await separator.boundingBox();
+  expect(separatorBox).not.toBeNull();
+
+  await page.mouse.move(separatorBox!.x + separatorBox!.width / 2, separatorBox!.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(420, separatorBox!.y + 40);
+
+  const edges = await page.evaluate(() => {
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]')!;
+    const surface = document.querySelector<HTMLElement>('[data-sidebar-column-surface="true"]')!;
+    const divider = document.querySelector<HTMLElement>('[data-sidebar-separator="true"]')!;
+    return {
+      sidebar: sidebar.getBoundingClientRect().right,
+      surface: surface.getBoundingClientRect().right,
+      divider: divider.getBoundingClientRect().x,
+    };
+  });
+
+  expect(Math.abs(edges.sidebar - edges.surface)).toBeLessThan(1.5);
+  expect(Math.abs(edges.sidebar - edges.divider)).toBeLessThan(1.5);
+  await page.mouse.up();
+});
+
+test('a second toggle during preview promotion reverses without moving the editor discontinuously', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const editor = page.locator('.cm-editor').first();
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const collapsedEditorX = (await editor.boundingBox())!.x;
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await toggle.click();
+
+  const editorBeforeReverse = await page.locator('[data-sidebar-promotion-spacer="true"]').evaluate(async (spacer) => {
+    const animation = spacer.getAnimations()[0];
+    if (!animation) throw new Error('Sidebar promotion animation did not start.');
+    await animation.ready;
+    animation.pause();
+    animation.currentTime = Number(animation.effect?.getTiming().duration) / 2;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return document.querySelector<HTMLElement>('.cm-editor')!.getBoundingClientRect().x;
+  });
+
+  await toggle.click();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  const editorAfterReverse = (await editor.boundingBox())!.x;
+  expect(Math.abs(editorAfterReverse - editorBeforeReverse)).toBeLessThan(12);
+  const reverseSurface = await page.locator('[data-sidebar-column-surface="true"]').boundingBox();
+  expect(reverseSurface).not.toBeNull();
+  expect(reverseSurface!.width).toBeGreaterThan(300);
+  await expect(page.locator('[data-sidebar-promotion-spacer="true"]')).toHaveCount(0);
+  const handoff = await page.evaluate(() => {
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]')!;
+    const editor = document.querySelector<HTMLElement>('.cm-editor')!;
+    return {
+      editorX: editor.getBoundingClientRect().x,
+      sidebarAnimations: sidebar.getAnimations().map((animation) => (
+        animation instanceof CSSTransition ? animation.transitionProperty : null
+      )),
+    };
+  });
+  expect(Math.abs(handoff.editorX - collapsedEditorX)).toBeLessThan(12);
+  expect(handoff.sidebarAnimations).not.toContain('margin-left');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('resizing a preview keeps it open until the pointer is released', async ({ page }) => {
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+
+  const resize = page.getByRole('separator', { name: 'Resize sidebar' });
+  const resizeBox = await resize.boundingBox();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + 60);
+  await page.mouse.down();
+  await page.mouse.move(420, resizeBox!.y + 60);
+
+  await page.waitForTimeout(360);
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  await expect(page.locator('[data-sidebar-preview-closing="true"]')).toHaveCount(0);
+  await page.mouse.up();
+});
+
+test('reversing a preview exit continues from its current visual progress', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.mouse.move(700, 400);
+  await page.waitForTimeout(150);
+  const shell = page.locator('[data-sidebar-preview-shell="true"]');
+  expect(await shell.getAttribute('data-sidebar-preview-closing')).toBe('true');
+
+  const opacityBeforeReverse = await shell.evaluate(async (element) => {
+    const animation = element.getAnimations()[0];
+    if (!animation) throw new Error('Sidebar exit animation did not start.');
+    await animation.ready;
+    animation.pause();
+    animation.currentTime = Number(animation.effect?.getTiming().duration) / 2;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return Number(getComputedStyle(element).opacity);
+  });
+
+  await toggle.hover();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  const opacityAfterReverse = Number(await shell.evaluate((element) => getComputedStyle(element).opacity));
+  expect(Math.abs(opacityAfterReverse - opacityBeforeReverse)).toBeLessThan(0.15);
+  await expect(shell).not.toHaveAttribute('data-sidebar-preview-closing', 'true');
+});
+
+test('enabling reduced motion settles active sidebar preview transitions', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await page.mouse.move(700, 400);
+  await page.waitForTimeout(150);
+  expect(await page.locator('[data-sidebar-preview-shell="true"]').getAttribute('data-sidebar-preview-closing')).toBe('true');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await toggle.hover();
+  await toggle.click();
+  await expect(page.locator('[data-sidebar-promotion-spacer="true"]')).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('[data-sidebar-promotion-spacer="true"]')).toHaveCount(0);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('expanded mobile search keeps its clear button above the title-bar actions', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto('/');

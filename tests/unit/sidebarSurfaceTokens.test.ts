@@ -8,13 +8,20 @@ const sidebarPath = fileURLToPath(new URL('../../src/components/Sidebar.tsx', im
 const fileNodePath = fileURLToPath(new URL('../../src/components/sidebar/FileNode.tsx', import.meta.url));
 const calendarPath = fileURLToPath(new URL('../../src/components/CalendarPanel.tsx', import.meta.url));
 const topBarPath = fileURLToPath(new URL('../../src/components/TopBar.tsx', import.meta.url));
+const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
+const electronMainPath = fileURLToPath(new URL('../../electron/main.cjs', import.meta.url));
 
 describe('sidebar surface tokens', () => {
   it('defines the sidebar floor for both themes', async () => {
-    const injector = await readFile(themeInjectorPath, 'utf8');
+    const [injector, electronMain] = await Promise.all([
+      readFile(themeInjectorPath, 'utf8'),
+      readFile(electronMainPath, 'utf8'),
+    ]);
 
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#2A2A28');");
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#F4F4F2');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');");
     // Both floors must keep the editor plane's own red-blue spread of 2. A
     // wider spread reads as the sidebar changing colour instead of depth,
     // which is what the first attempt at this got wrong.
@@ -26,13 +33,19 @@ describe('sidebar surface tokens', () => {
     // solid colour, so it has to move down with the floor. Dark mode highlights
     // with translucent white and re-adapts on its own.
     expect(injector).toContain("root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');");
+    // The preview itself uses --bg-primary, but BrowserWindow is the backing
+    // plane for the whole app and must continue matching --bg-primary during
+    // startup and live resize.
+    expect(injector).toContain("setWindowBackgroundColor(isDark ? '#2D2D2B' : '#F9F9F7')");
+    expect(electronMain).toContain("backgroundColor: '#F9F9F7'");
   });
 
   it('routes the sidebar surface through the token, never a literal', async () => {
-    const [css, sidebar, topBar] = await Promise.all([
+    const [css, sidebar, topBar, app] = await Promise.all([
       readFile(indexCssPath, 'utf8'),
       readFile(sidebarPath, 'utf8'),
       readFile(topBarPath, 'utf8'),
+      readFile(appPath, 'utf8'),
     ]);
 
     // Scoped to the rule block, not the file. A bare toContain passes on any
@@ -42,13 +55,39 @@ describe('sidebar surface tokens', () => {
     expect(css).toMatch(
       /\.noa-sidebar-surface\s*\{[^}]*background-color:\s*var\(--bg-sidebar,\s*#F4F4F2\)/,
     );
+    expect(css).toMatch(
+      /\[data-sidebar-preview="true"\]\s+\.noa-sidebar-surface,\s*\[data-sidebar-preview="true"\]\s+\.noa-sidebar-section-surface\s*\{[^}]*background-color:\s*transparent/,
+    );
 
-    // The sidebar root and the titlebar band that continues it must both carry
-    // the class/token rather than restating a hex, or the two halves of the
-    // same column can drift apart on a future palette change.
+    // Preview is one full-height floating surface rooted in the app shell and
+    // deliberately matches the main canvas. The expanded sidebar keeps its
+    // own floor, while painting a separate titlebar band would recreate the
+    // visible seam.
     expect(sidebar).toMatch(/className="noa-sidebar-surface\b/);
-    expect(topBar).toContain("backgroundColor: 'var(--bg-sidebar, #F4F4F2)'");
+    expect(app).toContain('data-sidebar-column-surface="true"');
+    expect(app).toContain('data-sidebar-preview-shell={isSidebarPreviewOpen');
+    const previewSurface = app.slice(
+      app.indexOf('data-sidebar-column-surface="true"'),
+      app.indexOf('!isFocusMode && <TopBar'),
+    );
+    expect(previewSurface).toContain("backgroundColor: isSidebarPreviewOpen");
+    expect(previewSurface).toContain("? 'var(--bg-primary, #F9F9F7)'");
+    expect(previewSurface).toContain(": 'var(--bg-sidebar, #F4F4F2)'");
+    expect(topBar).not.toContain('sidebar-titlebar-surface');
+    expect(topBar).not.toContain('backgroundImage: `linear-gradient');
     expect(topBar).not.toMatch(/backgroundColor:\s*['"]#F4F4F2['"]/);
+    expect(css).toMatch(
+      /\.noa-sidebar-preview-shell\s*\{[^}]*box-shadow:\s*var\(--sidebar-preview-shadow,\s*6px 0 14px rgb\(45 45 43 \/ 7%\)\)/,
+    );
+    expect(css).toContain('opacity 180ms cubic-bezier(0.22, 1, 0.36, 1)');
+    expect(css).toContain('@starting-style');
+    expect(css).toContain('translateX(-4px)');
+    expect(app).toContain("data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}");
+    expect(app).toContain('onTransitionEnd={finishSidebarPreviewExit}');
+    expect(app).toContain('onTransitionEnd={finishSidebarPromotion}');
+    expect(app).not.toContain('SIDEBAR_PREVIEW_EXIT_MS');
+    expect(app).not.toContain('SIDEBAR_PROMOTION_MS');
+    expect(app).not.toContain('sidebarPreviewExitTimerRef');
   });
 
   it('routes sidebar interaction states through semantic classes', async () => {

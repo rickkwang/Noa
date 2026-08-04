@@ -24,6 +24,17 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Removed
 - Recurring backup reminder banner.
 
+## [1.0.22] - 2026-08-04
+
+### Added
+- Hover the collapsed desktop sidebar control to preview the sidebar in its expanded position without moving the editor.
+
+### Changed
+- Kept Tasks directly before Properties in the right panel and made Graph consistently available.
+
+### Fixed
+- Kept sidebar surfaces, boundaries, and motion continuous through preview promotion, resize, interrupted transitions, and reduced-motion changes.
+
 ## [1.0.21] - 2026-08-03
 
 ### Added

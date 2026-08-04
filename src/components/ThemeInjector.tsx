@@ -24,6 +24,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // 42/42/40 keeps the red-blue spread at 2, so the step reads as depth
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
+      root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
       // today — the dark rules there outrank the shared one that consumes it.
@@ -49,6 +50,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // sidebar turning yellow rather than going deeper — at this size a hue
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
+      root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm
       // paper tone, which is the brand at row scale, and placed so the solid
@@ -67,9 +69,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     root.style.setProperty('--accent-color', '#CC7D5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
 
-    // Keep the native window background on the same token as --bg-primary —
-    // macOS paints it at the window edges during live resize, and a mismatch
-    // shows as light ghost bands along the frame in dark mode.
+    // BrowserWindow is the backing plane for the whole renderer, so it follows
+    // the primary canvas during startup and live resize. The sidebar preview's
+    // full-height renderer layer also paints --bg-primary, while the expanded
+    // sidebar keeps its separate --bg-sidebar floor.
     void window.noaDesktop?.appearance?.setWindowBackgroundColor(isDark ? '#2D2D2B' : '#F9F9F7')
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
   }, [isDark, settings.appearance.usePointerCursors]);

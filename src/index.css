@@ -124,6 +124,15 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
+/* Preview is painted once by the full-height shell. Its mounted sidebar and
+   nested sections stay transparent so the titlebar and content cannot form
+   separate colour bands. The rule is preview-scoped; expanded sidebars keep
+   their normal --bg-sidebar floor. */
+[data-sidebar-preview="true"] .noa-sidebar-surface,
+[data-sidebar-preview="true"] .noa-sidebar-section-surface {
+  background-color: transparent;
+}
+
 /* Semantic sidebar interaction states. Components opt into these explicitly;
    their meaning no longer depends on a particular Tailwind palette utility or
    on the order of the global dark-mode overrides below. Hover rules stay
@@ -522,5 +531,57 @@ body {
   }
   @page {
     margin: 18mm 15mm;
+  }
+}
+
+.noa-sidebar-preview-motion {
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+.noa-sidebar-preview-motion[data-sidebar-preview-closing="true"] {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  pointer-events: none;
+}
+
+.noa-sidebar-preview-shell {
+  box-shadow: var(--sidebar-preview-shadow, 6px 0 14px rgb(45 45 43 / 7%));
+}
+
+.noa-sidebar-promotion-spacer {
+  width: var(--noa-sidebar-width, 325px);
+  transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  @starting-style {
+    width: 0;
+  }
+}
+
+.noa-sidebar-promotion-spacer[data-sidebar-promotion-closing="true"] {
+  width: 0;
+}
+
+.noa-sidebar-promotion-divider {
+  left: var(--noa-sidebar-width, 325px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noa-sidebar-preview-motion,
+  .noa-sidebar-preview-motion[data-sidebar-preview-closing="true"] {
+    transition: none;
+  }
+
+  .noa-sidebar-promotion-spacer {
+    transition: none;
   }
 }

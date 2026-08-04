@@ -77,11 +77,12 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain("isDark ? 'bg-[#2D2D2B] after:bg-[#F9F9F7]/15' : 'bg-[#F9F9F7] after:bg-[#E6E2DA]'");
   });
 
-  it('starts the lifted tab-strip baseline after the open desktop sidebar', async () => {
+  it('starts the lifted tab-strip baseline after the visible desktop sidebar', async () => {
     const topBar = await readFile(topBarPath, 'utf8');
 
     expect(topBar).not.toContain('after:inset-x-0');
-    expect(topBar).toContain("!isMobile && isSidebarOpen ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
+    expect(topBar).toContain('const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen');
+    expect(topBar).toContain("!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
     expect(topBar).toContain('after:absolute after:right-0 after:bottom-0 after:h-px');
     expect(topBar).toContain("isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'");
   });
@@ -155,17 +156,26 @@ describe('light theme border tokens', () => {
     expect(topBar).not.toContain('fixed inset-0 z-[75]');
   });
 
-  it('keeps the sidebar separator off-canvas after collapse without a duplicate title-bar baseline', async () => {
-    const [topBar, app] = await Promise.all([
+  it('animates the separator with direct toggles but keeps it fixed during preview promotion', async () => {
+    const [topBar, app, indexCss] = await Promise.all([
       readFile(topBarPath, 'utf8'),
       readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8'),
+      readFile(indexCssPath, 'utf8'),
     ]);
 
     expect(topBar).not.toContain('className="h-8 border-b grid');
     expect(topBar).not.toContain('className="pointer-events-none absolute bottom-0 right-0 h-px transition-[left]"');
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
-    expect(app).toContain('className="pointer-events-none absolute top-0 bottom-0 z-20"');
-    expect(app).toContain("left: isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
+    expect(app).toContain('data-sidebar-separator="true"');
+    expect(app).toContain("${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}");
+    expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
+    expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
+    expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview \|\| isDraggingSidebar/);
+    expect(app).toContain('`left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'220ms\'}`');
+    expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 325px);\n}');
+    expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
+    expect(app).not.toContain('opacity 80ms ease-out 140ms');
+    expect(app).not.toContain("left: 'var(--noa-sidebar-width, 325px)'");
     expect(app).toContain("right: isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '-1px'");
     expect(app).not.toContain('borderRightWidth: isFocusMode ? 0 : 1');
     expect(app).not.toContain('borderLeftWidth: isFocusMode ? 0 : 1');
@@ -179,7 +189,7 @@ describe('light theme border tokens', () => {
       readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8'),
     ]);
 
-    expect(topBar).toContain('relative z-30 flex min-w-0 items-center gap-0.5');
+    expect(topBar).toContain('relative z-50 flex min-w-0 items-center gap-0.5');
     expect(editorHeader).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editorHeader).toContain('reserveTitlebarTraffic = false,');
     expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
@@ -195,8 +205,8 @@ describe('light theme border tokens', () => {
   it('slides fixed-width side panels instead of cropping them with width animation', async () => {
     const app = await readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8');
 
-    expect(app).toContain("marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 325px))' : '0px'");
-    expect(app).toContain("transition: isDraggingSidebar ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
+    expect(app).toMatch(/marginLeft: !isMobile && !isPromotingSidebarPreview && \(isFocusMode \|\| !isSidebarOpen\)[\s\S]*?'calc\(-1 \* var\(--noa-sidebar-width, 325px\)\)'[\s\S]*?: '0px'/);
+    expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'margin-left 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px'");
     expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
     expect(app).not.toContain("transition: isDraggingSidebar ? 'none' : 'width 220ms");

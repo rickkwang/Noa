@@ -28,6 +28,8 @@ const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
+type SidebarPreviewPhase = 'idle' | 'open' | 'closing' | 'promoting-open' | 'promoting-close' | 'settling-close';
+
 export default function App() {
   useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -333,6 +335,131 @@ export default function App() {
     exitFocusMode,
   } = useLayout();
 
+  const [sidebarPreviewPhase, setSidebarPreviewPhase] = useState<SidebarPreviewPhase>('idle');
+  const isSidebarPreviewOpen = sidebarPreviewPhase === 'open' || sidebarPreviewPhase === 'closing';
+  const isSidebarPreviewClosing = sidebarPreviewPhase === 'closing';
+  const isPromotingSidebarPreview = sidebarPreviewPhase === 'promoting-open'
+    || sidebarPreviewPhase === 'promoting-close';
+  const isReversingSidebarPromotion = sidebarPreviewPhase === 'promoting-close';
+  const isSettlingSidebarPromotionClose = sidebarPreviewPhase === 'settling-close';
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
+  const sidebarPreviewCloseTimerRef = useRef<number | null>(null);
+  const isDraggingSidebarRef = useRef(isDraggingSidebar);
+  const wasDraggingSidebarRef = useRef(isDraggingSidebar);
+  const cancelSidebarPreviewClose = useCallback(() => {
+    if (sidebarPreviewCloseTimerRef.current !== null) {
+      window.clearTimeout(sidebarPreviewCloseTimerRef.current);
+      sidebarPreviewCloseTimerRef.current = null;
+    }
+    setSidebarPreviewPhase((phase) => phase === 'closing' ? 'open' : phase);
+  }, []);
+  const openSidebarPreview = useCallback(() => {
+    cancelSidebarPreviewClose();
+    if (!isMobile && !isSidebarOpen && !isFocusMode) {
+      setSidebarPreviewPhase('open');
+    }
+  }, [cancelSidebarPreviewClose, isFocusMode, isMobile, isSidebarOpen]);
+  const closeSidebarPreview = useCallback(() => {
+    if (sidebarPreviewPhase !== 'open') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setSidebarPreviewPhase('idle');
+      return;
+    }
+    setSidebarPreviewPhase('closing');
+  }, [sidebarPreviewPhase]);
+  const finishSidebarPreviewExit = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'opacity') return;
+    setSidebarPreviewPhase((phase) => phase === 'closing' ? 'idle' : phase);
+  }, []);
+  const scheduleSidebarPreviewClose = useCallback(() => {
+    if (isDraggingSidebarRef.current) return;
+    cancelSidebarPreviewClose();
+    sidebarPreviewCloseTimerRef.current = window.setTimeout(() => {
+      sidebarPreviewCloseTimerRef.current = null;
+      closeSidebarPreview();
+    }, 140);
+  }, [cancelSidebarPreviewClose, closeSidebarPreview]);
+  const toggleSidebar = useCallback(() => {
+    cancelSidebarPreviewClose();
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!isSidebarOpen && isSidebarPreviewOpen && !reduceMotion) {
+      setSidebarPreviewPhase('promoting-open');
+      setIsSidebarOpen(true);
+      return;
+    }
+    if (sidebarPreviewPhase === 'promoting-open' && isSidebarOpen && !reduceMotion) {
+      setSidebarPreviewPhase('promoting-close');
+      setIsSidebarOpen(false);
+      return;
+    }
+    if (sidebarPreviewPhase === 'promoting-close' && !isSidebarOpen && !reduceMotion) {
+      setSidebarPreviewPhase('promoting-open');
+      setIsSidebarOpen(true);
+      return;
+    }
+    setSidebarPreviewPhase('idle');
+    setIsSidebarOpen(!isSidebarOpen);
+  }, [cancelSidebarPreviewClose, isSidebarOpen, isSidebarPreviewOpen, setIsSidebarOpen, sidebarPreviewPhase]);
+  const finishSidebarPromotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'width') return;
+    setSidebarPreviewPhase((phase) => (
+      phase === 'promoting-close' ? 'settling-close' : phase === 'promoting-open' ? 'idle' : phase
+    ));
+  }, []);
+  useEffect(() => {
+    if (!isSettlingSidebarPromotionClose) return;
+    const frame = window.requestAnimationFrame(() => setSidebarPreviewPhase('idle'));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isSettlingSidebarPromotionClose]);
+  useEffect(() => {
+    if (isMobile || isFocusMode) {
+      cancelSidebarPreviewClose();
+      setSidebarPreviewPhase('idle');
+      return;
+    }
+    if (isSidebarOpen && (sidebarPreviewPhase === 'open' || sidebarPreviewPhase === 'closing')) {
+      cancelSidebarPreviewClose();
+      setSidebarPreviewPhase('idle');
+    }
+  }, [cancelSidebarPreviewClose, isFocusMode, isMobile, isSidebarOpen, sidebarPreviewPhase]);
+  useEffect(() => {
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    if (!reducedMotion) return;
+    const settleInterruptedTransition = () => {
+      if (!reducedMotion.matches) return;
+      setSidebarPreviewPhase((phase) => (
+        phase === 'closing' || phase.startsWith('promoting-') ? 'idle' : phase
+      ));
+    };
+    reducedMotion.addEventListener('change', settleInterruptedTransition);
+    return () => reducedMotion.removeEventListener('change', settleInterruptedTransition);
+  }, []);
+  useEffect(() => {
+    isDraggingSidebarRef.current = isDraggingSidebar;
+    if (isDraggingSidebar) cancelSidebarPreviewClose();
+    if (wasDraggingSidebarRef.current && !isDraggingSidebar && isSidebarPreviewOpen) {
+      const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]');
+      if (!sidebar?.matches(':hover') && !sidebarToggleRef.current?.matches(':hover')) {
+        scheduleSidebarPreviewClose();
+      }
+    }
+    wasDraggingSidebarRef.current = isDraggingSidebar;
+  }, [cancelSidebarPreviewClose, isDraggingSidebar, isSidebarPreviewOpen, scheduleSidebarPreviewClose]);
+  useEffect(() => () => {
+    if (sidebarPreviewCloseTimerRef.current !== null) window.clearTimeout(sidebarPreviewCloseTimerRef.current);
+  }, []);
+  useEffect(() => {
+    if (!isSidebarPreviewOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      cancelSidebarPreviewClose();
+      closeSidebarPreview();
+      sidebarToggleRef.current?.focus();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [cancelSidebarPreviewClose, closeSidebarPreview, isSidebarPreviewOpen]);
+
   const pendingSearchFocusRef = useRef(false);
   const focusSearch = useCallback(() => {
     if (isFocusMode) {
@@ -579,15 +706,24 @@ export default function App() {
       {!isMobile && !isFocusMode && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 bottom-0 z-20"
+          data-sidebar-separator="true"
+          className={`pointer-events-none absolute top-0 bottom-0 z-20 ${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}`}
           style={{
             // Keep the separator in the same animated track as the sidebar,
             // then finish one pixel outside the viewport instead of leaving a
             // dark endpoint at the app's left edge.
-            left: isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px',
+            left: isPromotingSidebarPreview
+              ? undefined
+              : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px',
             width: '1px',
             backgroundColor: 'var(--panel-divider, #2D2D2B)',
-            transition: isDraggingSidebar ? 'none' : 'left 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: isSidebarOpen ? 1 : 0,
+            // A direct toggle follows the sliding sidebar edge. During preview
+            // promotion the divider is already at its final edge and remains
+            // fixed while the editor layout catches up.
+            transition: isPromotingSidebarPreview || isDraggingSidebar
+              ? 'none'
+              : `left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '220ms'}`,
           }}
         />
       )}
@@ -603,14 +739,43 @@ export default function App() {
           }}
         />
       )}
+      {!isMobile && !isFocusMode && (
+        <div
+          aria-hidden="true"
+          data-sidebar-column-surface="true"
+          data-sidebar-preview-shell={isSidebarPreviewOpen ? 'true' : undefined}
+          data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}
+          onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
+          onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
+          onTransitionEnd={finishSidebarPreviewExit}
+          className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-[14px]' : 'pointer-events-none z-10'}`}
+          style={{
+            width: isSidebarOpen || isSidebarPreviewOpen || isPromotingSidebarPreview
+              ? 'var(--noa-sidebar-width, 325px)'
+              : '0px',
+            backgroundColor: isSidebarPreviewOpen
+              ? 'var(--bg-primary, #F9F9F7)'
+              : 'var(--bg-sidebar, #F4F4F2)',
+            opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
+            transition: isSidebarPreviewOpen
+              ? undefined
+              : isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isDraggingSidebar
+                ? 'none'
+                : `width 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '220ms'}`,
+          }}
+        />
+      )}
       {!isFocusMode && <TopBar
         settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onToggleSidebar={toggleSidebar}
+        sidebarToggleRef={sidebarToggleRef}
+        onSidebarPreviewEnter={openSidebarPreview}
+        onSidebarPreviewLeave={scheduleSidebarPreviewClose}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isSidebarOpen={isSidebarOpen}
+        isSidebarPreviewOpen={isSidebarPreviewOpen}
         isRightPanelOpen={isRightPanelOpen}
-        isDraggingSidebar={isDraggingSidebar}
         isMobile={isMobile}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -630,17 +795,42 @@ export default function App() {
           />
         )}
 
+        {!isMobile && isPromotingSidebarPreview && (
+          <div
+            aria-hidden="true"
+            data-sidebar-promotion-spacer="true"
+            data-sidebar-promotion-closing={isReversingSidebarPromotion ? 'true' : undefined}
+            className="noa-sidebar-promotion-spacer h-full shrink-0"
+            onTransitionEnd={finishSidebarPromotion}
+          />
+        )}
+
         {/* Sidebar — always rendered for slide animation */}
         <div
-          className={`flex shrink-0 relative overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : ''}`}
+          data-sidebar-container
+          inert={isFocusMode || (!isSidebarOpen && !isSidebarPreviewOpen) ? true : undefined}
+          data-sidebar-preview={isSidebarPreviewOpen ? 'true' : undefined}
+          data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}
+          onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
+          onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
+          className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
             width: isMobile ? '80%' : 'var(--noa-sidebar-width, 325px)',
             maxWidth: isMobile ? '320px' : undefined,
-            marginLeft: !isMobile && (isFocusMode || !isSidebarOpen) ? 'calc(-1 * var(--noa-sidebar-width, 325px))' : '0px',
+            marginLeft: !isMobile && !isPromotingSidebarPreview && (isFocusMode || !isSidebarOpen)
+              ? 'calc(-1 * var(--noa-sidebar-width, 325px))'
+              : '0px',
+            left: !isMobile
+              ? (isSidebarPreviewOpen ? 'var(--noa-sidebar-width, 325px)' : isPromotingSidebarPreview ? '0px' : undefined)
+              : undefined,
             transform: isMobile
               ? (isFocusMode || !isSidebarOpen ? 'translateX(-100%)' : 'translateX(0)')
               : undefined,
-            transition: isDraggingSidebar ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
+            transition: isSidebarPreviewOpen
+              ? undefined
+              : isDraggingSidebar || isPromotingSidebarPreview || isSettlingSidebarPromotionClose
+                ? 'none'
+                : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
             minWidth: 0,
           }}
         >
@@ -677,7 +867,11 @@ export default function App() {
             {!isMobile && (
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
-                onMouseDown={() => setIsDraggingSidebar(true)}
+                onMouseDown={() => {
+                  isDraggingSidebarRef.current = true;
+                  cancelSidebarPreviewClose();
+                  setIsDraggingSidebar(true);
+                }}
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize sidebar"
