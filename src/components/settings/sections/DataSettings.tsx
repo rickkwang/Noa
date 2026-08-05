@@ -15,6 +15,7 @@ import WorkspaceSection from './data/WorkspaceSection';
 
 interface DataSettingsProps {
   workspaceName: string;
+  onRenameWorkspace: (name: string) => void;
   notes: Note[];
   folders: Folder[];
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
@@ -31,6 +32,7 @@ interface DataSettingsProps {
 
 export default function DataSettings({
   workspaceName,
+  onRenameWorkspace,
   notes,
   folders,
   onImportData,
@@ -45,15 +47,27 @@ export default function DataSettings({
 }: DataSettingsProps) {
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState<DataTransferMessage | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
-  const [importStrategy, setImportStrategy] = useState<'overwrite' | 'merge' | 'skip'>('overwrite');
+
+  // Confirm and message render at the top of this (scrollable) tab while their
+  // triggers live further down — without this they appear out of view and the
+  // import looks like it did nothing.
+  React.useEffect(() => {
+    if (confirmState) confirmRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [confirmState]);
+  React.useEffect(() => {
+    if (message) messageRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [message]);
+  const [importStrategy, setImportStrategy] = useState<'overwrite' | 'merge' | 'skip'>('skip');
   const storageEstimate = useStorageEstimate();
   const [lastExportAt, setLastExportAt] = useState<string | null>(() => getLastExportAt());
   const backupHealth = getBackupHealth(lastExportAt);
 
   const requestConfirm = (request: ConfirmRequest) => {
-    setImportStrategy('overwrite');
+    setImportStrategy('skip');
     setConfirmState({
       message: request.message,
       inputLabel: request.inputLabel,
@@ -116,7 +130,7 @@ export default function DataSettings({
         <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
       </div>
       {confirmState && (
-        <div className="border border-[#CC7D5E] bg-[#CC7D5E]/10 p-3 flex flex-col gap-2 font-redaction">
+        <div ref={confirmRef} className="border border-[#CC7D5E] bg-[#CC7D5E]/10 p-3 flex flex-col gap-2 font-redaction">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-[#2D2D2B] flex-1">{confirmState.message}</p>
             <div className="flex gap-2 shrink-0">
@@ -172,9 +186,7 @@ export default function DataSettings({
                       />
                       <span className="text-xs text-[#2D2D2B]">
                         <span className="font-bold">{labels[s]}</span>
-                        {importStrategy === s && (
-                          <span className="text-[#2D2D2B]/60 ml-1">— {descriptions[s]}</span>
-                        )}
+                        <span className="text-[#2D2D2B]/60 ml-1">— {descriptions[s]}</span>
                       </span>
                     </label>
                   );
@@ -201,6 +213,7 @@ export default function DataSettings({
 
       {message && (
         <div
+          ref={messageRef}
           className={`border p-3 flex items-center justify-between font-redaction text-sm ${
             message.type === 'success'
               ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2B]'
@@ -226,6 +239,7 @@ export default function DataSettings({
 
       <WorkspaceSection
         workspaceName={workspaceName}
+        onRenameWorkspace={onRenameWorkspace}
         folderInputRef={folderInputRef}
         onImportFolderInput={handleImportFolderInput}
         onImportVaultFolder={() => {

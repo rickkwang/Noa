@@ -1,10 +1,11 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useEffect, useState } from 'react';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
 import { FolderOpen, HardDrive, Loader2, PlusSquare, Unlink } from '@/src/lib/icons';
 
 interface WorkspaceSectionProps {
   workspaceName: string;
+  onRenameWorkspace: (name: string) => void;
   folderInputRef: RefObject<HTMLInputElement | null>;
   onImportFolderInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportVaultFolder: () => void;
@@ -22,6 +23,7 @@ interface WorkspaceSectionProps {
 
 export default function WorkspaceSection({
   workspaceName,
+  onRenameWorkspace,
   folderInputRef,
   onImportFolderInput,
   onImportVaultFolder,
@@ -36,12 +38,38 @@ export default function WorkspaceSection({
   onDisconnectFolder,
   onRetryFsSync,
 }: WorkspaceSectionProps) {
+  const [draftName, setDraftName] = useState(workspaceName);
+  useEffect(() => setDraftName(workspaceName), [workspaceName]);
+
+  const commitName = () => {
+    const name = draftName.trim();
+    if (name && name !== workspaceName) {
+      onRenameWorkspace(name);
+    } else {
+      setDraftName(workspaceName);
+    }
+  };
+
   return (
     <SettingSection title="Workspace" description="Manage your current working directory.">
       <SettingItem label="Workspace Name" description="The label used for this local workspace and exports.">
-        <div className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)]">
-          {workspaceName}
-        </div>
+        <input
+          type="text"
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              commitName();
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') {
+              setDraftName(workspaceName);
+            }
+          }}
+          maxLength={60}
+          aria-label="Workspace name"
+          className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm w-56 font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)] outline-none focus:border-[#CC7D5E]"
+        />
       </SettingItem>
 
       <div className="flex space-x-4 mt-4">

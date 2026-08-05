@@ -1166,6 +1166,7 @@ test('settings keeps primary controls inside the dialog at narrower widths', asy
   await page.getByTitle('Settings').click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
 
   const dialogBox = await dialog.boundingBox();
   const themeSelectBox = await page.getByRole('combobox').first().boundingBox();

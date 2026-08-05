@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppSettings } from '../../../types';
 import SettingItem from '../SettingItem';
 import SettingSection from '../SettingSection';
+import SettingsToggle from '../SettingsToggle';
 import { ChevronDown } from '@/src/lib/icons';
 
 interface AppearanceSettingsProps {
@@ -39,44 +40,17 @@ function loadSystemFonts(): Promise<string[]> {
   return systemFontsPromise;
 }
 
-function ToggleSwitch({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-7 w-14 border border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${
-        checked ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'
-      }`}
-    >
-      <span
-        className={`absolute left-1 top-1 h-4 w-4 border border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${
-          checked ? 'translate-x-7' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  );
-}
-
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   const [systemFonts, setSystemFonts] = useState<string[]>(cachedSystemFonts ?? []);
   const [loadingFonts, setLoadingFonts] = useState(false);
   const [fontError, setFontError] = useState<string | null>(null);
   const didLoad = useRef(false);
 
-  // Enumerate local fonts once per session (requires Local Font Access API);
-  // subsequent mounts read from the module-level cache instead of re-querying.
-  useEffect(() => {
+  // Enumerate local fonts only when the user opens the font dropdown: on the
+  // web, queryLocalFonts() fires a browser permission prompt, and triggering it
+  // just by opening this tab would be intrusive. Results are cached module-wide
+  // so the enumeration runs at most once per session.
+  const ensureFontsLoaded = () => {
     if (didLoad.current || cachedSystemFonts) return;
     didLoad.current = true;
 
@@ -91,7 +65,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         }
       })
       .finally(() => setLoadingFonts(false));
-  }, []);
+  };
 
   const currentIsBuiltin = isBuiltin(settings.appearance.fontFamily);
   const currentSystemFont = !currentIsBuiltin ? settings.appearance.fontFamily : '';
@@ -106,6 +80,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
           <div className="relative inline-block">
             <select
               value={settings.appearance.theme}
+              aria-label="Base theme"
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
               className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] pl-3 pr-9 py-1.5 text-sm font-bold outline-none focus:border-[#CC7D5E]"
             >
@@ -117,7 +92,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
           </div>
         </SettingItem>
         <SettingItem label="Translucent sidebar" description="Give the expanded desktop sidebar a softly frosted surface.">
-          <ToggleSwitch
+          <SettingsToggle
             checked={settings.appearance.translucentSidebar}
             label="Translucent sidebar"
             onChange={(checked) => updateSettings(s => ({
@@ -134,6 +109,9 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             <div className="relative inline-block self-start">
               <select
                 value={selectValue}
+                aria-label="Font family"
+                onFocus={ensureFontsLoaded}
+                onPointerDown={ensureFontsLoaded}
                 onChange={(e) => {
                   updateSettings(s => ({ ...s, appearance: { ...s.appearance, fontFamily: e.target.value } }));
                 }}
@@ -188,6 +166,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               min="10"
               max="24"
               value={settings.editor.fontSize}
+              aria-label="Font size"
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: parseInt(e.target.value, 10) } }))}
               className="w-32 accent-[#CC7D5E]"
             />
@@ -202,6 +181,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               max="2.5"
               step="0.1"
               value={settings.editor.lineHeight}
+              aria-label="Line height"
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, lineHeight: parseFloat(e.target.value) } }))}
               className="w-32 accent-[#CC7D5E]"
             />
@@ -219,13 +199,14 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               max="1200"
               step="50"
               value={settings.appearance.maxWidth}
+              aria-label="Maximum editor width"
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, maxWidth: parseInt(e.target.value, 10) } }))}
               className="w-32 accent-[#CC7D5E]"
             />
           </div>
         </SettingItem>
         <SettingItem label="Use pointer cursors" description="Change the cursor to a pointer when hovering over interactive elements.">
-          <ToggleSwitch
+          <SettingsToggle
             checked={settings.appearance.usePointerCursors}
             label="Use pointer cursors"
             onChange={(checked) => updateSettings(s => ({

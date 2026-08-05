@@ -20,7 +20,7 @@ export default function AppUpdateSettings() {
     status.state === 'downloading' ? 'Downloading...' :
     'Download Update';
 
-  const InstallIcon = Download;
+  const displayVersion = isDesktop ? version : (import.meta.env.PACKAGE_VERSION || 'web');
 
   const installDisabled = !isDesktop || busy ||
     (!status.downloadUrl && status.state !== 'available' && status.state !== 'ready' && status.state !== 'downloaded');
@@ -33,9 +33,9 @@ export default function AppUpdateSettings() {
         </div>
       )}
 
-      <SettingItem label="Current Version" description="Version reported by the desktop runtime.">
+      <SettingItem label="Current Version" description={isDesktop ? 'Version reported by the desktop runtime.' : 'Version of the web app currently loaded.'}>
         <div className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm font-redaction">
-          {version}
+          {displayVersion}
         </div>
       </SettingItem>
 
@@ -62,7 +62,7 @@ export default function AppUpdateSettings() {
             disabled={installDisabled}
             className="flex items-center justify-center gap-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
           >
-            <InstallIcon size={14} />
+            <Download size={14} />
             <span>{installLabel}</span>
           </button>
         </div>

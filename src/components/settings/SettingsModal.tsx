@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import fable5VerifiedBadge from '../../assets/fable5-verified.png';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { UseAutoBackupResult } from '../../hooks/useAutoBackup';
@@ -22,6 +22,7 @@ interface SettingsModalProps {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
+  onRenameWorkspace: (name: string) => void;
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   onConnectFs: () => Promise<void>;
@@ -42,6 +43,7 @@ export default function SettingsModal({
   notes,
   folders,
   workspaceName,
+  onRenameWorkspace,
   onImportData,
   fsHandle,
   onConnectFs,
@@ -55,11 +57,42 @@ export default function SettingsModal({
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const saved = lsGet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB);
     const validTabs = SETTINGS_TABS.map((tab) => tab.id);
-    return saved && validTabs.includes(saved as SettingsTab) ? (saved as SettingsTab) : 'appearance';
+    return saved && validTabs.includes(saved as SettingsTab) ? (saved as SettingsTab) : 'editor';
   });
   const [mounted, setMounted] = useState(false);
   const [diagnosticsState, setDiagnosticsState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setMounted(true); }, []);
+
+  // Move focus into the dialog on open and return it to the trigger on close.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => previouslyFocused?.focus();
+  }, []);
+
+  // Keep Tab cycling inside the dialog while it is open.
+  const handleFocusTrap = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const root = dialogRef.current;
+    if (!root) return;
+    const focusable = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === root)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     lsSet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB, activeTab);
@@ -68,6 +101,18 @@ export default function SettingsModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      // Escape inside a text field or select belongs to the control, not the
+      // dialog: editable fields (template form, workspace name) cancel their
+      // own draft and a select closes its dropdown — closing the dialog here
+      // would drop unsaved edits. Radio/checkbox/range inputs hold no draft,
+      // so Escape there still closes.
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (tag === 'INPUT') {
+        const type = (el as HTMLInputElement).type;
+        if (!['radio', 'checkbox', 'range', 'button', 'submit', 'file', 'color'].includes(type)) return;
+      }
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -78,7 +123,7 @@ export default function SettingsModal({
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [onClose]);
 
-  const feedbackMailto = useMemo(() => {
+  const feedbackUrl = useMemo(() => {
     const appVersion = import.meta.env.PACKAGE_VERSION || 'unknown';
     const lines = [
       'Reporter:',
@@ -105,9 +150,9 @@ export default function SettingsModal({
       '- Screenshot/video:',
       '- Console error (if any):',
     ];
-    const subject = `Noa Feedback (${appVersion})`;
+    const title = `Noa Feedback (${appVersion})`;
     const body = lines.join('\n');
-    return `mailto:feedback@noa.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return `https://github.com/rickkwang/Noa/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
   }, []);
 
   const handleExportDiagnostics = async () => {
@@ -137,12 +182,15 @@ export default function SettingsModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[#2D2D2B] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px]"
+        tabIndex={-1}
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[#2D2D2B] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleFocusTrap}
       >
         {/* Title Bar */}
         <div className="h-10 border-b border-[#2D2D2B] flex items-center justify-between px-4 bg-[#EFEAE3] shrink-0">
@@ -186,6 +234,7 @@ export default function SettingsModal({
             {activeTab === 'data' && (
               <DataSettings
                 workspaceName={workspaceName}
+                onRenameWorkspace={onRenameWorkspace}
                 notes={notes}
                 folders={folders}
                 onImportData={onImportData}
@@ -219,9 +268,11 @@ export default function SettingsModal({
                     draggable={false}
                   />
                 </div>
-                <SettingSection bare title="Feedback" description="Send feedback with a prefilled template. Nothing is collected automatically.">
+                <SettingSection bare title="Feedback" description="Open a GitHub issue with a prefilled template. Nothing is collected automatically.">
                   <a
-                    href={feedbackMailto}
+                    href={feedbackUrl}
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm"
                   >
                     <span>Send Feedback</span>
@@ -253,6 +304,7 @@ export default function SettingsModal({
                       {[
                         ['Cmd/Ctrl + N', 'New note'],
                         ['Cmd/Ctrl + F', 'Focus search'],
+                        ['Cmd/Ctrl + Shift + F', 'Toggle focus mode'],
                         ['Cmd/Ctrl + K', 'Open command palette'],
                         ['Cmd/Ctrl + Shift + K', "Open today's daily note"],
                         ['Cmd/Ctrl + S', 'Force save pending edits'],

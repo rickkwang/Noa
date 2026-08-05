@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { formatDate } from '../../../lib/templates';
 import { AppSettings, UserTemplate } from '../../../types';
 import SettingItem from '../SettingItem';
 import SettingSection from '../SettingSection';
+import SettingsToggle from '../SettingsToggle';
 
 interface EditorSettingsProps {
   settings: AppSettings;
@@ -9,27 +11,6 @@ interface EditorSettingsProps {
   editorViewMode: 'edit' | 'preview' | 'split';
   setEditorViewMode: (mode: 'edit' | 'preview' | 'split') => void;
 }
-
-const Toggle = ({
-  value,
-  onChange,
-  label,
-}: {
-  value: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={value}
-    aria-label={label}
-    onClick={() => onChange(!value)}
-    className={`relative h-7 w-14 border border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${value ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'}`}
-  >
-    <span className={`absolute left-1 top-1 h-4 w-4 border border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${value ? 'translate-x-7' : 'translate-x-0'}`} />
-  </button>
-);
 
 export default function EditorSettings({ settings, updateSettings, editorViewMode, setEditorViewMode }: EditorSettingsProps) {
   const userTemplates = settings.templates?.userTemplates ?? [];
@@ -39,6 +20,13 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
   const [editName, setEditName] = useState('');
   const [editContent, setEditContent] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
+
+  // The edit form renders at the bottom of the list regardless of which item
+  // was clicked — bring it into view so "Edit" doesn't look like a no-op.
+  useEffect(() => {
+    if (editingId !== null) editFormRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [editingId]);
 
   const openNew = () => {
     setEditingId('new');
@@ -94,12 +82,13 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
   return (
     <div className="space-y-8">
       <SettingSection title="General" description="Configure your writing experience.">
-        <SettingItem label="Default View Mode" description="Choose how the editor opens by default.">
-          <div className="flex space-x-2">
+        <SettingItem label="View Mode" description="Switch the current editor view. Restored when Noa opens.">
+          <div className="flex space-x-2" role="group" aria-label="Editor view mode">
             {(['edit', 'split', 'preview'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setEditorViewMode(mode)}
+                aria-pressed={editorViewMode === mode}
                 className={`px-3 py-1.5 font-bold border border-[#2D2D2B] text-sm capitalize transition-colors ${
                   editorViewMode === mode
                     ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
@@ -114,14 +103,27 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
       </SettingSection>
 
       <SettingSection title="Daily Notes" description="Configure automatic daily note creation.">
-        <SettingItem label="Date Format" description="Format for the daily note title. Uses YYYY MM DD HH mm tokens.">
-          <input
-            type="text"
-            value={settings.dailyNotes.dateFormat}
-            onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
-            placeholder="YYYY-MM-DD"
-            className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
+        <SettingItem label="Enable Daily Notes" description="Show the daily note button in the toolbar.">
+          <SettingsToggle
+            checked={settings.corePlugins.dailyNotes}
+            label="Enable Daily Notes"
+            onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, dailyNotes: v } }))}
           />
+        </SettingItem>
+        <SettingItem label="Date Format" description="Format for the daily note title. Uses YYYY MM DD HH mm tokens.">
+          <div className="space-y-1">
+            <input
+              type="text"
+              value={settings.dailyNotes.dateFormat}
+              onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
+              placeholder="YYYY-MM-DD"
+              aria-label="Daily note date format"
+              className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
+            />
+            {settings.dailyNotes.dateFormat.trim() && (
+              <p className="text-xs text-[#2D2D2B]/60">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
+            )}
+          </div>
         </SettingItem>
         <SettingItem label="Template" description="Content pre-filled in each new daily note. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
           <textarea
@@ -129,6 +131,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, template: e.target.value } }))}
             placeholder={"# {{date}}\n\n## Notes\n\n"}
             rows={5}
+            aria-label="Daily note template"
             className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E] resize-none"
           />
         </SettingItem>
@@ -171,7 +174,11 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
           ))}
 
           {editingId !== null && (
-            <div className="border border-[#2D2D2B] p-3 space-y-3 mt-2">
+            <div
+              ref={editFormRef}
+              className="border border-[#2D2D2B] p-3 space-y-3 mt-2"
+              onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
+            >
               <div>
                 <div className="text-xs font-bold mb-1">Name</div>
                 <input
@@ -180,6 +187,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditName(e.target.value)}
                   maxLength={60}
                   placeholder="Template name"
+                  aria-label="Template name"
                   className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-1.5 text-sm w-full outline-none focus:border-[#CC7D5E]"
                   autoFocus
                 />
@@ -191,13 +199,15 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   onChange={e => setEditContent(e.target.value)}
                   rows={7}
                   placeholder={"# {{title}}\n\n{{date}}\n\n"}
+                  aria-label="Template content"
                   className="bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
                 />
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={saveTemplate}
-                  className="border border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] px-3 py-1 text-xs font-bold active:opacity-70"
+                  disabled={!editName.trim()}
+                  className="border border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] px-3 py-1 text-xs font-bold active:opacity-70 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Save
                 </button>
@@ -224,27 +234,17 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
 
       <SettingSection title="Search" description="Control how notes are searched.">
         <SettingItem label="Fuzzy Search" description="Match approximate spellings and partial words. Disable for exact-only matching.">
-          <Toggle
-            value={settings.search.fuzzySearch}
+          <SettingsToggle
+            checked={settings.search.fuzzySearch}
             label="Fuzzy Search"
             onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, fuzzySearch: v } }))}
           />
         </SettingItem>
         <SettingItem label="Case Sensitive" description="Match uppercase and lowercase characters exactly.">
-          <Toggle
-            value={settings.search.caseSensitive}
+          <SettingsToggle
+            checked={settings.search.caseSensitive}
             label="Case Sensitive"
             onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, caseSensitive: v } }))}
-          />
-        </SettingItem>
-      </SettingSection>
-
-      <SettingSection title="Core Plugins" description="Enable or disable optional features.">
-        <SettingItem label="Daily Notes" description="Show the daily note button in the toolbar.">
-          <Toggle
-            value={settings.corePlugins.dailyNotes}
-            label="Daily Notes"
-            onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, dailyNotes: v } }))}
           />
         </SettingItem>
       </SettingSection>

@@ -426,7 +426,7 @@ export function useDataTransfer({
   const [connectingFs, setConnectingFs] = useState(false);
   const [importingData, setImportingData] = useState(false);
   const [importStatusText, setImportStatusText] = useState<string | null>(null);
-  const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('overwrite');
+  const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('skip');
   const exportWorkspace = useMemo(() => selectNoaOwnedWorkspace(notes, folders), [folders, notes]);
 
   // Wrap onImportData to track loading state
@@ -676,7 +676,7 @@ export function useDataTransfer({
           }
 
           const conflictSummary = analyzeConflicts(normalizedWithPayloads, notes);
-          importStrategyRef.current = 'overwrite';
+          importStrategyRef.current = 'skip';
 
           requestConfirm({
             message: `This may replace existing data (${notes.length} note(s), ${folders.length} folder(s)). Continue?`,

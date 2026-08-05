@@ -294,7 +294,7 @@ const baseStorageMock = () => ({
   verifyAccess: vi.fn(async () => undefined),
   migrateFromLocalStorage: vi.fn(async () => false),
   migrateToPerNoteStorage: vi.fn(async () => undefined),
-  getWorkspaceName: vi.fn(async () => null),
+  getWorkspaceName: vi.fn(async () => null as string | null),
   getFolders: vi.fn(async () => null),
   getNotes: vi.fn(async () => null as unknown),
   saveFolders: vi.fn(async () => undefined),
@@ -352,6 +352,70 @@ describe('useNotes bootstrap recovery write gate', () => {
     expect(storageMock.saveWorkspaceName).not.toHaveBeenCalled();
     expect(storageMock.saveFolders).not.toHaveBeenCalled();
     expect(storageMock.saveNote).not.toHaveBeenCalled();
+  });
+});
+
+describe('useNotes workspace name persistence', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  it('restores a previously saved workspace name on bootstrap', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    storageMock.getWorkspaceName = vi.fn(async () => 'Imported Workspace');
+    const harness = createEffectHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+
+    for (let i = 0; i < 20 && !api.isLoaded; i += 1) {
+      await Promise.resolve();
+      harness.resetRender();
+      api = useNotes();
+    }
+
+    expect(api.isDataReady).toBe(true);
+    expect(api.workspaceName).toBe('Imported Workspace');
+  });
+
+  it('persists a user-renamed workspace name instead of resetting it', async () => {
+    vi.resetModules();
+
+    const storageMock = baseStorageMock();
+    const harness = createEffectHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    let api = useNotes();
+
+    for (let i = 0; i < 20 && !api.isLoaded; i += 1) {
+      await Promise.resolve();
+      harness.resetRender();
+      api = useNotes();
+    }
+    expect(api.isDataReady).toBe(true);
+
+    api.setWorkspaceName('My Vault');
+    harness.resetRender();
+    api = useNotes();
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(api.workspaceName).toBe('My Vault');
+    expect(storageMock.saveWorkspaceName).toHaveBeenCalledWith('My Vault');
   });
 });
 

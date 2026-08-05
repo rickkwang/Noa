@@ -187,25 +187,6 @@ export default function App() {
     getIsImporting,
   });
 
-  // If the app loads with no vault connected but a stale workspace name
-  // (left over from a previous vault session), reset it to the default.
-  // We wait for syncStatus === 'idle' to confirm bootstrap has completed
-  // and there is genuinely no persisted vault handle.
-  // workspaceName and setWorkspaceName are intentionally omitted: we only want
-  // this effect to re-evaluate on bootstrap/sync transitions, not when the name
-  // itself changes (which would cause the guard below to re-run after the set).
-  const workspaceNameRef = useRef(workspaceName);
-  useEffect(() => { workspaceNameRef.current = workspaceName; }, [workspaceName]);
-  const setWorkspaceNameRef = useRef(setWorkspaceName);
-  useEffect(() => { setWorkspaceNameRef.current = setWorkspaceName; }, [setWorkspaceName]);
-  useEffect(() => {
-    if (!isDataReady) return;
-    if (fsHandle !== null) return;
-    if (syncStatus !== 'idle') return;
-    if (workspaceNameRef.current === 'Default Workspace') return;
-    setWorkspaceNameRef.current('Default Workspace');
-  }, [isDataReady, fsHandle, syncStatus]);
-
   const handleUpdateNote = useCallback((id: string, content: string) => {
     const note = notesRef.current.find((item) => item.id === id);
     if (blockVaultCacheWrite(note?.origin === 'vault')) return;
@@ -1146,6 +1127,7 @@ export default function App() {
             notes={notes}
             folders={folders}
             workspaceName={workspaceName}
+            onRenameWorkspace={setWorkspaceName}
             onImportData={handleImportData}
             fsHandle={fsHandle}
             onConnectFs={connect}
