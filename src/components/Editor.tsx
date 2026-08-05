@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
+import { resolveFontFamily } from '../lib/fontFamily';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { EditorActions } from './editor/EditorActions';
@@ -349,12 +350,7 @@ export default function Editor({
   const editorStyle: React.CSSProperties = {
     fontSize: `${settings.editor.fontSize}px`,
     lineHeight: settings.editor.lineHeight,
-    fontFamily:
-      settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
-      settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
-      settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
-      settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
-      settings.appearance.fontFamily,
+    fontFamily: resolveFontFamily(settings.appearance.fontFamily),
   };
 
   const contentMaxWidthStyle: React.CSSProperties = {

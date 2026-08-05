@@ -1,15 +1,25 @@
-@import "@fontsource/redaction-50";
-@import "@fontsource/pixelify-sans";
-@import "@fontsource/work-sans";
-@import "@fontsource/jetbrains-mono";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-redaction: "Redaction 50", serif;
-  --font-pixelify: "Pixelify Sans", sans-serif;
-  --font-work-sans: "Work Sans", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* `font-redaction` is the app-wide "use the UI font" utility (~80 call
+     sites); the name predates dropping the bundled Redaction typeface. This
+     value only paints until ThemeInjector applies the user's chosen font, so
+     it must match SYSTEM_FONT_STACK in src/lib/fontFamily.ts — otherwise the
+     first frame renders in a different face than every frame after it. */
+  --font-redaction: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* UI chrome uses `font-bold` in ~120 places, and those were tuned against a
+     bundled single-weight typeface: `@fontsource/work-sans` ships only a 400
+     face, so every one of them was really Skia's synthetic bold, which on a
+     geometric sans adds very little stroke. System fonts draw every weight for
+     real, so matching the old look means undershooting the "bold" number, not
+     hitting some measured equivalent — 450/400 is the current calibration.
+     Markdown `**strong**` and headings are unaffected — that weight is
+     content, not chrome. */
+  --font-weight-bold: 450;
+  --font-weight-medium: 400;
 }
 
 @property --noa-sidebar-material-width {
@@ -54,10 +64,9 @@ textarea:focus-visible,
 }
 
 body {
-  /* Iosevka is not bundled — fall back to the bundled JetBrains Mono so
-     machines without it get a deterministic look instead of the platform's
-     default monospace. Keep the same chain in Editor/GraphView/ThemeInjector. */
-  font-family: "Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace;
+  /* Pre-hydration fallback only; ThemeInjector overrides this with the
+     resolved user font once settings load. See --font-redaction above. */
+  font-family: var(--font-redaction);
   background-color: #F9F9F7;
   color: #2D2D2B;
   margin: 0;
@@ -386,6 +395,19 @@ html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sid
 .prose a[data-footnote-backref]   { color: #CC7D5E; text-decoration: none; }
 [data-theme="dark"] .prose a[data-footnote-ref]  { color: #CC7D5E !important; }
 [data-theme="dark"] .prose a[data-footnote-backref] { color: #CC7D5E !important; }
+
+/* ── Preview weights ──
+   Typography ships h1:800 / h2:700 / h3,h4,strong:600. Those were only ever
+   seen through a bundled 400-weight face, where Skia's synthetic bold collapses
+   every one of them into a single rendered weight — so the preview looked flat
+   and light no matter what the numbers said. Against a real font family those
+   numbers resolve to genuinely drawn faces and the preview turns heavy.
+   Collapsing them back to one weight is what actually matches the old look —
+   size alone carried the heading hierarchy before, and still does. `.prose h1`
+   (0,1,1) outranks the plugin's `:where()` selectors (0,1,0) without
+   !important; the inline weights in PreviewPane.tsx are set there instead. */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
+.prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-bold); }
 
 /* ── List markers (bullets / numbers) ──
    Typography's --tw-prose-bullets/counters default to grays that wash out on

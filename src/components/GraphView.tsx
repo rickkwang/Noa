@@ -2,6 +2,7 @@ import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { useIsDark } from '../hooks/useIsDark';
+import { resolveFontFamily } from '../lib/fontFamily';
 import { buildGraphModel } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
 import { Note, Folder, AppSettings } from '../types';
@@ -518,11 +519,7 @@ export default function GraphView({
     }
   }, [graphData, fitView]);
 
-  const fontFamily = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
-                     settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
-                     settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
-                     settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
-                     settings.appearance.fontFamily;
+  const fontFamily = resolveFontFamily(settings.appearance.fontFamily);
 
   // Pick node fill color: ghost (muted) > tag color > accent (connected) > grey (isolated)
   const getNodeColor = useCallback((node: GraphNode): string => {

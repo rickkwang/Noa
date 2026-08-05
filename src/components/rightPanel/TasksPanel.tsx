@@ -116,10 +116,6 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const lowRail = isDark ? 'bg-[rgba(249,249,247,0.25)]' : 'bg-[#2D2D2B]/25';
   const filterHoverIdle = isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/80';
 
-  // Task body & note titles → clean sans CJK (PingFang/system) instead of the
-  // panel's Redaction→serif fallback, which renders Chinese thin and dated at 13px.
-  const contentFont: React.CSSProperties = { fontFamily: '-apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif' };
-
   function priorityRailColor(p: string): string | null {
     if (p === 'high') return 'bg-[#D45555]/70';
     if (p === 'medium') return 'bg-[#CC7D5E]';
@@ -231,12 +227,12 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span style={contentFont} className={`block text-sm leading-[1.5] ${txt}`}>{task.content}</span>
+                  <span className={`block text-sm leading-[1.5] ${txt}`}>{task.content}</span>
                   <button onClick={() => onNavigateToNoteById(task.noteId)}
                     title={task.noteTitle}
                     className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
                     <ExternalLink size={9} />
-                    <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                    <span className="max-w-[12ch] truncate">{task.noteTitle}</span>
                   </button>
                   {task.dueDate && (
                     <div className={`mt-0.5 text-[11px] tabular-nums font-bold ${
@@ -291,12 +287,12 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span style={contentFont} className={`block text-sm leading-[1.5] line-through ${txt}`}>{task.content}</span>
+                    <span className={`block text-sm leading-[1.5] line-through ${txt}`}>{task.content}</span>
                     <button onClick={() => onNavigateToNoteById(task.noteId)}
                       title={task.noteTitle}
                       className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
                       <ExternalLink size={9} />
-                      <span style={contentFont} className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                      <span className="max-w-[12ch] truncate">{task.noteTitle}</span>
                     </button>
                     {task.dueDate && (
                       <div className={`mt-0.5 text-[11px] tabular-nums ${dim}`}>→ {task.dueDate}</div>

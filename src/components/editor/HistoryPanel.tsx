@@ -96,7 +96,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: textPrimary }}>
           <Clock size={13} />
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'var(--font-weight-bold)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             Version History
           </span>
         </div>
@@ -192,7 +192,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
               border: 'none',
               borderRadius: '3px',
               fontSize: '0.72rem',
-              fontWeight: 700,
+              fontWeight: 'var(--font-weight-bold)',
               cursor: restoring ? 'not-allowed' : 'pointer',
               opacity: restoring ? 0.6 : 1,
               width: '100%',

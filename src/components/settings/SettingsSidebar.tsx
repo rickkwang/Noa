@@ -64,10 +64,13 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
             aria-controls={`settings-panel-${tab.id}`}
             aria-selected={activeTab === tab.id}
             tabIndex={activeTab === tab.id ? 0 : -1}
-            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2 rounded-md text-left font-bold transition-colors active:opacity-70 text-sm md:min-w-0 md:w-full ${
+            // Weight carries the selection alongside the surface: the active
+            // tab is the only bold row, so the list reads as a hierarchy
+            // rather than five equally-loud labels.
+            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2 rounded-md text-left transition-colors active:opacity-70 text-sm md:min-w-0 md:w-full ${
               activeTab === tab.id
-                ? 'bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
-                : 'hover:bg-[#EFEAE3]/50'
+                ? 'font-bold bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
+                : 'font-medium hover:bg-[#EFEAE3]/50'
             }`}
           >
             <tab.icon size={16} />

@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { SYSTEM_DEFAULT_FONT, isSafeFontFamilyName } from '../lib/fontFamily';
 import { AppSettings } from '../types';
+
+/**
+ * Keys of the typefaces Noa used to bundle. They no longer ship, so a stored
+ * value naming one would resolve to nothing installed; migrate them to the
+ * system default rather than leaving the user on a font that cannot load.
+ */
+const REMOVED_BUNDLED_FONTS = new Set([
+  'font-iosevka',
+  'font-redaction',
+  'font-pixelify',
+  'font-work-sans',
+]);
 
 export const defaultSettings: AppSettings = {
   editor: {
@@ -9,7 +22,7 @@ export const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'system',
-    fontFamily: 'font-iosevka',
+    fontFamily: SYSTEM_DEFAULT_FONT,
     maxWidth: 680,
     usePointerCursors: true,
     translucentSidebar: false,
@@ -120,10 +133,16 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
 
     // accentColor was removed; drop it from older stored settings so it is not
     // merged back in and re-persisted as a dead key.
-    // The bundled fonts are back; migrate the interim value from the removal
-    // experiment to the default bundled font.
+    //
+    // Fonts are no longer bundled: settings now hold either the system default
+    // or a family installed on the device. Retire the old bundled keys, and
+    // reject names that could not be a real family (they reach CSS through a
+    // <style> element). Neither case marks the settings invalid — a stale font
+    // name self-heals and should not raise the recovery banner.
     const storedFontFamily = setting(appearance, 'fontFamily', defaultSettings.appearance.fontFamily, isString);
-    const fontFamily = storedFontFamily === 'system-default' ? 'font-iosevka' : storedFontFamily;
+    const fontFamily = REMOVED_BUNDLED_FONTS.has(storedFontFamily) || !isSafeFontFamilyName(storedFontFamily)
+      ? SYSTEM_DEFAULT_FONT
+      : storedFontFamily;
 
     return {
       settings: {

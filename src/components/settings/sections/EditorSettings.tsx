@@ -142,7 +142,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
           {userTemplates.map(t => (
             <div key={t.id} className="border border-[#2D2D2B] rounded-lg p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold truncate">{t.name}</div>
+                <div className="text-sm font-medium truncate">{t.name}</div>
                 {t.content && (
                   <div className="text-xs text-[#2D2D2B]/50 truncate mt-0.5">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
                 )}

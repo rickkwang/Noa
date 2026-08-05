@@ -1,5 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
+import { resolveFontFamily } from '../lib/fontFamily';
 import { AppSettings } from '../types';
 
 interface ThemeInjectorProps {
@@ -85,11 +86,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
   }, [isDark, settings.appearance.theme, settings.appearance.translucentSidebar, settings.appearance.usePointerCursors]);
 
-  const fontFamilyStyle = settings.appearance.fontFamily === 'font-iosevka' ? '"Iosevka Nerd Font Mono", "Iosevka NF", "JetBrains Mono", monospace' :
-                          settings.appearance.fontFamily === 'font-redaction' ? '"Redaction 50", serif' :
-                          settings.appearance.fontFamily === 'font-pixelify' ? '"Pixelify Sans", sans-serif' :
-                          settings.appearance.fontFamily === 'font-work-sans' ? '"Work Sans", sans-serif' :
-                          settings.appearance.fontFamily;
+  const fontFamilyStyle = resolveFontFamily(settings.appearance.fontFamily);
 
   return (
     <style>{`

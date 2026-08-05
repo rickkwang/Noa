@@ -48,11 +48,13 @@ const darkTheme = EditorView.theme({
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'bold' },
-  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'bold' },
-  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'bold' },
-  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
-  { tag: tags.strong, fontWeight: 'bold' },
+  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'var(--font-weight-bold)' },
+  // Matches the preview's `.prose strong` weight in index.css, so the same
+  // **text** keeps its thickness when switching between edit and preview.
+  { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#F9F9F7' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },
@@ -81,11 +83,13 @@ const lightTheme = EditorView.theme({
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'bold' },
-  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'bold' },
-  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'bold' },
-  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'bold' },
-  { tag: tags.strong, fontWeight: 'bold' },
+  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'var(--font-weight-bold)' },
+  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'var(--font-weight-bold)' },
+  // Matches the preview's `.prose strong` weight in index.css, so the same
+  // **text** keeps its thickness when switching between edit and preview.
+  { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2B' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },

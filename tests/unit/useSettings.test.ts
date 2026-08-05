@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings, loadBrowserSettings, loadSettings } from '../../src/hooks/useSettings';
+import { SYSTEM_DEFAULT_FONT } from '../../src/lib/fontFamily';
 
 describe('loadSettings', () => {
   it('allows the default settings to be persisted for a genuinely missing key', () => {
@@ -37,6 +38,35 @@ describe('loadSettings', () => {
 
     expect(loaded.canPersist).toBe(true);
     expect(loaded.settings.appearance.translucentSidebar).toBe(true);
+  });
+
+  it('migrates every retired bundled font to the system default', () => {
+    for (const retired of ['font-iosevka', 'font-redaction', 'font-pixelify', 'font-work-sans']) {
+      const loaded = loadSettings({
+        getItem: () => JSON.stringify({ appearance: { fontFamily: retired } }),
+      });
+
+      expect(loaded.settings.appearance.fontFamily).toBe(SYSTEM_DEFAULT_FONT);
+      // A stale font name self-heals; it must not raise the recovery banner.
+      expect(loaded.canPersist).toBe(true);
+    }
+  });
+
+  it('keeps a font family the user picked from their installed fonts', () => {
+    const loaded = loadSettings({
+      getItem: () => JSON.stringify({ appearance: { fontFamily: 'Helvetica Neue' } }),
+    });
+
+    expect(loaded.canPersist).toBe(true);
+    expect(loaded.settings.appearance.fontFamily).toBe('Helvetica Neue');
+  });
+
+  it('drops a font family that could not be a real family name', () => {
+    const loaded = loadSettings({
+      getItem: () => JSON.stringify({ appearance: { fontFamily: 'Arial"; } body { display: none } .x {' } }),
+    });
+
+    expect(loaded.settings.appearance.fontFamily).toBe(SYSTEM_DEFAULT_FONT);
   });
 
   it('ignores the retired Graph View preference while loading legacy settings', () => {

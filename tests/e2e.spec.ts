@@ -995,21 +995,75 @@ test('settings remembers the last active tab when reopened', async ({ page }) =>
 });
 
 test('appearance settings persist after a full reload', async ({ page }) => {
+  // Local Font Access is unavailable in the test browser, so stand in for it
+  // and let the picker walk the same path it takes on a real device.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'queryLocalFonts', {
+      configurable: true,
+      value: () => Promise.resolve([
+        { family: 'Georgia' },
+        { family: 'Helvetica Neue' },
+        { family: 'Georgia' },
+      ]),
+    });
+  });
   await page.goto('/');
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  const selects = page.getByRole('combobox');
-  await selects.nth(0).selectOption('dark');
-  await selects.nth(1).selectOption('font-redaction');
-  await expect(selects.nth(0)).toHaveValue('dark');
-  await expect(selects.nth(1)).toHaveValue('font-redaction');
+
+  const theme = page.getByLabel('Base theme');
+  await theme.selectOption('dark');
+  await expect(theme).toHaveValue('dark');
+
+  const fontTrigger = page.getByRole('button', { name: 'Font family' });
+  await expect(fontTrigger).toHaveText('System Default');
+  await fontTrigger.click();
+
+  // Scope to the font list: the theme <select> also exposes options.
+  const fontOptions = page.getByRole('listbox', { name: 'Fonts' }).getByRole('option');
+  // Duplicate faces of one family collapse to a single row.
+  await expect(fontOptions).toHaveCount(3);
+  await expect(fontOptions.filter({ hasText: 'Georgia' })).toHaveCount(1);
+
+  await page.getByRole('combobox', { name: 'Search fonts' }).fill('georg');
+  await expect(fontOptions).toHaveCount(1);
+  await fontOptions.first().click();
+
+  await expect(fontTrigger).toHaveText('Georgia');
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Georgia');
 
   await page.reload();
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  await expect(page.getByRole('combobox').nth(0)).toHaveValue('dark');
-  await expect(page.getByRole('combobox').nth(1)).toHaveValue('font-redaction');
+  await expect(page.getByLabel('Base theme')).toHaveValue('dark');
+  await expect(page.getByRole('button', { name: 'Font family' })).toHaveText('Georgia');
+});
+
+test('the font picker falls back to the system default when local fonts are unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ appearance: { fontFamily: 'font-iosevka' } }));
+  });
+  await page.goto('/');
+
+  // The bundled typefaces no longer ship, so a stored key naming one must not
+  // strand the user on a font that cannot load.
+  const fontFamily = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+  expect(fontFamily).not.toContain('Iosevka');
+  expect(fontFamily.toLowerCase()).toContain('system-ui');
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Appearance' }).click();
+
+  const fontTrigger = page.getByRole('button', { name: 'Font family' });
+  await expect(fontTrigger).toHaveText('System Default');
+
+  // Without queryLocalFonts() the picker still offers the system default
+  // instead of rendering an empty list.
+  await fontTrigger.click();
+  const fontOptions = page.getByRole('listbox', { name: 'Fonts' }).getByRole('option');
+  await expect(fontOptions).toHaveCount(1);
+  await expect(fontOptions.first()).toHaveText('System Default');
 });
 
 test('translucent sidebar persists and keeps its material through the closing motion', async ({ page }) => {
