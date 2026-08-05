@@ -92,7 +92,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 className={`px-3 py-1.5 font-bold border border-[#2D2D2B] text-sm capitalize transition-colors ${
                   editorViewMode === mode
                     ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
-                    : 'bg-[#F9F9F7] text-[#2D2D2B]'
+                    : 'bg-[#F9F9F7] text-[#2D2D2B] hover:bg-[#EFEAE3]'
                 }`}
               >
                 {mode}

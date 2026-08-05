@@ -42,7 +42,7 @@ async function waitForMarkerPersisted(page: import('@playwright/test').Page, mar
 
 async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Backup & Import' }).click();
 }
 
 async function saveHistorySnapshotForNote(
@@ -972,7 +972,12 @@ test('settings tabs support keyboard navigation', async ({ page }) => {
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Workspace' })).toHaveAttribute('aria-selected', 'true');
+  // Focus moves in a rAF callback after selection — wait for it or the next
+  // ArrowRight can land while focus is still on Appearance.
+  await expect(page.getByRole('tab', { name: 'Workspace' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Backup & Import' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
 });
 

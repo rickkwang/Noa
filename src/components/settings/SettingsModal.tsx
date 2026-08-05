@@ -56,8 +56,12 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const saved = lsGet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB);
+    // Tabs were reorganized: Data split into Workspace + Backup & Import,
+    // App Update folded into About.
+    const legacyMap: Record<string, SettingsTab> = { data: 'workspace', updates: 'about' };
+    const mapped = saved ? (legacyMap[saved] ?? saved) : null;
     const validTabs = SETTINGS_TABS.map((tab) => tab.id);
-    return saved && validTabs.includes(saved as SettingsTab) ? (saved as SettingsTab) : 'editor';
+    return mapped && validTabs.includes(mapped as SettingsTab) ? (mapped as SettingsTab) : 'editor';
   });
   const [mounted, setMounted] = useState(false);
   const [diagnosticsState, setDiagnosticsState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
@@ -231,8 +235,9 @@ export default function SettingsModal({
               />
             )}
 
-            {activeTab === 'data' && (
+            {activeTab === 'workspace' && (
               <DataSettings
+                group="workspace"
                 workspaceName={workspaceName}
                 onRenameWorkspace={onRenameWorkspace}
                 notes={notes}
@@ -249,17 +254,29 @@ export default function SettingsModal({
               />
             )}
 
-            {activeTab === 'updates' && (
-              <AppUpdateSettings />
+            {activeTab === 'backup' && (
+              <DataSettings
+                group="backup"
+                workspaceName={workspaceName}
+                onRenameWorkspace={onRenameWorkspace}
+                notes={notes}
+                folders={folders}
+                onImportData={onImportData}
+                fsHandle={fsHandle}
+                onConnectFs={onConnectFs}
+                onDisconnectFs={onDisconnectFs}
+                fsLastSyncAt={fsLastSyncAt}
+                fsSyncError={fsSyncError}
+                syncStatus={syncStatus}
+                onRetryFsSync={onRetryFsSync}
+                autoBackup={autoBackup}
+              />
             )}
 
             {activeTab === 'about' && (
               <div className="space-y-8">
                 <div>
-                  <div className="flex items-baseline gap-3">
-                    <h2 className="font-bold text-lg text-[#2D2D2B]">About</h2>
-                    <span className="text-base font-bold text-[#2D2D2B]">v{import.meta.env.PACKAGE_VERSION}</span>
-                  </div>
+                  <h2 className="font-bold text-lg text-[#2D2D2B]">About</h2>
                   <p className="text-sm text-[#2D2D2B]/70 mt-1">A retro-styled, local-first Markdown knowledge base. All data lives in your browser — no accounts, no servers.</p>
                   <img
                     src={fable5VerifiedBadge}
@@ -268,12 +285,13 @@ export default function SettingsModal({
                     draggable={false}
                   />
                 </div>
+                <AppUpdateSettings />
                 <SettingSection bare title="Feedback" description="Open a GitHub issue with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm"
+                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:opacity-90"
                   >
                     <span>Send Feedback</span>
                   </a>
@@ -282,7 +300,7 @@ export default function SettingsModal({
                   <div className="space-y-2">
                     <button
                       onClick={handleExportDiagnostics}
-                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm"
+                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:bg-[#EFEAE3]"
                       disabled={diagnosticsState === 'exporting'}
                     >
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>

@@ -1,11 +1,11 @@
 import React from 'react';
-import { Palette, PenTool, Database, Info, Download } from '@/src/lib/icons';
+import { Palette, PenTool, HardDrive, Database, Info } from '@/src/lib/icons';
 
 export const SETTINGS_TABS = [
   { id: 'editor', label: 'Editor', icon: PenTool },
   { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'data', label: 'Data', icon: Database },
-  { id: 'updates', label: 'App Update', icon: Download },
+  { id: 'workspace', label: 'Workspace', icon: HardDrive },
+  { id: 'backup', label: 'Backup & Import', icon: Database },
   { id: 'about', label: 'About', icon: Info },
 ] as const;
 

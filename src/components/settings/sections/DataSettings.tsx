@@ -14,6 +14,7 @@ import { ConfirmState } from './data/types';
 import WorkspaceSection from './data/WorkspaceSection';
 
 interface DataSettingsProps {
+  group: 'workspace' | 'backup';
   workspaceName: string;
   onRenameWorkspace: (name: string) => void;
   notes: Note[];
@@ -31,6 +32,7 @@ interface DataSettingsProps {
 
 
 export default function DataSettings({
+  group,
   workspaceName,
   onRenameWorkspace,
   notes,
@@ -125,10 +127,12 @@ export default function DataSettings({
           </span>
         </div>
       )}
-      <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] px-3 py-2 text-xs text-[#2D2D2B]/70">
-        {LOCAL_DATA_BOUNDARY_COPY}
-        <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
-      </div>
+      {group === 'backup' && (
+        <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] px-3 py-2 text-xs text-[#2D2D2B]/70">
+          {LOCAL_DATA_BOUNDARY_COPY}
+          <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
+        </div>
+      )}
       {confirmState && (
         <div ref={confirmRef} className="border border-[#CC7D5E] bg-[#CC7D5E]/10 p-3 flex flex-col gap-2 font-redaction">
           <div className="flex items-start justify-between gap-3">
@@ -237,62 +241,68 @@ export default function DataSettings({
         </div>
       )}
 
-      <WorkspaceSection
-        workspaceName={workspaceName}
-        onRenameWorkspace={onRenameWorkspace}
-        folderInputRef={folderInputRef}
-        onImportFolderInput={handleImportFolderInput}
-        onImportVaultFolder={() => {
-          void transfer.importVaultFolder();
-        }}
-        onCreateWorkspace={transfer.createNewWorkspace}
-        isFileSystemSupported={isFileSystemSupported()}
-        fsHandle={fsHandle}
-        syncStatusLabel={syncStatus}
-        fsLastSyncAt={fsLastSyncAt}
-        fsSyncError={fsSyncError}
-        connectingFs={transfer.connectingFs || syncStatus === 'syncing'}
-        onConnectFolder={() => {
-          void transfer.connectFolder();
-        }}
-        onDisconnectFolder={() => {
-          void transfer.disconnectFolder();
-        }}
-        onRetryFsSync={onRetryFsSync}
-      />
+      {group === 'workspace' && (
+        <WorkspaceSection
+          workspaceName={workspaceName}
+          onRenameWorkspace={onRenameWorkspace}
+          folderInputRef={folderInputRef}
+          onImportFolderInput={handleImportFolderInput}
+          onImportVaultFolder={() => {
+            void transfer.importVaultFolder();
+          }}
+          onCreateWorkspace={transfer.createNewWorkspace}
+          isFileSystemSupported={isFileSystemSupported()}
+          fsHandle={fsHandle}
+          syncStatusLabel={syncStatus}
+          fsLastSyncAt={fsLastSyncAt}
+          fsSyncError={fsSyncError}
+          connectingFs={transfer.connectingFs || syncStatus === 'syncing'}
+          onConnectFolder={() => {
+            void transfer.connectFolder();
+          }}
+          onDisconnectFolder={() => {
+            void transfer.disconnectFolder();
+          }}
+          onRetryFsSync={onRetryFsSync}
+        />
+      )}
 
-      <BackupSection
-        exportingZip={transfer.exportingZip}
-        exportingHtml={transfer.exportingHtml}
-        onExportJson={transfer.exportJson}
-        onExportZip={() => {
-          void transfer.exportZip();
-        }}
-        onExportHtmlZip={() => {
-          void transfer.exportHtmlZip();
-        }}
-        storageEstimate={storageEstimate}
-        backupHealth={backupHealth.status}
-        daysSinceExport={backupHealth.daysSinceExport}
-        lastExportAt={backupHealth.lastExportAt}
-      />
+      {group === 'backup' && (
+        <>
+          <BackupSection
+            exportingZip={transfer.exportingZip}
+            exportingHtml={transfer.exportingHtml}
+            onExportJson={transfer.exportJson}
+            onExportZip={() => {
+              void transfer.exportZip();
+            }}
+            onExportHtmlZip={() => {
+              void transfer.exportHtmlZip();
+            }}
+            storageEstimate={storageEstimate}
+            backupHealth={backupHealth.status}
+            daysSinceExport={backupHealth.daysSinceExport}
+            lastExportAt={backupHealth.lastExportAt}
+          />
 
-      <AutoBackupSection
-        status={autoBackup.backupStatus}
-        error={autoBackup.backupError}
-        lastAutoBackupAt={autoBackup.lastAutoBackupAt}
-        directoryName={autoBackup.directoryName}
-        hasBackupHandle={autoBackup.hasBackupHandle}
-        onChooseDirectory={autoBackup.chooseDirectory}
-        onDisconnect={autoBackup.disconnect}
-        onRunNow={autoBackup.runNow}
-        onReconnect={autoBackup.reconnect}
-      />
+          <AutoBackupSection
+            status={autoBackup.backupStatus}
+            error={autoBackup.backupError}
+            lastAutoBackupAt={autoBackup.lastAutoBackupAt}
+            directoryName={autoBackup.directoryName}
+            hasBackupHandle={autoBackup.hasBackupHandle}
+            onChooseDirectory={autoBackup.chooseDirectory}
+            onDisconnect={autoBackup.disconnect}
+            onRunNow={autoBackup.runNow}
+            onReconnect={autoBackup.reconnect}
+          />
 
-      <ImportSection
-        jsonInputRef={jsonInputRef}
-        onImportJsonInput={handleImportJsonInput}
-      />
+          <ImportSection
+            jsonInputRef={jsonInputRef}
+            onImportJsonInput={handleImportJsonInput}
+          />
+        </>
+      )}
     </div>
   );
 }

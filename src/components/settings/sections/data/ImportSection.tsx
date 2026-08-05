@@ -28,7 +28,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
         />
       </SettingItem>
       <p className="text-xs text-[#2D2D2B]/60 px-1">
-        To migrate an Obsidian vault or restore a Vault ZIP, select the folder with Import Vault Folder above.
+        To migrate an Obsidian vault or restore a Vault ZIP, use Import Vault Folder in the Workspace tab.
       </p>
     </SettingSection>
   );

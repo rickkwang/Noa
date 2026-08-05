@@ -95,6 +95,12 @@ export default function WorkspaceSection({
         </button>
       </div>
 
+      <p className="text-xs text-[#2D2D2B]/60 mt-2 px-1">
+        {isFileSystemSupported && !fsHandle
+          ? 'Import Vault Folder is a one-time migration into Noa. To keep a live mirror on disk instead, use Connect Folder below.'
+          : 'Import Vault Folder is a one-time migration into Noa.'}
+      </p>
+
       <input
         type="file"
         webkitdirectory
@@ -127,7 +133,7 @@ export default function WorkspaceSection({
                   <button
                     onClick={onRetryFsSync}
                     disabled={connectingFs}
-                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -138,26 +144,17 @@ export default function WorkspaceSection({
               <button
                 onClick={onConnectFolder}
                 disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
               >
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>
               </button>
             )}
 
-            {fsLastSyncAt && (
-              <p className="text-xs text-[#2D2D2B]/60">
-                Last successful sync: {new Date(fsLastSyncAt).toLocaleString()}
-              </p>
-            )}
             <p className="text-xs text-[#2D2D2B]/60">
-              Sync status: {syncStatusLabel}. When a vault is connected, Noa refreshes its local cache from the Markdown files on disk. Edits, renames and deletions made in other apps are picked up automatically.
-            </p>
-            <p className="text-xs text-[#2D2D2B]/60">
-              The connected folder is a live mirror: existing Markdown notes can be edited here and changes write back to disk. New Noa notes stay in local storage and cannot be created inside vault folders.
-            </p>
-            <p className="text-xs text-[#2D2D2B]/60">
-              Importing a vault folder is a one-time migration into Noa. It preserves the folder tree and notes so you can continue editing here.
+              Sync status: {syncStatusLabel}.
+              {fsLastSyncAt && ` Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}.`}
+              {fsHandle && ' Edits sync both ways; new notes created in Noa stay local.'}
             </p>
             {fsSyncError && (
               <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] px-2 py-1">

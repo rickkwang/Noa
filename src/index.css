@@ -265,6 +265,17 @@ html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sid
 [data-theme="dark"] .text-\[\#2D2D2B\]\/90  { color: rgba(220,220,214,0.90) !important; }
 [data-theme="dark"] .text-\[\#CC7D5E\]      { color: #CC7D5E !important; }
 
+/* ── Status text: light-theme hues lifted for dark floors ── */
+[data-theme="dark"] .text-\[\#A93B3B\] { color: #E08A8A !important; }
+[data-theme="dark"] .text-\[\#C24444\] { color: #E08A8A !important; }
+[data-theme="dark"] .text-\[\#953333\] { color: #E08A8A !important; }
+[data-theme="dark"] .text-\[\#74491A\] { color: #E5B17E !important; }
+[data-theme="dark"] .text-\[\#A26721\] { color: #E5B17E !important; }
+[data-theme="dark"] .text-\[\#D9862B\] { color: #F0A94E !important; }
+[data-theme="dark"] .text-\[\#37876B\] { color: #6FBF9E !important; }
+[data-theme="dark"] .text-\[\#2C6E57\] { color: #6FBF9E !important; }
+[data-theme="dark"] .hover\:text-\[\#A93B3B\]:hover { color: #E08A8A !important; }
+
 /* ── Hover text ── */
 [data-theme="dark"] .hover\:text-\[\#2D2D2B\]:hover     { color: #F9F9F7 !important; }
 [data-theme="dark"] .hover\:text-\[\#2D2D2B\]\/70:hover { color: rgba(220,220,214,0.70) !important; }

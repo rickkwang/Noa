@@ -490,7 +490,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
 test('invalid JSON import is blocked with readable error', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Backup & Import' }).click();
 
   const fileChooser = page.locator('input[type="file"][accept=".json"]');
   await fileChooser.setInputFiles({
@@ -505,14 +505,14 @@ test('invalid JSON import is blocked with readable error', async ({ page }) => {
 test('export json button is available from backup section', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Backup & Import' }).click();
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
 });
 
 test('reset and import recovery flow uses confirmation', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'New Workspace' }).click();
   await expect(page.getByText(/this will clear current data/i)).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -606,7 +606,7 @@ test('right panel tabs render by default and hide when the panel is toggled shut
 test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
 });
 
@@ -616,7 +616,7 @@ test('vault import preserves nested folder structure', async ({ page }) => {
   await page.goto('/');
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
   await page.evaluate((suffix) => {
     (window as typeof window & {
@@ -655,7 +655,7 @@ test('vault import keeps nested README notes and restores referenced image attac
   await page.goto('/');
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.evaluate((suffix) => {
     (window as typeof window & {
       __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string; base64?: string; type?: string }> };
@@ -744,11 +744,11 @@ test('multi-tab content persists after closing and reopening tabs', async ({ pag
   await waitForMarkerPersisted(page, markerB);
 });
 
-test('filesystem sync control and status are visible in data settings', async ({ page }) => {
+test('filesystem sync control and status are visible in workspace settings', async ({ page }) => {
   await installMockDirectoryPicker(page);
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText('Vault Folder', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Connect Folder|Disconnect/ })).toBeVisible();
 });
@@ -765,7 +765,7 @@ test('filesystem sync status transitions from syncing to ready on retry', async 
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
@@ -786,7 +786,7 @@ test('filesystem sync status transitions from syncing to error on retry', async 
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
@@ -819,7 +819,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
   });
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.keyboard.press('Escape');
@@ -837,9 +837,9 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
   await page.keyboard.type(`# Synced\n\n${marker}`);
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
-  await page.getByLabel('Data').getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await page.getByLabel('Workspace').getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByText('Synced.md', { exact: true })).toBeVisible();
   await expect(page.getByText('Disconnected from local folder. Using IndexedDB.', { exact: true })).toHaveCount(0);
   await page.evaluate(() => {
@@ -873,7 +873,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   });
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.keyboard.press('Escape');
@@ -887,7 +887,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await page.locator('.cm-content').last().click();
   await page.keyboard.type('\nalpha edit');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
 
   await page.keyboard.press('Escape');
@@ -897,7 +897,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await page.keyboard.type('\nbeta edit');
   await page.waitForTimeout(800);
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText(/Sync status: error/i)).toBeVisible();
 
   await page.evaluate(() => {
@@ -923,7 +923,7 @@ test('vault editor is read-only while a structural operation is pending', async 
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await page.keyboard.press('Escape');
@@ -964,7 +964,7 @@ test('disconnect removes every vault-origin cache row regardless of source prove
     };
   });
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Data' }).click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
   await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
   await expect(page.getByText('Native.md', { exact: true })).toBeVisible();
