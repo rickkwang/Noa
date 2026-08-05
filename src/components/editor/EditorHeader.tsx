@@ -174,7 +174,7 @@ export function EditorHeader({
       className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${liftTabStrip ? '-mt-8' : ''} ${isDark ? 'bg-[#2D2D2B] after:bg-[#F9F9F7]/15' : 'bg-[#F9F9F7] after:bg-[#E6E2DA]'}`}
       style={{
         ...dragRegion,
-        paddingLeft: '0.25rem',
+        paddingLeft: '0.75rem',
         paddingRight: '0.5rem',
         marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined,
         marginRight: reserveTitlebarActions ? '7.25rem' : undefined,
