@@ -191,7 +191,7 @@ export default function SettingsModal({
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
         tabIndex={-1}
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[#2D2D2B] flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[#2D2D2B] rounded-xl overflow-hidden flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
@@ -206,7 +206,7 @@ export default function SettingsModal({
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="hover:bg-[#D45555] hover:text-white p-1 border border-transparent hover:border-[#2D2D2B] transition-colors"
+            className="hover:bg-[#D45555] hover:text-white p-1 border border-transparent hover:border-[#2D2D2B] rounded-md transition-colors"
           >
             <X size={18} />
           </button>
@@ -291,7 +291,7 @@ export default function SettingsModal({
                     href={feedbackUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:opacity-90"
+                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm hover:opacity-90"
                   >
                     <span>Send Feedback</span>
                   </a>
@@ -300,7 +300,7 @@ export default function SettingsModal({
                   <div className="space-y-2">
                     <button
                       onClick={handleExportDiagnostics}
-                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] transition-colors text-sm hover:bg-[#EFEAE3]"
+                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm hover:bg-[#EFEAE3]"
                       disabled={diagnosticsState === 'exporting'}
                     >
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
@@ -313,7 +313,7 @@ export default function SettingsModal({
                     )}
                   </div>
                 </SettingSection>
-                <div className="border border-[#2D2D2B] overflow-hidden">
+                <div className="border border-[#2D2D2B] rounded-lg overflow-hidden">
                   <div className="bg-[#EFEAE3] px-4 py-1.5 border-b border-[#2D2D2B]">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2B]/70">Keyboard Shortcuts</span>
                   </div>
