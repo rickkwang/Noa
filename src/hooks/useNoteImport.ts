@@ -189,6 +189,13 @@ export function useNoteImport({
       if (flushFailures > 0) {
         setSaveError(`Failed to save ${flushFailures} edit${flushFailures > 1 ? 's' : ''} made during import. Storage may be full.`);
       }
+      // The batch's setNotes(withRefs) ran before these edits were queued, so
+      // state currently shows the import-delivered body while storage holds
+      // the newer edit. Re-apply the queue or the two diverge until reload.
+      if (queued.length > 0) {
+        const queuedById = new Map(queued.map((note) => [note.id, note]));
+        setNotes((prev) => prev.map((note) => queuedById.get(note.id) ?? note));
+      }
       isImportingRef.current = false;
     }
   }, [deferredSavesRef, flushAllPendingSaves, isImportingRef, notesRef, setFolders, setNotes, setSaveError, setWorkspaceName, syncLinkRefs]);

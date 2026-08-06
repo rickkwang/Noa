@@ -49,6 +49,7 @@ function createReactHarness() {
         return fn;
       },
     },
+    states,
   };
 }
 
@@ -151,6 +152,11 @@ describe('useNotes import mutex', () => {
     expect(saveNote).toHaveBeenCalledTimes(1);
     expect(saveNote.mock.calls[0]?.[0]).toMatchObject({ id: 'n1', content: 'locally edited' });
     expect(saveNotes.mock.invocationCallOrder[0]).toBeLessThan(saveNote.mock.invocationCallOrder[0]!);
+    // And state must converge on the edit too — storage and UI must not diverge.
+    const notesState = (harness.states as unknown[]).find(
+      (s) => Array.isArray(s) && s.some((n) => n?.id === 'n1'),
+    ) as Array<{ id: string; content: string }>;
+    expect(notesState.find((n) => n.id === 'n1')?.content).toBe('locally edited');
   });
 
   it('keeps only the latest edit when saves arrive rapidly', async () => {    vi.resetModules();
