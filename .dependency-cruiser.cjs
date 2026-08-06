@@ -1,7 +1,8 @@
 // dependency-cruiser configuration.
 //
-// Replaces the old string-based scripts/check-architecture.mjs with AST-level
-// enforcement of the App.tsx → hooks → services/lib layering rule.
+// AST-level enforcement of the App.tsx → hooks → services/lib layering rule.
+// AST resolution is what makes this trustworthy: aliased imports, re-exports,
+// and dynamic import() all get caught, none of which a source-text scan sees.
 //
 // Key rules (matching CLAUDE.md):
 //   1. App.tsx must NOT import directly from:

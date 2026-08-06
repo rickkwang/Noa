@@ -10,7 +10,6 @@
     "build": "vite build",
     "build:budget": "npm run build && node scripts/check-budgets.mjs",
     "check:structure": "dependency-cruiser src --config .dependency-cruiser.cjs",
-    "check:structure:legacy": "node scripts/check-architecture.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit && eslint .",
