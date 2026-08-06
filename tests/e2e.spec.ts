@@ -836,15 +836,18 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
   });
   await page.goto('/');
 
-  // The filter cluster no longer has a frame to tint on focus — it reads as a
-  // field from an accent wash instead. Focus is now carried by the global
-  // input:focus-visible rule in index.css, so assert the affordance that
-  // actually renders rather than the group border that used to.
+  // Text fields deliberately have no focus ring: index.css excludes inputs from
+  // the global focus-visible rule because the caret already shows where typing
+  // lands, and this one also sets outline-none. The keyboard affordance is the
+  // wrapper's :focus-within wash, so assert the surface actually changes rather
+  // than an outline the input explicitly turns off.
   const input = page.getByPlaceholder('filter...');
+  const surface = page.getByRole('group', { name: 'Graph filter controls' });
+  await expect(input).toHaveCSS('outline-style', 'none');
+
+  const idle = await surface.evaluate((el) => getComputedStyle(el).backgroundColor);
   await input.focus();
-  await expect(input).toHaveCSS('outline-style', 'solid');
-  await expect(input).toHaveCSS('outline-width', '2px');
-  await expect(input).toHaveCSS('outline-color', 'rgb(204, 125, 94)');
+  await expect(surface).not.toHaveCSS('background-color', idle);
 
   const zoomIn = page.getByTitle('Zoom in');
   await zoomIn.hover();
