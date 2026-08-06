@@ -159,6 +159,33 @@ test('search survives focus leaving the search field', async ({ page }) => {
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
+test('expanding search never scrolls its own icon sideways', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTitle('Search notes')).toBeVisible();
+
+  // The icon button is wider than the collapsed shell's content box, so any
+  // focus the browser decides to reveal scrolls that clipped shell and jerks
+  // the icon mid-expand. Peak scrollLeft is the exact, non-flaky signal.
+  const peakScroll = page.evaluate(() => {
+    const shell = document.querySelector('button[title="Search notes"]')!.parentElement!;
+    let peak = 0;
+    const start = performance.now();
+    return new Promise<number>((resolve) => {
+      (function tick() {
+        peak = Math.max(peak, shell.scrollLeft);
+        if (performance.now() - start < 600) requestAnimationFrame(tick);
+        else resolve(peak);
+      })();
+    });
+  });
+
+  await page.getByTitle('Search notes').click();
+  expect(await peakScroll).toBe(0);
+
+  // Suppressing focus scroll must not cost the field its focus.
+  await expect(page.getByPlaceholder('Search notes, tags...')).toBeFocused();
+});
+
 test('search icon closes an open search field on a second click', async ({ page }) => {
   await page.goto('/');
 

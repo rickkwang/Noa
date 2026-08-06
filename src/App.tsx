@@ -473,7 +473,10 @@ export default function App() {
   useEffect(() => {
     if (!isSearchOpen || isFocusMode) return;
     const frameId = window.requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
+      // preventScroll: the field is still mid-expand and sits outside its
+      // clipped shell, so a scrolling focus would drag the search icon
+      // sideways for a frame.
+      searchInputRef.current?.focus({ preventScroll: true });
       searchInputRef.current?.select();
     });
     return () => window.cancelAnimationFrame(frameId);

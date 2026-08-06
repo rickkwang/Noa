@@ -72,9 +72,12 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
             }}
           >
             <button
-              onMouseDown={(event) => {
-                if (isSearchOpen) event.preventDefault();
-              }}
+              // The icon is 28px inside a 26px content box, so it always
+              // overflows this overflow-hidden shell by 2px. Letting the button
+              // take focus makes the browser scroll the shell to reveal it,
+              // which visibly jerks the icon sideways mid-expand. The click
+              // still lands, and the input takes focus straight after.
+              onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleSearch}
               className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
               title="Search notes"
