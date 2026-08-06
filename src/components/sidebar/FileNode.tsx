@@ -133,8 +133,8 @@ export const FileNode = React.memo(({
         }`}
         style={{
           paddingLeft: `${depth === 0 ? 8 : 2}px`,
-          // Extend row fill beneath the stable 5px scrollbar gutter,
-          // leaving 4px visible so the rounded right corner still shows.
+          // Extend row fill beneath the stable 6px scrollbar gutter,
+          // leaving 5px visible so the rounded right corner still shows.
           marginRight: '-1px',
         }}
         draggable={draggable}

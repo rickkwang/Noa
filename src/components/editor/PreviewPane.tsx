@@ -953,7 +953,7 @@ export const PreviewPane = React.memo(function PreviewPane({
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]/50'}
+      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
       style={printMode ? style : {
         paddingRight: '2rem',
         // A full but gradual fade keeps scrolled content from meeting the tab
