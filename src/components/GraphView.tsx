@@ -733,32 +733,19 @@ export default function GraphView({
 
           const fillColor = getNodeColor(node);
 
-          // Outer glow ring for active or hovered node
-          if ((isActive || isHovered) && node.x != null && node.y != null) {
-            const glowRadius = radius + 5 / globalScale;
-            try {
-              const gradient = ctx.createRadialGradient(node.x, node.y, radius * 0.5, node.x, node.y, glowRadius);
-              gradient.addColorStop(0, fillColor + '60');
-              gradient.addColorStop(1, fillColor + '00');
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, glowRadius, 0, 2 * Math.PI);
-              ctx.fillStyle = gradient;
-              ctx.fill();
-            } catch {
-              // skip glow if gradient params are invalid
-            }
-          }
-
           // Node fill
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
           ctx.fillStyle = fillColor;
           ctx.fill();
 
-          // Border for active node
-          if (isActive) {
+          // Selection ring. Active is the full-weight ring; hover is the same
+          // ring at two-thirds weight. One shape carrying two states beats a
+          // ring for one and a halo for the other — and the graph stays on the
+          // same flat plane as every other surface in the app.
+          if (isActive || isHovered) {
             ctx.strokeStyle = textColor;
-            ctx.lineWidth = 1.5 / globalScale;
+            ctx.lineWidth = (isActive ? 1.5 : 1) / globalScale;
             ctx.stroke();
           }
 
@@ -829,7 +816,7 @@ export default function GraphView({
           );
         })}
       </nav>
-      <div className="noa-graph-control-surface absolute bottom-2 right-2 flex flex-row rounded-md backdrop-blur-md p-0.5 gap-0.5">
+      <div className="noa-graph-control-surface absolute bottom-2 right-2 flex flex-row rounded-md p-0.5 gap-0.5">
         {zoomControls.map(({ icon, title, action }) => (
           <button
             key={title}

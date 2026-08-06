@@ -92,14 +92,19 @@ body {
 
 /* Shared surface for the graph's small control clusters (header filter field,
    canvas zoom pad). No frame — a border at this size draws more attention than
-   the control deserves; a warm accent wash is enough to read as one object. */
+   the control deserves; a warm accent wash is enough to read as one object.
+   The wash mixes into --bg-primary rather than transparent, so the surface is
+   opaque. Both hosts already paint --bg-primary (the graph canvas via bgColor,
+   the matrix panel via its own fill — the header shares that surface), so the
+   rendered colour is unchanged; what it buys is that graph edges can no longer
+   run under the zoom pad without a backdrop-blur to hide them. */
 .noa-graph-control-surface {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 9%, transparent);
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 9%, var(--bg-primary, #F9F9F7));
   transition: background-color 120ms ease;
 }
 .noa-graph-control-surface:hover,
 .noa-graph-control-surface:focus-within {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, transparent);
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, var(--bg-primary, #F9F9F7));
 }
 .noa-graph-control-button:hover {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
@@ -107,11 +112,11 @@ body {
 
 /* Same wash reads fainter on the dark surface — step each level up. */
 [data-theme="dark"] .noa-graph-control-surface {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 14%, transparent);
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 14%, var(--bg-primary, #2D2D2B));
 }
 [data-theme="dark"] .noa-graph-control-surface:hover,
 [data-theme="dark"] .noa-graph-control-surface:focus-within {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, var(--bg-primary, #2D2D2B));
 }
 [data-theme="dark"] .noa-graph-control-button:hover {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 30%, transparent);
