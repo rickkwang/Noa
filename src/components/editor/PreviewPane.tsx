@@ -238,34 +238,46 @@ interface PreviewPaneProps {
   printMode?: boolean;
 }
 
-// Callout type config — matches Obsidian's full callout spec
+// Three tones, drawn from the app palette (ink / gold / coral) rather than a
+// per-type colour scale. Backgrounds are tints of the tone itself, so a callout
+// never introduces a hue the rest of the app doesn't already use. The gold and
+// coral get a lightened variant for dark mode, where the light-mode value fails
+// against #2D2D2B.
+const CALLOUT_TONES = {
+  neutral: { light: '#2D2D2B', dark: '#F9F9F7', lightBg: 'rgba(45,45,43,0.04)',   darkBg: 'rgba(249,249,247,0.05)' },
+  warn:    { light: '#A26721', dark: '#C9913F', lightBg: 'rgba(162,103,33,0.07)', darkBg: 'rgba(201,145,63,0.09)'  },
+  alert:   { light: '#CC7D5E', dark: '#D8907A', lightBg: 'rgba(204,125,94,0.08)', darkBg: 'rgba(216,144,122,0.10)' },
+} as const;
+
+// Callout type config — type names match Obsidian's callout spec
 // https://help.obsidian.md/Editing+and+formatting/Callouts
-const CALLOUT_TYPES: Record<string, { color: string; darkBg: string; lightBg: string; icon: string; label: string }> = {
-  NOTE:      { color: '#5B9BD5', darkBg: '#1E2733', lightBg: '#EFF6FF', icon: 'ℹ',  label: 'Note' },
-  INFO:      { color: '#5B9BD5', darkBg: '#1E2733', lightBg: '#EFF6FF', icon: 'ℹ',  label: 'Info' },
-  TIP:       { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '💡', label: 'Tip' },
-  HINT:      { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '💡', label: 'Hint' },
-  SUCCESS:   { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Success' },
-  CHECK:     { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Check' },
-  DONE:      { color: '#4CAF8A', darkBg: '#182820', lightBg: '#ECFDF5', icon: '✅', label: 'Done' },
-  WARNING:   { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
-  WARN:      { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Warning' },
-  ATTENTION: { color: '#CC7D5E', darkBg: '#2C1F15', lightBg: '#FFFBEB', icon: '⚠',  label: 'Attention' },
-  IMPORTANT: { color: '#9B7FD4', darkBg: '#221830', lightBg: '#F5F3FF', icon: '❗', label: 'Important' },
-  CAUTION:   { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '🔥', label: 'Caution' },
-  DANGER:    { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '⚡', label: 'Danger' },
-  ERROR:     { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '✖',  label: 'Error' },
-  BUG:       { color: '#D45555', darkBg: '#2C1515', lightBg: '#FEF2F2', icon: '🐛', label: 'Bug' },
-  EXAMPLE:   { color: '#7C6FCD', darkBg: '#1E1A30', lightBg: '#F5F3FF', icon: '📋', label: 'Example' },
-  QUOTE:     { color: '#9E9E9E', darkBg: '#1E1E1E', lightBg: '#F5F5F5', icon: '❝',  label: 'Quote' },
-  CITE:      { color: '#9E9E9E', darkBg: '#1E1E1E', lightBg: '#F5F5F5', icon: '❝',  label: 'Cite' },
-  QUESTION:  { color: '#EC9A3C', darkBg: '#2A1D0A', lightBg: '#FFF7ED', icon: '❓', label: 'Question' },
-  FAQ:       { color: '#EC9A3C', darkBg: '#2A1D0A', lightBg: '#FFF7ED', icon: '❓', label: 'FAQ' },
-  HELP:      { color: '#EC9A3C', darkBg: '#2A1D0A', lightBg: '#FFF7ED', icon: '❓', label: 'Help' },
-  ABSTRACT:  { color: '#00B4D8', darkBg: '#001A22', lightBg: '#E0F7FA', icon: '📄', label: 'Abstract' },
-  SUMMARY:   { color: '#00B4D8', darkBg: '#001A22', lightBg: '#E0F7FA', icon: '📄', label: 'Summary' },
-  TLDR:      { color: '#00B4D8', darkBg: '#001A22', lightBg: '#E0F7FA', icon: '📄', label: 'TL;DR' },
-  TODO:      { color: '#5B9BD5', darkBg: '#1E2733', lightBg: '#EFF6FF', icon: '☑',  label: 'Todo' },
+// Icons are single-colour glyphs; emoji would be the only colour glyphs in the app.
+const CALLOUT_TYPES: Record<string, { tone: keyof typeof CALLOUT_TONES; icon: string; label: string }> = {
+  NOTE:      { tone: 'neutral', icon: 'ℹ', label: 'Note' },
+  INFO:      { tone: 'neutral', icon: 'ℹ', label: 'Info' },
+  TIP:       { tone: 'neutral', icon: '✦', label: 'Tip' },
+  HINT:      { tone: 'neutral', icon: '✦', label: 'Hint' },
+  SUCCESS:   { tone: 'neutral', icon: '✓', label: 'Success' },
+  CHECK:     { tone: 'neutral', icon: '✓', label: 'Check' },
+  DONE:      { tone: 'neutral', icon: '✓', label: 'Done' },
+  WARNING:   { tone: 'warn',    icon: '⚠', label: 'Warning' },
+  WARN:      { tone: 'warn',    icon: '⚠', label: 'Warning' },
+  ATTENTION: { tone: 'warn',    icon: '⚠', label: 'Attention' },
+  CAUTION:   { tone: 'warn',    icon: '⚠', label: 'Caution' },
+  IMPORTANT: { tone: 'alert',   icon: '★', label: 'Important' },
+  DANGER:    { tone: 'alert',   icon: '‼', label: 'Danger' },
+  ERROR:     { tone: 'alert',   icon: '✖', label: 'Error' },
+  BUG:       { tone: 'alert',   icon: '⊗', label: 'Bug' },
+  EXAMPLE:   { tone: 'neutral', icon: '▤', label: 'Example' },
+  QUOTE:     { tone: 'neutral', icon: '❝', label: 'Quote' },
+  CITE:      { tone: 'neutral', icon: '❝', label: 'Cite' },
+  QUESTION:  { tone: 'neutral', icon: '?', label: 'Question' },
+  FAQ:       { tone: 'neutral', icon: '?', label: 'FAQ' },
+  HELP:      { tone: 'neutral', icon: '?', label: 'Help' },
+  ABSTRACT:  { tone: 'neutral', icon: '≡', label: 'Abstract' },
+  SUMMARY:   { tone: 'neutral', icon: '≡', label: 'Summary' },
+  TLDR:      { tone: 'neutral', icon: '≡', label: 'TL;DR' },
+  TODO:      { tone: 'neutral', icon: '☑', label: 'Todo' },
 };
 
 function extractTextFromNode(node: React.ReactNode): string {
@@ -368,11 +380,13 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
   const hasBody = restOfFirst || restChildren.length > 0;
   const titleText = customTitle || config.label;
+  const tone = CALLOUT_TONES[config.tone];
+  const toneColor = isDark ? tone.dark : tone.light;
 
   return (
     <div style={{
-      borderLeft: `3px solid ${config.color}`,
-      background: isDark ? config.darkBg : config.lightBg,
+      borderLeft: `3px solid ${toneColor}`,
+      background: isDark ? tone.darkBg : tone.lightBg,
       borderRadius: '0 4px 4px 0',
       margin: '0.75rem 0',
       overflow: 'hidden',
@@ -386,7 +400,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
           gap: '0.4rem',
           padding: '0.55rem 1rem',
           fontWeight: 'var(--font-weight-bold)',
-          color: config.color,
+          color: toneColor,
           fontSize: '0.85em',
           cursor: foldable ? 'pointer' : 'default',
           userSelect: 'none',

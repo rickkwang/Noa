@@ -19,8 +19,8 @@ function formatBytes(bytes: number): string {
 }
 
 function fileIcon(mimeType: string): string {
-  if (mimeType.startsWith('image/')) return '🖼';
-  return '📎';
+  if (mimeType.startsWith('image/')) return '▣';
+  return '◫';
 }
 
 const ERROR_MESSAGES: Record<AttachmentError, string> = {
