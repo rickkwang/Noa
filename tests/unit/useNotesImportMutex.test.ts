@@ -119,8 +119,41 @@ describe('useNotes import mutex', () => {
     expect(saveNotes.mock.invocationCallOrder[0]).toBeLessThan(saveNote.mock.invocationCallOrder[0]!);
   });
 
-  it('keeps only the latest edit when saves arrive rapidly', async () => {
+  it('persists edits that land after the merge point via the deferred flush', async () => {
     vi.resetModules();
+
+    let releaseImport: (() => void) | undefined;
+    const saveNote = vi.fn(async (_note: unknown) => undefined);
+    const saveNotes = vi.fn((_notes: unknown) => new Promise<void>((resolve) => { releaseImport = resolve; }));
+    const storageMock = createStorageMock({ saveNote, saveNotes });
+    const harness = createReactHarness();
+
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    const api = useNotes();
+
+    const importPromise = api.handleImportData([makeNote({ content: 'import delivered' })]);
+    // Let the import run past reconcileConcurrentImportEdits and hold at the
+    // batch write. An edit landing here misses the merge — the deferred flush
+    // in the finally block is its only persistence path.
+    await vi.advanceTimersByTimeAsync(0);
+
+    api.handleSaveNote(makeNote({ content: 'locally edited' }));
+    releaseImport!();
+    await importPromise;
+
+    // The batch predates the edit, so it carries the import-delivered body...
+    const batch = saveNotes.mock.calls[0]?.[0] as Array<{ id: string; content: string }>;
+    expect(batch.find((note) => note.id === 'n1')?.content).toBe('import delivered');
+    // ...but the edit is not lost: the deferred flush writes it after the batch.
+    expect(saveNote).toHaveBeenCalledTimes(1);
+    expect(saveNote.mock.calls[0]?.[0]).toMatchObject({ id: 'n1', content: 'locally edited' });
+    expect(saveNotes.mock.invocationCallOrder[0]).toBeLessThan(saveNote.mock.invocationCallOrder[0]!);
+  });
+
+  it('keeps only the latest edit when saves arrive rapidly', async () => {    vi.resetModules();
 
     const saveNote = vi.fn(async (_note: unknown) => undefined);
     const storageMock = createStorageMock({ saveNote });
