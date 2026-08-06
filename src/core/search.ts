@@ -1,7 +1,7 @@
 import Fuse, { type FuseResult } from 'fuse.js';
 import { Folder, Note } from '../types';
 
-export interface ParsedQuery {
+interface ParsedQuery {
   tags: string[];
   exactPhrases: string[];
   keywords: string[];

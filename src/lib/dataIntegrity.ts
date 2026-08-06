@@ -2,19 +2,19 @@ import { Attachment, Folder, Note } from '../types';
 
 export const REQUIRED_NOTE_FIELDS = ['id', 'title', 'content', 'createdAt', 'updatedAt'] as const;
 
-export interface IntegrityIssue {
+interface IntegrityIssue {
   level: 'error' | 'warning';
   message: string;
 }
 
-export interface IntegrityReport {
+interface IntegrityReport {
   ok: boolean;
   noteCount: number;
   uniqueIdCount: number;
   issues: IntegrityIssue[];
 }
 
-export interface NormalizeNotesOptions {
+interface NormalizeNotesOptions {
   preserveVaultMetadata?: boolean;
 }
 

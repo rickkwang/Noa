@@ -24,14 +24,6 @@ export function lsSet(key: string, value: string): boolean {
   }
 }
 
-export function lsRemove(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-}
-
 export function lsGetBoolean(key: string): boolean {
   return lsGet(key) === 'true';
 }

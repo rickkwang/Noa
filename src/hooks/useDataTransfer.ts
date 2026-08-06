@@ -18,7 +18,6 @@ import {
   countImportedNotes,
   getFolderImportPath,
   mergeImportedWorkspaceData,
-  parseZipAttachmentPath,
   prepareImportedNotes,
   resolveImportedFolders,
   resolveImportedWorkspaceName,
@@ -44,7 +43,8 @@ function resolveImportTags(content: string): string[] {
 }
 
 export type { ConflictSummary };
-export { analyzeConflicts, applyImportStrategy, buildVaultImportPayload, collectVaultDirectoryEntries, classifyFolderImportFile, countImportedNotes, getFolderImportPath, parseZipAttachmentPath, prepareImportedNotes, resolveImportedFolders, resolveImportedWorkspaceName, uniqueExportFilename, validateAttachmentPayloads, zipAttachmentPath };
+// Test seam: unit tests exercise the vault-import payload pipeline directly.
+export { buildVaultImportPayload, collectVaultDirectoryEntries };
 
 interface BackupPayload {
   version: 2;
@@ -377,7 +377,7 @@ async function buildVaultImportPayload(
   return { notes: noteDrafts.map((draft) => draft.note), stagedAttachments };
 }
 
-export async function exportJsonSnapshot(notes: Note[], folders: Folder[], workspaceName: string): Promise<boolean> {
+async function exportJsonSnapshot(notes: Note[], folders: Folder[], workspaceName: string): Promise<boolean> {
   try {
     const ownedWorkspace = selectNoaOwnedWorkspace(notes, folders);
     const report = validateExportData(ownedWorkspace.notes, ownedWorkspace.folders);

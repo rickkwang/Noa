@@ -1,6 +1,6 @@
 import { Attachment, Note } from '../types';
 
-export type ImportedAttachment = Attachment & { dataBase64?: string };
+type ImportedAttachment = Attachment & { dataBase64?: string };
 export type ImportedNote = Note & { attachments?: ImportedAttachment[] };
 
 export async function blobToBase64(blob: Blob): Promise<string> {

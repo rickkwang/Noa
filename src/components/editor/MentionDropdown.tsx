@@ -28,7 +28,7 @@ interface CreateSuggestion {
   title: string;
 }
 
-export type MentionItem = Suggestion | CreateSuggestion;
+type MentionItem = Suggestion | CreateSuggestion;
 
 const MAX_SUGGESTIONS = 5;
 

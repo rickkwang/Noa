@@ -5,7 +5,7 @@ import { selectNoaOwnedWorkspace } from './workspaceOwnership';
 
 type BackupAttachment = Attachment & { dataBase64: string };
 
-export interface BackupPayload {
+interface BackupPayload {
   version: 2;
   notes: ImportedNote[];
   folders: Folder[];

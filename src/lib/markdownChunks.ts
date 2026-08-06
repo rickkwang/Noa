@@ -11,7 +11,7 @@
  * (footnote or reference-link definitions) are returned as a single chunk.
  */
 
-export interface ChunkOptions {
+interface ChunkOptions {
   /** Documents shorter than this are returned as a single chunk. */
   threshold?: number;
   /** Sections are merged until a chunk reaches at least this many chars. */

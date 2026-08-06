@@ -6,7 +6,6 @@ import {
   TextAlignLeft,
   ArrowsDownUp,
   TextB,
-  Book as PhBook,
   CalendarBlank,
   Check as PhCheck,
   CheckCircle,
@@ -37,7 +36,6 @@ import {
   FolderPlus as PhFolderPlus,
   Tag as PhTag,
   HardDrives,
-  ClockCounterClockwise,
   Info as PhInfo,
   TextItalic,
   List as PhList,
@@ -77,7 +75,6 @@ export const AlignLeft = icon(TextAlignLeft);
 export const ArrowUpDown = icon(ArrowsDownUp);
 export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
-export const Book = icon(PhBook);
 export const Calendar = icon(CalendarBlank);
 export const Check = icon(PhCheck);
 export const CheckCircle2 = icon(CheckCircle);
@@ -107,7 +104,6 @@ export const FolderOpen = icon(PhFolderOpen);
 export const FolderPlus = icon(PhFolderPlus);
 export const Tag = icon(PhTag);
 export const HardDrive = icon(HardDrives);
-export const History = icon(ClockCounterClockwise);
 export const Info = icon(PhInfo);
 export const Italic = icon(TextItalic);
 export const List = icon(PhList);

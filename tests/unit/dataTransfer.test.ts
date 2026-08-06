@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  analyzeConflicts,
-  applyImportStrategy,
   buildVaultImportPayload,
   collectVaultDirectoryEntries,
+} from '../../src/hooks/useDataTransfer';
+import {
+  analyzeConflicts,
+  applyImportStrategy,
   classifyFolderImportFile,
   countImportedNotes,
   getFolderImportPath,
@@ -14,7 +16,7 @@ import {
   uniqueExportFilename,
   validateAttachmentPayloads,
   zipAttachmentPath,
-} from '../../src/hooks/useDataTransfer';
+} from '../../src/lib/importUtils';
 import {
   selectNoaOwnedWorkspace,
   stripVaultMetadataFromImportedFolders,

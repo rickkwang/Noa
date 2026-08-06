@@ -1,4 +1,4 @@
-export interface TextReplaceChange {
+interface TextReplaceChange {
   from: number;
   to: number;
   insert: string;

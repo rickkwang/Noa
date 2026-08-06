@@ -4,7 +4,7 @@ import { storage } from './storage';
 
 const ERROR_SNAPSHOTS_KEY = 'redaction-error-snapshots';
 
-export interface FileSyncDiagnostics {
+interface FileSyncDiagnostics {
   status: string;
   lastSyncAt: string | null;
   error: string | null;
