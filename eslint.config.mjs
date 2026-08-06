@@ -25,7 +25,10 @@ export default tseslint.config(
       'test-results/',
       'node_modules/',
       '.worktrees/',
+      // Agent tooling — skill/harness scripts that ship with their own runtime
+      // assumptions (bare Node globals, no project tsconfig). Not app code.
       '.claude/',
+      '.agents/',
       'docs/superpowers/',
       // Generated/env files
       'src/electron-env.d.ts',
