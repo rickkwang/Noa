@@ -2,6 +2,7 @@ import localforage from 'localforage';
 import { Note, Folder, Attachment } from '../types';
 import { blobToBase64 } from './attachmentUtils';
 import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from './frontmatter';
+import { sanitizeFilename, sanitizeFolderPath } from './importUtils';
 import { extractLinks } from './noteUtils';
 import { storage } from './storage';
 
@@ -63,24 +64,15 @@ export async function clearPersistedHandle(): Promise<void> {
   await fsHandleStore.removeItem('root-handle');
 }
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, '_');
-}
-
+// Unlike sanitizeFolderPath (imported from importUtils, keeps spaces),
+// this additionally collapses whitespace — used only for on-disk directory
+// names under attachments/, which getFolderHandle creates without spaces.
+// sanitizeFolderPath must keep spaces: manifest keys and scan matching
+// compare against real on-disk directory names, which keep their spaces
+// (Obsidian vault folders are created with spaces; replacing them here
+// would make every manifest lookup miss).
 function sanitizePathSegment(name: string): string {
   return sanitizeFilename(name).replace(/\s+/g, '_');
-}
-
-// Must apply the exact same per-segment transformation as getFolderHandle —
-// manifest keys and scan matching compare against real on-disk directory
-// names, which keep their spaces (Obsidian vault folders are created with
-// spaces; replacing them here would make every manifest lookup miss).
-function sanitizeFolderPath(path: string): string {
-  return path
-    .split('/')
-    .map((segment) => sanitizeFilename(segment))
-    .filter(Boolean)
-    .join('/');
 }
 
 // Strips Noa-owned keys from a frontmatter block. Only ever call this on

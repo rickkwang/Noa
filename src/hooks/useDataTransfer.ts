@@ -8,7 +8,7 @@ import {
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
-import { mdToHtml, buildBackupPayload } from '../lib/export';
+import { mdToHtml, buildBackupPayload, cloneNotesForBackup, escapeHtml } from '../lib/export';
 import { markExported } from '../lib/exportTimestamp';
 import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from '../lib/frontmatter';
 import {
@@ -99,15 +99,6 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 interface VaultScanFile {
   pathSegments: string[];
   file: File;
@@ -188,13 +179,6 @@ async function collectVaultDirectoryEntries(
   }
 
   return { folderPaths, files };
-}
-
-function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
-  return notes.map((note) => ({
-    ...note,
-    attachments: note.attachments?.map((attachment) => ({ ...attachment })),
-  }));
 }
 
 function normalizeVaultRelativePath(pathSegments: string[]): string {

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { AttachmentError } from '../../hooks/useAttachments';
+import { formatBytes } from '../../lib/formatBytes';
 import { Attachment } from '../../types';
 
 interface AttachmentPanelProps {
@@ -10,12 +11,6 @@ interface AttachmentPanelProps {
   readOnly?: boolean;
   mutationsDisabled?: boolean;
   mutationsDisabledReason?: string;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function fileIcon(mimeType: string): string {

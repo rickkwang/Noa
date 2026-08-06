@@ -1,6 +1,7 @@
 import React from 'react';
 import { StorageEstimate } from '../../../../hooks/useStorageEstimate';
 import { formatExportTimestamp } from '../../../../lib/exportTimestamp';
+import { formatBytes } from '../../../../lib/formatBytes';
 import { BackupHealthStatus } from '../../../../types';
 import SettingItem from '../../SettingItem';
 import SettingSection from '../../SettingSection';
@@ -16,11 +17,6 @@ interface BackupSectionProps {
   backupHealth: BackupHealthStatus;
   daysSinceExport: number | null;
   lastExportAt: string | null;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function BackupSection({

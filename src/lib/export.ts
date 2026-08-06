@@ -12,7 +12,7 @@ export interface BackupPayload {
   workspaceName: string;
 }
 
-function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
+export function cloneNotesForBackup(notes: Note[]): ImportedNote[] {
   return notes.map((note) => ({
     ...note,
     attachments: note.attachments?.map((attachment) => ({ ...attachment })),
@@ -89,7 +89,7 @@ function downloadFile(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')

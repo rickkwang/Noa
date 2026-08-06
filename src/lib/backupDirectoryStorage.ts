@@ -12,9 +12,7 @@ const backupHandleStore = localforage.createInstance({
 
 const BACKUP_HANDLE_KEY = 'backup-handle';
 
-export function isFileSystemSupported(): boolean {
-  return typeof window.showDirectoryPicker === 'function';
-}
+export { isFileSystemSupported } from './fileSystemStorage';
 
 export async function requestBackupDirectory(): Promise<FileSystemDirectoryHandle> {
   if (typeof window.showDirectoryPicker !== 'function') {
