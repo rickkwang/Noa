@@ -73,12 +73,15 @@ describe('bootstrap side-effect gates', () => {
   });
 
   it('isolates the recovery dialog from the writable application surface', async () => {
-    const appSource = await readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8');
+    const [appSource, recoverySource] = await Promise.all([
+      readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8'),
+      readFile(new URL('../../src/components/RecoveryDialog.tsx', import.meta.url), 'utf8'),
+    ]);
 
     expect(appSource).toContain('inert={loadError ? true : undefined}');
     expect(appSource).toContain('aria-hidden={loadError ? true : undefined}');
-    expect(appSource).toContain('role="dialog"');
-    expect(appSource).toContain('aria-modal="true"');
+    expect(recoverySource).toContain('role="dialog"');
+    expect(recoverySource).toContain('aria-modal="true"');
     expect(appSource).toContain('if (!isDataReady) return true;');
     expect(appSource).toContain('attachmentMutationsDisabled={!isDataReady ||');
   });

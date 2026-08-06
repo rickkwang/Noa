@@ -4,9 +4,12 @@
  */
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import CommandPaletteDialog from './components/CommandPaletteDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import NavigationConflictDialog from './components/NavigationConflictDialog';
+import RecoveryDialog from './components/RecoveryDialog';
 import Sidebar from './components/Sidebar';
+import TemplatePickerDialog from './components/TemplatePickerDialog';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
 import { STORAGE_KEYS } from './constants/storageKeys';
@@ -19,22 +22,18 @@ import { useLayout } from './hooks/useLayout';
 import { useNotes } from './hooks/useNotes';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
 import { useSettings } from './hooks/useSettings';
+import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
-import { builtinTemplates, applyTemplate } from './lib/templates';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
-type SidebarPreviewPhase = 'idle' | 'open' | 'closing' | 'promoting-open' | 'promoting-close' | 'settling-close';
-
 export default function App() {
   useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const recoveryImportInputRef = useRef<HTMLInputElement>(null);
-  const recoveryRetryButtonRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -316,145 +315,30 @@ export default function App() {
     exitFocusMode,
   } = useLayout();
 
-  const [sidebarPreviewPhase, setSidebarPreviewPhase] = useState<SidebarPreviewPhase>('idle');
-  const isSidebarPreviewOpen = sidebarPreviewPhase === 'open' || sidebarPreviewPhase === 'closing';
-  const isSidebarPreviewClosing = sidebarPreviewPhase === 'closing';
-  const isPromotingSidebarPreview = sidebarPreviewPhase === 'promoting-open'
-    || sidebarPreviewPhase === 'promoting-close';
-  const isReversingSidebarPromotion = sidebarPreviewPhase === 'promoting-close';
-  const isSettlingSidebarPromotionClose = sidebarPreviewPhase === 'settling-close';
-  const [isSidebarDockClosing, setIsSidebarDockClosing] = useState(false);
-  const isSidebarMaterialActive = !isMobile && (
-    isSidebarOpen
-    || isSidebarDockClosing
-    || isPromotingSidebarPreview
-    || isSettlingSidebarPromotionClose
-  );
-  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
-  const sidebarPreviewCloseTimerRef = useRef<number | null>(null);
-  const isDraggingSidebarRef = useRef(isDraggingSidebar);
-  const wasDraggingSidebarRef = useRef(isDraggingSidebar);
-  const cancelSidebarPreviewClose = useCallback(() => {
-    if (sidebarPreviewCloseTimerRef.current !== null) {
-      window.clearTimeout(sidebarPreviewCloseTimerRef.current);
-      sidebarPreviewCloseTimerRef.current = null;
-    }
-    setSidebarPreviewPhase((phase) => phase === 'closing' ? 'open' : phase);
-  }, []);
-  const openSidebarPreview = useCallback(() => {
-    cancelSidebarPreviewClose();
-    if (!isMobile && !isSidebarOpen && !isFocusMode) {
-      setSidebarPreviewPhase('open');
-    }
-  }, [cancelSidebarPreviewClose, isFocusMode, isMobile, isSidebarOpen]);
-  const closeSidebarPreview = useCallback(() => {
-    if (sidebarPreviewPhase !== 'open') return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setSidebarPreviewPhase('idle');
-      return;
-    }
-    setSidebarPreviewPhase('closing');
-  }, [sidebarPreviewPhase]);
-  const finishSidebarPreviewExit = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'opacity') return;
-    setSidebarPreviewPhase((phase) => phase === 'closing' ? 'idle' : phase);
-  }, []);
-  const scheduleSidebarPreviewClose = useCallback(() => {
-    if (isDraggingSidebarRef.current) return;
-    cancelSidebarPreviewClose();
-    sidebarPreviewCloseTimerRef.current = window.setTimeout(() => {
-      sidebarPreviewCloseTimerRef.current = null;
-      closeSidebarPreview();
-    }, 140);
-  }, [cancelSidebarPreviewClose, closeSidebarPreview]);
-  const toggleSidebar = useCallback(() => {
-    cancelSidebarPreviewClose();
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (!isSidebarOpen && isSidebarPreviewOpen && !reduceMotion) {
-      setSidebarPreviewPhase('promoting-open');
-      setIsSidebarOpen(true);
-      return;
-    }
-    if (sidebarPreviewPhase === 'promoting-open' && isSidebarOpen && !reduceMotion) {
-      setSidebarPreviewPhase('promoting-close');
-      setIsSidebarOpen(false);
-      return;
-    }
-    if (sidebarPreviewPhase === 'promoting-close' && !isSidebarOpen && !reduceMotion) {
-      setSidebarPreviewPhase('promoting-open');
-      setIsSidebarOpen(true);
-      return;
-    }
-    setSidebarPreviewPhase('idle');
-    const nextOpen = !isSidebarOpen;
-    setIsSidebarDockClosing(!isMobile && !nextOpen && !reduceMotion);
-    setIsSidebarOpen(nextOpen);
-  }, [cancelSidebarPreviewClose, isMobile, isSidebarOpen, isSidebarPreviewOpen, setIsSidebarOpen, sidebarPreviewPhase]);
-  const finishSidebarDockMotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'margin-left') return;
-    setIsSidebarDockClosing(false);
-  }, []);
-  const finishSidebarPromotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'width') return;
-    setSidebarPreviewPhase((phase) => (
-      phase === 'promoting-close' ? 'settling-close' : phase === 'promoting-open' ? 'idle' : phase
-    ));
-  }, []);
-  useEffect(() => {
-    if (!isSettlingSidebarPromotionClose) return;
-    const frame = window.requestAnimationFrame(() => setSidebarPreviewPhase('idle'));
-    return () => window.cancelAnimationFrame(frame);
-  }, [isSettlingSidebarPromotionClose]);
-  useEffect(() => {
-    if (isMobile || isFocusMode) {
-      cancelSidebarPreviewClose();
-      setSidebarPreviewPhase('idle');
-      setIsSidebarDockClosing(false);
-      return;
-    }
-    if (isSidebarOpen && (sidebarPreviewPhase === 'open' || sidebarPreviewPhase === 'closing')) {
-      cancelSidebarPreviewClose();
-      setSidebarPreviewPhase('idle');
-    }
-  }, [cancelSidebarPreviewClose, isFocusMode, isMobile, isSidebarOpen, sidebarPreviewPhase]);
-  useEffect(() => {
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    if (!reducedMotion) return;
-    const settleInterruptedTransition = () => {
-      if (!reducedMotion.matches) return;
-      setIsSidebarDockClosing(false);
-      setSidebarPreviewPhase((phase) => (
-        phase === 'closing' || phase.startsWith('promoting-') ? 'idle' : phase
-      ));
-    };
-    reducedMotion.addEventListener('change', settleInterruptedTransition);
-    return () => reducedMotion.removeEventListener('change', settleInterruptedTransition);
-  }, []);
-  useEffect(() => {
-    isDraggingSidebarRef.current = isDraggingSidebar;
-    if (isDraggingSidebar) cancelSidebarPreviewClose();
-    if (wasDraggingSidebarRef.current && !isDraggingSidebar && isSidebarPreviewOpen) {
-      const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]');
-      if (!sidebar?.matches(':hover') && !sidebarToggleRef.current?.matches(':hover')) {
-        scheduleSidebarPreviewClose();
-      }
-    }
-    wasDraggingSidebarRef.current = isDraggingSidebar;
-  }, [cancelSidebarPreviewClose, isDraggingSidebar, isSidebarPreviewOpen, scheduleSidebarPreviewClose]);
-  useEffect(() => () => {
-    if (sidebarPreviewCloseTimerRef.current !== null) window.clearTimeout(sidebarPreviewCloseTimerRef.current);
-  }, []);
-  useEffect(() => {
-    if (!isSidebarPreviewOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      cancelSidebarPreviewClose();
-      closeSidebarPreview();
-      sidebarToggleRef.current?.focus();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [cancelSidebarPreviewClose, closeSidebarPreview, isSidebarPreviewOpen]);
+  const {
+    isSidebarPreviewOpen,
+    isSidebarPreviewClosing,
+    isPromotingSidebarPreview,
+    isReversingSidebarPromotion,
+    isSettlingSidebarPromotionClose,
+    isSidebarMaterialActive,
+    sidebarToggleRef,
+    cancelSidebarPreviewClose,
+    openSidebarPreview,
+    scheduleSidebarPreviewClose,
+    toggleSidebar,
+    finishSidebarPreviewExit,
+    finishSidebarDockMotion,
+    finishSidebarPromotion,
+    handleSidebarResizeStart,
+  } = useSidebarPreview({
+    isMobile,
+    isFocusMode,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    isDraggingSidebar,
+    setIsDraggingSidebar,
+  });
 
   const pendingSearchFocusRef = useRef(false);
   const focusSearch = useCallback(() => {
@@ -615,30 +499,6 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [flushAllPendingSaves]);
-
-  useEffect(() => {
-    if (!loadError) return;
-    recoveryRetryButtonRef.current?.focus();
-  }, [loadError]);
-
-  const handleRecoveryKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab') return;
-    const focusable = Array.from(
-      event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])')
-    );
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    const focusIsOutsideDialog = !event.currentTarget.contains(document.activeElement);
-    if (event.shiftKey && (document.activeElement === first || focusIsOutsideDialog)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (document.activeElement === last || focusIsOutsideDialog)) {
-      event.preventDefault();
-      first.focus();
-    }
-  }, []);
 
   useGlobalShortcuts({
     enabled: isDataReady,
@@ -886,11 +746,7 @@ export default function App() {
             {!isMobile && (
               <div
                 className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
-                onMouseDown={() => {
-                  isDraggingSidebarRef.current = true;
-                  cancelSidebarPreviewClose();
-                  setIsDraggingSidebar(true);
-                }}
+                onMouseDown={handleSidebarResizeStart}
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize sidebar"
@@ -1083,51 +939,7 @@ export default function App() {
           </button>
         </div>
       )}
-      {commandPalette.isOpen && (
-        <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={commandPalette.close}>
-          <div
-            className="w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">
-              <input
-                ref={commandPalette.inputRef}
-                type="text"
-                value={commandPalette.query}
-                onChange={(e) => commandPalette.setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    commandPalette.close();
-                    return;
-                  }
-                  if (e.key === 'Enter' && commandPalette.items[0]) {
-                    e.preventDefault();
-                    commandPalette.run(commandPalette.items[0].action);
-                  }
-                }}
-                placeholder="Type a command or note title..."
-                className="w-full bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
-              />
-            </div>
-            <div className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
-              {commandPalette.items.length === 0 ? (
-                <div className="px-2 py-3 text-xs text-[#2D2D2B]/60">No matching commands.</div>
-              ) : (
-                commandPalette.items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => commandPalette.run(item.action)}
-                    className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2B]/30 hover:bg-[#EFEAE3]/50 font-redaction"
-                  >
-                    {item.label}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {commandPalette.isOpen && <CommandPaletteDialog palette={commandPalette} />}
       {isSettingsOpen && (
         <Suspense fallback={null}>
           <SettingsModal
@@ -1153,85 +965,27 @@ export default function App() {
         </Suspense>
       )}
       {navigationConflict && (
-        <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={() => setNavigationConflict(null)}>
-          <div className="w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
-            <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3]">
-              <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
-              <div className="text-sm text-[#2D2D2B] mt-1">
-                Multiple notes match "<span className="font-bold">{navigationConflict.title}</span>". Select one:
-              </div>
-            </div>
-            <div className="max-h-72 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
-              {navigationConflict.noteIds.map((id) => {
-                const note = notes.find((item) => item.id === id);
-                if (!note) return null;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => {
-                      navigateById(id);
-                      setNavigationConflict(null);
-                    }}
-                    className="w-full text-left border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40"
-                  >
-                    <div className="text-sm font-bold text-[#2D2D2B] truncate">{note.title}</div>
-                    <div className="text-xs text-[#2D2D2B]/60 mt-0.5">
-                      {folderNameById.get(note.folder) ?? 'No Folder'} · Created {new Date(note.createdAt).toLocaleString()}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="border-t border-[#2D2D2B]/20 px-4 py-2 flex justify-end">
-              <button
-                onClick={() => setNavigationConflict(null)}
-                className="text-xs uppercase tracking-wider font-bold border border-[#2D2D2B]/30 px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B]"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <NavigationConflictDialog
+          title={navigationConflict.title}
+          noteIds={navigationConflict.noteIds}
+          notes={notes}
+          folderNameById={folderNameById}
+          onSelect={(id) => {
+            navigateById(id);
+            setNavigationConflict(null);
+          }}
+          onClose={() => setNavigationConflict(null)}
+        />
       )}
-      {pendingTemplateNoteId && (() => {
-        const userTemplates = settings.templates?.userTemplates ?? [];
-        const allTemplates = [...builtinTemplates, ...userTemplates];
-        const pendingNote = notes.find(n => n.id === pendingTemplateNoteId);
-        const noteTitle = pendingNote?.title ?? 'New Note';
-        const dateFormat = settings.dailyNotes.dateFormat;
-        return (
-          <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={() => setPendingTemplateNoteId(null)}>
-            <div className="w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
-              <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Choose Template</div>
-                  <div className="text-sm text-[#2D2D2B] mt-0.5">Pick a template for this note</div>
-                </div>
-                <button onClick={() => setPendingTemplateNoteId(null)} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none active:opacity-70">×</button>
-              </div>
-              <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
-                {allTemplates.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      if (t.id !== 'blank') {
-                        handleUpdateNote(pendingTemplateNoteId, applyTemplate(t, noteTitle, dateFormat));
-                      }
-                      setPendingTemplateNoteId(null);
-                    }}
-                    className="w-full text-left border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40 active:opacity-70"
-                  >
-                    <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
-                    {t.content && (
-                      <div className="text-xs text-[#2D2D2B]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {pendingTemplateNoteId && (
+        <TemplatePickerDialog
+          noteTitle={notes.find(n => n.id === pendingTemplateNoteId)?.title ?? 'New Note'}
+          dateFormat={settings.dailyNotes.dateFormat}
+          userTemplates={settings.templates?.userTemplates ?? []}
+          onApply={(content) => handleUpdateNote(pendingTemplateNoteId, content)}
+          onClose={() => setPendingTemplateNoteId(null)}
+        />
+      )}
       {isFocusMode && (
         <button
           onClick={exitFocusMode}
@@ -1247,59 +1001,13 @@ export default function App() {
         </div>
       )}
     </div>
-    {loadError && createPortal(
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recovery-dialog-title"
-        aria-describedby="recovery-dialog-message recovery-dialog-actions"
-        onKeyDown={handleRecoveryKeyDown}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4"
-      >
-        <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel p-4 font-redaction space-y-3 slide-down">
-          <h3 id="recovery-dialog-title" className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
-          <p id="recovery-dialog-message" className="text-sm text-[#2D2D2B]/80">{loadError.message}</p>
-          <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
-          <p id="recovery-dialog-actions" className="text-xs text-[#2D2D2B]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              ref={recoveryRetryButtonRef}
-              onClick={retryInitialization}
-              className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
-            >
-              Retry Read
-            </button>
-            <button
-              onClick={() => recoveryImportInputRef.current?.click()}
-              className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90"
-            >
-              Import Backup
-            </button>
-            <button
-              onClick={() => {
-                void resetWorkspaceFromRecovery();
-              }}
-              className="px-3 py-1 text-xs font-bold bg-[#D45555]/15 text-[#953333] border border-[#D45555]/60 hover:bg-[#D45555]/30"
-            >
-              New Empty Workspace
-            </button>
-          </div>
-          <input
-            ref={recoveryImportInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                void importBackupFromRecovery(file);
-              }
-              e.currentTarget.value = '';
-            }}
-          />
-        </div>
-      </div>,
-      document.body,
+    {loadError && (
+      <RecoveryDialog
+        message={loadError.message}
+        onRetry={retryInitialization}
+        onImportBackup={(file) => { void importBackupFromRecovery(file); }}
+        onReset={() => { void resetWorkspaceFromRecovery(); }}
+      />
     )}
     </>
   );
