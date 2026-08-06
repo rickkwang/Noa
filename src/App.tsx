@@ -789,6 +789,15 @@ export default function App() {
           setSearchQuery('');
           setIsSearchOpen(false);
         }}
+        // Losing focus must not destroy the search. Blur fires on mousedown,
+        // before click — tearing the results down there would unmount the row
+        // the user is clicking and swallow the click. An active query keeps the
+        // field open; clearing stays with the explicit exits (Escape, the clear
+        // button, the search icon, the sidebar's close button).
+        onSearchBlur={() => {
+          if (searchQuery) return;
+          setIsSearchOpen(false);
+        }}
         searchInputRef={searchInputRef}
       />}
       <div className="flex-1 flex min-h-0 overflow-visible relative">

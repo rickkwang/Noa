@@ -121,6 +121,44 @@ test('search returns a note by title and content', async ({ page }) => {
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
+test('clicking a search result opens that note', async ({ page }) => {
+  const marker = `e2e-search-nav-${Date.now()}`;
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+
+  // Move off the Welcome note so navigating back to it is observable.
+  await page.getByTitle('New note').click();
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`# ${marker}`);
+  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toHaveCount(0);
+
+  await page.getByTitle('Search notes').click();
+  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+
+  // Target the result row itself, not the file tree — the tree also lists this
+  // note, and clicking it there would pass while proving nothing. Blur fires on
+  // mousedown, ahead of click: if it tore the results down, this row would
+  // unmount mid-click and the note would never open.
+  const resultRow = page.getByTestId('search-result').first();
+  await expect(resultRow).toBeVisible();
+  await resultRow.click();
+  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+});
+
+test('search survives focus leaving the search field', async ({ page }) => {
+  await page.goto('/');
+  const searchInput = page.getByPlaceholder('Search notes, tags...');
+
+  await page.getByTitle('Search notes').click();
+  await searchInput.fill('Welcome');
+  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+
+  await page.locator('.cm-content').last().click();
+  await expect(searchInput).toHaveValue('Welcome');
+  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+});
+
 test('search icon closes an open search field on a second click', async ({ page }) => {
   await page.goto('/');
 

@@ -25,10 +25,11 @@ interface TopBarProps {
   isSearchOpen: boolean;
   onToggleSearch: () => void;
   onCloseSearch: () => void;
+  onSearchBlur: () => void;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#F9F9F7';
@@ -92,7 +93,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
                   aria-label="Search notes"
                   className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
                   onChange={(event) => onSearchChange(event.target.value)}
-                  onBlur={onCloseSearch}
+                  onBlur={onSearchBlur}
                   onKeyDown={(event) => {
                     if (event.key === 'Escape') {
                       event.preventDefault();
