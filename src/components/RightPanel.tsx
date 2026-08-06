@@ -299,10 +299,10 @@ export default function RightPanel({
           )}
           <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
             <MatrixPanelHeader icon={Network} label="Knowledge Matrix" isDark={isDark}>
-              <div className="noa-graph-control-surface flex items-center h-5 gap-0.5 rounded-md px-1.5"
+              <div className="noa-graph-control-surface flex items-center h-5 gap-0.5 rounded-[3px] p-0.5"
                 role="group"
                 aria-label="Graph filter controls">
-                <div className="flex items-center gap-1 pr-0.5">
+                <div className="flex items-center gap-1 pl-1 pr-0.5">
                   <Search size={10} style={{ color: isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)' }} className="shrink-0" />
                   <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                     aria-label="Filter graph nodes"
@@ -317,14 +317,14 @@ export default function RightPanel({
                 <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
                   aria-label="Hide isolated nodes"
                   aria-pressed={hideIsolated}
-                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded active:opacity-70 transition-colors shrink-0"
+                  className="noa-graph-control-button flex items-center justify-center w-4 h-4 rounded-[2px] active:opacity-70 transition-colors shrink-0"
                   style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Network size={10} />
                 </button>
                 <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
                   aria-label="Filters"
                   aria-pressed={showFilters}
-                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded active:opacity-70 transition-colors shrink-0"
+                  className="noa-graph-control-button flex items-center justify-center w-4 h-4 rounded-[2px] active:opacity-70 transition-colors shrink-0"
                   style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Filter size={10} />
                 </button>
@@ -445,7 +445,7 @@ function GraphInfoPanel({
       <div className="p-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
-            <div key={label} className="border border-[var(--divider-subtle)] p-2 text-center">
+            <div key={label} className="border border-[var(--divider-subtle)] rounded-[3px] p-2 text-center">
               <div className={`text-sm font-bold leading-none tabular-nums ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}>{value}</div>
               <div className={`text-[10px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>{label}</div>
             </div>

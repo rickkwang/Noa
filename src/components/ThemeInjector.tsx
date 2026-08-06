@@ -25,7 +25,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // 42/42/40 keeps the red-blue spread at 2, so the step reads as depth
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
-      root.style.setProperty('--sidebar-material-tint', '58%');
+      root.style.setProperty('--sidebar-material-tint', '54%');
       root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
@@ -53,7 +53,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // sidebar turning yellow rather than going deeper — at this size a hue
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
-      root.style.setProperty('--sidebar-material-tint', '48%');
+      root.style.setProperty('--sidebar-material-tint', '44%');
       root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to

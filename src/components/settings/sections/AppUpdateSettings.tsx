@@ -28,13 +28,13 @@ export default function AppUpdateSettings() {
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">
       {!isDesktop && (
-        <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] rounded-md px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
           You are using web mode. In-app updates are available in the Electron desktop build.
         </div>
       )}
 
       <SettingItem label="Current Version" description={isDesktop ? 'Version reported by the desktop runtime.' : 'Version of the web app currently loaded.'}>
-        <div className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-md px-3 py-1.5 text-sm font-redaction">
+        <div className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm font-redaction">
           {displayVersion}
         </div>
       </SettingItem>
@@ -52,7 +52,7 @@ export default function AppUpdateSettings() {
           <button
             onClick={() => void checkForUpdates()}
             disabled={!isDesktop || busy}
-            className="flex items-center justify-center gap-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
+            className="flex items-center justify-center gap-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
           >
             <RefreshCcw size={14} className={busy ? 'animate-spin' : ''} />
             <span>{busy ? 'Checking…' : 'Check Updates'}</span>
@@ -60,7 +60,7 @@ export default function AppUpdateSettings() {
           <button
             onClick={() => void installUpdate()}
             disabled={installDisabled}
-            className="flex items-center justify-center gap-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
+            className="flex items-center justify-center gap-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
           >
             <Download size={14} />
             <span>{installLabel}</span>

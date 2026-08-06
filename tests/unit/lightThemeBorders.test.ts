@@ -137,7 +137,8 @@ describe('light theme border tokens', () => {
 
     expect(topBar).toContain("'var(--divider-subtle, #E6E2DA)'");
     expect(topBar).toContain('noa-titlebar-search-input');
-    expect(indexCss).toContain('.noa-titlebar-search-input:focus-visible');
+    expect(indexCss).not.toContain('input:focus-visible');
+    expect(indexCss).not.toContain('textarea:focus-visible');
     expect(topBar).not.toContain('shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)]');
   });
 

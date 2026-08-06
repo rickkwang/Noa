@@ -210,14 +210,14 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
         aria-controls={open ? listboxId : undefined}
         onClick={() => (open ? closePicker(false) : openPicker())}
         onKeyDown={onTriggerKeyDown}
-        className="w-full flex items-center bg-[#F9F9F7] border border-[#2D2D2B] rounded-md pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none focus:border-[#CC7D5E] relative"
+        className="w-full flex items-center bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none focus:border-[#CC7D5E] relative"
       >
         <span className="truncate">{currentLabel}</span>
         <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[#2D2D2B] rounded-lg noa-floating-panel overflow-hidden">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[#2D2D2B] rounded noa-floating-panel overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2D2D2B]/15">
             <Search size={13} className="shrink-0 text-[#2D2D2B]/45" />
             <input

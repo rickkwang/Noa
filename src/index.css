@@ -34,13 +34,12 @@ button {
   box-shadow: none;
 }
 
-/* Single global keyboard-focus affordance. Specificity beats Tailwind's
-   outline-none so inputs that rely on focus:border still get the ring. */
+/* Single global keyboard-focus affordance. Inputs and textareas are excluded:
+   the caret already shows where typing lands, and the square ring reads as
+   chrome around borderless fields. Buttons keep the ring for keyboard nav. */
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
 [role="button"]:focus-visible,
 [role="separator"]:focus-visible,
 [tabindex]:focus-visible {
@@ -58,9 +57,6 @@ textarea:focus-visible,
 }
 .noa-titlebar-search-input::placeholder {
   color: var(--text-secondary, rgba(45,45,43,0.55));
-}
-.noa-titlebar-search-input:focus-visible {
-  outline: none;
 }
 
 body {
@@ -149,7 +145,7 @@ body {
 /* Optional glass treatment for the docked desktop sidebar. Electron supplies
    the native macOS sidebar material; this layer only adds the theme tint. */
 html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
-  background-color: color-mix(in srgb, var(--bg-sidebar, #F4F4F2) var(--sidebar-material-tint, 48%), transparent) !important;
+  background-color: color-mix(in srgb, var(--bg-sidebar, #F4F4F2) var(--sidebar-material-tint, 44%), transparent) !important;
 }
 
 html[data-translucent-sidebar="enabled"] body {

@@ -67,7 +67,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
             // Weight carries the selection alongside the surface: the active
             // tab is the only bold row, so the list reads as a hierarchy
             // rather than five equally-loud labels.
-            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2 rounded-md text-left transition-colors active:opacity-70 text-sm md:min-w-0 md:w-full ${
+            className={`flex min-w-[9.5rem] items-center space-x-3 px-4 py-2 rounded-[3px] text-left transition-colors active:opacity-70 text-sm md:min-w-0 md:w-full ${
               activeTab === tab.id
                 ? 'font-bold bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
                 : 'font-medium hover:bg-[#EFEAE3]/50'

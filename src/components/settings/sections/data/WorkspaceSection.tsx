@@ -68,7 +68,7 @@ export default function WorkspaceSection({
           }}
           maxLength={60}
           aria-label="Workspace name"
-          className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-md px-3 py-1.5 text-sm w-56 font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)] outline-none focus:border-[#CC7D5E]"
+          className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-56 font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)] outline-none focus:border-[#CC7D5E]"
         />
       </SettingItem>
 
@@ -81,14 +81,14 @@ export default function WorkspaceSection({
             }
             folderInputRef.current?.click();
           }}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
         >
           <FolderOpen size={14} />
           <span>Import Vault Folder</span>
         </button>
         <button
           onClick={onCreateWorkspace}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm"
+          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
         >
           <PlusSquare size={14} />
           <span>New Workspace</span>
@@ -124,7 +124,7 @@ export default function WorkspaceSection({
                 <button
                   onClick={onDisconnectFolder}
                   disabled={connectingFs}
-                  className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                  className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                 >
                   <Unlink size={14} />
                   <span>Disconnect</span>
@@ -133,7 +133,7 @@ export default function WorkspaceSection({
                   <button
                     onClick={onRetryFsSync}
                     disabled={connectingFs}
-                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
+                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
                   >
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
@@ -144,7 +144,7 @@ export default function WorkspaceSection({
               <button
                 onClick={onConnectFolder}
                 disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
+                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
               >
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>
@@ -157,7 +157,7 @@ export default function WorkspaceSection({
               {fsHandle && ' Edits sync both ways; new notes created in Noa stay local.'}
             </p>
             {fsSyncError && (
-              <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-md px-2 py-1">
+              <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-[3px] px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

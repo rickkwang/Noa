@@ -21,7 +21,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               value={settings.appearance.theme}
               aria-label="Base theme"
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
-              className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] rounded-md pl-3 pr-9 py-1.5 text-sm font-medium outline-none focus:border-[#CC7D5E]"
+              className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] pl-3 pr-9 py-1.5 text-sm font-medium outline-none focus:border-[#CC7D5E]"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>

@@ -137,8 +137,8 @@ describe('sidebar surface tokens', () => {
     expect(injector).toMatch(
       /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#F9F9F7',\s*settings\.appearance\.theme/,
     );
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '58%');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '48%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');");
     expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');");
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
@@ -156,7 +156,7 @@ describe('sidebar surface tokens', () => {
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 48%\), transparent\)/,
+      /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
     );
     expect(css).toMatch(
       /\[data-sidebar-separator="true"\]\s*\{[^}]*filter:\s*drop-shadow\(-3px 0 4px var\(--sidebar-divider-shadow\)\)/,

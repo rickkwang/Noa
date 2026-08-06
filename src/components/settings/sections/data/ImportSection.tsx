@@ -14,7 +14,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
       <SettingItem label="Import JSON" description="Restore a complete Noa backup.">
         <button
           onClick={() => jsonInputRef.current?.click()}
-          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-md transition-colors text-sm"
+          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
         >
           <Upload size={14} />
           <span>Import JSON</span>
