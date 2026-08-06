@@ -14,9 +14,10 @@ test-results/.last-run.json
 CLAUDE.md
 AGENTS.md
 
-# Agent tooling — reinstallable from skills-lock.json, which IS tracked.
+# Agent tooling — local to this machine, not shared via version control.
 # Deliberately not ignoring all of .claude/ so a shared settings.json can be
 # committed later; only the local overrides and installed skills are excluded.
 .agents/
 .claude/skills/
 .claude/settings.local.json
+skills-lock.json
