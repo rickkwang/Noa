@@ -558,6 +558,12 @@ export default function Sidebar({
                   <div 
                     key={result.note.id}
                     className={`p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
+                    // The titlebar search input closes/clears search on blur
+                    // (TopBar.tsx). Blur fires on mousedown, before click — so
+                    // without this the row unmounts mid-click and onSelectNote
+                    // never runs. preventDefault keeps focus on the input so
+                    // blur doesn't fire until after the click completes.
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">
