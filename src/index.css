@@ -122,6 +122,25 @@ body {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 30%, transparent);
 }
 
+/* Empty-editor wordmark — the exact ink colour traced from the source
+   artwork (near-black spray-paint) in light mode, inverted in dark mode
+   rather than following the theme's ink/accent tokens. */
+.noa-empty-state-mark {
+  color: #181818;
+}
+[data-theme="dark"] .noa-empty-state-mark {
+  color: #e7e7e7;
+}
+
+/* Same ink as the wordmark above it — hierarchy comes from size, not
+   colour or opacity. */
+.noa-empty-state-caption {
+  color: #181818;
+}
+[data-theme="dark"] .noa-empty-state-caption {
+  color: #e7e7e7;
+}
+
 /* The sidebar is a plane, not a page. Its separation from the editor is the
    background step alone — no border, no shadow, no accent tint — and the step
    is deliberately tiny: 1.5% OKLCH lightness in light, 1.2% in dark. It works

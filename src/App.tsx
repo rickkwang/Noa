@@ -6,6 +6,8 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommandPaletteDialog from './components/CommandPaletteDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { EmptyStatePrompt } from './components/icons/EmptyStatePrompt';
+import { NoaWordmark } from './components/icons/NoaWordmark';
 import NavigationConflictDialog from './components/NavigationConflictDialog';
 import RecoveryDialog from './components/RecoveryDialog';
 import Sidebar from './components/Sidebar';
@@ -796,9 +798,9 @@ export default function App() {
                 attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
               />
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-[#2D2D2B]/30 font-redaction select-none">
-                <p className="text-sm">No note selected</p>
-                <p className="text-xs mt-1">Open a note from the sidebar</p>
+              <div className="flex-1 flex flex-col items-center justify-center gap-7 select-none">
+                <NoaWordmark className="w-20 sm:w-24 h-auto noa-empty-state-mark" />
+                <EmptyStatePrompt className="w-44 sm:w-48 h-auto noa-empty-state-caption" />
               </div>
             )}
           </Suspense>
