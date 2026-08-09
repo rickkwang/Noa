@@ -187,17 +187,18 @@ export default function SettingsModal({
     >
       <div
         ref={dialogRef}
+        data-settings-surface="true"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
         tabIndex={-1}
-        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[#2D2D2B] rounded-md overflow-hidden flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
+        className="w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-md overflow-hidden flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
       >
         {/* Title Bar */}
-        <div className="h-10 border-b border-[#2D2D2B] flex items-center justify-between px-4 bg-[#EFEAE3] shrink-0">
+        <div className="h-10 border-b border-[var(--divider-subtle)] flex items-center justify-between px-4 bg-[#EFEAE3] shrink-0">
           <div className="flex items-center space-x-2">
             <Settings size={16} className="text-[#2D2D2B]" />
             <span id="settings-dialog-title" className="font-bold tracking-widest uppercase text-sm">SETTINGS</span>
@@ -313,8 +314,8 @@ export default function SettingsModal({
                     )}
                   </div>
                 </SettingSection>
-                <div className="border border-[#2D2D2B] rounded overflow-hidden">
-                  <div className="bg-[#EFEAE3] px-4 py-1.5 border-b border-[#2D2D2B]">
+                <div className="border border-[var(--divider-subtle)] rounded overflow-hidden">
+                  <div className="bg-[#EFEAE3] px-4 py-1.5 border-b border-[var(--divider-subtle)]">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#2D2D2B]/70">Keyboard Shortcuts</span>
                   </div>
                   <table className="w-full text-xs font-redaction">
@@ -328,7 +329,7 @@ export default function SettingsModal({
                         ['Cmd/Ctrl + S', 'Force save pending edits'],
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
-                        <tr key={key} className="border-b border-[#2D2D2B]/15 last:border-0">
+                        <tr key={key} className="border-b border-[var(--divider-subtle)] last:border-0">
                           <td className="px-4 py-1.5 font-bold text-[#CC7D5E] whitespace-nowrap w-48">{key}</td>
                           <td className="px-4 py-1.5 text-[#2D2D2B]/60">{desc}</td>
                         </tr>

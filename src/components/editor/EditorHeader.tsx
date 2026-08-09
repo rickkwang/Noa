@@ -171,7 +171,7 @@ export function EditorHeader({
 
   return (
     <div
-      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 ${liftTabStrip ? '-mt-8' : ''} ${isDark ? 'bg-[#2D2D2B] after:bg-[#F9F9F7]/15' : 'bg-[#F9F9F7] after:bg-[#E6E2DA]'}`}
+      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 after:bg-[var(--divider-subtle)] ${liftTabStrip ? '-mt-8' : ''} ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
       style={{
         ...dragRegion,
         paddingLeft: '0.75rem',
@@ -224,7 +224,7 @@ export function EditorHeader({
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 ${isDark ? 'bg-[#F9F9F7]/15' : 'bg-[#E6E2DA]'} ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)] ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
                       />
                     )}

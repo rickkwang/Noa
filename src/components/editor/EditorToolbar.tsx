@@ -33,7 +33,7 @@ export function EditorToolbar({
       >
         <Italic size={14} />
       </button>
-      <div className="w-px h-4 bg-[#2D2D2B]/20 mx-1 shrink-0" />
+      <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
       <button
         onClick={() => onInsertFormatting('- ')}
         className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
@@ -48,7 +48,7 @@ export function EditorToolbar({
       >
         <CheckSquare size={14} />
       </button>
-      <div className="w-px h-4 bg-[#2D2D2B]/20 mx-1 shrink-0" />
+      <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
       <button
         onClick={() => onInsertFormatting('`', '`')}
         className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
@@ -65,7 +65,7 @@ export function EditorToolbar({
       </button>
       {hasToc && (
         <>
-          <div className="w-px h-4 bg-[#2D2D2B]/20 mx-1 shrink-0" />
+          <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
           <button
             onClick={onToggleToc}
             className={`p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0 ${isTocOpen ? 'text-[#CC7D5E]' : ''}`}

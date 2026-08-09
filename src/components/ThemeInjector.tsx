@@ -26,7 +26,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
       root.style.setProperty('--sidebar-material-tint', '54%');
-      root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');
+      root.style.setProperty('--sidebar-divider-color', 'rgba(249,249,247,0.15)');
+      root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 18%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
@@ -37,11 +38,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.13)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
-      root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');
+      root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');
       root.style.setProperty('--border-primary', 'var(--divider-subtle)');
       root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
+      root.style.setProperty('--control-shadow-ink', '#000000');
     } else {
       root.removeAttribute('data-theme');
       root.style.setProperty('--bg-primary', '#F9F9F7');
@@ -54,7 +56,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
       root.style.setProperty('--sidebar-material-tint', '44%');
-      root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');
+      root.style.setProperty('--sidebar-divider-color', '#E6E2DA');
+      root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 14%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm
@@ -63,11 +66,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
-      root.style.setProperty('--divider-subtle', '#E6E2DA');
+      root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', '#E6E2DA');
       root.style.setProperty('--border-primary', 'var(--border-default)');
       root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
+      root.style.setProperty('--control-shadow-ink', '#E6E2DA');
     }
 
     // Accent is a fixed theme token (coral in both themes), not user-configurable.
@@ -117,24 +121,14 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .hover\\:text-\\[\\#2D2D2B\\]:hover { color: var(--text-primary) !important; }
       .group:hover .group-hover\\:text-\\[\\#CC7D5E\\] { color: var(--accent-color) !important; }
 
-      .border-\\[\\#2D2D2B\\]      { border-color: var(--border-default) !important; }
       .border-\\[\\#CC7D5E\\]      { border-color: var(--accent-color) !important; }
-      .border-\\[\\#2D2D2B\\]\\/10 { border-color: var(--divider-subtle) !important; }
-      .border-\\[\\#2D2D2B\\]\\/15 { border-color: var(--divider-subtle) !important; }
-      .border-\\[\\#2D2D2B\\]\\/20 { border-color: var(--divider-subtle) !important; }
-      .border-\\[\\#2D2D2B\\]\\/30 { border-color: var(--border-default) !important; }
-      .border-\\[\\#2D2D2B\\]\\/40 { border-color: var(--border-strong) !important; }
-      .border-\\[\\#2D2D2B\\]\\/50 { border-color: var(--border-strong) !important; }
-      .border-\\[\\#2D2D2B\\]\\/60 { border-color: var(--border-strong) !important; }
-      .border-\\[\\#2D2D2B\\]\\/90 { border-color: color-mix(in srgb, var(--text-primary) 90%, transparent) !important; }
-      .hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-strong) !important; }
       .hover\\:border-\\[\\#CC7D5E\\]:hover  { border-color: var(--accent-color) !important; }
       .focus\\:border-\\[\\#CC7D5E\\]:focus  { border-color: var(--accent-color) !important; }
       .border-\\[\\#CC7D5E\\]\\/50 { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent) !important; }
       .border-\\[\\#CC7D5E\\]\\/60 { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent) !important; }
 
-      .shadow-\\[4px_4px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 4px 12px 0 color-mix(in srgb, var(--border-strong) 28%, transparent) !important; }
-      .shadow-\\[2px_2px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 2px 6px 0 color-mix(in srgb, var(--border-strong) 24%, transparent) !important; }
+      .shadow-\\[4px_4px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 4px 12px 0 color-mix(in srgb, var(--control-shadow-ink) 28%, transparent) !important; }
+      .shadow-\\[2px_2px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\] { box-shadow: 0 2px 6px 0 color-mix(in srgb, var(--control-shadow-ink) 24%, transparent) !important; }
       .shadow-\\[inset_4px_0px_0px_0px_\\#CC7D5E\\]          { box-shadow: inset 4px 0px 0px 0px var(--accent-color) !important; }
 
       .selection\\:bg-\\[\\#CC7D5E\\] *::selection { background-color: color-mix(in srgb, var(--accent-color) 40%, transparent) !important; }

@@ -11,7 +11,9 @@ const topBarPath = fileURLToPath(new URL('../../src/components/TopBar.tsx', impo
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 const settingsModalPath = fileURLToPath(new URL('../../src/components/settings/SettingsModal.tsx', import.meta.url));
 const settingsSidebarPath = fileURLToPath(new URL('../../src/components/settings/SettingsSidebar.tsx', import.meta.url));
+const settingSectionPath = fileURLToPath(new URL('../../src/components/settings/SettingSection.tsx', import.meta.url));
 const settingItemPath = fileURLToPath(new URL('../../src/components/settings/SettingItem.tsx', import.meta.url));
+const dataSettingsPath = fileURLToPath(new URL('../../src/components/settings/sections/DataSettings.tsx', import.meta.url));
 const sidebarPath = fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url));
 const tocPanelPath = fileURLToPath(new URL('../../src/components/editor/TocPanel.tsx', import.meta.url));
 const slashCommandPath = fileURLToPath(new URL('../../src/components/editor/SlashCommandDropdown.tsx', import.meta.url));
@@ -21,13 +23,93 @@ const historyPanelPath = fileURLToPath(new URL('../../src/components/editor/Hist
 const graphViewPath = fileURLToPath(new URL('../../src/components/GraphView.tsx', import.meta.url));
 
 describe('light theme border tokens', () => {
-  it('uses one fine warm-gray divider instead of near-black structural borders', async () => {
-    const source = await readFile(themeInjectorPath, 'utf8');
+  it('uses one translucent divider recipe across both themes and primary separators', async () => {
+    const [themeInjector, editorHeader, topBar, previewPane] = await Promise.all([
+      readFile(themeInjectorPath, 'utf8'),
+      readFile(editorHeaderPath, 'utf8'),
+      readFile(topBarPath, 'utf8'),
+      readFile(previewPanePath, 'utf8'),
+    ]);
 
-    expect(source).toContain("root.style.setProperty('--divider-subtle', '#E6E2DA');");
+    const sharedDividerRecipe = "root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');";
+    expect(themeInjector.split(sharedDividerRecipe)).toHaveLength(3);
+    expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', '#E6E2DA');");
+    expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');");
+    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
+    expect(editorHeader).toContain('editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)]');
+    expect(topBar).toContain('after:bg-[var(--divider-subtle)]');
+    expect(previewPane).toContain("const borderColor = 'var(--divider-subtle, #E6E2DA)';");
+  });
+
+  it('routes structural lines through the shared divider without flattening interactive utilities', async () => {
+    const [themeInjector, indexCss, editorToolbar, rightPanel] = await Promise.all([
+      readFile(themeInjectorPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+      readFile(new URL('../../src/components/editor/EditorToolbar.tsx', import.meta.url), 'utf8'),
+      readFile(rightPanelPath, 'utf8'),
+    ]);
+
+    expect(themeInjector).not.toContain('background-color: var(--divider-subtle) !important;');
+    expect(themeInjector).not.toContain('.border-\\[\\#2D2D2B\\]\\/20 { border-color: var(--divider-subtle) !important; }');
+    expect(themeInjector).not.toContain('.border-\\[\\#2D2D2B\\]\\/40 { border-color: var(--border-strong) !important; }');
+    expect(themeInjector).not.toContain('.hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-strong) !important; }');
+    expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
+    expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
+    expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
+    expect(rightPanel).toContain("const borderCol = 'var(--divider-subtle, #E6E2DA)';");
+  });
+
+  it('scopes all ordinary settings-panel borders to the divider token', async () => {
+    const [settingsModal, settingsSidebar, settingSection, settingItem, dataSettings, indexCss] = await Promise.all([
+      readFile(settingsModalPath, 'utf8'),
+      readFile(settingsSidebarPath, 'utf8'),
+      readFile(settingSectionPath, 'utf8'),
+      readFile(settingItemPath, 'utf8'),
+      readFile(dataSettingsPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+    ]);
+
+    expect(settingsModal).toContain('bg-[#F9F9F7] border border-[var(--divider-subtle)]');
+    expect(settingsModal).toContain('h-10 border-b border-[var(--divider-subtle)]');
+    expect(settingsModal).toContain('className="border border-[var(--divider-subtle)] rounded overflow-hidden"');
+    expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
+    expect(settingSection).toContain('bg-[#EFEAE3] border border-[var(--divider-subtle)]');
+    expect(settingItem.split('border-b border-[var(--divider-subtle)]')).toHaveLength(3);
+
+    expect(settingsModal).toContain('data-settings-surface="true"');
+    expect(indexCss).toContain('[data-settings-surface="true"] .border-\\[\\#2D2D2B\\]');
+    expect(indexCss).toContain('[data-settings-surface="true"] .border-\\[\\#2D2D2B\\]\\/20');
+    expect(indexCss).toContain('border-color: var(--divider-subtle) !important;');
+    expect(dataSettings).toContain('border border-[#2D2D2B] border-t-transparent animate-spin');
+    expect(indexCss).toContain('[data-settings-surface="true"] .border-t-transparent');
+    expect(indexCss).toContain('border-top-color: transparent !important;');
+  });
+
+  it('does not let body-level panel fallbacks shadow the hydrated divider token', async () => {
+    const indexCss = await readFile(indexCssPath, 'utf8');
+
+    expect(indexCss).toContain('--panel-divider: var(--divider-subtle, #E6E2DA);');
+    expect(indexCss).toContain('--panel-divider: var(--divider-subtle, rgba(249,249,247,0.15));');
+    expect(indexCss).not.toContain('--panel-divider: #E6E2DA;');
+    expect(indexCss).not.toContain('--panel-divider: rgba(249,249,247,0.15);');
+  });
+
+  it('keeps strong borders independent from the shared translucent divider', async () => {
+    const [source, indexCss] = await Promise.all([
+      readFile(themeInjectorPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+    ]);
+
     expect(source).toContain("root.style.setProperty('--border-default', 'var(--divider-subtle)');");
+    expect(source).toContain("root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');");
     expect(source).toContain("root.style.setProperty('--border-strong', '#E6E2DA');");
+    expect(source).not.toContain("root.style.setProperty('--border-strong', 'var(--divider-subtle)');");
     expect(source).not.toContain("root.style.setProperty('--border-primary', '#2D2D2B');");
+    expect(source).toContain("root.style.setProperty('--control-shadow-ink', '#000000');");
+    expect(source).toContain("root.style.setProperty('--control-shadow-ink', '#E6E2DA');");
+    expect(source).toContain('color-mix(in srgb, var(--control-shadow-ink) 24%, transparent)');
+    expect(source).not.toContain('color-mix(in srgb, var(--border-strong) 24%, transparent)');
+    expect(indexCss).not.toContain('[data-theme="dark"] .shadow-\\[2px_2px_0_0_rgba\\(45\\,45\\,43\\,1\\)\\]');
   });
 
   it('keeps preview tables and graph cards at the default border weight', async () => {
@@ -66,15 +148,15 @@ describe('light theme border tokens', () => {
   it('uses a subtle baseline beneath the editor tab strip', async () => {
     const editorHeader = await readFile(editorHeaderPath, 'utf8');
 
-    expect(editorHeader).toContain("after:bg-[#E6E2DA]");
-    expect(editorHeader).toContain("bg-[#E6E2DA]");
+    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
     expect(editorHeader).not.toContain("after:bg-[#2D2D2B]'}");
   });
 
   it('keeps the tab strip on the editor canvas instead of a separate tinted surface', async () => {
     const editorHeader = await readFile(editorHeaderPath, 'utf8');
 
-    expect(editorHeader).toContain("isDark ? 'bg-[#2D2D2B] after:bg-[#F9F9F7]/15' : 'bg-[#F9F9F7] after:bg-[#E6E2DA]'");
+    expect(editorHeader).toContain("isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'");
+    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
   });
 
   it('starts the lifted tab-strip baseline after the visible desktop sidebar', async () => {
@@ -84,7 +166,7 @@ describe('light theme border tokens', () => {
     expect(topBar).toContain('const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen');
     expect(topBar).toContain("!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
     expect(topBar).toContain('after:absolute after:right-0 after:bottom-0 after:h-px');
-    expect(topBar).toContain("isDark ? 'after:bg-[#F9F9F7]/15' : 'after:bg-[#E6E2DA]'");
+    expect(topBar).toContain('after:bg-[var(--divider-subtle)]');
   });
 
   it('collapses export and version history into one overflow menu', async () => {
@@ -298,7 +380,7 @@ describe('light theme border tokens', () => {
       readFile(tocPanelPath, 'utf8'),
     ]);
 
-    expect(themeInjector).toContain('box-shadow: 0 4px 12px 0 color-mix(in srgb, var(--border-strong) 28%, transparent)');
+    expect(themeInjector).toContain('box-shadow: 0 4px 12px 0 color-mix(in srgb, var(--control-shadow-ink) 28%, transparent)');
     expect(themeInjector).not.toContain('box-shadow: 4px 4px 0 0 var(--border-strong)');
     for (const source of [app, sidebar, tocPanel]) {
       expect(source).not.toContain('shadow-[4px_4px_0px_0px');

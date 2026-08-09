@@ -139,8 +139,10 @@ describe('sidebar surface tokens', () => {
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 12%)');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 8%)');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-color', 'rgba(249,249,247,0.15)');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-color', '#E6E2DA');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 18%)');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 14%)');");
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
     expect(electronMain).toContain('nativeTheme.themeSource = themeSource;');
     expect(electronMain).toContain("setVibrancy(resolved.vibrancy, { animationDuration: 160 })");
@@ -152,6 +154,7 @@ describe('sidebar surface tokens', () => {
     expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
     expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
     expect(app).toContain("'--noa-sidebar-material-width': isSidebarOpen");
+    expect(app).toContain("backgroundColor: 'var(--sidebar-divider-color, #E6E2DA)'");
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
@@ -159,7 +162,7 @@ describe('sidebar surface tokens', () => {
       /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
     );
     expect(css).toMatch(
-      /\[data-sidebar-separator="true"\]\s*\{[^}]*filter:\s*drop-shadow\(-3px 0 4px var\(--sidebar-divider-shadow\)\)/,
+      /\[data-sidebar-separator="true"\]\s*\{[^}]*filter:\s*drop-shadow\(-3px 0 6px var\(--sidebar-divider-shadow\)\)/,
     );
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
     // Electron supplies the native macOS sidebar material. A CSS backdrop blur

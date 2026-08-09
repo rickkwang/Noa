@@ -539,7 +539,7 @@ function GraphFilterPanel({
 }: GraphFilterPanelProps) {
   const labelCls = `text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/55'}`;
   const valueCls = `text-[10px] tabular-nums ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/80'}`;
-  const borderCol = isDark ? 'rgba(249,249,247,0.12)' : 'var(--divider-subtle, #E6E2DA)';
+  const borderCol = 'var(--divider-subtle, #E6E2DA)';
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
   };

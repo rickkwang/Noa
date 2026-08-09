@@ -602,7 +602,7 @@ export default function Editor({
 
         {viewMode === 'split' && (
           <div
-            className="w-px bg-[#2D2D2B]/20 cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
+            className="w-px bg-[var(--divider-subtle)] cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
             onMouseDown={handleDividerMouseDown}
           />
         )}

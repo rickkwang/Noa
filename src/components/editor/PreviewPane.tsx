@@ -876,7 +876,7 @@ function NoteEmbed({
   }, [visitedIds, noteId]);
 
   const mutedColor = isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.45)';
-  const borderColor = isDark ? 'rgba(249,249,247,0.15)' : 'var(--divider-subtle, #E6E2DA)';
+  const borderColor = 'var(--divider-subtle, #E6E2DA)';
 
   if (!target || !embeddedNote) {
     return (
