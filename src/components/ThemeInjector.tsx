@@ -31,8 +31,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // the preview looks like a sheet pasted over the canvas rather than
       // lifted off it. Layering a contact line, a tight cast and two wide
       // negative-spread falloffs approximates real light decay, so no single
-      // layer's edge is locatable.
-      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.10), 3px 0 6px -2px rgba(0,0,0,0.14), 10px 0 22px -6px rgba(0,0,0,0.16), 26px 0 54px -16px rgba(0,0,0,0.18)');
+      // layer's edge is locatable. Alphas sit about a third below the first
+      // pass at this geometry, which had the falloff right but carried it too
+      // far — the stack should read as lift, not as a cast.
+      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
       // today — the dark rules there outrank the shared one that consumes it.
@@ -63,7 +65,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // Light counterpart of the dark stack above, same four-layer geometry at
       // roughly the previous total weight — on a light floor the single-layer
       // version was already faint enough not to band.
-      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.04), 3px 0 6px -2px rgba(45,45,43,0.05), 10px 0 22px -6px rgba(45,45,43,0.06), 26px 0 54px -16px rgba(45,45,43,0.07)');
+      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm
       // paper tone, which is the brand at row scale, and placed so the solid

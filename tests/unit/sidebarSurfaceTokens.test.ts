@@ -25,10 +25,10 @@ describe('sidebar surface tokens', () => {
     // line plus three negative-spread layers. The old single 6px/14px shadow
     // banded visibly against the dark canvas.
     expect(injector).toContain(
-      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.10), 3px 0 6px -2px rgba(0,0,0,0.14), 10px 0 22px -6px rgba(0,0,0,0.16), 26px 0 54px -16px rgba(0,0,0,0.18)');",
+      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');",
     );
     expect(injector).toContain(
-      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.04), 3px 0 6px -2px rgba(45,45,43,0.05), 10px 0 22px -6px rgba(45,45,43,0.06), 26px 0 54px -16px rgba(45,45,43,0.07)');",
+      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');",
     );
     // Both floors must keep the editor plane's own red-blue spread of 2. A
     // wider spread reads as the sidebar changing colour instead of depth,
