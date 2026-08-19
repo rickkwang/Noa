@@ -1,34 +1,34 @@
 import React from 'react';
 import { AppSettings } from '../../../types';
 import FontPicker from '../FontPicker';
+import SegmentedControl from '../SegmentedControl';
 import SettingItem from '../SettingItem';
 import SettingSection from '../SettingSection';
 import SettingsToggle from '../SettingsToggle';
-import { ChevronDown } from '@/src/lib/icons';
+import { Monitor, Moon, Sun } from '@/src/lib/icons';
 
 interface AppearanceSettingsProps {
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
 }
 
+const THEME_OPTIONS = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+] as const;
+
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   return (
     <div className="space-y-8">
       <SettingSection title="Theme" description="Change how Noa looks.">
         <SettingItem label="Base Theme" description="Choose between light, dark, or sync with system.">
-          <div className="relative inline-block">
-            <select
-              value={settings.appearance.theme}
-              aria-label="Base theme"
-              onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme: e.target.value as 'light' | 'dark' | 'system' } }))}
-              className="appearance-none bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] pl-3 pr-9 py-1.5 text-sm font-medium outline-none focus:border-[#CC7D5E]"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
-          </div>
+          <SegmentedControl
+            ariaLabel="Base theme"
+            value={settings.appearance.theme}
+            options={THEME_OPTIONS}
+            onChange={(theme) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme } }))}
+          />
         </SettingItem>
         <SettingItem label="Translucent sidebar" description="Give the expanded desktop sidebar a softly frosted surface.">
           <SettingsToggle
@@ -87,7 +87,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
       </SettingSection>
 
-      <SettingSection title="Editor Style" description="Adjust the reading and writing experience.">
+      <SettingSection title="Reading" description="Line width, spacing, and other on-page reading settings.">
         <SettingItem label="Max Width" description="Maximum width of the editor content area.">
           <div className="flex items-center space-x-3">
             <span className="text-xs text-[#2D2D2B]/70">{settings.appearance.maxWidth}px</span>

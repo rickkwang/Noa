@@ -28,24 +28,19 @@ export default function AppUpdateSettings() {
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">
       {!isDesktop && (
-        <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="border border-[var(--divider-subtle)] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
           You are using web mode. In-app updates are available in the Electron desktop build.
         </div>
       )}
 
       <SettingItem label="Current Version" description={isDesktop ? 'Version reported by the desktop runtime.' : 'Version of the web app currently loaded.'}>
-        <div className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm font-redaction">
-          {displayVersion}
-        </div>
+        <span className="text-sm font-medium font-redaction tabular-nums">{displayVersion}</span>
       </SettingItem>
 
-      <div className="py-4 border-b border-[#2D2D2B]/20 last:border-0 space-y-3">
-        <div>
-          <div className="font-bold text-sm text-[#2D2D2B]">Update Status</div>
-          <div className="text-xs text-[#2D2D2B]/70 mt-1 leading-relaxed">Updates are downloaded and installed inside the app.</div>
-        </div>
+      <SettingItem label="Update Status" description="Updates are downloaded and installed inside the app." stacked>
+        <div className="space-y-3">
         <div className={`text-sm break-words ${statusColor}`}>
-          <span className="font-bold uppercase tracking-wider mr-2">{status.state}</span>
+          <span className="font-medium mr-2 capitalize">{status.state}</span>
           <span>{status.message || (status.state === 'idle' ? 'Click "Check Updates" to check.' : '')}</span>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -66,7 +61,8 @@ export default function AppUpdateSettings() {
             <span>{installLabel}</span>
           </button>
         </div>
-      </div>
+        </div>
+      </SettingItem>
     </SettingSection>
   );
 }

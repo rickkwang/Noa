@@ -1,18 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatDate } from '../../../lib/templates';
 import { AppSettings, UserTemplate } from '../../../types';
+import SegmentedControl from '../SegmentedControl';
 import SettingItem from '../SettingItem';
 import SettingSection from '../SettingSection';
 import SettingsToggle from '../SettingsToggle';
 
-interface EditorSettingsProps {
+interface WritingSettingsProps {
+  // One file, two tabs — the same arrangement DataSettings uses for Workspace
+  // and Data. 'general' renders the app-wide writing behaviour (editor view,
+  // search), 'notes' the note-authoring settings (daily notes, templates).
+  // They share this component because they share the same settings object and
+  // the same update path; splitting the file would duplicate both.
+  group: 'general' | 'notes';
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
   editorViewMode: 'edit' | 'preview' | 'split';
   setEditorViewMode: (mode: 'edit' | 'preview' | 'split') => void;
 }
 
-export default function EditorSettings({ settings, updateSettings, editorViewMode, setEditorViewMode }: EditorSettingsProps) {
+const VIEW_MODE_OPTIONS = [
+  { value: 'edit', label: 'Edit' },
+  { value: 'split', label: 'Split' },
+  { value: 'preview', label: 'Preview' },
+] as const;
+
+export default function WritingSettings({ group, settings, updateSettings, editorViewMode, setEditorViewMode }: WritingSettingsProps) {
   const userTemplates = settings.templates?.userTemplates ?? [];
 
   // Editing state: null = not editing, 'new' = creating, string = editing existing id
@@ -81,47 +94,40 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
 
   return (
     <div className="space-y-8">
-      <SettingSection title="General" description="Configure your writing experience.">
-        <SettingItem label="View Mode" description="Switch the current editor view. Restored when Noa opens.">
-          <div className="flex space-x-2" role="group" aria-label="Editor view mode">
-            {(['edit', 'split', 'preview'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setEditorViewMode(mode)}
-                aria-pressed={editorViewMode === mode}
-                className={`px-3 py-1.5 font-bold border border-[#2D2D2B] rounded-[3px] text-sm capitalize transition-colors ${
-                  editorViewMode === mode
-                    ? 'bg-[#CC7D5E] text-white shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.2)]'
-                    : 'bg-[#F9F9F7] text-[#2D2D2B] hover:bg-[#EFEAE3]'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </SettingItem>
-      </SettingSection>
-
-      <SettingSection title="Daily Notes" description="Configure automatic daily note creation.">
-        <SettingItem label="Enable Daily Notes" description="Show the daily note button in the toolbar.">
-          <SettingsToggle
-            checked={settings.corePlugins.dailyNotes}
-            label="Enable Daily Notes"
-            onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, dailyNotes: v } }))}
-          />
-        </SettingItem>
-        <SettingItem label="Date Format" description="Format for the daily note title. Uses YYYY MM DD HH mm tokens.">
-          <div className="space-y-1">
-            <input
-              type="text"
-              value={settings.dailyNotes.dateFormat}
-              onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
-              placeholder="YYYY-MM-DD"
-              aria-label="Daily note date format"
-              className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-40 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E]"
+      {group === 'general' && (
+        <SettingSection title="Editor" description="How the editor behaves while you write.">
+          <SettingItem label="View Mode" description="The view the editor opens in. Restored when Noa opens.">
+            <SegmentedControl
+              ariaLabel="Editor view mode"
+              value={editorViewMode}
+              options={VIEW_MODE_OPTIONS}
+              onChange={setEditorViewMode}
             />
-            {settings.dailyNotes.dateFormat.trim() && (
-              <p className="text-xs text-[#2D2D2B]/60">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
+          </SettingItem>
+        </SettingSection>
+      )}
+
+      {group === 'notes' && (<>
+        <SettingSection title="Daily Notes" description="Configure automatic daily note creation.">
+          <SettingItem label="Enable Daily Notes" description="Show the daily note button in the toolbar.">
+            <SettingsToggle
+              checked={settings.corePlugins.dailyNotes}
+              label="Enable Daily Notes"
+              onChange={(v) => updateSettings(s => ({ ...s, corePlugins: { ...s.corePlugins, dailyNotes: v } }))}
+            />
+          </SettingItem>
+          <SettingItem label="Date Format" description="Format for the daily note title. Uses YYYY MM DD HH mm tokens.">
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={settings.dailyNotes.dateFormat}
+                onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
+                placeholder="YYYY-MM-DD"
+                aria-label="Daily note date format"
+                className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-40 outline-none focus:border-[#CC7D5E]"
+              />
+              {settings.dailyNotes.dateFormat.trim() && (
+                <p className="text-xs text-[#2D2D2B]/60">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
             )}
           </div>
         </SettingItem>
@@ -132,7 +138,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
             placeholder={"# {{date}}\n\n## Notes\n\n"}
             rows={5}
             aria-label="Daily note template"
-            className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)] outline-none focus:border-[#CC7D5E] resize-none"
+            className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
           />
         </SettingItem>
       </SettingSection>
@@ -140,7 +146,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
       <SettingSection title="Custom Templates" description="Create reusable note templates. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
         <div className="space-y-2">
           {userTemplates.map(t => (
-            <div key={t.id} className="border border-[#2D2D2B] rounded p-3 flex items-center justify-between gap-3">
+            <div key={t.id} className="border border-[var(--divider-subtle)] rounded p-3 flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{t.name}</div>
                 {t.content && (
@@ -176,11 +182,11 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
           {editingId !== null && (
             <div
               ref={editFormRef}
-              className="border border-[#2D2D2B] rounded p-3 space-y-3 mt-2"
+              className={`space-y-3 ${userTemplates.length > 0 ? 'border-t border-[var(--divider-subtle)] pt-4 mt-4' : ''}`}
               onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
             >
               <div>
-                <div className="text-xs font-bold mb-1">Name</div>
+                <div className="text-xs font-medium text-[#2D2D2B]/70 mb-1.5">Name</div>
                 <input
                   type="text"
                   value={editName}
@@ -193,7 +199,7 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                 />
               </div>
               <div>
-                <div className="text-xs font-bold mb-1">Content</div>
+                <div className="text-xs font-medium text-[#2D2D2B]/70 mb-1.5">Content</div>
                 <textarea
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
@@ -203,51 +209,66 @@ export default function EditorSettings({ settings, updateSettings, editorViewMod
                   className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={cancelEdit}
+                  className="rounded-[3px] px-3 py-1.5 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[#EFEAE3] hover:text-[#2D2D2B] active:opacity-70"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={saveTemplate}
                   disabled={!editName.trim()}
-                  className="border border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] rounded-[3px] px-3 py-1 text-xs font-bold active:opacity-70 disabled:opacity-50 disabled:pointer-events-none"
+                  className="border border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] rounded-[3px] px-3 py-1.5 text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Save
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  className="border border-[#2D2D2B] rounded-[3px] px-3 py-1 text-xs font-bold active:opacity-70"
-                >
-                  Cancel
                 </button>
               </div>
             </div>
           )}
 
           {editingId === null && (
+            // Dashed and centred: this adds a row to the list rather than
+            // acting on it, and a solid full-width outline read as a second
+            // box drawn inside the card. With no templates yet it is also the
+            // empty state — one block that explains and invites, instead of a
+            // caption stranded above a separate button.
             <button
               onClick={openNew}
-              className="border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-xs font-bold w-full text-left active:opacity-70 hover:bg-[#EFEAE3] mt-1"
+              className={`w-full rounded border border-dashed border-[var(--border-strong)] px-3 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[#EFEAE3] hover:text-[#2D2D2B] active:opacity-70 ${
+                userTemplates.length === 0 ? 'flex flex-col items-center gap-1 py-6' : 'py-2'
+              }`}
             >
-              + New Template
+              <span>+ New Template</span>
+              {userTemplates.length === 0 && (
+                <span className="text-[11px] font-normal text-[#2D2D2B]/50">
+                  A reusable starting point for new notes
+                </span>
+              )}
             </button>
           )}
         </div>
       </SettingSection>
+      </>)}
 
-      <SettingSection title="Search" description="Control how notes are searched.">
-        <SettingItem label="Fuzzy Search" description="Match approximate spellings and partial words. Disable for exact-only matching.">
-          <SettingsToggle
-            checked={settings.search.fuzzySearch}
-            label="Fuzzy Search"
-            onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, fuzzySearch: v } }))}
-          />
-        </SettingItem>
-        <SettingItem label="Case Sensitive" description="Match uppercase and lowercase characters exactly.">
-          <SettingsToggle
-            checked={settings.search.caseSensitive}
-            label="Case Sensitive"
-            onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, caseSensitive: v } }))}
-          />
-        </SettingItem>
-      </SettingSection>
+      {group === 'general' && (
+        <SettingSection title="Search" description="Control how notes are searched.">
+          <SettingItem label="Fuzzy Search" description="Match approximate spellings and partial words. Disable for exact-only matching.">
+            <SettingsToggle
+              checked={settings.search.fuzzySearch}
+              label="Fuzzy Search"
+              onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, fuzzySearch: v } }))}
+            />
+          </SettingItem>
+          <SettingItem label="Case Sensitive" description="Match uppercase and lowercase characters exactly.">
+            <SettingsToggle
+              checked={settings.search.caseSensitive}
+              label="Case Sensitive"
+              onChange={(v) => updateSettings(s => ({ ...s, search: { ...s.search, caseSensitive: v } }))}
+            />
+          </SettingItem>
+        </SettingSection>
+      )}
     </div>
   );
 }

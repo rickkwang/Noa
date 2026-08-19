@@ -225,9 +225,6 @@ export default function DataSettings({
           }`}
         >
           <span>
-            <span className="mr-1.5 text-[10px] uppercase tracking-wider font-bold">
-              {message.type === 'success' ? 'Success' : 'Error'}
-            </span>
             {message.text}
             {message.code ? ` (${message.code})` : ''}
             {message.suggestedAction ? ` · Suggested action: ${message.suggestedAction}` : ''}

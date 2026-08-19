@@ -68,11 +68,21 @@ export default function WorkspaceSection({
           }}
           maxLength={60}
           aria-label="Workspace name"
-          className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-56 font-redaction shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)] outline-none focus:border-[#CC7D5E]"
+          className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-56 font-redaction outline-none focus:border-[#CC7D5E]"
         />
       </SettingItem>
 
-      <div className="flex space-x-4 mt-4">
+      {/* One action per row, each with its own explanation, so the card keeps
+          the label-left / control-right rhythm the rest of the settings use.
+          The two buttons previously shared a full-width row with a single
+          caption underneath, which left the caption ambiguous between them and
+          stretched both buttons far past the size of their labels. */}
+      <SettingItem
+        label="Import Vault Folder"
+        description={isFileSystemSupported && !fsHandle
+          ? 'A one-time migration into Noa. To keep a live mirror on disk instead, connect a vault folder below.'
+          : 'A one-time migration into Noa.'}
+      >
         <button
           onClick={() => {
             if (typeof window.showDirectoryPicker === 'function') {
@@ -81,25 +91,22 @@ export default function WorkspaceSection({
             }
             folderInputRef.current?.click();
           }}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
+          className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
         >
           <FolderOpen size={14} />
-          <span>Import Vault Folder</span>
+          <span>Import</span>
         </button>
+      </SettingItem>
+
+      <SettingItem label="New Workspace" description="Start an empty workspace. The current one stays on this device.">
         <button
           onClick={onCreateWorkspace}
-          className="flex-1 flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
+          className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
         >
           <PlusSquare size={14} />
-          <span>New Workspace</span>
+          <span>Create</span>
         </button>
-      </div>
-
-      <p className="text-xs text-[#2D2D2B]/60 mt-2 px-1">
-        {isFileSystemSupported && !fsHandle
-          ? 'Import Vault Folder is a one-time migration into Noa. To keep a live mirror on disk instead, use Connect Folder below.'
-          : 'Import Vault Folder is a one-time migration into Noa.'}
-      </p>
+      </SettingItem>
 
       <input
         type="file"
@@ -118,7 +125,7 @@ export default function WorkspaceSection({
           description={fsHandle ? `Using ${fsHandle.name} as the Markdown vault (${syncStatusLabel})` : 'Connect a folder to make Markdown files on disk the source of truth.'}
           stacked
         >
-          <div className="space-y-2">
+          <div className="space-y-3">
             {fsHandle ? (
               <div className="flex items-center gap-2">
                 <button
@@ -151,10 +158,11 @@ export default function WorkspaceSection({
               </button>
             )}
 
-            <p className="text-xs text-[#2D2D2B]/60">
-              Sync status: {syncStatusLabel}.
-              {fsLastSyncAt && ` Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}.`}
-              {fsHandle && ' Edits sync both ways; new notes created in Noa stay local.'}
+            <p className="text-xs text-[#2D2D2B]/60 leading-relaxed">
+              {fsLastSyncAt && `Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}. `}
+              {fsHandle
+                ? 'Edits sync both ways; new notes created in Noa stay local.'
+                : `Sync status: ${syncStatusLabel}.`}
             </p>
             {fsSyncError && (
               <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-[3px] px-2 py-1">

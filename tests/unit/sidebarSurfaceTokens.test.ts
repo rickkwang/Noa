@@ -167,8 +167,15 @@ describe('sidebar surface tokens', () => {
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
+    // Every translucency rule is gated on :where(:not([data-settings-open])),
+    // which switches without contributing specificity.
+    // The settings scrim blurs the frame behind it in premultiplied alpha, and
+    // translucency leaves that frame transparent over the sidebar, which haloes
+    // the text there. Switching the rules off lets each surface fall back to
+    // the opaque floor it already carries — nothing is restated, so a
+    // transparent surface added later cannot forget to opt in.
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
     );
     expect(css).not.toContain('[data-sidebar-separator="true"] {');
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
@@ -179,13 +186,13 @@ describe('sidebar surface tokens', () => {
       /\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*backdrop-filter:/,
     );
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]\s+\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
     );
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]\s+\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
     );
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]\s+body\s*\{[^}]*background-color:\s*transparent/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+body\s*\{[^}]*background-color:\s*transparent/,
     );
     expect(css).not.toMatch(
       /html\[data-translucent-sidebar="enabled"\][^{]*\[data-sidebar-preview-shell="true"\][^{]*\{/,

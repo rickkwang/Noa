@@ -159,17 +159,101 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
+/* Inside the settings dialog the shared 8% divider is too faint to read: its
+   rules and card borders sit on a panel the eye is scanning for structure, not
+   on a document surface where a hairline is meant to disappear. Redefining the
+   token on the dialog keeps every consumer in there on one value — nothing
+   opts in per-border. */
+[data-settings-surface="true"] {
+  --divider-subtle: color-mix(in srgb, var(--text-primary) 13%, transparent);
+}
+
+/* Softer corners throughout the dialog. Restated here rather than edited into
+   ~60 utility classes across a dozen section files: the radii come in exactly
+   two sizes (3px controls, 4px cards), so scoping the two utilities keeps the
+   dialog on one curve and leaves the app's squarer language untouched.
+   rounded-full is a different class and stays circular. */
+[data-settings-surface="true"] .rounded-\[3px\] {
+  border-radius: 6px;
+}
+
+[data-settings-surface="true"] .rounded {
+  border-radius: 10px;
+}
+
+/* Flash for a setting reached from the search. Colour, not motion: the row is
+   already scrolling into place, and a second moving thing there competes with
+   it. Fades out on its own so nothing has to clear a class. */
+[data-setting-revealed="true"] {
+  animation: noa-setting-reveal 1200ms ease-out;
+}
+
+@keyframes noa-setting-reveal {
+  0%, 40% { background-color: color-mix(in srgb, var(--accent-color) 14%, transparent); }
+  100% { background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-setting-revealed="true"] {
+    animation-duration: 1ms;
+    background-color: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  }
+}
+
+/* Segmented control track. A palette step could not work in both themes here:
+   the card behind it is --bg-secondary in light and the same value again in
+   dark, so any fixed track colour matched one of them and disappeared. A low
+   ink wash always sinks below whatever surface it lands on, which is all the
+   well has to do — the raised segment supplies the contrast. */
+.noa-segmented-track {
+  background-color: rgba(45, 45, 43, 0.07);
+}
+
+[data-theme="dark"] .noa-segmented-track {
+  background-color: rgba(0, 0, 0, 0.22);
+}
+
+/* The pill is the only thing that moves. transform and width are both cheap to
+   animate here (one element, no layout of its own), and the easing is the
+   shell's own out-curve so the slide settles rather than stopping dead. */
+.noa-segmented-pill {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noa-segmented-pill {
+    transition: none;
+  }
+}
+
 /* Optional glass treatment for the docked desktop sidebar. Electron supplies
-   the native macOS sidebar material; this layer only adds the theme tint. */
-html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
+   the native macOS sidebar material; this layer only adds the theme tint. 
+
+   Every translucency rule in this block is gated on
+   :where(:not([data-settings-open="true"])).
+   :where() contributes no specificity, so the gate is purely a switch and the
+   cascade these rules already win stays exactly as it was. The settings
+   scrim carries a backdrop-filter, which blurs the composited frame behind it
+   in premultiplied alpha — and translucency leaves that frame transparent over
+   the sidebar column, since its real floor is the native material behind the
+   window. Blurring alpha there mixes transparent pixels into the opaque glyphs
+   above them, and unpremultiplying lifts the edges, so every line of sidebar
+   text picks up a halo while the opaque editor half blurs cleanly. Switching
+   the rules off restores each surface's own opaque floor (all three carry one
+   already), which is the whole fix: nothing here needs restating, so a
+   transparent surface added later cannot forget to opt in. The material is
+   fully hidden behind the dialog anyway. */
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
   background-color: color-mix(in srgb, var(--bg-sidebar, #F4F4F2) var(--sidebar-material-tint, 44%), transparent) !important;
 }
 
-html[data-translucent-sidebar="enabled"] body {
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) body {
   background-color: transparent;
 }
 
-html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expanded="true"]) {
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell:has([data-sidebar-expanded="true"]) {
   background: linear-gradient(
     to right,
     transparent 0 var(--noa-sidebar-material-width),
@@ -177,7 +261,7 @@ html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expand
   ) !important;
 }
 
-html[data-translucent-sidebar="enabled"] [data-translucent-sidebar-titlebar="true"] {
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-translucent-sidebar-titlebar="true"] {
   background: linear-gradient(
     to right,
     transparent 0 var(--noa-sidebar-material-width),
@@ -185,8 +269,8 @@ html[data-translucent-sidebar="enabled"] [data-translucent-sidebar-titlebar="tru
   ) !important;
 }
 
-html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-surface,
-html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-section-surface {
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-surface,
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-section-surface {
   background-color: transparent;
 }
 

@@ -490,7 +490,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
 test('invalid JSON import is blocked with readable error', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Backup & Import' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
 
   const fileChooser = page.locator('input[type="file"][accept=".json"]');
   await fileChooser.setInputFiles({
@@ -505,7 +505,7 @@ test('invalid JSON import is blocked with readable error', async ({ page }) => {
 test('export json button is available from backup section', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Backup & Import' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
 });
 

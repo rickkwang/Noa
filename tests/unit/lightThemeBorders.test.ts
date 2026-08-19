@@ -70,8 +70,12 @@ describe('light theme border tokens', () => {
     ]);
 
     expect(settingsModal).toContain('bg-[#F9F9F7] border border-[var(--divider-subtle)]');
-    expect(settingsModal).toContain('h-10 border-b border-[var(--divider-subtle)]');
-    expect(settingsModal).toContain('className="border border-[var(--divider-subtle)] rounded overflow-hidden"');
+    // The title bar is gone; the sidebar's search field is the surface that
+    // now carries a border of its own, and it takes the same token.
+    expect(settingsSidebar).toContain('border border-[var(--divider-subtle)]');
+    // The shortcuts table lost its own bordered wrapper and header strip; it
+    // sits in a standard SettingSection card like every other block now.
+    expect(settingsModal).not.toContain('rounded overflow-hidden');
     expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
     expect(settingSection).toContain('bg-[#EFEAE3] border border-[var(--divider-subtle)]');
     expect(settingItem.split('border-b border-[var(--divider-subtle)]')).toHaveLength(3);

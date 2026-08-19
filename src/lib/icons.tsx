@@ -50,6 +50,9 @@ import {
   ArrowsClockwise,
   ArrowCounterClockwise,
   MagnifyingGlass,
+  Monitor as PhMonitor,
+  Moon as PhMoon,
+  Sun as PhSun,
   Gear,
   SlidersHorizontal as PhSlidersHorizontal,
   NotePencil,
@@ -109,6 +112,8 @@ export const Italic = icon(TextItalic);
 export const List = icon(PhList);
 export const Loader2 = icon(CircleNotch);
 export const Maximize2 = icon(ArrowsOut);
+export const Monitor = icon(PhMonitor);
+export const Moon = icon(PhMoon);
 export const MoreHorizontal = icon(DotsThree);
 export const Network = icon(Graph);
 export const Palette = icon(PhPalette);
@@ -122,6 +127,7 @@ export const RotateCcw = icon(ArrowCounterClockwise);
 export const Search = icon(MagnifyingGlass);
 export const Settings = icon(Gear);
 export const SlidersHorizontal = icon(PhSlidersHorizontal);
+export const Sun = icon(PhSun);
 export const SquarePen = icon(NotePencil);
 export const Trash2 = icon(Trash);
 export const Unlink = icon(LinkBreak);

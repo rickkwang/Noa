@@ -42,7 +42,7 @@ async function waitForMarkerPersisted(page: import('@playwright/test').Page, mar
 
 async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Backup & Import' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
 }
 
 // Freezes matching transitions the moment they are created (mid-flight for
@@ -870,7 +870,7 @@ test('app chrome prevents accidental text selection while content remains select
   expect(await userSelect(page.locator('.noa-selectable').first())).toBe('text');
 
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Editor' }).click();
+  await page.getByRole('tab', { name: 'Notes' }).click();
   expect(await userSelect(page.getByPlaceholder('# {{date}}\n\n## Notes\n\n'))).toBe('text');
   await page.getByRole('tab', { name: 'Appearance' }).click();
   expect(await userSelect(page.getByRole('heading', { name: 'Theme' }))).toBe('none');
@@ -939,7 +939,7 @@ test('legacy Graph View preference cannot hide the graph tab', async ({ page }) 
 
   await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
   await page.getByTitle('Settings').click();
-  await page.getByRole('tab', { name: 'Editor' }).click();
+  await page.getByRole('tab', { name: 'General' }).click();
   await expect(page.getByRole('switch', { name: 'Graph View' })).toHaveCount(0);
 });
 
@@ -1119,7 +1119,7 @@ test('settings tabs support keyboard navigation', async ({ page }) => {
   // ArrowRight can land while focus is still on Appearance.
   await expect(page.getByRole('tab', { name: 'Workspace' })).toBeFocused();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Backup & Import' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
 });
 
@@ -1154,15 +1154,15 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
 
-  const theme = page.getByLabel('Base theme');
-  await theme.selectOption('dark');
-  await expect(theme).toHaveValue('dark');
+  // Base theme is a segmented radiogroup, not a <select>.
+  const theme = page.getByRole('radiogroup', { name: 'Base theme' });
+  await theme.getByRole('radio', { name: 'Dark' }).click();
+  await expect(theme.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
 
   const fontTrigger = page.getByRole('button', { name: 'Font family' });
   await expect(fontTrigger).toHaveText('System Default');
   await fontTrigger.click();
 
-  // Scope to the font list: the theme <select> also exposes options.
   const fontOptions = page.getByRole('listbox', { name: 'Fonts' }).getByRole('option');
   // Duplicate faces of one family collapse to a single row.
   await expect(fontOptions).toHaveCount(3);
@@ -1178,7 +1178,9 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await page.reload();
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  await expect(page.getByLabel('Base theme')).toHaveValue('dark');
+  await expect(
+    page.getByRole('radiogroup', { name: 'Base theme' }).getByRole('radio', { name: 'Dark' }),
+  ).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('button', { name: 'Font family' })).toHaveText('Georgia');
 });
 
