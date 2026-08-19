@@ -26,12 +26,6 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
       root.style.setProperty('--sidebar-material-tint', '54%');
-      // The app-shell separator sits one level above --divider-subtle (8%): it
-      // divides two panes, not two rows, and reads as structure rather than as
-      // a hairline. What it must NOT do is carry its own hue — it derives from
-      // --text-primary like every other divider, so only the weight differs.
-      root.style.setProperty('--sidebar-divider-color', 'color-mix(in srgb, var(--text-primary) 15%, transparent)');
-      root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 8%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
@@ -60,11 +54,6 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
       root.style.setProperty('--sidebar-material-tint', '44%');
-      // Light counterpart of the dark rule above. 14% rather than the previous
-      // opaque #E6E2DA, which was both heavier and visibly warmer than every
-      // other divider on screen — the warmth was the part that read as wrong.
-      root.style.setProperty('--sidebar-divider-color', 'color-mix(in srgb, var(--text-primary) 14%, transparent)');
-      root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 7%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm

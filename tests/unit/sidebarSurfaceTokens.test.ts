@@ -139,23 +139,12 @@ describe('sidebar surface tokens', () => {
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
-    // The separator is one step heavier than --divider-subtle (8%) because it
-    // divides two panes rather than two rows, but it must derive from
-    // --text-primary like every other divider: the previous opaque #E6E2DA
-    // carried its own warm hue, and that hue — not the weight — was what read
-    // as inconsistent next to the right-panel separator.
-    expect(injector).toContain(
-      "root.style.setProperty('--sidebar-divider-color', 'color-mix(in srgb, var(--text-primary) 15%, transparent)');",
-    );
-    expect(injector).toContain(
-      "root.style.setProperty('--sidebar-divider-color', 'color-mix(in srgb, var(--text-primary) 14%, transparent)');",
-    );
-    expect(injector).not.toContain("'--sidebar-divider-color', '#E6E2DA'");
-    // The shadow stays at roughly half the separator's own alpha so the line
-    // leads and the shadow only adds depth. box-shadow does not scale by the
-    // element's alpha, so these are absolute values (see index.css).
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 8%)');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 7%)');");
+    // The app-shell separator is a plain hairline on the shared divider token,
+    // with no weight step and no shadow of its own: both the bespoke
+    // --sidebar-divider-color and --sidebar-divider-shadow are gone, so it can
+    // no longer drift away from every other divider on screen.
+    expect(injector).not.toContain('--sidebar-divider-color');
+    expect(injector).not.toContain('--sidebar-divider-shadow');
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
     expect(electronMain).toContain('nativeTheme.themeSource = themeSource;');
     expect(electronMain).toContain("setVibrancy(resolved.vibrancy, { animationDuration: 160 })");
@@ -167,16 +156,14 @@ describe('sidebar surface tokens', () => {
     expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
     expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
     expect(app).toContain("'--noa-sidebar-material-width': isSidebarOpen");
-    expect(app).toContain("backgroundColor: 'var(--sidebar-divider-color, rgba(45,45,43,0.14))'");
+    expect(app).toContain("backgroundColor: 'var(--divider-subtle, #E6E2DA)'");
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
     expect(css).toMatch(
       /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
     );
-    expect(css).toMatch(
-      /\[data-sidebar-separator="true"\]\s*\{[^}]*box-shadow:\s*-3px 0 6px var\(--sidebar-divider-shadow\)/,
-    );
+    expect(css).not.toContain('[data-sidebar-separator="true"] {');
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
     // Electron supplies the native macOS sidebar material. A CSS backdrop blur
     // on this boundary samples the white editor plane outside the sidebar and

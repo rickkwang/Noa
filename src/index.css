@@ -159,23 +159,6 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
-/* Codex-style separation: preserve the existing one-pixel divider and give that
-   same animated edge a very small, blurred shadow toward the sidebar. This
-   avoids painting a visible gradient band over the sidebar surface.
-
-   box-shadow, not drop-shadow: the separator is translucent now, and
-   drop-shadow() masks by the element's own alpha, which would scale this to a
-   fraction of its intended strength (and did so unevenly between the themes,
-   since the two separator colors had very different alphas). box-shadow draws
-   from the border box instead, so the shadow token means the same thing in
-   both themes; the separator is a plain 1px-wide full-height rectangle, so the
-   rendered shape is identical either way. The token is kept at roughly half
-   the separator's own weight — the line leads, the shadow only gives the edge
-   some depth. */
-[data-sidebar-separator="true"] {
-  box-shadow: -3px 0 6px var(--sidebar-divider-shadow);
-}
-
 /* Optional glass treatment for the docked desktop sidebar. Electron supplies
    the native macOS sidebar material; this layer only adds the theme tint. */
 html[data-translucent-sidebar="enabled"] [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
