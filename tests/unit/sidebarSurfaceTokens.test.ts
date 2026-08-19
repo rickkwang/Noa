@@ -169,7 +169,7 @@ describe('sidebar surface tokens', () => {
       /html\[data-translucent-sidebar="enabled"\]\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
     );
     expect(css).toMatch(
-      /\[data-sidebar-separator="true"\]\s*\{[^}]*filter:\s*drop-shadow\(-3px 0 6px var\(--sidebar-divider-shadow\)\)/,
+      /\[data-sidebar-separator="true"\]\s*\{[^}]*box-shadow:\s*-3px 0 6px var\(--sidebar-divider-shadow\)/,
     );
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
     // Electron supplies the native macOS sidebar material. A CSS backdrop blur
