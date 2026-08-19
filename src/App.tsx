@@ -583,7 +583,7 @@ export default function App() {
               ? undefined
               : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px',
             width: '1px',
-            backgroundColor: 'var(--sidebar-divider-color, #E6E2DA)',
+            backgroundColor: 'var(--sidebar-divider-color, var(--divider-subtle, #E6E2DA))',
             opacity: isSidebarOpen ? 1 : 0,
             // A direct toggle follows the sliding sidebar edge. During preview
             // promotion the divider is already at its final edge and remains

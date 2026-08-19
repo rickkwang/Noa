@@ -26,7 +26,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
       root.style.setProperty('--sidebar-material-tint', '54%');
-      root.style.setProperty('--sidebar-divider-color', 'rgba(249,249,247,0.15)');
+      root.style.setProperty('--sidebar-divider-color', 'var(--divider-subtle)');
       root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 18%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
       // Dark row highlights are restated per-rule in index.css (translucent
@@ -56,7 +56,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
       root.style.setProperty('--sidebar-material-tint', '44%');
-      root.style.setProperty('--sidebar-divider-color', '#E6E2DA');
+      root.style.setProperty('--sidebar-divider-color', 'var(--divider-subtle)');
       root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 14%)');
       root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to

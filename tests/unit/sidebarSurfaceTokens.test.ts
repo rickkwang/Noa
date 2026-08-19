@@ -139,8 +139,15 @@ describe('sidebar surface tokens', () => {
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-color', 'rgba(249,249,247,0.15)');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-divider-color', '#E6E2DA');");
+    // The sidebar separator shares the app-wide divider token. It used to pin
+    // its own literals (#E6E2DA / rgba(249,249,247,0.15)), which left it warmer
+    // and darker than every other divider in light and roughly twice as bright
+    // in dark once --divider-subtle moved to an 8% text mix.
+    expect(
+      injector.match(/root\.style\.setProperty\('--sidebar-divider-color', 'var\(--divider-subtle\)'\);/g),
+    ).toHaveLength(2);
+    expect(injector).not.toContain("'--sidebar-divider-color', '#E6E2DA'");
+    expect(injector).not.toContain("'--sidebar-divider-color', 'rgba(249,249,247,0.15)'");
     expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(0 0 0 / 18%)');");
     expect(injector).toContain("root.style.setProperty('--sidebar-divider-shadow', 'rgb(45 45 43 / 14%)');");
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
@@ -154,7 +161,7 @@ describe('sidebar surface tokens', () => {
     expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
     expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
     expect(app).toContain("'--noa-sidebar-material-width': isSidebarOpen");
-    expect(app).toContain("backgroundColor: 'var(--sidebar-divider-color, #E6E2DA)'");
+    expect(app).toContain("backgroundColor: 'var(--sidebar-divider-color, var(--divider-subtle, #E6E2DA))'");
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
