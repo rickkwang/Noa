@@ -21,8 +21,15 @@ describe('sidebar surface tokens', () => {
 
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#2A2A28');");
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#F4F4F2');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');");
+    // Multi-layer falloff, not a single mid-blur cast: one blurless contact
+    // line plus three negative-spread layers. The old single 6px/14px shadow
+    // banded visibly against the dark canvas.
+    expect(injector).toContain(
+      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.10), 3px 0 6px -2px rgba(0,0,0,0.14), 10px 0 22px -6px rgba(0,0,0,0.16), 26px 0 54px -16px rgba(0,0,0,0.18)');",
+    );
+    expect(injector).toContain(
+      "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.04), 3px 0 6px -2px rgba(45,45,43,0.05), 10px 0 22px -6px rgba(45,45,43,0.06), 26px 0 54px -16px rgba(45,45,43,0.07)');",
+    );
     // Both floors must keep the editor plane's own red-blue spread of 2. A
     // wider spread reads as the sidebar changing colour instead of depth,
     // which is what the first attempt at this got wrong.

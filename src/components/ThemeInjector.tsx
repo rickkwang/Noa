@@ -26,7 +26,13 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#2A2A28');
       root.style.setProperty('--sidebar-material-tint', '54%');
-      root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(18,18,16,0.14)');
+      // Four stacked layers instead of one 6px/14px cast. A single mid-blur
+      // shadow lands on a dark floor as a band with a readable outer edge —
+      // the preview looks like a sheet pasted over the canvas rather than
+      // lifted off it. Layering a contact line, a tight cast and two wide
+      // negative-spread falloffs approximates real light decay, so no single
+      // layer's edge is locatable.
+      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.10), 3px 0 6px -2px rgba(0,0,0,0.14), 10px 0 22px -6px rgba(0,0,0,0.16), 26px 0 54px -16px rgba(0,0,0,0.18)');
       // Dark row highlights are restated per-rule in index.css (translucent
       // white, which re-adapts to any floor), so nothing reads this token
       // today — the dark rules there outrank the shared one that consumes it.
@@ -54,7 +60,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // shift is far louder than a lightness shift.
       root.style.setProperty('--bg-sidebar', '#F4F4F2');
       root.style.setProperty('--sidebar-material-tint', '44%');
-      root.style.setProperty('--sidebar-preview-shadow', '6px 0 14px rgba(45,45,43,0.07)');
+      // Light counterpart of the dark stack above, same four-layer geometry at
+      // roughly the previous total weight — on a light floor the single-layer
+      // version was already faint enough not to band.
+      root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.04), 3px 0 6px -2px rgba(45,45,43,0.05), 10px 0 22px -6px rgba(45,45,43,0.06), 26px 0 54px -16px rgba(45,45,43,0.07)');
       // The paired highlight token, light mode only: the row highlight has to
       // move down with the floor or it lands level with it. Kept on the warm
       // paper tone, which is the brand at row scale, and placed so the solid
