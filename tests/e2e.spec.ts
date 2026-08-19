@@ -45,6 +45,47 @@ async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByRole('tab', { name: 'Backup & Import' }).click();
 }
 
+// Freezes matching transitions the moment they are created (mid-flight for
+// timed ones, at the from-value for zero-duration ones still in their delay).
+// Sampling via rAF after a click races the 220ms sidebar transitions on slow
+// CI frames — the frame can land after the transition already finished.
+async function armTransitionHold(page: import('@playwright/test').Page, selectors: string[]) {
+  await page.evaluate((sels) => {
+    const win = window as unknown as {
+      __noaTransitionHoldSelectors?: string[] | null;
+      __noaTransitionHoldArmed?: boolean;
+    };
+    win.__noaTransitionHoldSelectors = sels;
+    if (win.__noaTransitionHoldArmed) return;
+    win.__noaTransitionHoldArmed = true;
+    document.addEventListener('transitionrun', (event) => {
+      const active = (window as unknown as { __noaTransitionHoldSelectors?: string[] | null })
+        .__noaTransitionHoldSelectors;
+      if (!active) return;
+      const target = event.target as HTMLElement | null;
+      if (!target || !active.some((selector) => target.matches(selector))) return;
+      target.getAnimations().forEach((animation) => {
+        const timing = animation.effect?.getTiming();
+        const duration = Number(timing?.duration ?? 0);
+        const delay = Number(timing?.delay ?? 0);
+        if (duration > 0) {
+          animation.pause();
+          animation.currentTime = duration / 2;
+        } else if (delay > 0) {
+          animation.pause();
+        }
+      });
+    });
+  }, selectors);
+}
+
+async function disarmTransitionHold(page: import('@playwright/test').Page) {
+  await page.evaluate(() => {
+    (window as unknown as { __noaTransitionHoldSelectors?: string[] | null })
+      .__noaTransitionHoldSelectors = null;
+  });
+}
+
 async function saveHistorySnapshotForNote(
   page: import('@playwright/test').Page,
   noteTitle: string,
@@ -494,17 +535,20 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
   const expandedSidebarBox = await sidebar.boundingBox();
   expect(expandedSidebarBox).not.toBeNull();
 
-  const sampleEdgeMidpoint = async () => sidebar.evaluate(async (element) => {
+  await armTransitionHold(page, [
+    '[data-sidebar-container]',
+    '[data-sidebar-separator="true"]',
+    '[data-sidebar-column-surface="true"]',
+  ]);
+
+  const waitForHeldAnimations = () => page.waitForFunction(() => {
+    const element = document.querySelector<HTMLElement>('[data-sidebar-container]');
+    return element?.getAnimations().some((animation) => animation.playState === 'paused') ?? false;
+  });
+
+  const sampleHeldMidpoint = () => sidebar.evaluate(async (element) => {
     const separator = document.querySelector<HTMLElement>('[data-sidebar-separator="true"]')!;
     const surface = document.querySelector<HTMLElement>('[data-sidebar-column-surface="true"]')!;
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const animations = [element, separator, surface].flatMap((target) => target.getAnimations());
-    if (animations.length === 0) throw new Error('Direct sidebar transition did not start.');
-    await Promise.all(animations.map((animation) => animation.ready));
-    animations.forEach((animation) => {
-      animation.pause();
-      animation.currentTime = Number(animation.effect?.getTiming().duration) / 2;
-    });
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const box = element.getBoundingClientRect();
     const sample = {
@@ -513,12 +557,15 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
       separator: separator.getBoundingClientRect().x,
       opacity: Number(getComputedStyle(separator).opacity),
     };
-    animations.forEach((animation) => animation.play());
+    [element, separator, surface].forEach((target) => {
+      target.getAnimations().forEach((animation) => animation.play());
+    });
     return sample;
   });
 
   await toggle.click();
-  const closing = await sampleEdgeMidpoint();
+  await waitForHeldAnimations();
+  const closing = await sampleHeldMidpoint();
   expect(closing.edge).toBeGreaterThan(expandedSidebarBox!.x);
   expect(closing.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
   expect(Math.abs(closing.edge - closing.separator)).toBeLessThan(1.5);
@@ -528,7 +575,8 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
   await expect(separator).toHaveCSS('opacity', '0');
 
   await toggle.evaluate((element) => (element as HTMLButtonElement).click());
-  const opening = await sampleEdgeMidpoint();
+  await waitForHeldAnimations();
+  const opening = await sampleHeldMidpoint();
   expect(opening.edge).toBeGreaterThan(expandedSidebarBox!.x);
   expect(opening.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
   expect(Math.abs(opening.edge - opening.separator)).toBeLessThan(1.5);
@@ -593,21 +641,47 @@ test('a second toggle during preview promotion reverses without moving the edito
   const collapsedEditorX = (await editor.boundingBox())!.x;
   await page.mouse.move(700, 400);
   await toggle.hover();
+
+  await armTransitionHold(page, ['[data-sidebar-promotion-spacer]']);
   await toggle.click();
 
-  const editorBeforeReverse = await page.locator('[data-sidebar-promotion-spacer="true"]').evaluate(async (spacer) => {
-    const animation = spacer.getAnimations()[0];
-    if (!animation) throw new Error('Sidebar promotion animation did not start.');
-    await animation.ready;
-    animation.pause();
-    animation.currentTime = Number(animation.effect?.getTiming().duration) / 2;
+  await page.waitForFunction(() => {
+    const spacer = document.querySelector<HTMLElement>('[data-sidebar-promotion-spacer="true"]');
+    return spacer?.getAnimations().some((animation) => animation.playState === 'paused') ?? false;
+  });
+  const editorBeforeReverse = await page.evaluate(async () => {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     return document.querySelector<HTMLElement>('.cm-editor')!.getBoundingClientRect().x;
   });
 
+  await disarmTransitionHold(page);
   await toggle.click();
-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-  const editorAfterReverse = (await editor.boundingBox())!.x;
+  const editorAfterReverse = await page.locator('[data-sidebar-promotion-spacer="true"]').evaluate(async (spacer) => {
+    const animation = await new Promise<Animation>((resolve, reject) => {
+      let attempts = 0;
+      const poll = () => {
+        const candidate = spacer.getAnimations().find((entry) => entry.playState === 'running');
+        if (candidate) {
+          resolve(candidate);
+          return;
+        }
+        if (++attempts > 500) {
+          reject(new Error('Sidebar promotion reverse animation did not start.'));
+          return;
+        }
+        window.setTimeout(poll, 4);
+      };
+      poll();
+    });
+    animation.pause();
+    // The reverse transition's first frame is the interrupted promotion
+    // position, so a discontinuous handoff shows up as a jump here.
+    animation.currentTime = 0;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const x = document.querySelector<HTMLElement>('.cm-editor')!.getBoundingClientRect().x;
+    animation.play();
+    return x;
+  });
   expect(Math.abs(editorAfterReverse - editorBeforeReverse)).toBeLessThan(12);
   const reverseSurface = await page.locator('[data-sidebar-column-surface="true"]').boundingBox();
   expect(reverseSurface).not.toBeNull();
