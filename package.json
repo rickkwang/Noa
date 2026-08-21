@@ -12,6 +12,7 @@
     "check:structure": "dependency-cruiser src --config .dependency-cruiser.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "prepare": "git config core.hooksPath .githooks || true",
     "lint": "tsc --noEmit && eslint .",
     "lint:types": "tsc --noEmit",
     "lint:eslint": "eslint .",

@@ -1,0 +1,65 @@
+#!/bin/sh
+# Runs the CI job list before anything can land on main.
+#
+# Direct pushes to main are this repo's workflow, and GitHub's required status
+# checks cannot gate those: they only evaluate checks that already ran, so
+# turning them on would force every change through a pull request instead. This
+# is the gate that fits — the same commands ci.yml runs, in the same order, on
+# the machine about to push. It exists because main sat red for six consecutive
+# runs without anyone noticing, and every one of those failures was reproducible
+# locally.
+#
+# npm audit is deliberately not here. It fails on advisories published after the
+# code was written, which would block pushes that changed nothing relevant; CI
+# keeps it so the signal still arrives, just not as a gate on the author.
+#
+# Escape hatch: NOA_SKIP_PREPUSH=1 git push
+set -eu
+
+if [ "${NOA_SKIP_PREPUSH:-0}" = "1" ]; then
+  echo "pre-push: skipped (NOA_SKIP_PREPUSH=1)"
+  exit 0
+fi
+
+targets_main=0
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  # An all-zero local sha is a branch deletion — there is nothing to test.
+  case "$local_sha" in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+  case "$remote_ref" in
+    refs/heads/main) targets_main=1 ;;
+  esac
+done
+
+if [ "$targets_main" = "0" ]; then
+  exit 0
+fi
+
+run() {
+  echo "pre-push: $*"
+  if ! "$@"; then
+    echo "pre-push: FAILED — $*" >&2
+    echo "pre-push: fix it, or push anyway with NOA_SKIP_PREPUSH=1" >&2
+    exit 1
+  fi
+}
+
+# CI runs e2e on the bundled Chromium. When that download cannot complete — it
+# stalls on some networks — fall back to the locally installed Chrome instead of
+# skipping e2e, because e2e is where the drift this hook exists for actually
+# happened. A gate that cannot run is a gate that gets bypassed every time.
+smoke_config=""
+if ! node -e 'const {chromium}=require("@playwright/test");const fs=require("node:fs");process.exit(fs.existsSync(chromium.executablePath())?0:1)' 2>/dev/null; then
+  echo "pre-push: bundled Chromium is missing — running e2e against installed Chrome"
+  smoke_config="--config=playwright.chrome.config.ts"
+fi
+
+run npm run lint
+run npm run test:unit
+run npm run check:structure
+run npm run build:budget
+run npx playwright test $smoke_config
+
+echo "pre-push: all checks passed"
