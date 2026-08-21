@@ -603,6 +603,30 @@ test('Escape closes the sidebar preview and returns focus to its toggle', async 
   await expect(page.locator('[data-sidebar-container]')).toHaveAttribute('inert', '');
 });
 
+test('the sidebar preview closes even when its exit transition never fires', async ({ page }) => {
+  await page.goto('/');
+  // The exit used to be reachable only through transitionend, which CSS is
+  // allowed not to dispatch: a hover-then-Escape whose two style changes land in
+  // one flush leaves opacity at the @starting-style 0, so no transition is
+  // generated and no event arrives. Removing the transition reproduces that end
+  // state directly. Before the phase gained a fallback this hung forever, and
+  // what stayed behind was an invisible preview still reachable by keyboard over
+  // a sidebar that never went back to inert.
+  await page.addStyleTag({ content: '.noa-sidebar-preview-motion { transition: none !important; }' });
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await page.mouse.move(700, 400);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+  await expect(toggle).toBeFocused();
+  await expect(page.locator('[data-sidebar-container]')).toHaveAttribute('inert', '');
+});
+
 test('expanded sidebar surface follows the resize edge without a trailing transition', async ({ page }) => {
   await page.goto('/');
 

@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Mirror the durations in index.css / the inline styles below, plus slack for a
+// frame that lands late. These back the fallbacks that end each animated phase:
+// transitionend is not a guaranteed event, and every phase here has exactly one
+// way out.
+const SIDEBAR_PREVIEW_EXIT_MS = 180;
+const SIDEBAR_DOCK_MOTION_MS = 220;
+const SIDEBAR_PROMOTION_MS = 220;
+const SIDEBAR_MOTION_FALLBACK_SLACK_MS = 80;
+
 export type SidebarPreviewPhase = 'idle' | 'open' | 'closing' | 'promoting-open' | 'promoting-close' | 'settling-close';
 
 interface UseSidebarPreviewOptions {
@@ -108,6 +117,45 @@ export function useSidebarPreview({
     const frame = window.requestAnimationFrame(() => setSidebarPreviewPhase('idle'));
     return () => window.cancelAnimationFrame(frame);
   }, [isSettlingSidebarPromotionClose]);
+  // Every animated phase terminates on its own, because the transitionend it
+  // would otherwise wait on can legitimately never arrive. The exit style can
+  // land in the same style flush as the entry — a fast hover-then-Escape, or a
+  // loaded machine coalescing both mutations — and then opacity never leaves the
+  // @starting-style 0, no transition is generated, and no event fires. The phase
+  // would stay 'closing' forever: an invisible preview left over the app, still
+  // reachable by keyboard, with the sidebar never returning to inert. The same
+  // holds when a transition is dropped because the element's transition
+  // shorthand resolved to none for that commit. These land after the animation,
+  // so the event still wins whenever it does fire.
+  useEffect(() => {
+    const fallbackMs = sidebarPreviewPhase === 'closing'
+      ? SIDEBAR_PREVIEW_EXIT_MS + SIDEBAR_MOTION_FALLBACK_SLACK_MS
+      : sidebarPreviewPhase === 'promoting-open' || sidebarPreviewPhase === 'promoting-close'
+        ? SIDEBAR_PROMOTION_MS + SIDEBAR_MOTION_FALLBACK_SLACK_MS
+        : null;
+    if (fallbackMs === null) return;
+    const timer = window.setTimeout(() => {
+      // Resolve to exactly what the transitionend handlers would have set, so a
+      // fallback and a late event are indistinguishable downstream.
+      setSidebarPreviewPhase((phase) => (
+        phase === 'closing' || phase === 'promoting-open' ? 'idle'
+          : phase === 'promoting-close' ? 'settling-close'
+            : phase
+      ));
+    }, fallbackMs);
+    return () => window.clearTimeout(timer);
+  }, [sidebarPreviewPhase]);
+  // Same hazard on the dock: toggling while a resize drag holds the transition
+  // at none leaves no margin-left animation to end, and a stuck true keeps the
+  // translucent material painted for a sidebar that is already closed.
+  useEffect(() => {
+    if (!isSidebarDockClosing) return;
+    const timer = window.setTimeout(
+      () => setIsSidebarDockClosing(false),
+      SIDEBAR_DOCK_MOTION_MS + SIDEBAR_MOTION_FALLBACK_SLACK_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isSidebarDockClosing]);
   useEffect(() => {
     if (isMobile || isFocusMode) {
       cancelSidebarPreviewClose();
