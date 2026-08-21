@@ -1,6 +1,67 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
+interface ShadowLayer {
+  alpha: number;
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  spread: number;
+}
+
+// Computed box-shadow is comma-separated, but so is the rgba() inside each
+// layer, so split only at depth zero.
+function parseShadowLayers(value: string): ShadowLayer[] {
+  const chunks: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const char of value) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    if (char === ',' && depth === 0) {
+      chunks.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  chunks.push(current);
+  return chunks.map((chunk) => {
+    const color = /rgba?\(([^)]*)\)/.exec(chunk);
+    if (!color) throw new Error(`shadow layer has no color: ${chunk}`);
+    const channels = color[1].split(',').map((part) => parseFloat(part));
+    const [offsetX, offsetY, blur, spread = 0] = chunk
+      .replace(/rgba?\([^)]*\)/, '')
+      .trim()
+      .split(/\s+/)
+      .map((length) => parseFloat(length));
+    return { alpha: channels.length > 3 ? channels[3] : 1, offsetX, offsetY, blur, spread };
+  });
+}
+
+// The preview shadow has been retuned twice (735df9f reshaped one hard layer
+// into a falloff, 1a583ed pulled the whole ramp back), and each time the pinned
+// literals sent tests red for a change that was correct. What must not regress
+// is the shape, so assert that: a rightward-only cast, because the preview runs
+// the full window height and any vertical component prints a seam where it meets
+// the titlebar; an edge hairline separate from the falloff; and a ramp that gets
+// wider and softer layer by layer instead of stepping.
+function expectPreviewShadowShape(value: string) {
+  const layers = parseShadowLayers(value);
+  expect(layers.length).toBeGreaterThanOrEqual(3);
+  expect(layers.map((layer) => layer.offsetY)).toEqual(layers.map(() => 0));
+  expect(layers.every((layer) => layer.alpha > 0 && layer.alpha < 0.2)).toBe(true);
+  expect(layers[0]).toMatchObject({ offsetX: 0, blur: 0, spread: 1 });
+  const falloff = layers.slice(1);
+  falloff.forEach((layer, index) => {
+    expect(layer.offsetX).toBeGreaterThan(index === 0 ? 0 : falloff[index - 1].offsetX);
+    expect(layer.blur).toBeGreaterThan(index === 0 ? 0 : falloff[index - 1].blur);
+    // Negative spread is what keeps each wider layer from bleeding above and
+    // below the sidebar edge it is meant to trail.
+    expect(layer.spread).toBeLessThan(0);
+  });
+}
+
 async function waitForMarkerPersisted(page: import('@playwright/test').Page, marker: string) {
   await page.waitForFunction(
     async (target) => {
@@ -386,10 +447,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
     const style = getComputedStyle(element);
     return [style.borderTopRightRadius, style.borderBottomRightRadius].every((radius) => parseFloat(radius) > 0);
   })).toBe(true);
-  // 735df9f reshaped this from one 6px/14px layer into a four-layer falloff;
-  // the value is the light --sidebar-preview-shadow token ThemeInjector sets.
-  expect(await previewShell.evaluate((element) => getComputedStyle(element).boxShadow))
-    .toBe('rgba(45, 45, 43, 0.03) 0px 0px 0px 1px, rgba(45, 45, 43, 0.035) 3px 0px 6px -2px, rgba(45, 45, 43, 0.04) 10px 0px 22px -6px, rgba(45, 45, 43, 0.05) 26px 0px 54px -16px');
+  expectPreviewShadowShape(await previewShell.evaluate((element) => getComputedStyle(element).boxShadow));
   expect(previewSidebarBox).toEqual(expandedSidebarBox);
   expect(previewEditorBox).toEqual(collapsedEditorBox);
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -440,6 +498,7 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
       sidebarColor: sidebar ? getComputedStyle(sidebar).backgroundColor : null,
       primaryColor: appShell ? getComputedStyle(appShell).backgroundColor : null,
       previewShadow: getComputedStyle(shell).boxShadow,
+      previewShadowToken: rootStyle.getPropertyValue('--sidebar-preview-shadow').trim(),
       previewBounds: shell.getBoundingClientRect().toJSON(),
     };
   });
@@ -450,9 +509,13 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
     previewColor: 'rgb(45, 45, 43)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
     primaryColor: 'rgb(45, 45, 43)',
-    previewShadow: 'rgba(0, 0, 0, 0.07) 0px 0px 0px 1px, rgba(0, 0, 0, 0.09) 3px 0px 6px -2px, rgba(0, 0, 0, 0.11) 10px 0px 22px -6px, rgba(0, 0, 0, 0.12) 26px 0px 54px -16px',
     previewBounds: { x: 0, y: 0, height: 720 },
   });
+  expectPreviewShadowShape(palette.previewShadow);
+  // Dark is where this has teeth: index.css carries the light value as its
+  // fallback, so only here does painting the fallback instead of the token show
+  // up as a difference.
+  expect(parseShadowLayers(palette.previewShadow)).toEqual(parseShadowLayers(palette.previewShadowToken));
 });
 
 test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing the editor right', async ({ page }) => {
