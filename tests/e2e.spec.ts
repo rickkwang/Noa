@@ -386,8 +386,10 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
     const style = getComputedStyle(element);
     return [style.borderTopRightRadius, style.borderBottomRightRadius].every((radius) => parseFloat(radius) > 0);
   })).toBe(true);
+  // 735df9f reshaped this from one 6px/14px layer into a four-layer falloff;
+  // the value is the light --sidebar-preview-shadow token ThemeInjector sets.
   expect(await previewShell.evaluate((element) => getComputedStyle(element).boxShadow))
-    .toBe('rgba(45, 45, 43, 0.07) 6px 0px 14px 0px');
+    .toBe('rgba(45, 45, 43, 0.03) 0px 0px 0px 1px, rgba(45, 45, 43, 0.035) 3px 0px 6px -2px, rgba(45, 45, 43, 0.04) 10px 0px 22px -6px, rgba(45, 45, 43, 0.05) 26px 0px 54px -16px');
   expect(previewSidebarBox).toEqual(expandedSidebarBox);
   expect(previewEditorBox).toEqual(collapsedEditorBox);
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -448,7 +450,7 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
     previewColor: 'rgb(45, 45, 43)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
     primaryColor: 'rgb(45, 45, 43)',
-    previewShadow: 'rgba(18, 18, 16, 0.14) 6px 0px 14px 0px',
+    previewShadow: 'rgba(0, 0, 0, 0.07) 0px 0px 0px 1px, rgba(0, 0, 0, 0.09) 3px 0px 6px -2px, rgba(0, 0, 0, 0.11) 10px 0px 22px -6px, rgba(0, 0, 0, 0.12) 26px 0px 54px -16px',
     previewBounds: { x: 0, y: 0, height: 720 },
   });
 });
@@ -1217,8 +1219,11 @@ test('translucent sidebar persists and keeps its material through the closing mo
   const separator = page.locator('[data-sidebar-separator="true"]');
   await expect(root).toHaveAttribute('data-translucent-sidebar', 'disabled');
   await expect(separator).toHaveCSS('z-index', '30');
+  // bb1d256 dropped the separator's shadow and its two bespoke tokens: it now
+  // paints --divider-subtle as a plain hairline like every other divider.
+  // Pinned so the bespoke elevation cannot quietly come back.
   await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
-    .toContain('drop-shadow');
+    .toBe('none');
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
@@ -1234,8 +1239,11 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
   await expect.poll(() => column.evaluate((element) => getComputedStyle(element).backdropFilter))
     .toBe('none');
+  // bb1d256 dropped the separator's shadow and its two bespoke tokens: it now
+  // paints --divider-subtle as a plain hairline like every other divider.
+  // Pinned so the bespoke elevation cannot quietly come back.
   await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
-    .toContain('drop-shadow');
+    .toBe('none');
 
   await page.reload();
   await page.getByTitle('Settings').click();
@@ -1348,7 +1356,9 @@ test('a recovered settings read merges and persists a queued change', async ({ p
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  await page.getByRole('combobox').nth(0).selectOption('dark');
+  // a8e3e3f replaced the theme <select> with a SegmentedControl.
+  await page.getByRole('radiogroup', { name: 'Base theme' })
+    .getByRole('radio', { name: 'Dark' }).click();
   await page.evaluate(() => {
     (window as typeof window & { __allowSettingsRead?: boolean }).__allowSettingsRead = true;
   });
@@ -1378,7 +1388,7 @@ test('settings keeps primary controls inside the dialog at narrower widths', asy
   await page.getByRole('tab', { name: 'Appearance' }).click();
 
   const dialogBox = await dialog.boundingBox();
-  const themeSelectBox = await page.getByRole('combobox').first().boundingBox();
+  const themeSelectBox = await page.getByRole('radiogroup', { name: 'Base theme' }).boundingBox();
 
   expect(dialogBox).not.toBeNull();
   expect(themeSelectBox).not.toBeNull();

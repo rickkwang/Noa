@@ -85,7 +85,7 @@ describe('sidebar surface tokens', () => {
     expect(topBar).not.toContain('backgroundImage: `linear-gradient');
     expect(topBar).not.toMatch(/backgroundColor:\s*['"]#F4F4F2['"]/);
     expect(css).toMatch(
-      /\.noa-sidebar-preview-shell\s*\{[^}]*box-shadow:\s*var\(--sidebar-preview-shadow,\s*6px 0 14px rgb\(45 45 43 \/ 7%\)\)/,
+      /\.noa-sidebar-preview-shell\s*\{[^}]*box-shadow:\s*var\(--sidebar-preview-shadow,\s*0 0 0 1px rgba\(45,45,43,0\.03\)/,
     );
     expect(css).toContain('opacity 180ms cubic-bezier(0.22, 1, 0.36, 1)');
     expect(css).toContain('@starting-style');

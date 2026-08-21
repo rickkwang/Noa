@@ -780,7 +780,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 .noa-sidebar-preview-shell {
-  box-shadow: var(--sidebar-preview-shadow, 6px 0 14px rgb(45 45 43 / 7%));
+  /* Fallback mirrors the light token ThemeInjector sets; it only paints on the
+     frame before that runs, and a stale single-layer value there flashed the
+     pre-735df9f elevation. */
+  box-shadow: var(--sidebar-preview-shadow, 0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05));
 }
 
 .noa-sidebar-promotion-spacer {

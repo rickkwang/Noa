@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+// Every caller asserts on a connected vault, and a8e3e3f moved that state's
+// sync status into the row description ("… as the Markdown vault (ready)").
+// Matching only that form is deliberate: the disconnected row spells the status
+// out as body copy instead, and accepting either would let a regression that
+// showed the wrong one for the state pass unnoticed.
+async function expectVaultSyncStatus(
+  page: import('@playwright/test').Page,
+  status: 'ready' | 'error',
+  options?: { timeout?: number },
+) {
+  await expect(page.getByRole('group', { name: 'Vault Folder', exact: true })).toContainText(
+    new RegExp(`as the Markdown vault \\(${status}\\)`, 'i'),
+    options,
+  );
+}
+
 async function waitForMarkerPersisted(page: import('@playwright/test').Page, marker: string) {
   await page.waitForFunction(
     async (target) => {
@@ -513,7 +529,7 @@ test('reset and import recovery flow uses confirmation', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await page.getByRole('button', { name: 'New Workspace' }).click();
+  await page.getByRole('group', { name: 'New Workspace', exact: true }).getByRole('button').click();
   await expect(page.getByText(/this will clear current data/i)).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByText(/this will clear current data/i)).toBeHidden();
@@ -607,7 +623,7 @@ test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Import Vault Folder', exact: true }).getByRole('button')).toBeVisible();
 });
 
 test('vault import preserves nested folder structure', async ({ page }) => {
@@ -617,7 +633,7 @@ test('vault import preserves nested folder structure', async ({ page }) => {
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByRole('button', { name: 'Import Vault Folder' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Import Vault Folder', exact: true }).getByRole('button')).toBeVisible();
   await page.evaluate((suffix) => {
     (window as typeof window & {
       __pickerSeed?: { rootName?: string; dirs?: string[]; files?: Array<{ path: string; content?: string }> };
@@ -634,7 +650,7 @@ test('vault import preserves nested folder structure', async ({ page }) => {
       ],
     };
   }, vaultSuffix);
-  await page.getByRole('button', { name: 'Import Vault Folder' }).click();
+  await page.getByRole('group', { name: 'Import Vault Folder', exact: true }).getByRole('button').click();
   await page.waitForFunction(() => (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked === true, null, { timeout: 5_000 });
   await expect(page.getByRole('button', { name: 'Confirm' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm' }).click();
@@ -678,7 +694,7 @@ test('vault import keeps nested README notes and restores referenced image attac
     };
   }, vaultSuffix);
 
-  await page.getByRole('button', { name: 'Import Vault Folder' }).click();
+  await page.getByRole('group', { name: 'Import Vault Folder', exact: true }).getByRole('button').click();
   await expect(page.getByRole('button', { name: 'Confirm' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm' }).click();
 
@@ -768,10 +784,10 @@ test('filesystem sync status transitions from syncing to ready on retry', async 
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await page.getByRole('button', { name: 'Retry Sync' }).click();
   await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeDisabled();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
 });
 
 test('filesystem sync status transitions from syncing to error on retry', async ({ page }) => {
@@ -789,13 +805,13 @@ test('filesystem sync status transitions from syncing to error on retry', async 
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
 
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await page.evaluate(() => {
     const syncMode = (window as typeof window & { __syncMode?: { failReads: boolean } }).__syncMode;
     if (syncMode) syncMode.failReads = true;
   });
   await page.getByRole('button', { name: 'Retry Sync' }).click();
-  await expect(page.getByText(/Sync status: error/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'error');
   await expect(page.getByText(/Sync error:/i)).toBeVisible();
 
   // A vault failure makes only vault cache rows read-only. Local Noa work must
@@ -821,7 +837,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
   await page.getByText('Synced.md', { exact: true }).click();
@@ -838,7 +854,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
+  await expectVaultSyncStatus(page, 'error', { timeout: 5_000 });
   await page.getByLabel('Workspace').getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByText('Synced.md', { exact: true })).toBeVisible();
   await expect(page.getByText('Disconnected from local folder. Using IndexedDB.', { exact: true })).toHaveCount(0);
@@ -847,7 +863,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
     if (syncMode) syncMode.failWrites = false;
   });
   await page.getByRole('button', { name: 'Retry Sync' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible({ timeout: 5_000 });
+  await expectVaultSyncStatus(page, 'ready', { timeout: 5_000 });
   await expect.poll(() => page.evaluate((expected) => {
     const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
     return read?.('Synced.md')?.includes(expected) ?? false;
@@ -875,7 +891,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
   await page.evaluate(() => {
@@ -888,7 +904,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await page.keyboard.type('\nalpha edit');
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByText(/Sync status: error/i)).toBeVisible({ timeout: 5_000 });
+  await expectVaultSyncStatus(page, 'error', { timeout: 5_000 });
 
   await page.keyboard.press('Escape');
   await page.getByText('Beta.md', { exact: true }).click();
@@ -898,14 +914,14 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await page.waitForTimeout(800);
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByText(/Sync status: error/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'error');
 
   await page.evaluate(() => {
     const mode = (window as typeof window & { __syncMode?: { failWriteNames: string[] } }).__syncMode;
     if (mode) mode.failWriteNames = [];
   });
   await page.getByRole('button', { name: 'Retry Sync' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible({ timeout: 5_000 });
+  await expectVaultSyncStatus(page, 'ready', { timeout: 5_000 });
 });
 
 test('vault editor is read-only while a structural operation is pending', async ({ page }) => {
@@ -925,7 +941,7 @@ test('vault editor is read-only while a structural operation is pending', async 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
   await page.getByText('Root.md', { exact: true }).click();
@@ -966,7 +982,7 @@ test('disconnect removes every vault-origin cache row regardless of source prove
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
-  await expect(page.getByText(/Sync status: ready/i)).toBeVisible();
+  await expectVaultSyncStatus(page, 'ready');
   await expect(page.getByText('Native.md', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
