@@ -9,7 +9,7 @@ coverage/
 .env*
 .alma-snapshots
 .worktrees/
-test-results/.last-run.json
+test-results/
 .noa/
 CLAUDE.md
 AGENTS.md
