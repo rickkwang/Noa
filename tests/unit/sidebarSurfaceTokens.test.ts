@@ -132,10 +132,11 @@ describe('sidebar surface tokens', () => {
   });
 
   it('applies the optional translucent material only to the expanded desktop sidebar', async () => {
-    const [injector, css, app, appearanceSettings, electronMain] = await Promise.all([
+    const [injector, css, app, topBar, appearanceSettings, electronMain] = await Promise.all([
       readFile(themeInjectorPath, 'utf8'),
       readFile(indexCssPath, 'utf8'),
       readFile(appPath, 'utf8'),
+      readFile(topBarPath, 'utf8'),
       readFile(appearanceSettingsPath, 'utf8'),
       readFile(electronMainPath, 'utf8'),
     ]);
@@ -167,6 +168,13 @@ describe('sidebar surface tokens', () => {
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
+    // Inheriting is only affordable because nothing transitions the property.
+    // An animated inherited registered property re-invalidates the whole app
+    // subtree every frame; the veils animate transform from it instead.
+    expect(app).toContain("transition: 'none',");
+    expect(css).not.toMatch(/transition:[^;]*--noa-sidebar-material-width/);
+    expect(app).not.toMatch(/transition:[^,]*--noa-sidebar-material-width/);
+    expect(app).toContain("data-sidebar-dragging={isDraggingSidebar ? 'true' : undefined}");
     // Every translucency rule is gated on :where(:not([data-settings-open])),
     // which switches without contributing specificity.
     // The settings scrim blurs the frame behind it in premultiplied alpha, and
@@ -185,11 +193,30 @@ describe('sidebar surface tokens', () => {
     expect(css).not.toMatch(
       /\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*backdrop-filter:/,
     );
+    // The opaque plane is one ::before veil on the shell, slid by transform.
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*background:\s*transparent\s*!important;[^}]*isolation:\s*isolate/,
     );
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*linear-gradient\([^}]*transparent 0 var\(--noa-sidebar-material-width\)/,
+      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #F9F9F7\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*transform 220ms/,
+    );
+    // The titlebar only goes transparent so that veil shows through. Giving it
+    // a veil — and so a stacking context — of its own re-rasterized the
+    // half-alpha icon strokes over the vibrant region; verified pixel-identical
+    // to the old gradient only once it was removed.
+    expect(css).toMatch(
+      /\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*background:\s*transparent\s*!important/,
+    );
+    expect(css).not.toMatch(/\[data-translucent-sidebar-titlebar="true"\]::before/);
+    // A pointer drag already delivers one width per frame; a transition on top
+    // of that only lags behind the cursor.
+    expect(css).toMatch(
+      /\.noa-app-shell\[data-sidebar-dragging="true"\]::before\s*\{\s*transition:\s*none;/,
+    );
+    // Reduced motion must reach the veil, not just its host — the host no
+    // longer carries the animation.
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,400}\.noa-app-shell::before\s*\{\s*transition:\s*none !important/,
     );
     expect(css).toMatch(
       /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+body\s*\{[^}]*background-color:\s*transparent/,

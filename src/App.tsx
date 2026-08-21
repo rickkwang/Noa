@@ -381,10 +381,18 @@ export default function App() {
 
   // Warm the lazy settings chunk while idle so the first open doesn't spend a
   // beat fetching it before anything renders (its Suspense fallback is null).
+  // The right panel rides along: if it was restored closed, hasMountedRightPanel
+  // stays false until the first toggle, which would otherwise fetch the
+  // graph/tasks chunk in the middle of the panel's 220ms slide. Warming only
+  // the module keeps the mount itself deferred, so the bundle still stays out
+  // of the first render.
   useEffect(() => {
     if (typeof window.requestIdleCallback !== 'function') return;
     const id = window.requestIdleCallback(
-      () => { void import('./components/settings/SettingsModal'); },
+      () => {
+        void import('./components/settings/SettingsModal');
+        void import('./components/RightPanel');
+      },
       { timeout: 5000 }
     );
     return () => window.cancelIdleCallback(id);
@@ -559,14 +567,17 @@ export default function App() {
       inert={loadError ? true : undefined}
       aria-hidden={loadError ? true : undefined}
       className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
+      data-sidebar-dragging={isDraggingSidebar ? 'true' : undefined}
       style={{
         '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
         '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
           ? 'var(--noa-sidebar-width, 325px)'
           : '0px',
-        transition: isDraggingSidebar
-          ? 'none'
-          : '--noa-sidebar-material-width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+        // Never transitioned. The variable lands at its target immediately and
+        // the translucent veils in index.css animate transform from it, which
+        // the compositor can run on its own; animating the property itself
+        // re-invalidated this element's whole subtree on every frame.
+        transition: 'none',
       } as React.CSSProperties}
     >
       <ThemeInjector settings={settings} />

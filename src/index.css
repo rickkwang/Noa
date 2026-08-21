@@ -22,6 +22,11 @@
   --font-weight-medium: 400;
 }
 
+/* Inherited, and cheap to inherit because nothing transitions it: the shell
+   sets it twice per toggle and the veils below animate transform instead.
+   Transitioning this property was what made the toggle expensive — an animated
+   inherited registered property re-invalidates the whole app subtree on every
+   frame, measured at ~72ms of style recalc per toggle against ~5ms now. */
 @property --noa-sidebar-material-width {
   syntax: '<length>';
   inherits: true;
@@ -253,20 +258,45 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
+/* The opaque plane is a translated layer, not a gradient stop that follows the
+   sidebar edge. Both paint the same thing — transparent for the leftmost
+   --noa-sidebar-material-width, --bg-primary from there to the right edge — but
+   a gradient whose stop is an animated custom property has to be re-resolved on
+   every frame, while translateX rides the compositor. The layer is full-size
+   and slides right, so its own right edge leaves the viewport and is clipped by
+   the shell's overflow. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell:has([data-sidebar-expanded="true"]) {
-  background: linear-gradient(
-    to right,
-    transparent 0 var(--noa-sidebar-material-width),
-    var(--bg-primary, #F9F9F7) var(--noa-sidebar-material-width)
-  ) !important;
+  background: transparent !important;
+  /* Contains the veil's negative z-index so it cannot slip behind the host's
+     own background. isolation alone does not create a containing block, so
+     fixed-position toasts inside the shell keep resolving against the viewport. */
+  isolation: isolate;
 }
 
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell:has([data-sidebar-expanded="true"])::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--bg-primary, #F9F9F7);
+  transform: translateX(var(--noa-sidebar-material-width));
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* A resize drag drives the width from pointermove, which already lands one
+   value per frame — transitioning on top of that only adds lag. Same
+   specificity as the rule above, so this has to stay below it. */
+html[data-translucent-sidebar="enabled"] .noa-app-shell[data-sidebar-dragging="true"]::before {
+  transition: none;
+}
+
+/* The titlebar only goes transparent so the shell's veil shows through it. It
+   gets no veil of its own: that would paint the same --bg-primary at the same
+   edge, and the stacking context it needed re-rasterized the half-alpha icon
+   strokes sitting over the vibrant region. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-translucent-sidebar-titlebar="true"] {
-  background: linear-gradient(
-    to right,
-    transparent 0 var(--noa-sidebar-material-width),
-    var(--bg-primary, #F9F9F7) var(--noa-sidebar-material-width)
-  ) !important;
+  background: transparent !important;
 }
 
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-surface,
@@ -771,7 +801,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-translucent-sidebar="enabled"] .noa-app-shell {
+  html[data-translucent-sidebar="enabled"] .noa-app-shell,
+  html[data-translucent-sidebar="enabled"] .noa-app-shell::before {
     transition: none !important;
   }
 

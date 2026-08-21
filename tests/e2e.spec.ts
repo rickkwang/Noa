@@ -1245,7 +1245,13 @@ test('translucent sidebar persists and keeps its material through the closing mo
 
   await page.getByTitle('Toggle Sidebar').click();
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
-  await expect(shell).toHaveCSS('transition-property', '--noa-sidebar-material-width');
+  // The material width itself never transitions — it lands on its target at
+  // once and the shell's veil animates transform from it, which the compositor
+  // can run without restyling this element's subtree every frame.
+  await expect(shell).toHaveCSS('transition-property', 'none');
+  await expect
+    .poll(() => shell.evaluate((element) => getComputedStyle(element, '::before').transitionProperty))
+    .toBe('transform');
   await expect.poll(() => shell.evaluate((element) => (
     (element as HTMLElement).style.getPropertyValue('--noa-sidebar-material-width')
   ))).toBe('0px');
