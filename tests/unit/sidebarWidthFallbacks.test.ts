@@ -16,9 +16,9 @@ function readSidebarDefault(useLayout: string): number {
 }
 
 function readSidebarClamp(useLayout: string): { min: number; max: number } {
-  const match = useLayout.match(/useResizeDrag\(\s*SIDEBAR_DEFAULT_WIDTH\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*getSidebarValue/);
+  const match = useLayout.match(/useResizeDrag\(\s*SIDEBAR_DEFAULT_WIDTH\s*,\s*(SIDEBAR_MIN_WIDTH|\d+)\s*,\s*(\d+)\s*,\s*getSidebarValue/);
   if (!match) throw new Error('could not locate the sidebar useResizeDrag call');
-  return { min: Number(match[1]), max: Number(match[2]) };
+  return { min: match[1] === 'SIDEBAR_MIN_WIDTH' ? readSidebarDefault(useLayout) : Number(match[1]), max: Number(match[2]) };
 }
 
 function collectFallbacks(source: string, variable: string): number[] {
@@ -60,9 +60,10 @@ describe('sidebar width fallbacks', () => {
       readFile(topBarPath, 'utf8'),
     ]);
 
-    const match = useLayout.match(/useResizeDrag\(\s*(\d+)\s*,\s*\d+\s*,\s*\d+\s*,\s*getRightPanelValue/);
+    const match = useLayout.match(/const RIGHT_PANEL_MIN_WIDTH\s*=\s*(\d+)/);
     expect(match).not.toBeNull();
     const expected = Number(match![1]);
+    expect(useLayout).toContain('useResizeDrag(RIGHT_PANEL_MIN_WIDTH, RIGHT_PANEL_MIN_WIDTH, 480, getRightPanelValue');
 
     const fallbacks = [
       ...collectFallbacks(app, '--noa-right-panel-width'),
@@ -92,9 +93,9 @@ describe('sidebar width fallbacks', () => {
 
     // Both pointer and keyboard paths must share a viewport cap whose floor is
     // the default width. Otherwise a narrow desktop (for example 800px wide)
-    // paints at 325px and jumps down on the first resize interaction.
+    // paints at 310px and jumps down on the first resize interaction.
     expect(getResponsivePanelMaxWidth(800, initial)).toBe(initial);
-    expect(getResponsivePanelMaxWidth(928, initial)).toBe(initial);
+    expect(getResponsivePanelMaxWidth(885, initial)).toBe(initial);
     expect(getResponsivePanelMaxWidth(1600, initial)).toBe(480);
     expect(useLayout).toContain(
       'getResponsivePanelMaxWidth(window.innerWidth, SIDEBAR_DEFAULT_WIDTH)',

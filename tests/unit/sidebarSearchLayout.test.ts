@@ -86,7 +86,7 @@ describe('sidebar search result layout', () => {
   it('keeps a one-pixel breath between adjacent tree-row highlights', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain('<div className="font-redaction mb-px">');
+    expect(fileNode).toMatch(/<div className="font-redaction mb-px\b[^"]*">/);
   });
 
   it('anchors each branch line to its folder icon center at every depth', async () => {

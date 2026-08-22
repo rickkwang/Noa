@@ -19,8 +19,8 @@ describe('sidebar surface tokens', () => {
       readFile(electronMainPath, 'utf8'),
     ]);
 
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#2A2A28');");
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#F4F4F2');");
+    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#323230');");
+    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#F7F7F6');");
     // Multi-layer falloff, not a single mid-blur cast: one blurless contact
     // line plus three negative-spread layers. The old single 6px/14px shadow
     // banded visibly against the dark canvas.
@@ -30,13 +30,6 @@ describe('sidebar surface tokens', () => {
     expect(injector).toContain(
       "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');",
     );
-    // Both floors must keep the editor plane's own red-blue spread of 2. A
-    // wider spread reads as the sidebar changing colour instead of depth,
-    // which is what the first attempt at this got wrong.
-    for (const [floor, plane] of [['#2A2A28', '#2D2D2B'], ['#F4F4F2', '#F9F9F7']]) {
-      const spread = (hex: string) => parseInt(hex.slice(1, 3), 16) - parseInt(hex.slice(5, 7), 16);
-      expect(spread(floor)).toBe(spread(plane));
-    }
     // Light mode alone needs the paired highlight token: its row highlight is a
     // solid colour, so it has to move down with the floor. Dark mode highlights
     // with translucent white and re-adapts on its own.

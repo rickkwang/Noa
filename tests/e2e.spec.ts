@@ -397,20 +397,21 @@ test('narrow desktop keeps the sidebar default stable on first pointer and keybo
   );
   const separator = page.getByRole('separator', { name: 'Resize sidebar' });
 
-  await expect.poll(readSidebarWidth).toBe(325);
+  await expect.poll(readSidebarWidth).toBe(310);
+  await expect(separator).toHaveAttribute('aria-valuemin', '310');
   const separatorBox = await separator.boundingBox();
   expect(separatorBox).not.toBeNull();
   await page.mouse.move(separatorBox!.x + separatorBox!.width / 2, separatorBox!.y + 20);
   await page.mouse.down();
   await page.mouse.move(340, separatorBox!.y + 20);
   await page.mouse.up();
-  await expect.poll(readSidebarWidth).toBe(325);
+  await expect.poll(readSidebarWidth).toBe(310);
 
   await page.reload();
-  await expect.poll(readSidebarWidth).toBe(325);
+  await expect.poll(readSidebarWidth).toBe(310);
   await separator.focus();
   await separator.press('ArrowRight');
-  await expect.poll(readSidebarWidth).toBe(325);
+  await expect.poll(readSidebarWidth).toBe(310);
 });
 
 test('hovering the collapsed sidebar toggle previews the sidebar in its expanded position without changing layout state', async ({ page }) => {
@@ -431,7 +432,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
     width: expandedSidebarBox!.width,
     height: 720,
   });
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(244, 244, 242)');
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(247, 247, 246)');
   await expect.poll(() => expandedSurface.evaluate((surface) => (
     getComputedStyle(surface).backgroundColor
       === getComputedStyle(document.querySelector<HTMLElement>('.noa-sidebar-surface')!).backgroundColor
@@ -502,10 +503,10 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   const sidebar = page.locator('.noa-sidebar-surface').first();
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(42, 42, 40)');
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(50, 50, 48)');
   expect(await page.locator('[data-sidebar-column-surface="true"]').evaluate((element) => (
     getComputedStyle(element).backgroundColor
-  ))).toBe('rgb(42, 42, 40)');
+  ))).toBe('rgb(50, 50, 48)');
   await toggle.click();
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
   await page.mouse.move(700, 400);
@@ -531,7 +532,7 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
   });
 
   expect(palette).toMatchObject({
-    sidebarToken: '#2A2A28',
+    sidebarToken: '#323230',
     primaryToken: '#2D2D2B',
     previewColor: 'rgb(45, 45, 43)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
@@ -543,6 +544,17 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
   // fallback, so only here does painting the fallback instead of the token show
   // up as a difference.
   expect(parseShadowLayers(palette.previewShadow)).toEqual(parseShadowLayers(palette.previewShadowToken));
+});
+
+test('dark sidebar active rows use a restrained selection surface', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ appearance: { theme: 'dark' } }));
+  });
+  await page.goto('/');
+
+  const activeRow = page.locator('.noa-sidebar-active-surface').first();
+  await expect(activeRow).toBeVisible();
+  await expect(activeRow).toHaveCSS('background-color', 'rgba(249, 249, 247, 0.08)');
 });
 
 test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing the editor right', async ({ page }) => {
@@ -1408,6 +1420,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
 
   const shell = page.locator('.noa-app-shell');
   const column = page.locator('[data-sidebar-column-surface="true"]');
+  const sidebarToolbar = page.locator('.noa-sidebar-toolbar-mask').first();
   await expect(root).toHaveAttribute('data-translucent-sidebar', 'enabled');
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
   await expect.poll(() => column.evaluate((element) => getComputedStyle(element).backdropFilter))
@@ -1417,6 +1430,10 @@ test('translucent sidebar persists and keeps its material through the closing mo
   // Pinned so the bespoke elevation cannot quietly come back.
   await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
     .toBe('none');
+  await expect(sidebarToolbar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect.poll(() => sidebarToolbar.evaluate((element) => (
+    getComputedStyle(element, '::after').display
+  ))).toBe('none');
 
   await page.reload();
   await page.getByTitle('Settings').click();
@@ -1443,6 +1460,10 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await page.getByTitle('Toggle Sidebar').hover();
   await expect(page.locator('[data-sidebar-preview-shell="true"]')).toBeVisible();
   await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
+  await expect(sidebarToolbar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect.poll(() => sidebarToolbar.evaluate((element) => (
+    getComputedStyle(element, '::after').display
+  ))).toBe('none');
 });
 
 test('closing the mobile sidebar does not leave desktop material state active', async ({ page }) => {

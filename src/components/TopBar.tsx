@@ -40,7 +40,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
   return (
     <div
       data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
-      className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
+      className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
       style={{
         ...dragRegion,
         backgroundColor: titlebarBaseColor,

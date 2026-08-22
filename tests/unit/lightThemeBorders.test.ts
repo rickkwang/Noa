@@ -168,7 +168,7 @@ describe('light theme border tokens', () => {
 
     expect(topBar).not.toContain('after:inset-x-0');
     expect(topBar).toContain('const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen');
-    expect(topBar).toContain("!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
+    expect(topBar).toContain("!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'");
     expect(topBar).toContain('after:absolute after:right-0 after:bottom-0 after:h-px');
     expect(topBar).toContain('after:bg-[var(--divider-subtle)]');
   });
@@ -261,11 +261,11 @@ describe('light theme border tokens', () => {
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
     expect(app).toContain('data-sidebar-separator="true"');
     expect(app).toContain("${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}");
-    expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
+    expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '-1px'");
     expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
     expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview \|\| isDraggingSidebar/);
     expect(app).toContain('`left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'220ms\'}`');
-    expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 325px);\n}');
+    expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 310px);\n}');
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
     expect(app).not.toContain("left: 'var(--noa-sidebar-width, 325px)'");
@@ -298,7 +298,7 @@ describe('light theme border tokens', () => {
   it('slides fixed-width side panels instead of cropping them with width animation', async () => {
     const app = await readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8');
 
-    expect(app).toMatch(/marginLeft: !isMobile && !isPromotingSidebarPreview && \(isFocusMode \|\| !isSidebarOpen\)[\s\S]*?'calc\(-1 \* var\(--noa-sidebar-width, 325px\)\)'[\s\S]*?: '0px'/);
+    expect(app).toMatch(/marginLeft: !isMobile && !isPromotingSidebarPreview && \(isFocusMode \|\| !isSidebarOpen\)[\s\S]*?'calc\(-1 \* var\(--noa-sidebar-width, 310px\)\)'[\s\S]*?: '0px'/);
     expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'margin-left 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px'");
     expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");

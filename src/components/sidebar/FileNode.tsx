@@ -15,7 +15,6 @@ export interface FileNodeProps {
   onDelete?: () => void;
   onRename?: (newName: string) => string | void;
   icon?: React.ElementType;
-  iconColor?: string;
   onAdd?: () => void;
   onAddFolder?: () => void;
   draggable?: boolean;
@@ -72,7 +71,7 @@ export function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
 
 export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
-  onClick, onDelete, onRename, icon: Icon = FileText, iconColor,
+  onClick, onDelete, onRename, icon: Icon = FileText,
   onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver,
   onDrop, onDragEnd, isDropTarget, addButtonProps = {}, depth = 0,
 }: FileNodeProps) => {
@@ -122,7 +121,7 @@ export const FileNode = React.memo(({
   };
 
   return (
-    <div className="font-redaction mb-px">
+    <div className="font-redaction mb-px noa-sidebar-tree-item">
       <div
         className={`flex items-center justify-between py-1 px-2 mx-1 rounded-md cursor-pointer select-none group ${
           isDropTarget
@@ -148,11 +147,11 @@ export const FileNode = React.memo(({
       >
         <div className="flex items-center overflow-hidden flex-1">
           {isFolder && showFolderChevron && (
-            <span className="w-4 flex justify-center mr-1 shrink-0 text-[#2D2D2B]/50">
+            <span className="w-4 flex justify-center mr-1 shrink-0">
               <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
             </span>
           )}
-          <span className={`mr-2 shrink-0 ${isFolder ? 'text-[#CC7D5E]' : (isActive ? 'text-[#CC7D5E]' : (iconColor ? '' : 'text-[#2D2D2B]'))}`} style={iconColor && !isActive ? { color: iconColor } : {}}>
+          <span className={`mr-2 shrink-0 ${isActive ? 'text-[#CC7D5E]' : ''}`}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
               return <RenderIcon size={14} weight="regular" />;

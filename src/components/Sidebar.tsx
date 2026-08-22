@@ -67,7 +67,6 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
       onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
       onDelete={() => onRequestDelete(note.id, displayName)}
       onRename={(newName: string) => onRename(note.id, newName)}
-      iconColor="#CC7D5E"
       draggable
       onDragStart={onDragStart('note', note.id, displayName)}
       onDragEnd={onDragEnd}

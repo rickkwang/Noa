@@ -18,13 +18,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-primary', '#2D2D2B');
       root.style.setProperty('--bg-secondary', '#252523');
       root.style.setProperty('--bg-tertiary', '#302F2C');
-      // Sidebar sits one step below the editor plane: -1.2% OKLCH lightness
-      // here, -1.5% in light. Far under the 4% an app shell would normally
-      // use, because the brief was a plane change you notice without being
-      // able to point at it. Critically it is the SAME hue: 45/45/43 scaled to
-      // 42/42/40 keeps the red-blue spread at 2, so the step reads as depth
-      // rather than as a colour cast.
-      root.style.setProperty('--bg-sidebar', '#2A2A28');
+      // Sidebar uses a soft lift above the editor plane. The color keeps the
+      // editor's red-blue spread at 2 (50/50/48 versus 45/45/43), so it reads
+      // as depth rather than as a colour cast.
+      root.style.setProperty('--bg-sidebar', '#323230');
       root.style.setProperty('--sidebar-material-tint', '54%');
       // Four stacked layers instead of one 6px/14px cast. A single mid-blur
       // shadow lands on a dark floor as a band with a readable outer edge —
@@ -41,7 +38,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // It exists so the pair is symmetric: any rule added later that reaches
       // for --bg-sidebar-raised resolves to a dark value instead of silently
       // taking the light #EAE5DE fallback baked into the shared rule.
-      root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.13)');
+      root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.08)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
@@ -55,12 +52,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--bg-primary', '#F9F9F7');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
       root.style.setProperty('--bg-tertiary', '#E5DCD2');
-      // Same hue as the editor plane, one step down: 249/249/247 scaled to
-      // 244/244/242 holds the red-blue spread at 2. An earlier pass used the
-      // palette's warm paper tone here (#F3EFE7, spread 12) and it read as the
-      // sidebar turning yellow rather than going deeper — at this size a hue
-      // shift is far louder than a lightness shift.
-      root.style.setProperty('--bg-sidebar', '#F4F4F2');
+      // Same neutral family as the editor plane, softened from 249/249/247 to
+      // 247/247/246. An earlier pass used a warmer paper tone and it read as
+      // the sidebar turning yellow rather than creating a quiet plane change.
+      root.style.setProperty('--bg-sidebar', '#F7F7F6');
       root.style.setProperty('--sidebar-material-tint', '44%');
       // Light counterpart of the dark stack above, same four-layer geometry at
       // roughly the previous total weight — on a light floor the single-layer
