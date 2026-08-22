@@ -374,7 +374,7 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden">
+      <div className="noa-sidebar-toolbar-mask h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors active:opacity-70"
@@ -538,7 +538,7 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
+      <div className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
@@ -558,7 +558,7 @@ export default function Sidebar({
                   <div
                     key={result.note.id}
                     data-testid="search-result"
-                    className={`p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
+                    className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">

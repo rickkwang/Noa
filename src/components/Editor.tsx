@@ -555,7 +555,7 @@ export default function Editor({
         {/* Edit Pane — always mounted to preserve undo history */}
         <div
           ref={editPaneRef}
-          className="overflow-y-auto relative"
+          className={viewMode === 'split' ? 'noa-split-editor-mask overflow-y-auto relative' : 'overflow-y-auto relative'}
           style={{
             display: viewMode === 'preview' ? 'none' : undefined,
             width: viewMode === 'split' ? `${splitRatio * 100}%` : undefined,
@@ -618,7 +618,12 @@ export default function Editor({
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
-            style={viewMode === 'split' ? { width: `${(1 - splitRatio) * 100}%`, flex: 'none' } : undefined}
+            style={viewMode === 'split' ? {
+              // The 1px divider sits outside the percentage split; subtract it
+              // so split preview ends at the same edge as standalone preview.
+              width: `calc(${(1 - splitRatio) * 100}% - 1px)`,
+              flex: 'none',
+            } : undefined}
           />
         )}
       </div>

@@ -6,22 +6,35 @@ const sidebarPath = fileURLToPath(new URL('../../src/components/Sidebar.tsx', im
 const fileNodePath = fileURLToPath(new URL('../../src/components/sidebar/FileNode.tsx', import.meta.url));
 const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
 const rightPanelPath = fileURLToPath(new URL('../../src/components/RightPanel.tsx', import.meta.url));
+const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 
 describe('sidebar search result layout', () => {
-  it('insets search result rows to balance the reserved scrollbar gutter', async () => {
-    const source = await readFile(sidebarPath, 'utf8');
+  it('keeps sidebar scroll chrome without changing compact 6px search result spacing', async () => {
+    const [source, styles] = await Promise.all([
+      readFile(sidebarPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+    ]);
 
-    expect(source).not.toContain('className="-mr-[5px]"');
-    expect(source).toContain('p-2 ml-1 mb-1.5 rounded-md cursor-pointer border-l-2');
+    expect(source).toContain('className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
+    expect(source).not.toContain('[scrollbar-gutter:stable]');
+    expect(source).toContain('p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2');
+    expect(styles).not.toContain('scrollbar-width: none;');
+    expect(styles).not.toContain('.noa-sidebar-scroll::-webkit-scrollbar');
   });
 
-  it('lets the sidebar toolbar inherit the sidebar background', async () => {
-    const source = await readFile(sidebarPath, 'utf8');
+  it('uses a short sidebar-surface fade instead of a hard toolbar-content boundary', async () => {
+    const [source, styles] = await Promise.all([
+      readFile(sidebarPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+    ]);
 
-    expect(source).toContain('className="h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden"');
+    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-visible"');
     expect(source).not.toContain('className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden"');
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
+    expect(styles).toContain('.noa-sidebar-toolbar-mask::after {');
+    expect(styles).toContain('height: 10px;');
+    expect(styles).toContain('background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);');
   });
 
   it('keeps the daily-note shortcut in the sidebar instead of duplicating it in the title bar', async () => {
@@ -45,6 +58,42 @@ describe('sidebar search result layout', () => {
     expect(vaultSection).not.toContain('border-t');
     expect(vaultSection).toContain('className="mx-1 pl-2 pr-2 pt-3 pb-2.5"');
     expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 8 : 2}px`");
+  });
+
+  it('does not retain a right-edge scrollbar-gutter compensation on file rows', async () => {
+    const fileNode = await readFile(fileNodePath, 'utf8');
+
+    expect(fileNode).not.toContain('stable 6px scrollbar gutter');
+    expect(fileNode).not.toContain("marginRight: '-1px'");
+  });
+
+  it('uses a subtle semantic branch line and gives folders a distinct local text weight', async () => {
+    const fileNode = await readFile(fileNodePath, 'utf8');
+
+    expect(fileNode).toContain('border-l border-[var(--divider-subtle)]');
+    expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
+    expect(fileNode).toContain("isActive ? 'font-bold' : isFolder ? 'font-[425]' : ''");
+    expect(fileNode).not.toContain("isFolder ? 'font-medium' : ''");
+  });
+
+  it('marks multi-selected rows without shifting their icon column', async () => {
+    const fileNode = await readFile(fileNodePath, 'utf8');
+
+    expect(fileNode).toContain("'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'");
+    expect(fileNode).not.toContain("'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'");
+  });
+
+  it('keeps a one-pixel breath between adjacent tree-row highlights', async () => {
+    const fileNode = await readFile(fileNodePath, 'utf8');
+
+    expect(fileNode).toContain('<div className="font-redaction mb-px">');
+  });
+
+  it('anchors each branch line to its folder icon center at every depth', async () => {
+    const fileNode = await readFile(fileNodePath, 'utf8');
+
+    expect(fileNode).toContain("marginLeft: depth === 0 ? '19px' : '13px'");
+    expect(fileNode).not.toContain("marginLeft: '18px'");
   });
 
   it('hides expand chevrons for all folder rows without changing their click behavior', async () => {
@@ -72,7 +121,7 @@ describe('sidebar search result layout', () => {
     // not the class list's leading position. Surface classes like
     // noa-sidebar-surface legitimately sit in front of it.
     expect(sidebar).toMatch(/className="[^"]*\bw-full h-full min-h-0 flex flex-col/);
-    expect(sidebar).toContain('className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
+    expect(sidebar).toContain('className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
     expect(rightPanel).toContain('className={`w-full h-full min-h-0 flex flex-col');
   });
 });

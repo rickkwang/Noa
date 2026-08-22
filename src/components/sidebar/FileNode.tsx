@@ -122,20 +122,17 @@ export const FileNode = React.memo(({
   };
 
   return (
-    <div className="font-redaction">
+    <div className="font-redaction mb-px">
       <div
         className={`flex items-center justify-between py-1 px-2 mx-1 rounded-md cursor-pointer select-none group ${
           isDropTarget
             ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
             : isSelected
-              ? 'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'
+              ? 'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'
               : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{
           paddingLeft: `${depth === 0 ? 8 : 2}px`,
-          // Extend row fill beneath the stable 6px scrollbar gutter,
-          // leaving 5px visible so the rounded right corner still shows.
-          marginRight: '-1px',
         }}
         draggable={draggable}
         onDragStart={onDragStart}
@@ -175,7 +172,7 @@ export const FileNode = React.memo(({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className={`truncate ${isActive ? 'font-bold' : ''}`}>
+            <span className={`truncate ${isActive ? 'font-bold' : isFolder ? 'font-[425]' : ''}`}>
               {name}
             </span>
           )}
@@ -219,9 +216,15 @@ export const FileNode = React.memo(({
       {isFolder && children && (
         <div
           className="transition-[grid-template-rows] duration-200 ease-in-out"
-          style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', marginLeft: '18px' }}
+          style={{
+            display: 'grid',
+            gridTemplateRows: isOpen ? '1fr' : '0fr',
+            // Align the child branch to this row's 14px icon center:
+            // 4px row margin + (8px root / 2px child padding) + 7px radius.
+            marginLeft: depth === 0 ? '19px' : '13px',
+          }}
         >
-          <div className="overflow-hidden border-l border-[#2D2D2B]/15">
+          <div className="overflow-hidden border-l border-[var(--divider-subtle)]">
             {children}
           </div>
         </div>

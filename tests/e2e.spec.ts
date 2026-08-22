@@ -223,6 +223,33 @@ test('search returns a note by title and content', async ({ page }) => {
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 });
 
+test('search result cards keep visible scroll chrome without changing horizontal rhythm', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTitle('Search notes').click();
+  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+
+  const resultRow = page.getByTestId('search-result').first();
+  await expect(resultRow).toBeVisible();
+
+  const layout = await resultRow.evaluate((element) => {
+    const contentColumn = element.parentElement!;
+    const scrollContainer = contentColumn.parentElement!.parentElement!;
+    const row = element.getBoundingClientRect();
+    const column = contentColumn.getBoundingClientRect();
+    return {
+      left: row.left - column.left,
+      right: column.right - row.right,
+      scrollbarGutter: getComputedStyle(scrollContainer).scrollbarGutter,
+      scrollbarWidth: getComputedStyle(scrollContainer).scrollbarWidth,
+    };
+  });
+
+  expect(layout.scrollbarGutter).toBe('auto');
+  expect(layout.scrollbarWidth).toBe('auto');
+  expect(layout.left).toBe(6);
+  expect(layout.right).toBe(6);
+});
+
 test('clicking a search result opens that note', async ({ page }) => {
   const marker = `e2e-search-nav-${Date.now()}`;
   await page.goto('/');
@@ -915,6 +942,65 @@ test('cyclic view control exposes the current editor mode', async ({ page }) => 
   await expect(modeButton).toHaveAttribute('aria-description', 'Current view: split');
   await modeButton.click();
   await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
+});
+
+test('split preview aligns its scrollbar with the standalone preview edge', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();
+
+  const gap = await page.evaluate(() => {
+    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
+    const splitPane = preview.parentElement!;
+    return splitPane.getBoundingClientRect().right - preview.getBoundingClientRect().right;
+  });
+
+  expect(gap).toBe(0);
+});
+
+test('split panes share the same top fade while standalone edit remains unmasked', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.noa-split-editor-mask .cm-editor').waitFor();
+  await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();
+
+  const splitMasks = await page.evaluate(() => {
+    const edit = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-editor')!;
+    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
+    return {
+      edit: getComputedStyle(edit).maskImage,
+      preview: getComputedStyle(preview).maskImage,
+    };
+  });
+  expect(splitMasks.edit).toBe(splitMasks.preview);
+  expect(splitMasks.edit).toContain('48px');
+
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
+  await modeButton.click();
+  await modeButton.click();
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
+  expect(await page.locator('.cm-editor').evaluate((element) => getComputedStyle(element).maskImage)).toBe('none');
+});
+
+test('scrollbar thumbs keep a balanced inset on every edge', async ({ page }) => {
+  await page.goto('/');
+
+  const thumb = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement, '::-webkit-scrollbar-thumb');
+    return {
+      top: style.borderTopWidth,
+      right: style.borderRightWidth,
+      bottom: style.borderBottomWidth,
+      left: style.borderLeftWidth,
+      clip: style.backgroundClip,
+    };
+  });
+
+  expect(thumb).toEqual({
+    top: '1px',
+    right: '1px',
+    bottom: '1px',
+    left: '1px',
+    clip: 'padding-box',
+  });
 });
 
 test('right panel toggle remains clickable after the panel is collapsed', async ({ page }) => {
