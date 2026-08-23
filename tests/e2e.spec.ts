@@ -956,6 +956,120 @@ test('cyclic view control exposes the current editor mode', async ({ page }) => 
   await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
 });
 
+test('closing the last note hides the otherwise-empty tab baseline', async ({ page }) => {
+  await page.goto('/');
+
+  const topbar = page.locator('div.h-8.grid').filter({ has: page.getByRole('button', { name: 'Toggle sidebar' }) });
+  const closeTab = page.locator('[data-tab-id] button[aria-label^="Close "]').first();
+  await expect(closeTab).toBeAttached();
+  await closeTab.click({ force: true });
+
+  await expect(page.locator('[data-tab-id]')).toHaveCount(0);
+  await expect(page.locator('[data-tab-id][data-closing-tab="true"]')).toHaveCount(0);
+  await expect.poll(() => topbar.evaluate((element) => getComputedStyle(element, '::after').display)).toBe('none');
+});
+
+test('opening and closing a tab never resizes the tabs that stay put', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+  await page.locator('[data-tab-id]').first().waitFor();
+
+  // Tabs used to be `flex-1` with a 0 basis, which made each tab's width the
+  // average of the whole set. The enter/exit keyframes take the animating tab
+  // out of flex, so that re-average landed as a single-frame jump on every
+  // other tab (measured: 13.5px on open, 24px with mixed-length titles).
+  // The jump only shows up when the averaging actually has something to average,
+  // so give the open tab a title long enough to sit at the far end of the range
+  // before a default-titled "New Note" joins it.
+  await page.locator('[data-tab-id] span').first().dblclick();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('Quarterly planning notes 2026');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tab-id]').first()).toContainText('Quarterly planning notes 2026');
+
+  // Sample per tab id, not positionally: a tab joins the settled set on the very
+  // frame its animation class drops, which is exactly the frame the jump lands on.
+  const recordSettledWidths = () => page.evaluate(() => new Promise<Record<string, number>[]>((resolve) => {
+    const samples: Record<string, number>[] = [];
+    const start = performance.now();
+    const tick = () => {
+      const frame: Record<string, number> = {};
+      for (const tab of document.querySelectorAll<HTMLElement>('[data-tab-id]')) {
+        // Only tabs that are not themselves animating are expected to hold still.
+        if (tab.className.includes('editor-tab-enter') || tab.className.includes('editor-tab-exit')) continue;
+        frame[tab.dataset.tabId as string] = tab.getBoundingClientRect().width;
+      }
+      samples.push(frame);
+      if (performance.now() - start < 500) requestAnimationFrame(tick);
+      else resolve(samples);
+    };
+    requestAnimationFrame(tick);
+  }));
+
+  const worstJump = (samples: Record<string, number>[]) => {
+    let worst = 0;
+    for (let i = 1; i < samples.length; i += 1) {
+      for (const [id, width] of Object.entries(samples[i])) {
+        const previous = samples[i - 1][id];
+        if (previous !== undefined) worst = Math.max(worst, Math.abs(width - previous));
+      }
+    }
+    return worst;
+  };
+
+  const opening = recordSettledWidths();
+  await page.getByRole('button', { name: 'New tab' }).click();
+  expect(worstJump(await opening)).toBeLessThan(1);
+  await expect(page.locator('[data-tab-id]')).toHaveCount(2);
+
+  const closing = recordSettledWidths();
+  await page.locator('[data-tab-id] button[aria-label^="Close "]').last().click({ force: true });
+  expect(worstJump(await closing)).toBeLessThan(1);
+  await expect(page.locator('[data-tab-id]')).toHaveCount(1);
+});
+
+test('a second tab opened mid-entrance does not cut the first tab\'s animation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+  await page.locator('[data-tab-id]').first().waitFor();
+
+  // The entering tab used to be tracked in a single slot, so a second open
+  // stripped the first tab's animation class mid-flight and it jumped straight
+  // to full width (measured: 1.9px -> 126px in one frame).
+  const overlap = await page.evaluate(() => new Promise<{ concurrent: number; maxJump: number }>((resolve) => {
+    const plus = () => [...document.querySelectorAll('button')]
+      .find((button) => button.getAttribute('aria-label') === 'New tab') as HTMLButtonElement;
+    const widthsById = new Map<string, number>();
+    let concurrent = 0;
+    let maxJump = 0;
+    const start = performance.now();
+    const tick = () => {
+      const entering = [...document.querySelectorAll<HTMLElement>('[data-tab-id]')]
+        .filter((tab) => tab.className.includes('editor-tab-enter'));
+      concurrent = Math.max(concurrent, entering.length);
+      for (const tab of document.querySelectorAll<HTMLElement>('[data-tab-id]')) {
+        const id = tab.dataset.tabId as string;
+        const width = tab.getBoundingClientRect().width;
+        const previous = widthsById.get(id);
+        // A tab whose entrance is cut jumps from part-width to full width in one
+        // frame; an entrance that runs to completion never moves more than the
+        // easing's largest step.
+        if (previous !== undefined) maxJump = Math.max(maxJump, width - previous);
+        widthsById.set(id, width);
+      }
+      if (performance.now() - start < 600) requestAnimationFrame(tick);
+      else resolve({ concurrent, maxJump });
+    };
+    requestAnimationFrame(tick);
+    plus().click();
+    window.setTimeout(() => plus().click(), 20);
+  }));
+
+  expect(overlap.concurrent).toBe(2);
+  expect(overlap.maxJump).toBeLessThan(60);
+  await expect(page.locator('[data-tab-id]')).toHaveCount(3);
+});
+
 test('split preview aligns its scrollbar with the standalone preview edge', async ({ page }) => {
   await page.goto('/');
   await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();

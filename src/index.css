@@ -678,24 +678,31 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 /* ── Editor tab strip ── */
-/* Enter/exit animate the slot itself (max-width + padding) alongside
-   opacity/transform, so neighboring tabs slide smoothly into place instead of
-   snapping when the flex row redistributes. max-width bounds match the tab's
-   max-w-[9rem]/px-3 classes; min-width is forced to 0 during the animation so
-   the slot can actually collapse below min-w-[4.5rem]. */
+/* Every tab is exactly --noa-tab-w wide, and the component sizes the tab off
+   the same variable (`w-[var(--noa-tab-w)]` + `flex-none`). That is load-bearing,
+   not cosmetic: tabs used to be `flex-1` with a 0 basis, which made each tab's
+   width the *average* of the whole set, so opening or closing one resized every
+   other tab. The enter/exit keyframes take the animating tab out of flex, so
+   that re-average could not be interpolated — it landed as a single-frame jump
+   (measured: 13.5px per tab on open, 24px with mixed-length titles). With a
+   fixed width the animating tab is the only thing that moves; the strip scrolls
+   once the tabs overflow it. */
 .editor-tab {
+  --noa-tab-w: 9rem;
   backface-visibility: hidden;
 }
 .editor-tab-divider {
   transition: opacity 140ms ease-out;
 }
 
-/* Both animations drive `width` against a measured `--noa-tab-w`, and take the
-   tab out of flex sizing (`flex: 0 0 auto`) for the duration.
-   Animating max-width instead does not work once the strip overflows: the
-   min-width:0 below makes the animating tab the only shrinkable item in the
-   row, so flex-shrink alone squeezes it to ~26px and max-width never binds. The
-   tab then snapped 26px -> 72px the instant the class was removed. */
+/* Both animations drive `width` against --noa-tab-w and take the tab out of flex
+   sizing (`flex: 0 0 auto`) for the duration, so the growing/collapsing tab is
+   the only box whose size changes.
+   `width` rather than `max-width`, because max-width cannot drive the box below
+   its declared width. The `min-width: 0` below is redundant with the
+   `overflow: hidden` that already zeroes the flex automatic minimum (verified:
+   the collapse bottoms out at the same 1.9px either way) — it is kept so the
+   collapse does not silently depend on that overflow rule. */
 @keyframes editor-tab-slot-enter {
   from {
     opacity: 0;
@@ -721,10 +728,9 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   will-change: transform, opacity;
 }
 
-/* --noa-tab-w is stamped inline by the close button with the tab's measured
-   width, so the collapse starts exactly at the current width. Without it,
-   squeezed tabs (actual width < 9rem) would sit still while max-width burns
-   down from 9rem to the real width, then collapse at double speed. */
+/* The exit mirrors the enter. Both used to need --noa-tab-w stamped inline from
+   a measured sibling, because a tab's real width depended on how many tabs were
+   open; with a fixed width the declared value is already the right one. */
 @keyframes editor-tab-slot-exit {
   from {
     opacity: 1;

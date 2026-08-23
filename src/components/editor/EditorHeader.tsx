@@ -1,12 +1,17 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Note } from '../../types';
 import { FileText, X, Plus } from '@/src/lib/icons';
 
 const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
 const dragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 
-// Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css.
+// Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css, and
+// with TAB_ENTER_FALLBACK_MS / TAB_EXIT_FALLBACK_MS in useTabs.
 const TAB_ANIM_MS = 170;
+
+// Stable identity for the optional id lists, so the memos below don't rebuild on
+// every render when the caller omits them.
+const NO_TAB_IDS: string[] = [];
 
 interface EditorTab {
   id: string;
@@ -18,8 +23,8 @@ interface EditorHeaderProps {
   tabs?: EditorTab[];
   isEditingTitle: boolean;
   titleInput: string;
-  enteringTabId?: string | null;
-  enteringFromTabId?: string | null;
+  enteringTabIds?: string[];
+  enteringFromTabIds?: string[];
   closingTabIds?: string[];
   onTitleInputChange: (value: string) => void;
   onTitleSubmit: () => void;
@@ -44,9 +49,9 @@ export function EditorHeader({
   tabs,
   isEditingTitle,
   titleInput,
-  enteringTabId,
-  enteringFromTabId,
-  closingTabIds,
+  enteringTabIds = NO_TAB_IDS,
+  enteringFromTabIds = NO_TAB_IDS,
+  closingTabIds = NO_TAB_IDS,
   onTitleInputChange,
   onTitleSubmit,
   onTitleKeyDown,
@@ -65,6 +70,8 @@ export function EditorHeader({
   readOnly = false,
 }: EditorHeaderProps) {
   const tabStripRef = useRef<HTMLDivElement>(null);
+  const tabStripFrameRef = useRef<HTMLDivElement>(null);
+  const entranceScrollOwnerRef = useRef<string | null>(null);
   // Track IME composition so we don't commit a half-typed CJK title when the
   // user presses Enter or blurs mid-selection.
   const isComposingRef = useRef(false);
@@ -80,7 +87,11 @@ export function EditorHeader({
     }
     onTitleKeyDown(e);
   };
-  const shouldAnimateEnteringTab = Boolean(enteringTabId && tabs?.some(tab => tab.id === enteringTabId));
+  const enteringTabIdSet = useMemo(() => new Set(enteringTabIds), [enteringTabIds]);
+  const enteringFromTabIdSet = useMemo(() => new Set(enteringFromTabIds), [enteringFromTabIds]);
+  const closingTabIdSet = useMemo(() => new Set(closingTabIds), [closingTabIds]);
+  const isEnteringActiveTab = enteringTabIdSet.has(note.id);
+  const anyTabAnimating = enteringTabIds.length > 0 || closingTabIds.length > 0;
   const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
 
   const updateEdgeFade = () => {
@@ -98,7 +109,8 @@ export function EditorHeader({
     // while it widens and it reads as sliding in at that edge. Letting the
     // entrance finish and snapping into view afterward instead teleported the
     // whole strip a full tab-width in a single frame (measured: 73px, 3/3).
-    if (enteringTabId && enteringTabId === note.id) {
+    if (isEnteringActiveTab) {
+      entranceScrollOwnerRef.current = note.id;
       // Ease to the edge rather than pinning to it: the strip is often parked
       // far from the right (browsing older tabs, then opening a note that isn't
       // open yet), and jumping straight to scrollWidth teleported it by up to
@@ -116,24 +128,42 @@ export function EditorHeader({
       followRightEdge();
       return () => cancelAnimationFrame(raf);
     }
+    // The entrance that just ended already parked the strip at its right edge.
+    // Without this guard, clearing the entering flag re-ran the effect and fired
+    // a second, smooth scroll on the exact frame the entrance landed. Keyed on
+    // the tab that was entering, not a bare flag: switching to a different tab
+    // mid-entrance also clears isEnteringActiveTab, and that tab does still need
+    // to be scrolled into view.
+    const entranceOwner = entranceScrollOwnerRef.current;
+    entranceScrollOwnerRef.current = null;
+    if (entranceOwner === note.id) return;
     // Otherwise keep the active tab in view when it changes (e.g. activated via
     // keyboard or the sidebar while scrolled off-screen).
     const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
     active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-  }, [tabs, note.id, enteringTabId]);
+  }, [tabs, note.id, isEnteringActiveTab]);
 
   useEffect(() => {
     const scrollEl = tabStripRef.current;
-    if (!scrollEl) return;
+    const frameEl = tabStripFrameRef.current;
+    if (!scrollEl || !frameEl) return;
     // The strip clips overflowing tabs with a hidden scrollbar, so a window
     // resize can silently push the active tab out of view. Re-snap it whenever
-    // the strip itself changes size.
+    // the space available to the strip changes.
+    //
+    // Observe the frame, not the strip. The strip is shrink-to-fit, so its own
+    // width tracks its content and it resizes on every frame of a tab
+    // enter/exit — observing it re-snapped and re-measured on those frames
+    // (measured: 22 callbacks per entrance) while the entrance's rAF was
+    // writing scrollLeft. The frame is the flex-1 wrapper, so it only changes
+    // with the window, sidebar, or right panel: exactly the cases that need a
+    // re-snap, and none of the cases the animations already handle.
     const observer = new ResizeObserver(() => {
       const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
       active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
       updateEdgeFade();
     });
-    observer.observe(scrollEl);
+    observer.observe(frameEl);
     scrollEl.addEventListener('scroll', updateEdgeFade, { passive: true });
     return () => {
       observer.disconnect();
@@ -141,23 +171,7 @@ export function EditorHeader({
     };
   }, []);
 
-  useLayoutEffect(updateEdgeFade, [tabs]);
-
-  // Mirror of what the close button does for the exit animation: stamp the
-  // entering tab with the width it is animating toward. Siblings are already at
-  // that width (once the strip overflows every tab sits at its 4.5rem minimum),
-  // and the entering tab is still at max-width:0 on this frame, so measuring one
-  // is safe. markEnteringTab only fires when tabs already exist, so there is
-  // always a sibling to measure.
-  useLayoutEffect(() => {
-    if (!shouldAnimateEnteringTab || !enteringTabId) return;
-    const strip = tabStripRef.current;
-    if (!strip) return;
-    const tabEls = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab-id]'));
-    const entering = tabEls.find(el => el.dataset.tabId === enteringTabId);
-    const settled = tabEls.find(el => el !== entering && !el.dataset.closingTab);
-    if (entering && settled) entering.style.setProperty('--noa-tab-w', `${settled.offsetWidth}px`);
-  }, [shouldAnimateEnteringTab, enteringTabId]);
+  useLayoutEffect(updateEdgeFade, [tabs, anyTabAnimating]);
 
   // Fade the tab content itself out at overflowing edges (a colored overlay
   // would need to match the themed header background exactly, which the theme
@@ -183,6 +197,7 @@ export function EditorHeader({
     >
       {/* Tab strip */}
       <div
+        ref={tabStripFrameRef}
         className="min-w-0 flex-1 flex items-end overflow-visible"
         style={{
           marginLeft: liftTabStrip && reserveTitlebarTraffic
@@ -205,13 +220,13 @@ export function EditorHeader({
                 const isActiveTab = tab.id === note.id;
                 const prevTab = idx > 0 ? tabs[idx - 1] : null;
                 const prevIsActive = prevTab?.id === note.id;
-                const prevIsEntering = Boolean(prevTab && enteringTabId === prevTab.id);
-                const isEnteringFromTab = enteringFromTabId === tab.id;
-                const prevIsEnteringFromTab = Boolean(prevTab && enteringFromTabId === prevTab.id);
+                const prevIsEntering = Boolean(prevTab && enteringTabIdSet.has(prevTab.id));
+                const isEnteringFromTab = enteringFromTabIdSet.has(tab.id);
+                const prevIsEnteringFromTab = Boolean(prevTab && enteringFromTabIdSet.has(prevTab.id));
                 const showDivider = idx > 0 && !isActiveTab && !prevIsActive;
-                const isEnteringTab = shouldAnimateEnteringTab && enteringTabId === tab.id;
-                const isClosingTab = closingTabIds?.includes(tab.id) ?? false;
-                const prevIsClosing = Boolean(prevTab && (closingTabIds?.includes(prevTab.id) ?? false));
+                const isEnteringTab = enteringTabIdSet.has(tab.id);
+                const isClosingTab = closingTabIdSet.has(tab.id);
+                const prevIsClosing = Boolean(prevTab && closingTabIdSet.has(prevTab.id));
                 const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab && !isClosingTab && !prevIsClosing;
                 const tabStyle = {
                   borderWidth: '1px',
@@ -238,7 +253,7 @@ export function EditorHeader({
                         if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
                         if (isEnteringTab) onTabEnterComplete?.(tab.id);
                       }}
-                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-1 min-w-[4.5rem] max-w-[9rem] ${
+                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
                         isActiveTab
                           ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#2D2D2B] text-[#F9F9F7]' : 'bg-[#F9F9F7] text-[#2D2D2B]'}`
                           : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'}`
@@ -272,12 +287,6 @@ export function EditorHeader({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Capture the tab's real width before the exit animation
-                          // starts, so the collapse begins from the actual width
-                          // instead of the 9rem max — otherwise squeezed tabs
-                          // stall for the first half of the animation.
-                          const tabEl = e.currentTarget.closest<HTMLElement>('[data-tab-id]');
-                          if (tabEl) tabEl.style.setProperty('--noa-tab-w', `${tabEl.offsetWidth}px`);
                           onTabClose?.(tab.id);
                         }}
                         className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
@@ -339,12 +348,12 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 active:opacity-70 rounded transition-colors shrink-0 self-end ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/70 hover:bg-[#2D2D2B]' : 'text-[#2D2D2B]/40 hover:text-[#2D2D2B] hover:bg-[#EFEAE3]'}`}
+            className={`flex items-center justify-center w-6 h-6 ml-0.5 mb-[3px] rounded-md shrink-0 self-end transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[#F9F9F7]/[0.07]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[#2D2D2B]/[0.05]'}`}
             style={noDragRegion}
             title="New tab"
             aria-label="New tab"
           >
-            <Plus size={14} />
+            <Plus size={13} strokeWidth={2} />
           </button>
         )}
       </div>

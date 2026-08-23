@@ -20,6 +20,7 @@ interface TopBarProps {
   isSidebarPreviewOpen: boolean;
   isRightPanelOpen: boolean;
   isMobile: boolean;
+  hasOpenNote: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   isSearchOpen: boolean;
@@ -29,7 +30,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, hasOpenNote, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#F9F9F7';
@@ -40,7 +41,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
   return (
     <div
       data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
-      className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
+      className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${hasOpenNote ? (!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,310px)]' : 'after:left-0') : 'after:hidden'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
       style={{
         ...dragRegion,
         backgroundColor: titlebarBaseColor,

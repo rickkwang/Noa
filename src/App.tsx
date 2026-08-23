@@ -105,8 +105,8 @@ export default function App() {
 
   const {
     openTabs,
-    enteringTabId,
-    enteringFromTabId,
+    enteringTabIds,
+    enteringFromTabIds,
     closingTabIds,
     tabLimitWarning,
     openTabForNote,
@@ -657,6 +657,7 @@ export default function App() {
         isSidebarPreviewOpen={isSidebarPreviewOpen}
         isRightPanelOpen={isRightPanelOpen}
         isMobile={isMobile}
+        hasOpenNote={Boolean(activeNoteId)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearchOpen={isSearchOpen}
@@ -793,8 +794,8 @@ export default function App() {
                 setViewMode={setEditorViewMode}
                 settings={settings}
                 tabs={openTabs}
-                enteringTabId={enteringTabId}
-                enteringFromTabId={enteringFromTabId}
+                enteringTabIds={enteringTabIds}
+                enteringFromTabIds={enteringFromTabIds}
                 closingTabIds={closingTabIds}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}

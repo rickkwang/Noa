@@ -39,8 +39,8 @@ interface EditorProps {
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
   settings: AppSettings;
   tabs?: EditorTab[];
-  enteringTabId?: string | null;
-  enteringFromTabId?: string | null;
+  enteringTabIds?: string[];
+  enteringFromTabIds?: string[];
   closingTabIds?: string[];
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
@@ -68,8 +68,8 @@ export default function Editor({
   setViewMode,
   settings,
   tabs,
-  enteringTabId,
-  enteringFromTabId,
+  enteringTabIds,
+  enteringFromTabIds,
   closingTabIds,
   onTabChange,
   onTabClose,
@@ -483,8 +483,8 @@ export default function Editor({
         onNewTab={onNewTab}
         onClose={onClose}
         titleInputRef={titleInputRef}
-        enteringTabId={enteringTabId}
-        enteringFromTabId={enteringFromTabId}
+        enteringTabIds={enteringTabIds}
+        enteringFromTabIds={enteringFromTabIds}
         closingTabIds={closingTabIds}
         onTabEnterComplete={onTabEnterComplete}
         onTabCloseAnimationComplete={onTabCloseAnimationComplete}
