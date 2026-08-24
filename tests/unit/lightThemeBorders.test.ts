@@ -131,7 +131,8 @@ describe('light theme border tokens', () => {
     expect(rightPanel).toContain("'var(--divider-subtle, #E6E2DA)'");
     expect(rightPanel).not.toContain("'rgba(45,45,43,0.1)'");
     expect(rightPanel).toContain('h-10 shrink-0 flex items-center px-2');
-    expect(rightPanel).toContain('flex-1 flex-col overflow-hidden px-2 pb-2 pt-0 gap-2');
+    expect(rightPanel).toContain("activeTab === 'graph' ? 'h-0' : 'h-2'");
+    expect(rightPanel).toContain('flex-1 flex-col overflow-hidden px-2 pb-2 pt-2 gap-2');
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
     expect(rightPanel).toContain("background: isDark ? '#252523' : '#ECEAE6'");
     expect(rightPanel).toContain(": 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)'");

@@ -89,9 +89,9 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
                 <div className={`text-[10px] uppercase tracking-wider font-redaction w-20 shrink-0 truncate pt-0.5 ${keyColor}`} title={key}>{key}</div>
                 {isTagField ? (
                   tagList.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
                       {tagList.map(tag => (
-                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-redaction font-bold border text-[#CC7D5E] bg-[#CC7D5E]/10 leading-none" style={{ borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
+                        <span key={tag} className="inline-flex items-center rounded-[5px] border border-[#CC7D5E]/20 bg-[#CC7D5E]/[0.08] px-2 py-1 text-[10px] font-redaction font-medium text-[#CC7D5E] leading-none">
                           #{tag}
                         </span>
                       ))}

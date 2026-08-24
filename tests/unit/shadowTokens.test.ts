@@ -7,9 +7,9 @@ const stylesPath = fileURLToPath(new URL('../../src/index.css', import.meta.url)
 describe('shadow tokens', () => {
   it('defines both tokens in light mode and redefines them in dark mode', async () => {
     const styles = await readFile(stylesPath, 'utf8');
-    expect(styles).toContain('--shadow-elevated: 0 1px 2px 0 rgba(45,45,43,0.05)');
+    expect(styles).toContain('--shadow-elevated: 0 0 2px 0 rgba(45,45,43,0.05), 0 0 14px -3px rgba(45,45,43,0.10)');
     expect(styles).toContain('--shadow-floating: 0 4px 12px 0 rgba(45,45,43,0.12)');
-    expect(styles).toContain('--shadow-elevated: 0 1px 2px 0 rgba(0,0,0,0.24)');
+    expect(styles).toContain('--shadow-elevated: 0 0 2px 0 rgba(0,0,0,0.20), 0 0 16px -4px rgba(0,0,0,0.30)');
     expect(styles).toContain('--shadow-floating: 0 4px 12px 0 rgba(0,0,0,0.45)');
   });
 

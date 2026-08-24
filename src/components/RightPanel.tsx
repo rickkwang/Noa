@@ -236,7 +236,7 @@ export default function RightPanel({
             {/* The tab row used to supply the gap under the titlebar divider.
                 With the tabs moved up, match the panel's own px-2 gutter so
                 content is inset the same on all four sides. */}
-            <div aria-hidden="true" className="h-2 shrink-0" />
+            <div aria-hidden="true" className={`${activeTab === 'graph' ? 'h-0' : 'h-2'} shrink-0`} />
           </>
         )
         : (
@@ -279,7 +279,7 @@ export default function RightPanel({
       )}
       {(hasVisitedGraph || activeTab === 'graph') && (
         <div
-          className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-0 gap-2"
+          className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-2 gap-2"
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (
