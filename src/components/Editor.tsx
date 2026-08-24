@@ -572,7 +572,18 @@ export default function Editor({
             <div ref={editorContainerRef} className="h-full" />
           </div>
 
-          <div className="absolute bottom-2 right-4 text-xs text-[#2D2D2B]/40 font-redaction pointer-events-none">
+          {/* Obsidian-style status bar: an opaque strip, not text floating
+              over the prose. The editor pane doesn't scroll (CodeMirror's own
+              .cm-scroller does), so a transparent overlay here would have
+              arbitrary document text drifting behind it as the user scrolls. */}
+          <div
+            className="absolute bottom-0 left-0 right-0 z-10 h-7 flex items-center justify-end px-4 text-xs font-redaction pointer-events-none"
+            style={{
+              color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
+              backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7',
+              borderTop: '1px solid var(--divider-subtle, #E6E2DA)',
+            }}
+          >
             {stats.words} words · {stats.chars} chars
           </div>
 

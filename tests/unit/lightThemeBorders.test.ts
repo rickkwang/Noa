@@ -146,7 +146,12 @@ describe('light theme border tokens', () => {
     const previewPane = await readFile(previewPanePath, 'utf8');
 
     expect(previewPane).toContain("borderTop: '1px dashed var(--divider-subtle, #E6E2DA)'");
-    expect(previewPane).toContain("border: '1px solid var(--divider-subtle, #E6E2DA)'");
+    // The card hairline derives from that same divider, at half weight: the
+    // ambient shadow carries the card's edge, so the border only has to keep
+    // it from dissolving into the page.
+    expect(previewPane).toContain(
+      "border: '1px solid color-mix(in srgb, var(--divider-subtle, #E6E2DA) 50%, transparent)'"
+    );
   });
 
   it('uses a subtle baseline beneath the editor tab strip', async () => {

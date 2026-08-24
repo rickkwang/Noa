@@ -434,7 +434,7 @@ function getSnippet(content: string, title: string) {
     return (
       <span>
         ...{match[1]}
-        <span className="text-[#CC7D5E] font-bold bg-[#CC7D5E]/10 px-1 rounded">{match[2]}</span>
+        <span className="text-[#CC7D5E] px-0.5 rounded-sm">{match[2].slice(2, -2)}</span>
         {match[3]}...
       </span>
     );
@@ -1003,27 +1003,41 @@ export const PreviewPane = React.memo(function PreviewPane({
       </div>
 
       {!printMode && backlinks.length > 0 && (
-        <div className="mt-24 pt-4 font-redaction" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)' }}>
-          <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
-            <span>{backlinks.length}</span>
-            <span>Linked Mentions</span>
-          </h3>
-          <div className="space-y-1.5">
-            {backlinks.map((backlink) => (
-              <div
-                key={backlink.id}
-                className="px-2 py-1.5 cursor-pointer transition-colors group"
-                style={{ border: '1px solid var(--divider-subtle, #E6E2DA)' }}
-                onClick={() => onNavigateToNoteById(backlink.id)}
-              >
-                <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>
-                  {backlink.title}
+        // The max-width/centering lives on a plain block child, not on the flex
+        // item itself: auto cross-axis margins cancel `align-self: stretch`,
+        // which would collapse the item to fit-content.
+        <div className="mt-24 w-full">
+          <div className="pt-4 font-redaction" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)', ...contentMaxWidthStyle }}>
+            <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
+              <span>{backlinks.length}</span>
+              <span>Linked Mentions</span>
+            </h3>
+            <div className="space-y-1.5">
+              {backlinks.map((backlink) => (
+                <div
+                  key={backlink.id}
+                  className="noa-ambient-panel rounded-[10px] px-3 py-2 cursor-pointer transition-colors group"
+                  style={{
+                    // The ambient shadow already draws the card's edge, so the
+                    // hairline only needs to keep it from dissolving into the
+                    // page — half the divider weight is enough.
+                    border: '1px solid color-mix(in srgb, var(--divider-subtle, #E6E2DA) 50%, transparent)',
+                    // The sidebar's surface tone, so the card reads as its own
+                    // material against the page. Opaque either way, so the
+                    // ambient shadow has something to sit on.
+                    backgroundColor: 'var(--bg-sidebar, #F4F4F2)',
+                  }}
+                  onClick={() => onNavigateToNoteById(backlink.id)}
+                >
+                  <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>
+                    {backlink.title}
+                  </div>
+                  <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
+                    {getSnippet(backlink.content, note.title)}
+                  </div>
                 </div>
-                <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
-                  {getSnippet(backlink.content, note.title)}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

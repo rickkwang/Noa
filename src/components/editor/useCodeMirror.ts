@@ -30,7 +30,7 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
 // Warm dark palette: bg #2D2D2B, text #F9F9F7, accent #CC7D5E
 const darkTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#F9F9F7' },
-  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
+  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
@@ -65,7 +65,7 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
 
 const lightTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#2D2D2B' },
-  '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 2rem 0' },
+  '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
