@@ -47,7 +47,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
   const firstDayOffset = (firstDayRaw + 6) % 7; // Mon=0
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  const monthLabel = `${year}-${pad(month + 1)}`;
+  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const hasDailyNote = (dateStr: string) => {
     const formatted = formatDate(dateFormat, new Date(dateStr + 'T00:00:00'));
@@ -67,7 +67,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
     <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
       {/* Section header */}
       <button
-        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
+        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
         onClick={() => setIsOpen(v => !v)}
         aria-expanded={isOpen}
       >
@@ -79,13 +79,13 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
       {isOpen && (
         <div className="slide-down">
           {/* Month navigation */}
-          <div className="flex items-center justify-between px-3 pt-0.5 pb-3">
-            <button onClick={prevMonth} className="p-0.5 text-[#2D2D2B]/50 hover:text-[#2D2D2B] active:opacity-70 transition-colors cursor-pointer">
-              <ChevronLeft size={12} />
+          <div className="flex items-center justify-between px-2 pt-0.5 pb-2">
+            <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+              <ChevronLeft size={14} />
             </button>
-            <span className="text-xs font-redaction text-[#2D2D2B]/80">{monthLabel}</span>
-            <button onClick={nextMonth} className="p-0.5 text-[#2D2D2B]/50 hover:text-[#2D2D2B] active:opacity-70 transition-colors cursor-pointer">
-              <ChevronRight size={12} />
+            <span className="text-xs font-medium font-redaction text-[#2D2D2B]/80">{monthLabel}</span>
+            <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+              <ChevronRight size={14} />
             </button>
           </div>
 
@@ -93,7 +93,7 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
           <div className="grid grid-cols-7 px-2 pb-1">
             {WEEKDAYS.map(wd => (
               <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
-                <span className="text-[#2D2D2B]/40">{wd}</span>
+                <span className="font-medium text-[#2D2D2B]/50">{wd}</span>
               </div>
             ))}
           </div>
@@ -101,22 +101,30 @@ export default function CalendarPanel({ notes, activeNoteId, onSelectDate, dateF
           {/* Day grid */}
           <div className="grid grid-cols-7 gap-y-1 px-2 pb-3">
             {cells.map((cell, i) => {
-              if (cell.day === null) return <div key={`empty-${i}`} className="w-7 h-7" />;
+              if (cell.day === null) return <div key={`empty-${i}`} className="w-8 h-8" />;
               const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
               const isToday = dateStr === today;
               const isActive = isActiveDate(dateStr);
               const hasNote = hasDailyNote(dateStr);
               const isClickable = hasNote || isToday;
-              let cellClass = `w-7 h-7 flex flex-col items-center justify-center text-xs font-redaction rounded-md transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
+              let cellClass = `w-8 h-8 flex flex-col items-center justify-center text-xs font-redaction rounded-md transition-colors ${isClickable ? 'cursor-pointer' : 'cursor-default'} `;
               if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
               else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-              else if (hasNote) cellClass += 'text-[#2D2D2B] noa-sidebar-hover-surface';
-              else cellClass += 'text-[#2D2D2B] opacity-40';
+              else if (hasNote) cellClass += 'text-[#2D2D2B]/80 noa-sidebar-hover-surface';
+              else cellClass += 'text-[#2D2D2B]/60';
               return (
-                <div key={dateStr} className={cellClass} onClick={() => isClickable && onSelectDate(dateStr)}>
+                <button
+                  key={dateStr}
+                  type="button"
+                  className={cellClass}
+                  onClick={() => isClickable && onSelectDate(dateStr)}
+                  aria-label={`Open ${dateStr}`}
+                  aria-current={isToday ? 'date' : undefined}
+                  disabled={!isClickable}
+                >
                   <span className="leading-none">{cell.day}</span>
                   {hasNote && !isActive && <span className="w-1 h-1 rounded-full bg-[#CC7D5E] mt-0.5" />}
-                </div>
+                </button>
               );
             })}
           </div>

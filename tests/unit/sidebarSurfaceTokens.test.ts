@@ -6,6 +6,7 @@ const themeInjectorPath = fileURLToPath(new URL('../../src/components/ThemeInjec
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 const sidebarPath = fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url));
 const fileNodePath = fileURLToPath(new URL('../../src/components/sidebar/FileNode.tsx', import.meta.url));
+const tagBrowserPath = fileURLToPath(new URL('../../src/components/sidebar/TagBrowser.tsx', import.meta.url));
 const calendarPath = fileURLToPath(new URL('../../src/components/CalendarPanel.tsx', import.meta.url));
 const topBarPath = fileURLToPath(new URL('../../src/components/TopBar.tsx', import.meta.url));
 const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
@@ -122,6 +123,32 @@ describe('sidebar surface tokens', () => {
     expect(darkActive).not.toBeNull();
     expect(darkHover).not.toBeNull();
     expect(Number(darkActive![1])).toBeGreaterThan(Number(darkHover![1]));
+  });
+
+  it('gives the calendar clear today, active-note, and keyboard interaction states', async () => {
+    const calendar = await readFile(calendarPath, 'utf8');
+
+    expect(calendar).toContain('aria-label={`Open ${dateStr}`}');
+    expect(calendar).toContain('type="button"');
+    expect(calendar).toContain('w-8 h-8');
+    expect(calendar).toContain('bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20');
+    expect(calendar).toContain('bg-[#CC7D5E] text-white');
+    expect(calendar).toContain('text-xs font-medium font-redaction');
+    expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/60';");
+  });
+
+  it('keeps inactive tag filters in the muted warm hue system', async () => {
+    const [css, tagBrowser] = await Promise.all([
+      readFile(indexCssPath, 'utf8'),
+      readFile(tagBrowserPath, 'utf8'),
+    ]);
+
+    expect(css).toContain('background: hsl(var(--tag-h) 18% 90%);');
+    expect(css).toContain('background: hsl(var(--tag-h) 10% 19%);');
+    expect(css).toContain('color: hsl(var(--tag-h) 16% 64%);');
+    expect(css).toContain('border-color: var(--divider-subtle, rgba(249,249,247,0.15));');
+    expect(tagBrowser).toContain("style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}");
+    expect(tagBrowser).toContain('tracking-[0.08em]');
   });
 
   it('applies the optional translucent material only to the expanded desktop sidebar', async () => {

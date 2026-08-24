@@ -535,11 +535,11 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .noa-tag-pill:hover { background: hsl(var(--tag-h) 22% 86%); }
 [data-theme="dark"] .noa-tag-pill {
-  background: hsl(var(--tag-h) 8% 17%);
-  color: hsl(var(--tag-h) 24% 66%);
+  background: hsl(var(--tag-h) 10% 19%);
+  color: hsl(var(--tag-h) 16% 64%);
   border-color: var(--divider-subtle, rgba(249,249,247,0.15));
 }
-[data-theme="dark"] .noa-tag-pill:hover { background: hsl(var(--tag-h) 10% 21%); }
+[data-theme="dark"] .noa-tag-pill:hover { background: hsl(var(--tag-h) 13% 22%); }
 
 /* Active = currently filtering on this tag. Thin accent border + accent text,
    placed last with theme-qualified selectors so it wins over the dark base rule. */
