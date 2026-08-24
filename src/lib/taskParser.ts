@@ -17,6 +17,24 @@ type ParsedTaskLine = {
   occurrenceIndex: number;
 };
 
+function extractValidDueDate(text: string): string | undefined {
+  const match = text.match(DUE_REGEX);
+  const raw = match?.[1] || match?.[2];
+  if (!raw) return undefined;
+
+  const [year, month, day] = raw.split('-').map(Number);
+  const date = new Date(`${raw}T00:00:00Z`);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  return raw;
+}
+
 function parseTaskLine(line: string, index: number, occurrenceMap: Map<string, number>): ParsedTaskLine | null {
   const match = line.match(TASK_REGEX);
   if (!match) return null;
@@ -30,8 +48,7 @@ function parseTaskLine(line: string, index: number, occurrenceMap: Map<string, n
   let text = rawText.replace(TASK_ID_REGEX, '').trim();
 
   // Remove due-date tokens from task content.
-  const dueMatch = text.match(DUE_REGEX);
-  if (dueMatch) {
+  if (extractValidDueDate(text)) {
     text = text.replace(DUE_REGEX, '').trim();
   }
 
@@ -129,13 +146,7 @@ const parseTasksFromNote = (note: Note): GlobalTask[] => {
     if (!parsed.content) return;
 
     // Re-extract due date for parsed task payload.
-    const dueMatch = line.match(DUE_REGEX);
-    let dueDate: string | undefined;
-    if (dueMatch) {
-      const raw = dueMatch[1] || dueMatch[2];
-      const parsedDate = new Date(raw);
-      dueDate = Number.isNaN(parsedDate.getTime()) ? undefined : raw;
-    }
+    const dueDate = extractValidDueDate(line);
 
     let priority: Priority = 'none';
     if (PRIORITY_HIGH_REGEX.test(line)) {

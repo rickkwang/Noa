@@ -24,6 +24,12 @@ interface EditorTab {
   title: string;
 }
 
+interface EditorLineJumpRequest {
+  noteId: string;
+  lineIndex: number;
+  requestId: number;
+}
+
 interface EditorProps {
   note?: Note;
   allNotes: Note[];
@@ -52,6 +58,8 @@ interface EditorProps {
   reserveTitlebarActions?: boolean;
   readOnly?: boolean;
   attachmentMutationsDisabled?: boolean;
+  lineJumpRequest?: EditorLineJumpRequest | null;
+  onLineJumpHandled?: (requestId: number) => void;
 }
 
 export default function Editor({
@@ -82,6 +90,8 @@ export default function Editor({
   onRestoreSnapshot,
   readOnly = false,
   attachmentMutationsDisabled = false,
+  lineJumpRequest,
+  onLineJumpHandled,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -158,6 +168,18 @@ export default function Editor({
     editPaneRef,
     readOnly,
   });
+
+  useEffect(() => {
+    if (!lineJumpRequest || lineJumpRequest.noteId !== note?.id || viewMode === 'preview') return;
+    const lineCount = note.content.split('\n').length;
+    const frame = window.requestAnimationFrame(() => {
+      if (lineJumpRequest.lineIndex >= 0 && lineJumpRequest.lineIndex < lineCount) {
+        jumpToLine(lineJumpRequest.lineIndex);
+      }
+      onLineJumpHandled?.(lineJumpRequest.requestId);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
 
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
   useEffect(() => {

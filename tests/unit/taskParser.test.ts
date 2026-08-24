@@ -59,6 +59,20 @@ describe('parseTasksFromNotes', () => {
     expect(tasks[0].dueDate).toBe('2026-04-01');
   });
 
+  it('keeps impossible calendar dates as task text instead of normalizing them', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] impossible 📅 2026-02-31')]);
+
+    expect(tasks[0].dueDate).toBeUndefined();
+    expect(tasks[0].content).toBe('impossible 📅 2026-02-31');
+  });
+
+  it('accepts a valid leap-day due date', () => {
+    const tasks = parseTasksFromNotes([note('- [ ] leap day 📅 2028-02-29')]);
+
+    expect(tasks[0].dueDate).toBe('2028-02-29');
+    expect(tasks[0].content).toBe('leap day');
+  });
+
   it('extracts high priority', () => {
     const tasks = parseTasksFromNotes([note('- [ ] urgent 🔺')]);
     expect(tasks[0].priority).toBe('high');

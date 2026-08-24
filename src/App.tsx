@@ -317,6 +317,13 @@ export default function App() {
     exitFocusMode,
   } = useLayout();
 
+  const [editorLineJumpRequest, setEditorLineJumpRequest] = useState<{
+    noteId: string;
+    lineIndex: number;
+    requestId: number;
+  } | null>(null);
+  const editorLineJumpRequestIdRef = useRef(0);
+
   const {
     isSidebarPreviewOpen,
     isSidebarPreviewClosing,
@@ -464,10 +471,19 @@ export default function App() {
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
   }, [handleNavigateToNote, navigateById]);
 
-  const handleRightPanelNavigate = useCallback((id: string) => {
+  const handleRightPanelNavigate = useCallback((id: string, lineIndex?: number) => {
     navigateById(id);
+    if (lineIndex !== undefined) {
+      editorLineJumpRequestIdRef.current += 1;
+      setEditorLineJumpRequest({ noteId: id, lineIndex, requestId: editorLineJumpRequestIdRef.current });
+      setEditorViewMode('edit');
+    }
     if (isMobile) setIsRightPanelOpen(false);
-  }, [navigateById, isMobile, setIsRightPanelOpen]);
+  }, [navigateById, isMobile, setEditorViewMode, setIsRightPanelOpen]);
+
+  const handleEditorLineJumpHandled = useCallback((requestId: number) => {
+    setEditorLineJumpRequest(current => current?.requestId === requestId ? null : current);
+  }, []);
 
   const handleSidebarSelectNote = useCallback((id: string) => {
     // Switch + arm the entrance synchronously so the editor build and tab
@@ -808,6 +824,8 @@ export default function App() {
                 onRestoreSnapshot={restoreSnapshotGuarded}
                 readOnly={(vaultCacheReadOnly || authoritativeSyncInProgress || hasPendingStructuralOperations) && activeNote?.origin === 'vault'}
                 attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
+                lineJumpRequest={editorLineJumpRequest}
+                onLineJumpHandled={handleEditorLineJumpHandled}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-7 select-none">

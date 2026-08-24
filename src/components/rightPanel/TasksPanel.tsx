@@ -25,14 +25,14 @@ function getDueDateStatus(dueDate: string | undefined): 'overdue' | 'today' | 's
 interface TasksPanelProps {
   tasks: GlobalTask[];
   onToggleTask: (task: GlobalTask) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, lineIndex?: number) => void;
   isDark?: boolean;
 }
 
 const TASKS_PAGE_SIZE = 100;
 
 const PRIORITY_OPTIONS = ['all', 'high', 'medium', 'low'] as const;
-const DUE_OPTIONS = ['all', 'today', 'week', 'overdue'] as const;
+const DUE_OPTIONS = ['all', 'today', 'next7', 'overdue'] as const;
 
 // Memoized: `tasks` keeps its identity across keystrokes that don't change any
 // task (useGlobalTasks) and the callbacks are stabilized in App, so typing in
@@ -81,9 +81,9 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
         if (!task.dueDate) return false;
         const due = parseLocalDueDate(task.dueDate);
         if (dueDateFilterEff === 'today' && due.getTime() !== today.getTime()) return false;
-        if (dueDateFilterEff === 'week') {
-          const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-          if (due < today || due > weekEnd) return false;
+        if (dueDateFilterEff === 'next7') {
+          const rangeEnd = new Date(today); rangeEnd.setDate(today.getDate() + 6);
+          if (due < today || due > rangeEnd) return false;
         }
         if (dueDateFilterEff === 'overdue' && due >= today) return false;
       }
@@ -98,18 +98,14 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const txt = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
   const dim = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
-  const rowHover = isDark ? 'hover:bg-[rgba(249,249,247,0.04)]' : 'hover:bg-[#EFEAE3]/35';
+  const rowHover = 'hover:bg-transparent';
   const progressTrack = isDark ? 'bg-[rgba(249,249,247,0.14)]' : 'bg-[#2D2D2B]/12';
   const progressFill = isDark ? 'bg-[#F9F9F7]' : 'bg-[#2D2D2B]';
-  const sectionLine = 'bg-[var(--divider-subtle)]';
-  const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.3)]' : 'border-[#2D2D2B]/35';
+  const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.48)]' : 'border-[#2D2D2B]/50';
   const checkboxBorderDone = isDark ? 'border-[rgba(249,249,247,0.4)]' : 'border-[#2D2D2B]/50';
   const checkboxBgDone = isDark ? 'bg-[rgba(249,249,247,0.15)]' : 'bg-[#2D2D2B]/20';
   const checkmarkColor = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
-  const noteLink = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/35';
-  // Opaque panel bg for the hover-reveal source chip so it stays readable when it
-  // floats over the end of a long task line. Matches RightPanel container bg.
-  const chipBg = isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]';
+  const noteLink = isDark ? 'text-[rgba(249,249,247,0.42)]' : 'text-[#2D2D2B]/40';
   const showMoreBtn = isDark
     ? 'border-[rgba(249,249,247,0.15)] text-[rgba(249,249,247,0.3)] hover:border-[rgba(249,249,247,0.4)] hover:text-[rgba(249,249,247,0.6)]'
     : 'border-[#2D2D2B]/20 text-[#2D2D2B]/40 hover:border-[#2D2D2B]/40 hover:text-[#2D2D2B]';
@@ -143,7 +139,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   : `border-transparent ${dim} ${filterHoverIdle}`
               }`}
             >
-              {opt}
+              {opt === 'next7' ? '7 days' : opt}
             </button>
           ))}
         </div>
@@ -165,7 +161,10 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
               <span className={`text-[11px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
-              <div className="flex items-baseline gap-1 tabular-nums text-[11px] font-semibold">
+              <div
+                className="flex items-baseline gap-1 tabular-nums text-[11px] font-semibold"
+                aria-label={`${completedTasks.length} completed of ${total} tasks`}
+              >
                 <span className={txt}>{completedTasks.length}</span>
                 <span className={dimmer}>/</span>
                 <span className={dim}>{total}</span>
@@ -217,22 +216,22 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             const railColor = priorityRailColor(task.priority);
             return (
               <div key={task.id}
-                className={`group relative flex items-start gap-2.5 pr-3 py-2.5 transition-colors ${rowHover}`}>
+                 className={`group relative flex items-start gap-2.5 py-1.5 transition-colors ${rowHover}`}>
                 {railColor && (
                   <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
                 <div className="flex items-center h-[21px] shrink-0">
-                  <button onClick={() => onToggleTask(task)} className="p-1 -m-1 active:opacity-70" aria-label="Complete task">
-                    <div className={`w-[15px] h-[15px] rounded-[4px] border transition-colors hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
+                  <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CC7D5E]/60 active:opacity-70" aria-label="Complete task">
+                    <div className={`w-[16px] h-[16px] rounded-[4px] border transition-colors hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className={`block text-sm leading-[1.5] ${txt}`}>{task.content}</span>
-                  <button onClick={() => onNavigateToNoteById(task.noteId)}
+                  <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
+                    aria-label={`Open source note: ${task.noteTitle}`}
                     title={task.noteTitle}
-                    className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
-                    <ExternalLink size={9} />
-                    <span className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                    className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#CC7D5E]/60 hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
+                    <ExternalLink size={11} />
                   </button>
                   {task.dueDate && (
                     <div className={`mt-0.5 text-[11px] tabular-nums font-bold ${
@@ -268,19 +267,18 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             />
             <span className={`text-[11px] uppercase tracking-[0.25em] font-bold shrink-0 ${dimmer}`}>Completed</span>
             <span className={`text-[11px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
-            <div className={`flex-1 h-px ${sectionLine}`} />
           </button>
           {completedExpanded && (
           <div>
             {completedTasks.slice(0, completedPageSize).map(task => {
               const railColor = priorityRailColor(task.priority);
               return (
-                <div key={task.id} className="group relative flex items-start gap-2.5 pr-3 py-2.5 opacity-50 hover:opacity-80 transition-opacity">
+                <div key={task.id} className="group relative flex items-start gap-2.5 py-1.5 opacity-50 hover:opacity-80 transition-opacity">
                   {railColor && (
                     <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
                   <div className="flex items-center h-[21px] shrink-0">
-                    <button onClick={() => onToggleTask(task)} className="p-1 -m-1 active:opacity-70" aria-label="Reopen task">
+                    <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CC7D5E]/60 active:opacity-70" aria-label="Reopen task">
                       <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
                         <Check size={10} weight="bold" className={checkmarkColor} />
                       </div>
@@ -288,11 +286,11 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className={`block text-sm leading-[1.5] line-through ${txt}`}>{task.content}</span>
-                    <button onClick={() => onNavigateToNoteById(task.noteId)}
+                    <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
+                      aria-label={`Open source note: ${task.noteTitle}`}
                       title={task.noteTitle}
-                      className={`absolute top-2 right-2 flex items-center gap-0.5 px-1 rounded text-[11px] transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-[#CC7D5E] active:opacity-70 ${chipBg} ${noteLink}`}>
-                      <ExternalLink size={9} />
-                      <span className="max-w-[12ch] truncate">{task.noteTitle}</span>
+                      className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#CC7D5E]/60 hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
+                      <ExternalLink size={11} />
                     </button>
                     {task.dueDate && (
                       <div className={`mt-0.5 text-[11px] tabular-nums ${dim}`}>→ {task.dueDate}</div>

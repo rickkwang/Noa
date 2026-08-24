@@ -75,7 +75,7 @@ function OutgoingIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: n
 interface RightPanelProps {
   tasks: GlobalTask[];
   onToggleTask: (task: GlobalTask) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, lineIndex?: number) => void;
   activeNote?: Note;
   activeTab: RightPanelTab;
   onTabChange: (tab: RightPanelTab) => void;
