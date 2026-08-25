@@ -7,10 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.23] - 2026-08-25
+
 ### Added
+- AGPL-3.0 license.
 - Design spec for the semantic theme token refactor (`docs/superpowers/specs/`).
 
 ### Changed
+- Rewrote the README: corrected the file-sync description, documented attachments, Obsidian import, dark mode, auto backup, and the full development command list.
 - Migrated all icons from Lucide to Phosphor via a central mapping (`src/lib/icons.tsx`).
 - Unified the accent color to coral (#CC7D5E) across themes; refined graph toolbar, top bar alignment, and search box styling.
 - Enabled TypeScript `strict` mode; fixed the type gaps it surfaced.

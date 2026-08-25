@@ -11,9 +11,9 @@ Noa 是一个本地优先的私人笔记空间。没有账号，没有服务器�
 Noa 想做第三种：**足够简单，随时能写；足够结构，值得长期用**。
 
 - **本地优先** — 数据存在浏览器 IndexedDB，不经过任何服务器
-- **Markdown 原生** — 写作不被格式打断，随时在编辑/预览/分栏间切换
+- **Markdown 原生** — 写作不被格式打断，支持 Mermaid 图表和 KaTeX 公式，随时在编辑/预览/分栏间切换
 - **连接你的想法** — Wiki 链接、知识图谱、反向链接，让笔记之间形成网络而不是孤岛
-- **复古美学** — Redaction 字体、暖黄底色、像素质感，一个有个性的工具
+- **极简界面** — 克制、干净的编辑空间，让注意力回到文字本身
 
 ## 用法
 
@@ -22,6 +22,12 @@ Noa 想做第三种：**足够简单，随时能写；足够结构，值得长�
 打开 Noa，左侧选择文件夹，点 `+` 新建笔记。标题直接在顶部输入，正文支持完整 Markdown 语法。
 
 `⌘ N` 随时新建，`⌘ F` 搜索，`⌘ S` 手动保存（也自动保存）。
+
+外观默认跟随系统，可在设置 → Appearance 中固定为浅色或深色。
+
+### 图片附件
+
+直接把图片粘贴或拖进编辑器即可插入，支持 jpeg / png / gif / webp，单张最大 10MB。图片以 blob 存在本地 IndexedDB，笔记中用 `![[文件名]]` 引用。
 
 ### 每日笔记
 
@@ -39,13 +45,20 @@ Noa 想做第三种：**足够简单，随时能写；足够结构，值得长�
 
 在正文里写 `#标签名`，侧边栏底部的标签浏览器会自动收录，点击筛选。
 
+### 从 Obsidian 迁移
+
+设置 → Workspace → Import Vault Folder，选择一个 vault 文件夹即可一次性导入全部 Markdown 笔记，frontmatter 中的标签和链接会被保留。这是一次性迁移；如果想让文件留在磁盘上并保持镜像，请使用下方的文件夹同步。
+
 ### 文件夹同步
 
-设置 → Data → File Sync，连接本地文件夹后，该目录中的 Markdown 文件会成为实时镜像的数据源；你可以在 Noa 中编辑已有文件，改动会写回磁盘，其他工具（Obsidian、VS Code 等）的外部改动也会被重新读取。Noa 中新建的本地笔记不会自动写入该目录，也不能直接在镜像文件夹内新建笔记。它不是强一致的双向同步引擎，发生冲突时请优先备份并手动确认。
+设置 → Workspace → Vault Folder，选择本地文件夹后，Noa 会镜像该目录中已有的 Markdown 文件。你在 Noa 中对这些文件做的改动会写回磁盘；但 Noa **不会实时监听外部改动**，如果同一文件在 Obsidian、VS Code 等工具中被修改，需要断开并重新连接同步目录才会重新读取。在 Noa 中新建的笔记不会自动写入同步目录。这不是强一致的双向同步引擎，发生冲突时请优先备份并手动确认。
 
 ### 备份
 
-设置 → Data → Export，导出完整 JSON 快照。定期备份，Noa 会在长时间未备份时提醒你。
+设置 → Data 提供两条备份路径：
+
+- **手动导出**：Data 页支持三种格式——完整 JSON 快照（含元数据和设置，用于备份）、Vault ZIP（Markdown + 附件，可迁移到其他工具）、静态 HTML（仅供阅读，不是备份）。该区域会显示备份健康度（7 天内为 healthy，14 天内为 warning，更久为 risk）。
+- **自动备份**：选择一个本地文件夹后，Noa 会每 24 小时自动写入一次快照，无需手动操作。
 
 ## 快捷键
 
@@ -55,8 +68,9 @@ Noa 想做第三种：**足够简单，随时能写；足够结构，值得长�
 | `⌘ F` | 搜索 |
 | `⌘ K` | 命令面板 |
 | `⌘ ⇧ K` | 今日日记 |
+| `⌘ ⇧ F` | 专注模式 |
 | `⌘ S` | 保存 |
-| `Escape` | 关闭搜索 |
+| `Escape` | 清空搜索 / 退出专注模式 |
 
 ## 本地运行
 
@@ -65,10 +79,35 @@ npm install
 npm run dev    # http://localhost:3000
 ```
 
+## 开发
+
+```bash
+npm run lint                 # TypeScript + ESLint
+npm run test:unit            # Vitest
+npm run test:smoke           # Playwright
+npm run build                # Vite build → dist/
+npm run build:budget         # build + bundle size check
+npm run check:structure      # dependency-cruiser
+npm run desktop:dev          # Electron + Vite
+npm run desktop:pack:mac     # signed dmg+zip, arm64
+```
+
 ## 桌面版（macOS）
 
 从 [Releases](https://github.com/rickkwang/Noa/releases) 下载最新 `.dmg`，安装后即用。应用启动后会自动检查更新。
 
-## 商业立场
+## 技术栈
 
-Noa 目前是本地优先、免费的个人笔记工具：不提供云同步，不收集用户数据。未来若探索商业化，会以自愿付费或离线增值功能为主，不改变本地优先默认和隐私承诺。
+- React + Vite
+- CodeMirror 6
+- IndexedDB（localForage）
+- Electron（macOS arm64）
+- react-force-graph-2d
+
+## 商业模式
+
+Noa 是免费、开源、本地优先的个人笔记工具：无账号、无服务器、不收集用户数据。未来若探索可持续方式，会以一次性购买或离线增值功能为主，不会把云同步或隐私作为付费点。
+
+## License
+
+[AGPL-3.0](LICENSE) © rickkwang
