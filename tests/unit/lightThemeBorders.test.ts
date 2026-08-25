@@ -242,7 +242,7 @@ describe('light theme border tokens', () => {
     expect(topBar).toContain('<div aria-hidden="true" className="min-w-0" />');
     expect(topBar).toContain('aria-pressed={isSearchOpen}');
     expect(topBar).toContain('placeholder="Search notes, tags..."');
-    expect(topBar).toContain('h-7 min-w-7');
+    expect(topBar).toContain('h-[22px] min-w-7');
     expect(topBar).toContain('h-7 w-7 shrink-0');
     expect(topBar).toContain('<Search size={16}');
     expect(topBar).not.toContain('<Search size={14}');

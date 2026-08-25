@@ -227,9 +227,9 @@ export default function App() {
     handleImportNote(...args);
   }, [blockVaultCacheWrite, folders, handleImportNote]);
 
-  const handleOpenDailyNoteGuarded = useCallback(() => {
+  const handleOpenDailyNoteGuarded = useCallback((targetDate?: string) => {
     if (!isDataReady) return;
-    handleOpenDailyNote();
+    handleOpenDailyNote(targetDate);
   }, [handleOpenDailyNote, isDataReady]);
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
@@ -754,6 +754,7 @@ export default function App() {
               <Sidebar
                 notes={notes}
                 folders={folders}
+                tasks={globalTasks}
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
                 onSelectNote={handleSidebarSelectNote}
@@ -766,7 +767,18 @@ export default function App() {
                 onDeleteFolder={handleDeleteFolder}
                 onOpenDailyNote={handleOpenDailyNoteGuarded}
                 onImportNote={handleImportNoteGuarded}
-                onSearchTag={(tag) => setSearchQuery(`tag:${tag}`)}
+                // Both of these replace the file tree with a result list, so
+                // the query behind it has to be on screen. Setting the query
+                // without opening the field made the sidebar look like it
+                // changed on its own, with no way to read or adjust the filter.
+                onSearchTag={(tag) => {
+                  setSearchQuery(`tag:${tag}`);
+                  setIsSearchOpen(true);
+                }}
+                onSearchQuery={(query) => {
+                  setSearchQuery(query);
+                  setIsSearchOpen(Boolean(query));
+                }}
                 onClearSearch={() => setSearchQuery('')}
                 caseSensitive={settings.search.caseSensitive}
                 fuzzySearch={settings.search.fuzzySearch}

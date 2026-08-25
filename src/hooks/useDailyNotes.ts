@@ -8,6 +8,16 @@ import { AppSettings, Folder, Note } from '../types';
 
 const DAILY_FOLDER_KEY = STORAGE_KEYS.DAILY_FOLDER_ID;
 
+export function dateFromCalendarKey(targetDate?: string): Date {
+  if (!targetDate) return new Date();
+  const [year, month, day] = targetDate.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+    && parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
+    ? parsed
+    : new Date();
+}
+
 type UseDailyNotesOptions = {
   notesRef: React.MutableRefObject<Note[]>;
   settings?: AppSettings;
@@ -34,7 +44,11 @@ export function useDailyNotes({
     creatingRef.current = true;
     try {
     const dateFormat = settings?.dailyNotes?.dateFormat ?? 'YYYY-MM-DD';
-    const today = targetDate ?? formatDate(dateFormat);
+    // Calendar callers pass a YYYY-MM-DD key. Convert it once here so title,
+    // duplicate detection, and template placeholders all follow the user's
+    // configured date format for the selected local day.
+    const noteDate = dateFromCalendarKey(targetDate);
+    const today = formatDate(dateFormat, noteDate);
     const customTemplate = settings?.dailyNotes?.template?.trim();
     const dailyTemplate = customTemplate
       ? { id: 'custom', name: 'Custom', content: customTemplate }
@@ -68,7 +82,7 @@ export function useDailyNotes({
     const newNote: Note = {
       id: crypto.randomUUID(),
       title: today,
-      content: applyTemplate(dailyTemplate, today, dateFormat),
+      content: applyTemplate(dailyTemplate, today, dateFormat, noteDate),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       folder: dailyFolder.id,

@@ -332,22 +332,32 @@ test('search icon closes an open search field on a second click', async ({ page 
 test('tab strip occupies the title-bar row instead of leaving a second header row', async ({ page }) => {
   await page.goto('/');
 
-  const [tabBox, searchBox, sidebarActionBox, rightPanelTabBox] = await Promise.all([
+  const [tabBox, searchButtonBox, searchShellBox, sidebarToggleBox, sidebarActionBox, rightPanelTabBox] = await Promise.all([
     page.locator('[data-tab-id]').first().boundingBox(),
     page.getByTitle('Search notes').boundingBox(),
+    page.getByTitle('Search notes').locator('..').boundingBox(),
+    page.getByTitle('Toggle Sidebar').boundingBox(),
     page.getByTitle('New note').boundingBox(),
     page.getByRole('button', { name: 'Tasks' }).boundingBox(),
   ]);
 
   expect(tabBox).not.toBeNull();
-  expect(searchBox).not.toBeNull();
+  expect(searchButtonBox).not.toBeNull();
+  expect(searchShellBox).not.toBeNull();
+  expect(sidebarToggleBox).not.toBeNull();
   expect(sidebarActionBox).not.toBeNull();
   expect(rightPanelTabBox).not.toBeNull();
-  expect(tabBox!.y).toBeLessThanOrEqual(searchBox!.y + 4);
-  expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchBox!.y + 24);
+  // The frame grows evenly around the fixed-position icon, giving the glyph
+  // matching top and bottom breathing room without moving its centre line.
+  expect(tabBox!.height - searchShellBox!.height).toBe(6);
+  expect(Math.abs(searchShellBox!.y - tabBox!.y - 1)).toBeLessThanOrEqual(1);
+  expect(Math.abs((tabBox!.y + tabBox!.height) - (searchShellBox!.y + searchShellBox!.height) - 5)).toBeLessThanOrEqual(1);
+  expect(Math.abs((searchButtonBox!.y + searchButtonBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
+  expect(tabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
+  expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchShellBox!.y + 24);
   // The panel tabs moved up into the title bar too, so they now share the row
   // with search rather than sitting a header row below it.
-  expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchBox!.y + 4);
+  expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
 });
 
 test('right panel keeps Tasks as the penultimate tab', async ({ page }) => {

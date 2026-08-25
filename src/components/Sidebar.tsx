@@ -6,7 +6,7 @@ import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
-import { Note, Folder as FolderType } from '../types';
+import { GlobalTask, Note, Folder as FolderType } from '../types';
 import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
@@ -78,6 +78,7 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
 interface SidebarProps {
   notes: Note[];
   folders: FolderType[];
+  tasks?: GlobalTask[];
   searchQuery: string;
   activeNoteId: string;
   onSelectNote: (id: string) => void;
@@ -91,6 +92,7 @@ interface SidebarProps {
   onOpenDailyNote?: (targetDate?: string) => void;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
+  onSearchQuery?: (query: string) => void;
   onClearSearch?: () => void;
   caseSensitive?: boolean;
   fuzzySearch?: boolean;
@@ -98,11 +100,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  notes, folders, searchQuery, activeNoteId,
+  notes, folders, tasks, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote,
-  onImportNote, onSearchTag, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
+  onImportNote, onSearchTag, onSearchQuery, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
@@ -654,8 +656,11 @@ export default function Sidebar({
           search toggles (otherwise it remounts on every searchQuery flip). */}
       <CalendarPanel
         notes={notes}
+        tasks={tasks}
         activeNoteId={activeNoteId}
         onSelectDate={(dateStr) => onOpenDailyNote?.(dateStr)}
+        onSearchRange={onSearchQuery}
+        searchQuery={searchQuery}
         dateFormat={dateFormat}
       />
 

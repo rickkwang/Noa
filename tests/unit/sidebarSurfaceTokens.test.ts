@@ -128,13 +128,19 @@ describe('sidebar surface tokens', () => {
   it('gives the calendar clear today, active-note, and keyboard interaction states', async () => {
     const calendar = await readFile(calendarPath, 'utf8');
 
-    expect(calendar).toContain('aria-label={`Open ${dateStr}`}');
+    expect(calendar).toContain('const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(\', \');');
+    expect(calendar).toContain('aria-label={ariaLabel}');
     expect(calendar).toContain('type="button"');
     expect(calendar).toContain('w-8 h-8');
     expect(calendar).toContain('bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20');
     expect(calendar).toContain('bg-[#CC7D5E] text-white');
     expect(calendar).toContain('text-xs font-medium font-redaction');
-    expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/60';");
+    // Raised from /60 deliberately: the weekday header sits at /50, and at /60
+    // the numerals carried nearly the same weight, so the grid read as one flat
+    // block instead of dates above a label row. Pinned so the step does not
+    // quietly collapse again.
+    expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/75';");
+    expect(calendar).toContain('text-[#2D2D2B]/50');
   });
 
   it('keeps inactive tag filters in the muted warm hue system', async () => {

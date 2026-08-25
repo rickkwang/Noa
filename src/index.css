@@ -451,6 +451,11 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .text-\[\#2D2D2B\]\/90  { color: rgba(220,220,214,0.90) !important; }
 [data-theme="dark"] .text-\[\#CC7D5E\]      { color: #CC7D5E !important; }
 
+/* ── Status dots: the calendar's due/overdue markers are 3px, so they need the
+   same lift the status text gets or they vanish against the dark floor ── */
+[data-theme="dark"] .bg-\[\#D9862B\] { background-color: #F0A94E !important; }
+[data-theme="dark"] .bg-\[\#C24444\] { background-color: #E08A8A !important; }
+
 /* ── Status text: light-theme hues lifted for dark floors ── */
 [data-theme="dark"] .text-\[\#A93B3B\] { color: #E08A8A !important; }
 [data-theme="dark"] .text-\[\#C24444\] { color: #E08A8A !important; }

@@ -85,8 +85,13 @@ export function formatDate(dateFormat: string, date?: Date): string {
     .replace('mm', pad(d.getMinutes()));
 }
 
-export function applyTemplate(template: Template, title: string, dateFormat: string = 'YYYY-MM-DD'): string {
-  const now = new Date();
+/**
+ * Expand a template for a specific calendar date. Callers that do not supply a
+ * date retain the historical "right now" behaviour; daily-note navigation can
+ * provide the day selected in the calendar so its title and placeholders agree.
+ */
+export function applyTemplate(template: Template, title: string, dateFormat: string = 'YYYY-MM-DD', dateOverride: Date = new Date()): string {
+  const now = dateOverride;
   const date = formatDate(dateFormat, now);
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

@@ -63,7 +63,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
             <PanelLeft size={16} />
           </button>
           <div
-            className={`flex h-7 min-w-7 items-center overflow-hidden rounded-md border transition-[width] duration-200 ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
+            className={`flex h-[22px] min-w-7 items-center overflow-hidden rounded-md border transition-[width] duration-200 ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
             style={{
               width: isSearchOpen
                 ? (isMobile ? 'auto' : 'max(1.75rem, min(11rem, calc(100vw - 12rem)))')
