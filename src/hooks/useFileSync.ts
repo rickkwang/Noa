@@ -54,6 +54,7 @@ interface UseFileSyncResult {
   permissionRevoked: boolean;
   needsReauth: boolean;
   autoRetryExhausted: boolean;
+  vaultHydrationPending: boolean;
   vaultCacheReadOnly: boolean;
   authoritativeSyncInProgress: boolean;
   isAuthoritativeSyncActive: () => boolean;
@@ -1022,6 +1023,7 @@ export function useFileSync({
     permissionRevoked,
     needsReauth,
     autoRetryExhausted,
+    vaultHydrationPending,
     vaultCacheReadOnly,
     authoritativeSyncInProgress,
     isAuthoritativeSyncActive,

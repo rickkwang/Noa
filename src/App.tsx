@@ -14,6 +14,7 @@ import Sidebar from './components/Sidebar';
 import TemplatePickerDialog from './components/TemplatePickerDialog';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
+import VaultOnboardingDialog from './components/VaultOnboardingDialog';
 import { STORAGE_KEYS } from './constants/storageKeys';
 import { useAutoBackup } from './hooks/useAutoBackup';
 import { useCommandPalette } from './hooks/useCommandPalette';
@@ -58,6 +59,15 @@ export default function App() {
     }
   });
   const [navigationConflict, setNavigationConflict] = useState<{ title: string; noteIds: string[] } | null>(null);
+  const [vaultOnboardingDismissed, setVaultOnboardingDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.VAULT_ONBOARDING_SEEN) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [vaultOnboardingBusy, setVaultOnboardingBusy] = useState(false);
+  const [vaultOnboardingError, setVaultOnboardingError] = useState<string | null>(null);
   const [pendingTemplateNoteId, setPendingTemplateNoteId] = useState<string | null>(null);
   const waitingForTemplateRef = useRef(false);
   const { settings, updateSettings } = useSettings();
@@ -125,6 +135,7 @@ export default function App() {
     permissionRevoked,
     needsReauth,
     autoRetryExhausted,
+    vaultHydrationPending,
     vaultCacheReadOnly,
     authoritativeSyncInProgress,
     isAuthoritativeSyncActive,
@@ -159,6 +170,34 @@ export default function App() {
     onVaultNotesSynced: markVaultNotesSynced,
     onVaultNoteBaselineAdvanced: advanceVaultNoteBaseline,
   });
+
+  const dismissVaultOnboarding = useCallback(() => {
+    setVaultOnboardingDismissed(true);
+    try { localStorage.setItem(STORAGE_KEYS.VAULT_ONBOARDING_SEEN, 'true'); } catch { /* private mode */ }
+  }, []);
+
+  const connectVaultFromOnboarding = useCallback(() => {
+    setVaultOnboardingBusy(true);
+    setVaultOnboardingError(null);
+    void connect()
+      .then(() => dismissVaultOnboarding())
+      .catch((error: unknown) => {
+        // Picker dismissal is not a failure — leave the dialog in its initial state.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setVaultOnboardingError(error instanceof Error && error.message ? error.message : 'Could not open that folder.');
+      })
+      .finally(() => setVaultOnboardingBusy(false));
+  }, [connect, dismissVaultOnboarding]);
+
+  // vaultHydrationPending covers the persisted-handle restore window (it starts
+  // true and clears only after bootstrap resolves), so vault users never see a
+  // flash. The busy latch keeps the dialog mounted while connect() runs —
+  // otherwise a picker cancel (syncStatus -> 'error') would unmount it.
+  const showVaultOnboarding = (isDataReady
+    && typeof window.showDirectoryPicker === 'function'
+    && !fsHandle
+    && !vaultHydrationPending
+    && !vaultOnboardingDismissed) || vaultOnboardingBusy;
 
   const blockVaultCacheWrite = useCallback((isVaultOwned: boolean) => {
     if (!isDataReady) return true;
@@ -293,6 +332,12 @@ export default function App() {
     syncFolderOnRename,
     syncFolderOnDelete,
   });
+
+  // Disconnecting is an explicit "no vault" choice — don't re-prompt onboarding.
+  const handleDisconnectFolderAndDismissOnboarding = useCallback(async () => {
+    await handleDisconnectFolder();
+    dismissVaultOnboarding();
+  }, [handleDisconnectFolder, dismissVaultOnboarding]);
 
   const {
     isMobile,
@@ -957,7 +1002,7 @@ export default function App() {
             {permissionRevoked && (
               <button
                 disabled={syncStatus === 'syncing'}
-                onClick={() => { void handleDisconnectFolder().catch(() => {}); }}
+                onClick={() => { void handleDisconnectFolderAndDismissOnboarding().catch(() => {}); }}
                 className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 Disconnect
@@ -966,7 +1011,7 @@ export default function App() {
           </div>
         </div>
       )}
-      {showStorageNotice && (
+      {showStorageNotice && !showVaultOnboarding && (
         <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction noa-floating-panel">
           <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Local Storage Only</div>
           <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
@@ -999,7 +1044,7 @@ export default function App() {
             onImportData={handleImportData}
             fsHandle={fsHandle}
             onConnectFs={connect}
-            onDisconnectFs={handleDisconnectFolder}
+            onDisconnectFs={handleDisconnectFolderAndDismissOnboarding}
             fsLastSyncAt={fsLastSyncAt}
             fsSyncError={fsSyncError}
             syncStatus={syncStatus}
@@ -1007,6 +1052,14 @@ export default function App() {
             autoBackup={autoBackup}
           />
         </Suspense>
+      )}
+      {showVaultOnboarding && (
+        <VaultOnboardingDialog
+          connecting={vaultOnboardingBusy}
+          error={vaultOnboardingError}
+          onConnect={connectVaultFromOnboarding}
+          onDismiss={dismissVaultOnboarding}
+        />
       )}
       {navigationConflict && (
         <NavigationConflictDialog

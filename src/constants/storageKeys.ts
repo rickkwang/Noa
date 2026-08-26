@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   DAILY_FOLDER_ID: 'redaction-diary-daily-folder-id',
   RIGHT_PANEL_OPEN: 'app-right-panel-open',
   GRAPH_GUIDE_SEEN: 'app-graph-guide-seen',
+  VAULT_ONBOARDING_SEEN: 'app-vault-onboarding-seen',
   LAST_EXPORT_AT:   'redaction-last-export-at',
   ERROR_SNAPSHOTS:  'redaction-error-snapshots',
   LAST_ACTIVE_NOTE: 'redaction-last-active-note-id',
