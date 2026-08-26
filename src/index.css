@@ -495,6 +495,12 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .hover\:border-\[\#CC7D5E\]:hover { border-color: #CC7D5E !important; }
 [data-theme="dark"] .divide-\[\#2D2D2B\] > :not(:last-child) { border-color: var(--divider-subtle) !important; }
 
+/* Sidebar boxed confirm buttons: the global dark remap above turns their frame
+   into the near-invisible divider tone, so restore a visible border. Without it
+   the neutral Cancel (bg remapped to the sidebar color) loses its outline and
+   reads smaller than the filled red Delete next to it. */
+[data-theme="dark"] .noa-confirm-btn { border-color: var(--border-strong, rgba(249,249,247,0.30)) !important; }
+
 /* Settings is a single low-contrast surface: every ordinary ink border inside
    it follows the shared divider token. Semantic accent, warning, and error
    borders keep their own colors. */

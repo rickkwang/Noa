@@ -10,7 +10,16 @@ import { GlobalTask, Note, Folder as FolderType } from '../types';
 import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
-import { FileText, Plus, Folder, FolderPlus, Calendar, SquarePen, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
+
+// Per-template glyph for the folder "add note" menu, keyed by builtin template id.
+// A new builtin added without an entry here falls back to the generic note icon.
+const templateMenuIcons: Record<string, typeof FileText> = {
+  blank: FileText,
+  daily: Calendar,
+  meeting: Users,
+  reading: BookOpen,
+};
 
 // Renders a search-highlight snippet safely without dangerouslySetInnerHTML.
 // The search engine wraps matched characters in <b>…</b>; we parse those tags
@@ -227,20 +236,24 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel min-w-[160px]"
+            className="absolute right-0 top-7 z-50 min-w-[160px] rounded-md border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
           >
-            {builtinTemplates.map(t => (
-              <button
-                key={t.id}
-                className="noa-sidebar-hover-surface w-full text-left px-3 py-1.5 text-sm font-redaction text-[#2D2D2B]"
-                onClick={() => {
-                  onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
-                  setTemplateMenuFolderId(null);
-                }}
-              >
-                {t.name}
-              </button>
-            ))}
+            {builtinTemplates.map(t => {
+              const TemplateIcon = templateMenuIcons[t.id] ?? FileText;
+              return (
+                <button
+                  key={t.id}
+                  className="noa-sidebar-hover-surface flex items-center gap-2 w-full rounded px-2 py-1.5 text-left text-xs font-redaction text-[#2D2D2B] transition-colors"
+                  onClick={() => {
+                    onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
+                    setTemplateMenuFolderId(null);
+                  }}
+                >
+                  <TemplateIcon size={13} className="shrink-0 text-[#2D2D2B]/50" />
+                  <span className="truncate">{t.name}</span>
+                </button>
+              );
+            })}
           </div>
         )}
         <FileNode
@@ -438,7 +451,7 @@ export default function Sidebar({
       </div>
 
       {pendingDelete && (
-        <div className="slide-down border-b border-[#2D2D2B]/20 bg-[#CC7D5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
+        <div className="slide-down bg-[#CC7D5E]/10 px-3 py-2 flex flex-col gap-1.5 font-redaction shrink-0 z-10">
           <p className="text-xs text-[#2D2D2B]">
             Delete "<span className="font-bold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
@@ -479,13 +492,13 @@ export default function Sidebar({
                 else onDeleteFolder(pendingDelete.id);
                 setPendingDelete(null);
               }}
-              className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+              className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
             >
               Delete
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B]"
+              className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B]"
             >
               Cancel
             </button>
@@ -495,20 +508,20 @@ export default function Sidebar({
 
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
-        <div className="border-b border-[#2D2D2B]/20 bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
+        <div className="bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
           <span className="text-xs text-[#2D2D2B]/70">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -522,13 +535,13 @@ export default function Sidebar({
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="px-2 py-0.5 text-xs font-bold bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
                 >
                   Cancel
                 </button>

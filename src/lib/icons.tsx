@@ -6,6 +6,7 @@ import {
   TextAlignLeft,
   ArrowsDownUp,
   TextB,
+  BookOpen as PhBookOpen,
   CalendarBlank,
   Check as PhCheck,
   CheckCircle,
@@ -59,6 +60,7 @@ import {
   Trash,
   LinkBreak,
   UploadSimple,
+  Users as PhUsers,
   X as PhX,
   MagnifyingGlassPlus,
   MagnifyingGlassMinus,
@@ -78,6 +80,7 @@ export const AlignLeft = icon(TextAlignLeft);
 export const ArrowUpDown = icon(ArrowsDownUp);
 export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
+export const BookOpen = icon(PhBookOpen);
 export const Calendar = icon(CalendarBlank);
 export const Check = icon(PhCheck);
 export const CheckCircle2 = icon(CheckCircle);
@@ -132,6 +135,7 @@ export const SquarePen = icon(NotePencil);
 export const Trash2 = icon(Trash);
 export const Unlink = icon(LinkBreak);
 export const Upload = icon(UploadSimple);
+export const Users = icon(PhUsers);
 export const X = icon(PhX);
 export const ZoomIn = icon(MagnifyingGlassPlus);
 export const ZoomOut = icon(MagnifyingGlassMinus);
