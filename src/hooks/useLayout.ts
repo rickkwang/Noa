@@ -6,6 +6,7 @@ import { useResizeDrag } from './useResizeDrag';
 
 const SIDEBAR_DEFAULT_WIDTH = 310;
 const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
+const RIGHT_PANEL_DEFAULT_WIDTH = 340;
 const RIGHT_PANEL_MIN_WIDTH = 310;
 const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
@@ -86,7 +87,14 @@ export function useLayout() {
     setSize: setRightPanelWidth,
     isDragging: isDraggingRightPanel,
     setIsDragging: setIsDraggingRightPanel,
-  } = useResizeDrag(RIGHT_PANEL_MIN_WIDTH, RIGHT_PANEL_MIN_WIDTH, 480, getRightPanelValue, 'col-resize', previewRightPanelWidth);
+  } = useResizeDrag(
+    Math.min(RIGHT_PANEL_DEFAULT_WIDTH, getResponsivePanelMaxWidth(window.innerWidth)),
+    RIGHT_PANEL_MIN_WIDTH,
+    480,
+    getRightPanelValue,
+    'col-resize',
+    previewRightPanelWidth
+  );
 
   // Keyboard nudges use the same limits as the corresponding pointer path.
   const nudgeSidebarWidth = useCallback(

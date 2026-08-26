@@ -275,7 +275,7 @@ describe('light theme border tokens', () => {
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
     expect(app).not.toContain("left: 'var(--noa-sidebar-width, 325px)'");
-    expect(app).toContain("right: isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '-1px'");
+    expect(app).toContain("right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px'");
     expect(app).not.toContain('borderRightWidth: isFocusMode ? 0 : 1');
     expect(app).not.toContain('borderLeftWidth: isFocusMode ? 0 : 1');
   });
@@ -306,7 +306,7 @@ describe('light theme border tokens', () => {
 
     expect(app).toMatch(/marginLeft: !isMobile && !isPromotingSidebarPreview && \(isFocusMode \|\| !isSidebarOpen\)[\s\S]*?'calc\(-1 \* var\(--noa-sidebar-width, 310px\)\)'[\s\S]*?: '0px'/);
     expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'margin-left 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
-    expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px'");
+    expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px'");
     expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
     expect(app).not.toContain("transition: isDraggingSidebar ? 'none' : 'width 220ms");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");

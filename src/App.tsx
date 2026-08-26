@@ -626,7 +626,7 @@ export default function App() {
           aria-hidden="true"
           className="pointer-events-none absolute top-0 bottom-0 z-20"
           style={{
-            right: isRightPanelOpen ? 'var(--noa-right-panel-width, 310px)' : '-1px',
+            right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px',
             width: '1px',
             backgroundColor: 'var(--panel-divider, #2D2D2B)',
             transition: isDraggingRightPanel ? 'none' : 'right 220ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -859,9 +859,9 @@ export default function App() {
         <div
           className={`flex shrink-0 min-h-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
           style={{
-            width: isMobile ? '80%' : 'var(--noa-right-panel-width, 310px)',
+            width: isMobile ? '80%' : 'var(--noa-right-panel-width, 340px)',
             maxWidth: isMobile ? '320px' : undefined,
-            marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 310px))' : '0px',
+            marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px',
             transform: isMobile
               ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
               : undefined,
@@ -871,7 +871,7 @@ export default function App() {
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 310px)',
+              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 340px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full min-h-0 shrink-0"

@@ -135,11 +135,11 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
         className="absolute inset-y-0 z-20 flex items-center pl-1"
         style={{
           ...noDragRegion,
-          left: 'calc(100% - var(--noa-right-panel-width, 310px))',
+          left: 'calc(100% - var(--noa-right-panel-width, 340px))',
           // Travel with the panel on collapse instead of popping out: same
           // distance, same curve. Opacity clears well before the strip reaches
           // the actions on the right, so the two never visibly overlap.
-          transform: isRightPanelOpen ? 'translateX(0)' : 'translateX(var(--noa-right-panel-width, 310px))',
+          transform: isRightPanelOpen ? 'translateX(0)' : 'translateX(var(--noa-right-panel-width, 340px))',
           opacity: isRightPanelOpen ? 1 : 0,
           // visibility (not just opacity) keeps the hidden tabs out of the tab
           // order and the a11y tree; it flips only after the slide finishes.

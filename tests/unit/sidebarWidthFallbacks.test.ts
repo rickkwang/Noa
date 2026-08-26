@@ -60,10 +60,10 @@ describe('sidebar width fallbacks', () => {
       readFile(topBarPath, 'utf8'),
     ]);
 
-    const match = useLayout.match(/const RIGHT_PANEL_MIN_WIDTH\s*=\s*(\d+)/);
+    const match = useLayout.match(/const RIGHT_PANEL_DEFAULT_WIDTH\s*=\s*(\d+)/);
     expect(match).not.toBeNull();
     const expected = Number(match![1]);
-    expect(useLayout).toContain('useResizeDrag(RIGHT_PANEL_MIN_WIDTH, RIGHT_PANEL_MIN_WIDTH, 480, getRightPanelValue');
+    expect(useLayout).toMatch(/useResizeDrag\(\s*Math\.min\(RIGHT_PANEL_DEFAULT_WIDTH, getResponsivePanelMaxWidth\(window\.innerWidth\)\),\s*RIGHT_PANEL_MIN_WIDTH,\s*480,\s*getRightPanelValue/);
 
     const fallbacks = [
       ...collectFallbacks(app, '--noa-right-panel-width'),
