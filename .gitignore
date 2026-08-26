@@ -10,6 +10,7 @@ coverage/
 .alma-snapshots
 .worktrees/
 test-results/
+.playwright-cli/
 .noa/
 CLAUDE.md
 AGENTS.md
