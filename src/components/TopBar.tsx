@@ -63,7 +63,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
             <PanelLeft size={16} />
           </button>
           <div
-            className={`flex h-[22px] min-w-7 items-center overflow-hidden rounded-md border transition-[width] duration-200 ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
+            className={`flex h-[22px] min-w-7 items-center overflow-hidden rounded-md border transition-[width,background-color,border-color] duration-200 ease-out ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
             style={{
               width: isSearchOpen
                 ? (isMobile ? 'auto' : 'max(1.75rem, min(11rem, calc(100vw - 12rem)))')
@@ -87,37 +87,41 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
             >
               <Search size={16} />
             </button>
-            {isSearchOpen && (
-              <>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  placeholder="Search notes, tags..."
-                  aria-label="Search notes"
-                  className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
-                  onChange={(event) => onSearchChange(event.target.value)}
-                  onBlur={onSearchBlur}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onSearchChange('');
-                      onCloseSearch();
-                    }
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => onSearchChange('')}
-                    className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70"
-                    aria-label="Clear search"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </>
+            {/* Kept mounted so opening and closing are the same animation
+                played in reverse: unmounting on close made the text vanish
+                instantly while the shell was still collapsing. */}
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              placeholder="Search notes, tags..."
+              aria-label="Search notes"
+              aria-hidden={!isSearchOpen}
+              // Only while collapsed, and never tabIndex={0}: a literal
+              // tabindex attribute matches the global [tabindex]:focus-visible
+              // ring and paints an accent outline inside the search shell.
+              tabIndex={isSearchOpen ? undefined : -1}
+              className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
+              onChange={(event) => onSearchChange(event.target.value)}
+              onBlur={onSearchBlur}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onSearchChange('');
+                  onCloseSearch();
+                }
+              }}
+            />
+            {isSearchOpen && searchQuery && (
+              <button
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => onSearchChange('')}
+                className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70"
+                aria-label="Clear search"
+              >
+                <X size={12} />
+              </button>
             )}
           </div>
         </div>

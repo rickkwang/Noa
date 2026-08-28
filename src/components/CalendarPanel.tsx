@@ -228,13 +228,13 @@ export default function CalendarPanel({
     <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
       {/* Section header */}
       <button
-        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
+        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
         onClick={() => setIsOpen(v => !v)}
         aria-expanded={isOpen}
       >
-        <Calendar size={12} className="mr-1.5 shrink-0" />
+        <Calendar size={11} className="mr-1.5 shrink-0" />
         Calendar
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-100 ease-out ${isOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={10} className={`ml-auto transition-transform duration-100 ease-out ${isOpen ? '' : '-rotate-90'}`} />
       </button>
 
       {isOpen && (

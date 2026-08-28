@@ -68,13 +68,13 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         />
       )}
       <button
-        className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center shrink-0 transition-colors cursor-pointer"
+        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center shrink-0 transition-colors cursor-pointer"
         onClick={() => setIsTagsOpen(v => !v)}
         aria-expanded={isTagsOpen}
       >
-        <Tag size={12} className="mr-1.5 shrink-0" />
+        <Tag size={11} className="mr-1.5 shrink-0" />
         Tags Explorer
-        <ChevronDown size={11} className={`ml-auto transition-transform duration-100 ease-out ${isTagsOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={10} className={`ml-auto transition-transform duration-100 ease-out ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>
       {isTagsOpen && (
         <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 pt-0.5 slide-down" style={{ scrollbarGutter: 'stable' }}>

@@ -47,7 +47,7 @@ a:focus-visible,
 select:focus-visible,
 [role="button"]:focus-visible,
 [role="separator"]:focus-visible,
-[tabindex]:focus-visible {
+[tabindex]:focus-visible:not(input):not(textarea) {
   outline: 2px solid var(--accent-color, #CC7D5E);
   outline-offset: 1px;
 }
@@ -59,6 +59,16 @@ select:focus-visible,
   border: 0;
   color: var(--text-primary, #2D2D2B);
   outline: none;
+  /* The field stays mounted so opening and closing are one animation played
+     both ways. Visibility flips only after the fade-out finishes, so nothing
+     of it (caret included) survives the collapsed state or reads as visible. */
+  transition: opacity 200ms ease-out, visibility 0s;
+}
+.noa-titlebar-search-input[aria-hidden='true'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease-out, visibility 0s linear 200ms;
 }
 .noa-titlebar-search-input::placeholder {
   color: var(--text-secondary, rgba(45,45,43,0.55));
@@ -738,6 +748,19 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   scrollbar-gutter: stable;
 }
 .noa-sidebar-scroll > * {
+  margin-right: -6px;
+}
+
+/* Same trick for the right panel's tab bodies. Their `scrollbar-gutter: stable`
+   reserved 6px on the right only, so every hover band sat 6px further from the
+   right edge than from the left — visible as a lopsided highlight. Pulling the
+   content back by the scrollbar width hands that strip back, and the thumb
+   rides in the panel's own right padding. Keep the 6px equal to
+   ::-webkit-scrollbar's width. */
+.noa-panel-scroll {
+  scrollbar-gutter: stable;
+}
+.noa-panel-scroll > * {
   margin-right: -6px;
 }
 

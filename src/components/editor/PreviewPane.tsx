@@ -782,16 +782,16 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '14px',
-                height: '14px',
-                minWidth: '14px',
-                border: `1.5px solid ${isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.35)'}`,
-                marginTop: '3px',
+                width: '12px',
+                height: '12px',
+                minWidth: '12px',
+                border: `1.25px solid ${isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.35)'}`,
+                marginTop: '4px',
                 backgroundColor: isChecked ? (isDark ? '#CC7D5E' : '#CC7D5E') : 'transparent',
               }}
             >
               {isChecked && (
-                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
                   <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#2D2D2B' : '#F9F9F7'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}

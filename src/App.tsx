@@ -409,7 +409,12 @@ export default function App() {
     openSearch();
   }, [isFocusMode, openSearch]);
   useEffect(() => {
-    if (!isSearchOpen || isFocusMode) return;
+    if (!isSearchOpen || isFocusMode) {
+      // The field stays mounted while collapsed (so open and close animate
+      // symmetrically), so it can still hold focus after it is hidden.
+      if (document.activeElement === searchInputRef.current) searchInputRef.current?.blur();
+      return;
+    }
     const frameId = window.requestAnimationFrame(() => {
       // preventScroll: the field is still mid-expand and sits outside its
       // clipped shell, so a scrolling focus would drag the search icon
