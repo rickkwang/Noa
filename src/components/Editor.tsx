@@ -181,6 +181,24 @@ export default function Editor({
     return () => window.cancelAnimationFrame(frame);
   }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
 
+  // Split mode fades the CodeMirror pane's leading edge only once its scroller
+  // has moved — same rule as the preview pane's .noa-top-scroll-fade. The
+  // EditorView (and with it .cm-scroller) is recreated on note id / theme
+  // change, so the listener re-attaches on those deps.
+  useEffect(() => {
+    if (viewMode !== 'split') return;
+    const pane = editPaneRef.current;
+    const scroller = pane?.querySelector('.cm-scroller');
+    if (!pane || !scroller) return;
+    const update = () => pane.classList.toggle('is-scrolled', scroller.scrollTop > 1);
+    update();
+    scroller.addEventListener('scroll', update, { passive: true });
+    return () => {
+      scroller.removeEventListener('scroll', update);
+      pane.classList.remove('is-scrolled');
+    };
+  }, [viewMode, note?.id, isDark]);
+
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
   useEffect(() => {
     const container = editorContainerRef.current;

@@ -117,15 +117,20 @@ describe('light theme border tokens', () => {
   });
 
   it('keeps preview tables and graph cards at the default border weight', async () => {
-    const [previewPane, rightPanel] = await Promise.all([
+    const [previewPane, rightPanel, indexCss] = await Promise.all([
       readFile(previewPanePath, 'utf8'),
       readFile(rightPanelPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
     ]);
 
     expect(previewPane).toContain("var(--divider-subtle, #E6E2DA)");
     expect(previewPane).not.toContain("rgba(45,45,43,0.2)");
     expect(previewPane).not.toContain("var(--border-strong, #AAA397)");
-    expect(previewPane).toContain("linear-gradient(to bottom, transparent 0, black 48px)");
+    // The preview's leading-edge fade lives on the shared scroll-fade class now;
+    // the gradient itself sits in index.css and engages only once scrolled.
+    expect(previewPane).toContain('noa-top-scroll-fade');
+    expect(indexCss).toContain(".noa-top-scroll-fade.is-scrolled,");
+    expect(indexCss).toContain("linear-gradient(to bottom, transparent 0, black 48px)");
     expect(rightPanel).not.toContain("border-[#2D2D2B]/90 bg-[#F9F9F7]");
     expect(rightPanel).not.toContain("border-[#2D2D2B]}`");
     expect(rightPanel).toContain("'var(--divider-subtle, #E6E2DA)'");

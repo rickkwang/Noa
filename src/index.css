@@ -191,12 +191,34 @@ body {
   background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);
 }
 
-/* Split preview already fades its first 48px beneath the control rail. Apply
-   the same transition to CodeMirror only in split mode so both panes meet the
-   toolbar with the same visual depth. */
+/* The leading-edge fade exists so scrolled content doesn't meet the tab strip
+   abruptly — but only once content has actually scrolled. Applied at rest it
+   just washes out the first 48px of the note, so both panes start solid and
+   pick the fade up via .is-scrolled (toggled from scroll listeners in
+   PreviewPane and Editor). The two gradients keep matching stop counts so the
+   transition interpolates instead of popping.
+   The second mask layer is a solid strip pinned to the right edge so the
+   scrollbar keeps full opacity — a mask covers the element's own scrollbar,
+   and a half-faded thumb reads as a rendering bug. Its 6px width must match
+   ::-webkit-scrollbar below (Firefox's wider default just fades a sliver of
+   track; harmless). Layers composite additively, so the strip wins over the
+   fade where they overlap. */
+.noa-top-scroll-fade,
 .noa-split-editor-mask .cm-editor {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 48px);
-  mask-image: linear-gradient(to bottom, transparent 0, black 48px);
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black 1px), linear-gradient(to bottom, black, black);
+  mask-image: linear-gradient(to bottom, black 0, black 1px), linear-gradient(to bottom, black, black);
+  -webkit-mask-size: 100% 100%, 6px 100%;
+  mask-size: 100% 100%, 6px 100%;
+  -webkit-mask-position: top left, top right;
+  mask-position: top left, top right;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  transition: mask-image 180ms ease-out, -webkit-mask-image 180ms ease-out;
+}
+.noa-top-scroll-fade.is-scrolled,
+.noa-split-editor-mask.is-scrolled .cm-editor {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 48px), linear-gradient(to bottom, black, black);
+  mask-image: linear-gradient(to bottom, transparent 0, black 48px), linear-gradient(to bottom, black, black);
 }
 
 /* Inside the settings dialog the shared 8% divider is too faint to read: its
@@ -812,6 +834,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .tab-fade-in,
   .slide-down {
     animation: none;
+  }
+  .noa-top-scroll-fade,
+  .noa-split-editor-mask .cm-editor {
+    transition: none;
   }
   ::-webkit-scrollbar-thumb,
   .is-scrolling::-webkit-scrollbar-thumb,

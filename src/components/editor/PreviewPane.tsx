@@ -964,16 +964,27 @@ export const PreviewPane = React.memo(function PreviewPane({
 
   const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
 
+  // The top fade engages only once content has scrolled beneath the tab strip;
+  // at rest the leading edge of the note stays fully opaque. Toggled straight
+  // on the DOM node so scroll events never re-render the markdown body.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || printMode) return;
+    const update = () => el.classList.toggle('is-scrolled', el.scrollTop > 1);
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', update);
+      el.classList.remove('is-scrolled');
+    };
+  }, [printMode]);
+
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'noa-selectable block' : 'noa-selectable flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
+      className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
       style={printMode ? style : {
         paddingRight: '2rem',
-        // A full but gradual fade keeps scrolled content from meeting the tab
-        // strip abruptly, with enough range to read as a deliberate transition.
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 48px)',
-        maskImage: 'linear-gradient(to bottom, transparent 0, black 48px)',
         ...style,
       }}
     >

@@ -1098,7 +1098,7 @@ test('split panes share the same top fade while standalone edit remains unmasked
   await page.locator('.noa-split-editor-mask .cm-editor').waitFor();
   await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();
 
-  const splitMasks = await page.evaluate(() => {
+  const readMasks = () => page.evaluate(() => {
     const edit = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-editor')!;
     const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
     return {
@@ -1106,8 +1106,28 @@ test('split panes share the same top fade while standalone edit remains unmasked
       preview: getComputedStyle(preview).maskImage,
     };
   });
-  expect(splitMasks.edit).toBe(splitMasks.preview);
-  expect(splitMasks.edit).toContain('48px');
+
+  // At rest both panes meet the tab strip with no fade — the mask is solid.
+  const restMasks = await readMasks();
+  expect(restMasks.edit).toBe(restMasks.preview);
+  expect(restMasks.edit).not.toContain('48px');
+
+  // Once content scrolls beneath the strip, both panes pick up the same 48px
+  // fade (180ms mask transition, so poll past it).
+  await page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-scroller')!;
+    scroller.scrollTop = 100;
+    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
+    preview.scrollTop = 100;
+  });
+  await expect.poll(async () => (await readMasks()).edit).toContain('48px');
+  const scrolledMasks = await readMasks();
+  expect(scrolledMasks.edit).toBe(scrolledMasks.preview);
+  // A second, solid mask layer pinned to the right edge keeps the scrollbar
+  // out of the fade — mask-image would otherwise cover the pane's own thumb.
+  for (const mask of Object.values(scrolledMasks)) {
+    expect(mask.match(/linear-gradient/g)).toHaveLength(2);
+  }
 
   const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
   await modeButton.click();
