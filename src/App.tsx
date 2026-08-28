@@ -1093,7 +1093,10 @@ export default function App() {
         </button>
       )}
       {tabLimitWarning && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#2D2D2B] text-[#F9F9F7] text-xs px-3 py-1.5 font-redaction pointer-events-none">
+        // Token pair, not the literal one: `bg-[#2D2D2B]` is not remapped, so
+        // in dark mode it lands on the identically-coloured app background and
+        // the toast disappears.
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#F9F9F7)] text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)
         </div>
       )}
