@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const reactModulePath = '/node_modules/.vite/deps/react.js';
 const reactDomModulePath = '/node_modules/.vite/deps/react-dom_client.js';

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // Every caller asserts on a connected vault, and a8e3e3f moved that state's
 // sync status into the row description ("… as the Markdown vault (ready)").
@@ -371,12 +371,38 @@ async function installMockDirectoryPicker(
   });
 }
 
-test('first launch shows local-storage guidance', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText('Local Storage Only')).toBeVisible();
-  await expect(page.getByText(/browser\/device profile only|browser and desktop app data are separate/i)).toBeVisible();
-  await page.getByRole('button', { name: 'Got it' }).click();
-  await expect(page.getByText('Local Storage Only')).toBeHidden();
+// Opts out of the shared onboarding suppression: this is the one place that
+// drives the real first-launch sequence. `showStorageNotice` is gated on
+// `!showVaultOnboarding` (App.tsx), so the two notices are deliberately
+// sequential rather than stacked — assert that order, not just the second half.
+test.describe('first launch', () => {
+  test.use({ vaultOnboarding: 'shown' });
+
+  test('offers vault setup, then local-storage guidance', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.getByText('Local-First Setup')).toBeVisible();
+    await expect(page.getByText('Choose a home for your notes')).toBeVisible();
+    // Suppressed while the dialog is up — the notices must not stack.
+    await expect(page.getByText('Local Storage Only')).toBeHidden();
+
+    await page.getByRole('button', { name: 'Keep in browser' }).click();
+    await expect(page.getByText('Local-First Setup')).toBeHidden();
+
+    await expect(page.getByText('Local Storage Only')).toBeVisible();
+    await expect(page.getByText(/browser\/device profile only|browser and desktop app data are separate/i)).toBeVisible();
+    await page.getByRole('button', { name: 'Got it' }).click();
+    await expect(page.getByText('Local Storage Only')).toBeHidden();
+  });
+
+  test('vault choice is remembered across reloads', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Keep in browser' }).click();
+    await expect(page.getByText('Local-First Setup')).toBeHidden();
+
+    await page.reload();
+    await expect(page.getByText('Local-First Setup')).toBeHidden();
+  });
 });
 
 test('create notes and edited content persists after reload', async ({ page }) => {
