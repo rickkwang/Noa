@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Note } from '../../types';
-import { FileText, X, Plus } from '@/src/lib/icons';
+import { X, Plus } from '@/src/lib/icons';
 
 const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
 const dragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
@@ -260,7 +260,6 @@ export function EditorHeader({
                       }`}
                       style={{ ...tabStyle, ...noDragRegion }}
                     >
-                      <FileText size={12} className={isActiveTab ? (isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0') : 'shrink-0'} />
                       {isActiveTab && isEditingTitle ? (
                         <input
                           ref={titleInputRef}
@@ -312,7 +311,6 @@ export function EditorHeader({
                   ...noDragRegion,
                 }}
               >
-                <FileText size={12} className={isDark ? 'text-[#CC7D5E] shrink-0' : 'text-[#CC7D5E] shrink-0'} />
                 {isEditingTitle ? (
                   <input
                     ref={titleInputRef}
