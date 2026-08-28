@@ -113,9 +113,12 @@ export default function SegmentedControl<T extends string>({
             onKeyDown={(event) => handleKeyDown(event, index)}
             aria-label={option.icon ? option.label : undefined}
             title={option.icon ? option.label : undefined}
-            // z-10 keeps the labels above the sliding pill; the selected one
-            // no longer carries a background of its own.
-            className={`relative z-10 flex items-center justify-center rounded-[7px] py-1 text-sm font-medium transition-colors ${
+            // Positioned but z-index:auto, so the labels paint above the
+            // sliding pill on DOM order alone. A positive z-index here would
+            // lift them out of the scroll pane's paint order too, and they
+            // would stay crisp over the top fade that is meant to dissolve
+            // them (SettingsModal).
+            className={`relative flex items-center justify-center rounded-[7px] py-1 text-sm font-medium transition-colors ${
               option.icon ? 'px-2.5' : 'px-3'
             } ${
               selected
