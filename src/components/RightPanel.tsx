@@ -12,19 +12,17 @@ import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 import { TasksPanel } from './rightPanel/TasksPanel';
-import { CheckSquare, Network, Search, BarChart, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
+import { CheckSquare, Network, Search, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
 export type RightPanelTab = RightTab;
 
-// Shared chrome for the two knowledge-matrix panels. They stack directly on top
-// of each other, so any drift in height, padding, icon weight or label styling
+// Shared chrome for the two graph panels. They stack directly on top
+// of each other, so any drift in height, padding or label styling
 // reads as a misalignment — keep both headers going through here.
-function MatrixPanelHeader({
-  icon: Icon,
+function GraphPanelHeader({
   label,
   isDark,
   children,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   isDark?: boolean;
   children?: React.ReactNode;
@@ -35,15 +33,11 @@ function MatrixPanelHeader({
     // a band taller than its 10px label needs, so the air around the label does
     // the work a bar or a border used to.
     <div className="h-9 flex items-center px-2.5 gap-1.5 shrink-0">
-      {/* Full accent, not a softened one. The label beside it was pushed UP to a
-          contrast floor (see below); dimming the icon in the same header would
-          have moved the two in opposite directions. At 80%/70% this mark lands
-          at 2.4:1 / 2.9:1 — under the 3:1 that WCAG 1.4.11 asks of a meaningful
-          graphic. It is decorative here, so that is not a violation, but full
-          strength costs nothing and keeps the header internally consistent. */}
-      <Icon size={12} className="shrink-0 text-[#CC7D5E]" />
       {/* 70% is the floor here, not a style choice: at 10px this label clears
-          4.5:1 on the light surface only from ~67% up (45% lands at 2.6:1). */}
+          4.5:1 on the light surface only from ~67% up (45% lands at 2.6:1).
+          The tracking is what makes all-caps at this size readable — caps have
+          no ascender/descender rhythm to separate them, so the space has to
+          come from the letterfit. */}
       <span className={`text-[10px] font-bold uppercase tracking-[0.14em] font-redaction mr-auto whitespace-nowrap shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/70'}`}>{label}</span>
       {children}
     </div>
@@ -264,7 +258,7 @@ export default function RightPanel({
       )}
       {activeTab === 'backlinks' && (
         <div key="backlinks" className="tab-fade-in flex flex-col flex-1 min-h-0">
-          <BacklinksPanel activeNote={activeNote} notes={notes} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+          <BacklinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
         </div>
       )}
       {activeTab === 'outgoing' && (
@@ -298,7 +292,7 @@ export default function RightPanel({
             </div>
           )}
           <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
-            <MatrixPanelHeader icon={Network} label="Knowledge Matrix" isDark={isDark}>
+            <GraphPanelHeader label="Graph View" isDark={isDark}>
               <div className="noa-graph-control-surface flex items-center h-5 gap-0.5 rounded-[3px] p-0.5"
                 role="group"
                 aria-label="Graph filter controls">
@@ -329,7 +323,7 @@ export default function RightPanel({
                   <Filter size={10} />
                 </button>
               </div>
-            </MatrixPanelHeader>
+            </GraphPanelHeader>
             {showFilters && (
               <GraphFilterPanel
                 isDark={isDark}
@@ -433,7 +427,7 @@ function GraphInfoPanel({
 
   return (
     <div className={`noa-elevated-panel flex-1 flex flex-col border border-[var(--divider-subtle)] rounded-md overflow-hidden font-redaction min-h-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
-      <MatrixPanelHeader icon={BarChart} label="Matrix Stats" isDark={isDark} />
+      <GraphPanelHeader label="Connections" isDark={isDark} />
       {/* No scrollbar-gutter here, unlike the other scrollers: the gutter is
           carved out of the content box, so it survives any padding and offsets
           the body relative to the header above (which sits outside this

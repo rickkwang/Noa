@@ -58,6 +58,7 @@ import {
   SlidersHorizontal as PhSlidersHorizontal,
   NotePencil,
   Trash,
+  Link as PhLink,
   LinkBreak,
   UploadSimple,
   Users as PhUsers,
@@ -133,6 +134,7 @@ export const SlidersHorizontal = icon(PhSlidersHorizontal);
 export const Sun = icon(PhSun);
 export const SquarePen = icon(NotePencil);
 export const Trash2 = icon(Trash);
+export const Link = icon(PhLink);
 export const Unlink = icon(LinkBreak);
 export const Upload = icon(UploadSimple);
 export const Users = icon(PhUsers);
