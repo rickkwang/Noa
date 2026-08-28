@@ -94,6 +94,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
 
   const fontFamilyStyle = resolveFontFamily(settings.appearance.fontFamily);
 
+  // The rules below are the second of two layers that remap Tailwind
+  // arbitrary-value colour classes with `!important`; index.css carries the
+  // dark-mode set and, above it, the note on why a literal hex must never be
+  // used for a foreground mark. This sheet sits later in document order, so it
+  // wins every overlap — where the two disagree on a value, this one applies.
+  // Keep the two in sync.
   return (
     <style>{`
       /* CSS variable-based overrides — work in both light and dark */

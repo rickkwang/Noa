@@ -423,6 +423,35 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   --shadow-floating: 0 4px 12px 0 rgba(0,0,0,0.45);
 }
 
+/* ── How dark mode works, and the one way it bites ──────────────────────────
+   The rules below rewrite Tailwind arbitrary-value colour classes globally with
+   `!important`. ThemeInjector.tsx injects a second, unconditional set over the
+   same classes. The two layers do not always agree on an overlapped value
+   (`bg-[#EFEAE3]/30`, `text-[#2D2D2B]/70`–`/90` differ); nothing breaks because
+   the injected sheet sits later in document order, so at equal specificity
+   under `!important` it wins every overlap and the copies below are dead.
+   Treat ThemeInjector as the source of truth for any class both layers cover.
+
+   This makes a colour *value* stand in for a semantic *role*: `bg-[#F9F9F7]`
+   is assumed to always mean "page surface". The moment a component means it as
+   a light mark ON a dark surface — a progress fill, an inverted badge — these
+   rules silently invert it, and `!important` means a normal class cannot win it
+   back. Nothing catches that: TypeScript can't see it, and the token tests pin
+   only a handful of specific regression colours. It surfaces as something
+   invisible in dark mode, found by eye.
+
+   So for anything that is foreground rather than surface, don't reach for the
+   literal hex — read the token: `bg-[var(--text-primary,#2D2D2B)]`. The class
+   Tailwind generates for that matches none of the selectors below. Keep the
+   fallback: `--text-primary` has no baseline definition (no `:root` sets it and
+   public/theme-bootstrap.js pre-sets only --bg-primary/--bg-secondary), so it
+   is undefined until ThemeInjector's layout effect runs.
+
+   Re-spelling the colour to dodge the selector (`bg-[rgba(249,249,247,0.9)]`)
+   works too, and a few call sites do it — but that leaves two spellings of one
+   colour where only one is safe. Prefer the token.
+   ──────────────────────────────────────────────────────────────────────────── */
+
 /* ── Backgrounds ── */
 [data-theme="dark"] .bg-\[\#F9F9F7\]    { background-color: #2D2D2B !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]    { background-color: #252523 !important; }

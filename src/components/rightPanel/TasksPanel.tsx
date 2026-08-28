@@ -99,8 +99,14 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const dim = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
   const rowHover = 'hover:bg-transparent';
-  const progressTrack = isDark ? 'bg-[rgba(249,249,247,0.14)]' : 'bg-[#2D2D2B]/12';
-  const progressFill = isDark ? 'bg-[#F9F9F7]' : 'bg-[#2D2D2B]';
+  const progressTrack = isDark ? 'bg-[rgba(249,249,247,0.2)]' : 'bg-[#2D2D2B]/12';
+  // Reads the theme token rather than a literal hex: `bg-[#F9F9F7]` is one of
+  // the classes index.css remaps globally with `!important` (see the comment
+  // above its dark-mode block), so as a foreground fill it silently inverted to
+  // the dark surface colour. The class generated for the token matches no remap
+  // selector. Fallback is the light value; RightPanel is lazy-loaded, so
+  // ThemeInjector has always set the token before this paints.
+  const progressFill = 'bg-[var(--text-primary,#2D2D2B)]';
   const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.48)]' : 'border-[#2D2D2B]/50';
   const checkboxBorderDone = isDark ? 'border-[rgba(249,249,247,0.4)]' : 'border-[#2D2D2B]/50';
   const checkboxBgDone = isDark ? 'bg-[rgba(249,249,247,0.15)]' : 'bg-[#2D2D2B]/20';
