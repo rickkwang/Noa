@@ -21,7 +21,7 @@ import { useCommandPalette } from './hooks/useCommandPalette';
 import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useGlobalTasks } from './hooks/useGlobalTasks';
-import { useLayout } from './hooks/useLayout';
+import { PANEL_MAX_WIDTH, RIGHT_PANEL_MIN_WIDTH, SIDEBAR_MIN_WIDTH, useLayout } from './hooks/useLayout';
 import { useNotes } from './hooks/useNotes';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
 import { useSettings } from './hooks/useSettings';
@@ -632,7 +632,7 @@ export default function App() {
       style={{
         '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
         '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
-          ? 'var(--noa-sidebar-width, 310px)'
+          ? 'var(--noa-sidebar-width, 320px)'
           : '0px',
         // Never transitioned. The variable lands at its target immediately and
         // the translucent veils in index.css animate transform from it, which
@@ -653,7 +653,7 @@ export default function App() {
             // dark endpoint at the app's left edge.
             left: isPromotingSidebarPreview
               ? undefined
-              : isSidebarOpen ? 'var(--noa-sidebar-width, 310px)' : '-1px',
+              : isSidebarOpen ? 'var(--noa-sidebar-width, 320px)' : '-1px',
             width: '1px',
             backgroundColor: 'var(--divider-subtle, #E6E2DA)',
             opacity: isSidebarOpen ? 1 : 0,
@@ -691,7 +691,7 @@ export default function App() {
           className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-[14px]' : 'pointer-events-none z-10'}`}
           style={{
             width: isSidebarOpen || isSidebarPreviewOpen || isPromotingSidebarPreview
-              ? 'var(--noa-sidebar-width, 310px)'
+              ? 'var(--noa-sidebar-width, 320px)'
               : '0px',
             backgroundColor: isSidebarPreviewOpen
               ? 'var(--bg-primary, #F9F9F7)'
@@ -769,13 +769,13 @@ export default function App() {
           onTransitionCancel={finishSidebarDockMotion}
           className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
-            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 310px)',
+            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 320px)',
             maxWidth: isMobile ? '320px' : undefined,
             marginLeft: !isMobile && !isPromotingSidebarPreview && (isFocusMode || !isSidebarOpen)
-              ? 'calc(-1 * var(--noa-sidebar-width, 310px))'
+              ? 'calc(-1 * var(--noa-sidebar-width, 320px))'
               : '0px',
             left: !isMobile
-              ? (isSidebarPreviewOpen ? 'var(--noa-sidebar-width, 310px)' : isPromotingSidebarPreview ? '0px' : undefined)
+              ? (isSidebarPreviewOpen ? 'var(--noa-sidebar-width, 320px)' : isPromotingSidebarPreview ? '0px' : undefined)
               : undefined,
             transform: isMobile
               ? (isFocusMode || !isSidebarOpen ? 'translateX(-100%)' : 'translateX(0)')
@@ -790,7 +790,7 @@ export default function App() {
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 310px)',
+              width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 320px)',
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full shrink-0"
@@ -838,8 +838,8 @@ export default function App() {
                 aria-orientation="vertical"
                 aria-label="Resize sidebar"
                 aria-valuenow={Math.round(sidebarWidth)}
-                aria-valuemin={310}
-                aria-valuemax={480}
+                aria-valuemin={SIDEBAR_MIN_WIDTH}
+                aria-valuemax={PANEL_MAX_WIDTH}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeSidebarWidth(-16); }
@@ -929,8 +929,8 @@ export default function App() {
                 aria-orientation="vertical"
                 aria-label="Resize right panel"
                 aria-valuenow={Math.round(rightPanelWidth)}
-                aria-valuemin={310}
-                aria-valuemax={480}
+                aria-valuemin={RIGHT_PANEL_MIN_WIDTH}
+                aria-valuemax={PANEL_MAX_WIDTH}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeRightPanelWidth(16); }

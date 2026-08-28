@@ -418,21 +418,21 @@ test('narrow desktop keeps the sidebar default stable on first pointer and keybo
   );
   const separator = page.getByRole('separator', { name: 'Resize sidebar' });
 
-  await expect.poll(readSidebarWidth).toBe(310);
-  await expect(separator).toHaveAttribute('aria-valuemin', '310');
+  await expect.poll(readSidebarWidth).toBe(320);
+  await expect(separator).toHaveAttribute('aria-valuemin', '320');
   const separatorBox = await separator.boundingBox();
   expect(separatorBox).not.toBeNull();
   await page.mouse.move(separatorBox!.x + separatorBox!.width / 2, separatorBox!.y + 20);
   await page.mouse.down();
-  await page.mouse.move(340, separatorBox!.y + 20);
+  await page.mouse.move(300, separatorBox!.y + 20);
   await page.mouse.up();
-  await expect.poll(readSidebarWidth).toBe(310);
+  await expect.poll(readSidebarWidth).toBe(320);
 
   await page.reload();
-  await expect.poll(readSidebarWidth).toBe(310);
+  await expect.poll(readSidebarWidth).toBe(320);
   await separator.focus();
   await separator.press('ArrowRight');
-  await expect.poll(readSidebarWidth).toBe(310);
+  await expect.poll(readSidebarWidth).toBe(320);
 });
 
 test('hovering the collapsed sidebar toggle previews the sidebar in its expanded position without changing layout state', async ({ page }) => {

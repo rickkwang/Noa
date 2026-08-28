@@ -4,14 +4,25 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { useResizeDrag } from './useResizeDrag';
 
-const SIDEBAR_DEFAULT_WIDTH = 310;
-const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
+const SIDEBAR_DEFAULT_WIDTH = 320;
 const RIGHT_PANEL_DEFAULT_WIDTH = 340;
-const RIGHT_PANEL_MIN_WIDTH = 310;
-const PANEL_MAX_WIDTH = 480;
+// Neither panel narrows below the width it opens at. A minimum under the
+// default is a width the user can reach once and never get back to by dragging,
+// and it puts the drag floor somewhere nothing in the UI explains. Both sides
+// grow only, from the same width they start at.
+export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
+export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
+// Exported so the resize handles report their real bounds through
+// aria-valuemin/max instead of hand-copied literals. Both handles carried a
+// number that had already gone stale against the width it described, and a
+// screen reader announcing this range is the only place it is ever spoken.
+export const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
 
-export function getResponsivePanelMaxWidth(viewportWidth: number, floor = RIGHT_PANEL_MIN_WIDTH): number {
+// `floor` is required: every caller must say which panel's default it is
+// protecting. A shared default here is what let the right panel open narrower
+// than the width it declares.
+export function getResponsivePanelMaxWidth(viewportWidth: number, floor: number): number {
   return Math.max(floor, Math.min(PANEL_MAX_WIDTH, viewportWidth * PANEL_MAX_VIEWPORT_RATIO));
 }
 
@@ -37,9 +48,12 @@ export function useLayout() {
       : 'split';
   });
 
-  // Pointer and keyboard paths share the same responsive maximum. The sidebar
-  // keeps its 310px default as the maximum floor so a narrow desktop cannot
-  // paint at 310px and jump down on the first resize interaction.
+  // Pointer and keyboard paths share the same responsive maximum, and each
+  // panel floors that maximum at its own default width. Without the floor a
+  // desktop narrower than default/0.35 (971px for the right panel) caps below
+  // the declared default, so the panel opens narrower than the width every CSS
+  // fallback and every drag boundary claims it has — and jumps on the first
+  // resize interaction.
   const clampSidebarWidth = useCallback(
     (v: number) => Math.max(SIDEBAR_MIN_WIDTH, Math.min(
       v,
@@ -50,7 +64,7 @@ export function useLayout() {
   const clampRightPanelWidth = useCallback(
     (v: number) => Math.max(RIGHT_PANEL_MIN_WIDTH, Math.min(
       v,
-      getResponsivePanelMaxWidth(window.innerWidth),
+      getResponsivePanelMaxWidth(window.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH),
     )),
     []
   );
@@ -65,7 +79,7 @@ export function useLayout() {
   const getRightPanelValue = useCallback((e: MouseEvent) => {
     return Math.min(
       window.innerWidth - e.clientX,
-      getResponsivePanelMaxWidth(window.innerWidth),
+      getResponsivePanelMaxWidth(window.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH),
     );
   }, []);
 
@@ -81,16 +95,16 @@ export function useLayout() {
     setSize: setSidebarWidth,
     isDragging: isDraggingSidebar,
     setIsDragging: setIsDraggingSidebar,
-  } = useResizeDrag(SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MIN_WIDTH, 480, getSidebarValue, 'col-resize', previewSidebarWidth);
+  } = useResizeDrag(SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MIN_WIDTH, PANEL_MAX_WIDTH, getSidebarValue, 'col-resize', previewSidebarWidth);
   const {
     size: rightPanelWidth,
     setSize: setRightPanelWidth,
     isDragging: isDraggingRightPanel,
     setIsDragging: setIsDraggingRightPanel,
   } = useResizeDrag(
-    Math.min(RIGHT_PANEL_DEFAULT_WIDTH, getResponsivePanelMaxWidth(window.innerWidth)),
+    RIGHT_PANEL_DEFAULT_WIDTH,
     RIGHT_PANEL_MIN_WIDTH,
-    480,
+    PANEL_MAX_WIDTH,
     getRightPanelValue,
     'col-resize',
     previewRightPanelWidth

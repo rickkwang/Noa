@@ -297,11 +297,10 @@ export default function CalendarPanel({
 
           {/* Day grid */}
           {/* Fixed 32px tracks, space-between — not grid-cols-7. Seven flexible
-              columns made a 32px cell's edge a function of the sidebar width
-              (13px at 310px, ~19px when widened), so the grid drifted away
-              from the header, summary and chip rows, which sit at a fixed
-              12px. The sidebar cannot go below 310px and 7x32 + 24 = 248, so
-              the tracks always fit. */}
+              columns made a 32px cell's edge a function of the sidebar width,
+              so the grid drifted away from the header, summary and chip rows,
+              which sit at a fixed 12px. The sidebar cannot go below 320px and
+              7x32 + 24 = 248, so the tracks always fit. */}
           <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-3 pb-2" onDragStart={e => e.preventDefault()}>
             {cells.map((cell, i) => {
               if (cell.day === null) return <div key={`empty-${i}`} className="w-8 h-8" />;
