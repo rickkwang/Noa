@@ -180,10 +180,14 @@ body {
   position: relative;
   background-color: var(--bg-sidebar, #F4F4F2);
 }
+/* Stops 6px short of the right edge: that strip is the scroll container's
+   scrollbar gutter, and a gradient drawn over the thumb's top reads as a
+   rendering bug. Same rule the preview pane's mask follows — must match
+   ::-webkit-scrollbar's width. */
 .noa-sidebar-toolbar-mask::after {
   content: '';
   position: absolute;
-  right: 0;
+  right: 6px;
   bottom: -10px;
   left: 0;
   height: 10px;
@@ -700,6 +704,42 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .animate-pulse { --tw-bg-opacity: 1; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10.animate-pulse,
 [data-theme="dark"] .animate-pulse.bg-\[\#2D2D2B\]\/10 { background-color: rgba(249,249,247,0.06) !important; }
+
+/* Root drop target. The outline is drawn on a pseudo-element inset by the same
+   6px the rows use, for two reasons: marking a target must not change the
+   layout of the rows inside it (a margin here would shove every row sideways
+   mid-drag), and a full-bleed ring would reach past the scrollport, where
+   content is painted-clipped — the right line simply would not render. */
+.noa-sidebar-drop-root {
+  position: relative;
+}
+.noa-sidebar-drop-root::after {
+  content: '';
+  position: absolute;
+  inset: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #CC7D5E) 50%, transparent);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* The sidebar scrollbar overlays the row gutter instead of taking layout from
+   it. Without this, a scrollable list shrinks the scrollport by the scrollbar
+   width and every row's right margin jumps by that amount while the left stays
+   put. `scrollbar-gutter: stable` makes the reservation permanent (no jump when
+   the list becomes scrollable) and the -6px pull-back hands the strip back to
+   the content, so rows keep an identical 6px margin on both edges and the thumb
+   rides in the right one.
+   The 6px is load-bearing three times over and the three must stay equal: the
+   ::-webkit-scrollbar width below, this pull-back, and the rows' own mx-1.5.
+   Pull back more than the rows' margin and their right edge lands outside the
+   scrollport, which clips the corner radius on that side only — a row whose
+   right corners are visibly flatter than its left ones. */
+.noa-sidebar-scroll {
+  scrollbar-gutter: stable;
+}
+.noa-sidebar-scroll > * {
+  margin-right: -6px;
+}
 
 /* Scrollbar (light mode) */
 

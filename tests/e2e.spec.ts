@@ -233,21 +233,32 @@ test('search result cards keep visible scroll chrome without changing horizontal
 
   const layout = await resultRow.evaluate((element) => {
     const contentColumn = element.parentElement!;
-    const scrollContainer = contentColumn.parentElement!.parentElement!;
+    const scrollContainer = contentColumn.parentElement!.parentElement! as HTMLElement;
     const row = element.getBoundingClientRect();
     const column = contentColumn.getBoundingClientRect();
+    const container = scrollContainer.getBoundingClientRect();
     return {
       left: row.left - column.left,
       right: column.right - row.right,
+      // How far the card's right edge sits past the scrollport. Content beyond
+      // it is painted-clipped even though its box says otherwise, which shaves
+      // the right corner radius flat while the left stays round.
+      overflowPastScrollport: row.right - (container.left + scrollContainer.clientWidth),
       scrollbarGutter: getComputedStyle(scrollContainer).scrollbarGutter,
       scrollbarWidth: getComputedStyle(scrollContainer).scrollbarWidth,
     };
   });
 
-  expect(layout.scrollbarGutter).toBe('auto');
+  // The gutter is reserved permanently so rows don't shift 6px sideways the
+  // moment the list grows past one screen. That is not the old per-row
+  // compensation this test was written against: the pull-back, the gutter, and
+  // the row margin are all 6px, so the rhythm below stays symmetric.
+  expect(layout.scrollbarGutter).toBe('stable');
+  // Still a real, visible scrollbar — 'none' would hide the thumb entirely.
   expect(layout.scrollbarWidth).toBe('auto');
   expect(layout.left).toBe(6);
   expect(layout.right).toBe(6);
+  expect(layout.overflowPastScrollport).toBeLessThanOrEqual(0);
 });
 
 test('clicking a search result opens that note', async ({ page }) => {

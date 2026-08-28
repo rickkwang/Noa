@@ -610,7 +610,7 @@ export default function Sidebar({
                   onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
                   onDrop={(e) => handleDropItem(null, e)}
                   onDragLeave={() => handleDragEndItem()}
-                  className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'ring-1 ring-inset ring-[#CC7D5E]/50' : ''}
+                  className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'noa-sidebar-drop-root' : ''}
                 >
                   {noaFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
                   {rootNoaNotes.map((note) => (
@@ -632,7 +632,7 @@ export default function Sidebar({
                 {/* Connected vault section — ownership is origin, not import provenance. */}
                 {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
-                    <div className="mx-1 pl-2 pr-2 pt-3 pb-2.5">
+                    <div className="mx-1.5 pl-2 pr-2 pt-3 pb-2.5">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction">Obsidian Vault</span>
                     </div>
                     <div
@@ -640,6 +640,7 @@ export default function Sidebar({
                       onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
                       onDrop={(e) => handleDropItem(null, e, true)}
                       onDragEnd={handleDragEndItem}
+                      className={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID ? 'noa-sidebar-drop-root' : ''}
                     >
                       {vaultFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
                       {rootVaultNotes.map((note) => (

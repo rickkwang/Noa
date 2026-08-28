@@ -33,6 +33,13 @@ describe('sidebar search result layout', () => {
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
     expect(styles).toContain('.noa-sidebar-toolbar-mask::after {');
+    // The fade stops short of the scrollbar gutter — drawn across it, it washes
+    // out the top of the thumb. The inset must match ::-webkit-scrollbar's width.
+    const toolbarFade = styles.slice(
+      styles.indexOf('.noa-sidebar-toolbar-mask::after {'),
+      styles.indexOf('}', styles.indexOf('.noa-sidebar-toolbar-mask::after {')),
+    );
+    expect(toolbarFade).toContain('right: 6px;');
     expect(styles).toContain('height: 10px;');
     expect(styles).toContain('background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);');
   });
@@ -56,8 +63,24 @@ describe('sidebar search result layout', () => {
 
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
-    expect(vaultSection).toContain('className="mx-1 pl-2 pr-2 pt-3 pb-2.5"');
+    expect(vaultSection).toContain('className="mx-1.5 pl-2 pr-2 pt-3 pb-2.5"');
     expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 8 : 2}px`");
+  });
+
+  it('keeps the sidebar scrollbar gutter, its pull-back, and the row margin all at 6px', async () => {
+    const [styles, fileNode] = await Promise.all([
+      readFile(indexCssPath, 'utf8'),
+      readFile(fileNodePath, 'utf8'),
+    ]);
+
+    // The three have to agree: the gutter reserves 6px, the pull-back hands the
+    // same 6px to the content, and rows sit 6px in on both sides. Pull back more
+    // than the row margin and the row's right edge lands outside the scrollport,
+    // clipping the corner radius on that side only.
+    expect(styles).toContain('.noa-sidebar-scroll {\n  scrollbar-gutter: stable;\n}');
+    expect(styles).toContain('.noa-sidebar-scroll > * {\n  margin-right: -6px;\n}');
+    expect(styles).toContain('::-webkit-scrollbar {\n  width: 6px;');
+    expect(fileNode).toContain('py-1 px-2 mx-1.5 rounded-md');
   });
 
   it('does not retain a right-edge scrollbar-gutter compensation on file rows', async () => {
