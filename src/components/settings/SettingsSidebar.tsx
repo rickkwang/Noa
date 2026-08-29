@@ -144,13 +144,22 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               aria-controls={`settings-panel-${tab.id}`}
               aria-selected={activeTab === tab.id}
               tabIndex={activeTab === tab.id ? 0 : -1}
-              // Weight carries the selection alongside the surface: the active
-              // tab is the only bold row, so the list reads as a hierarchy
-              // rather than a stack of equally-loud labels.
-              className={`flex min-w-[9.5rem] items-center space-x-2.5 px-2.5 py-2 rounded-[3px] text-left transition-colors active:opacity-70 text-sm md:min-w-0 md:w-full ${
+              // The surface alone carries the selection now — weight used to
+              // flip bold/medium with it, and switching tabs meant every
+              // label's glyphs visibly thickened or thinned at the same
+              // instant the background changed, reading as a flicker rather
+              // than a state change. One weight for both states removes that;
+              // the background fill and shadow are enough hierarchy on their
+              // own without needing text to change shape.
+              // No active:opacity press-fade either: it dims the label and
+              // icon for the mousedown-to-mouseup gap, right before the
+              // background swap lands, so the two changes stacked into the
+              // same "fade then flicker" this was meant to fix. The
+              // background fill already answers "did my click register".
+              className={`flex min-w-[9.5rem] items-center space-x-2.5 px-2.5 py-2 rounded-[3px] text-left transition-colors text-sm font-medium md:min-w-0 md:w-full ${
                 activeTab === tab.id
-                  ? 'font-bold bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
-                  : 'font-medium hover:bg-[#EFEAE3]/50'
+                  ? 'bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
+                  : 'hover:bg-[#EFEAE3]/50'
               }`}
             >
               <tab.icon size={16} />

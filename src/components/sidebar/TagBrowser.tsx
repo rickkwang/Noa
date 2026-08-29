@@ -90,7 +90,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
                     onClick={() => onSearchTag?.(tag.name)}
                     data-active={isActive}
                     style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}
-                    className="noa-tag-pill inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-redaction leading-none active:opacity-70"
+                    className="noa-tag-pill inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-redaction leading-none"
                     title={`#${tag.name}`}
                   >
                     <span className="opacity-50">#</span>

@@ -139,7 +139,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             <button
               key={opt}
               onClick={() => { onChange(opt); setActivePageSize(TASKS_PAGE_SIZE); }}
-              className={`px-1.5 py-0.5 border rounded-[3px] transition-colors active:opacity-70 ${
+              className={`px-1.5 py-0.5 border rounded-[3px] transition-colors ${
                 value === opt
                   ? 'border-[#CC7D5E] text-[#CC7D5E]'
                   : `border-transparent ${dim} ${filterHoverIdle}`

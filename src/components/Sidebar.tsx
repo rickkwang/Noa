@@ -438,7 +438,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          className="flex items-center gap-1 px-1 py-1 transition-colors active:opacity-70 ml-auto text-[#2D2D2B]/50 hover:text-[#CC7D5E]"
+          className="flex items-center gap-1 px-1 py-1 transition-colors ml-auto text-[#2D2D2B]/50 hover:text-[#CC7D5E]"
           style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}

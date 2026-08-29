@@ -68,7 +68,7 @@ export function EditorToolbar({
           <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
           <button
             onClick={onToggleToc}
-            className={`p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0 ${isTocOpen ? 'text-[#CC7D5E]' : ''}`}
+            className={`p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 transition-colors shrink-0 ${isTocOpen ? 'text-[#CC7D5E]' : ''}`}
             title="Outline"
           >
             <AlignLeft size={14} />

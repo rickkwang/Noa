@@ -55,7 +55,11 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
             onClick={onToggleSidebar}
             onMouseEnter={onSidebarPreviewEnter}
             onMouseLeave={onSidebarPreviewLeave}
-            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
+            // No active:opacity here: the icon already recolours to
+            // activeToggleClass the instant isSidebarOpen flips, and dimming
+            // it for the press right before that lands is what reads as a
+            // flicker, not a click.
+            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
             title="Toggle Sidebar"
             aria-label="Toggle sidebar"
             aria-pressed={isSidebarOpen}
@@ -167,7 +171,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
           </button>
           <button
             onClick={onToggleRightPanel}
-            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
+            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
             title="Toggle Panel"
             aria-label="Toggle right panel"
             aria-pressed={isRightPanelOpen}

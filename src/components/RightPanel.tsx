@@ -194,7 +194,12 @@ export default function RightPanel({
         title={tab.id === 'outgoing' ? 'Outgoing Links' : tab.label}
         aria-label={tab.label}
         aria-pressed={isActive}
-        className={`relative flex items-center justify-center transition-colors active:opacity-70 ${
+        // No active:opacity press-fade: switching tabs already swaps
+        // background, text colour and icon stroke width all at once (below).
+        // Dimming the icon for the mousedown-to-mouseup gap right before that
+        // lands stacks a third change on top and reads as a flicker, same as
+        // the settings sidebar's tab strip.
+        className={`relative flex items-center justify-center transition-colors ${
           inTitlebar ? 'h-[26px] w-9 shrink-0 cursor-pointer rounded' : 'flex-1 h-6 rounded-md'
         } ${
           isActive
@@ -293,14 +298,23 @@ export default function RightPanel({
           )}
           <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
             <GraphPanelHeader label="Graph View" isDark={isDark}>
-              <div className="noa-graph-control-surface flex items-center h-5 gap-0.5 rounded-[3px] p-0.5"
+              {/*
+                Matches the graph's own zoom-control cluster (bottom-right
+                overlay in GraphView) rather than inventing a second shape for
+                the same panel: noa-graph-control-surface, rounded-md, 20px
+                square buttons at 10px icons, p-0.5/gap-0.5. The pill this
+                replaced was a one-off — the two controls sat in the same
+                panel wearing different geometry, which read as the
+                discord it was.
+              */}
+              <div className="noa-graph-control-surface flex items-center h-5 rounded-md p-0.5 gap-0.5"
                 role="group"
                 aria-label="Graph filter controls">
-                <div className="flex items-center gap-1 pl-1 pr-0.5">
+                <div className="flex items-center gap-1 pl-1 pr-1.5 min-w-0">
                   <Search size={10} style={{ color: isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)' }} className="shrink-0" />
                   <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                     aria-label="Filter graph nodes"
-                    placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-11 min-w-0"
+                    placeholder="filter..." className="bg-transparent outline-none text-[10px] font-redaction w-12 min-w-0"
                     style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
                 </div>
                 {/* Name stays fixed and aria-pressed carries the state. Letting the
@@ -311,14 +325,14 @@ export default function RightPanel({
                 <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
                   aria-label="Hide isolated nodes"
                   aria-pressed={hideIsolated}
-                  className="noa-graph-control-button flex items-center justify-center w-4 h-4 rounded-[2px] active:opacity-70 transition-colors shrink-0"
+                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded transition-colors shrink-0"
                   style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Network size={10} />
                 </button>
                 <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
                   aria-label="Filters"
                   aria-pressed={showFilters}
-                  className="noa-graph-control-button flex items-center justify-center w-4 h-4 rounded-[2px] active:opacity-70 transition-colors shrink-0"
+                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded transition-colors shrink-0"
                   style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Filter size={10} />
                 </button>
@@ -559,7 +573,12 @@ function GraphFilterPanel({
         <span className={`${valueCls} w-10 text-right`}>{hasActiveNote ? depthLabel : '—'}</span>
       </div>
 
-      {/* Color mode */}
+      {/* Color mode. This and the three toggle groups below all flip their own
+          background and text colour the instant they're clicked — an
+          active:opacity press-fade there dims the label for the
+          mousedown-to-mouseup gap right before that swap lands, which reads
+          as a flicker rather than a state change (same issue as the settings
+          sidebar's tab strip). The colour swap itself is the click feedback. */}
       <div className="flex items-center gap-2">
         <span className={`${labelCls} w-12 shrink-0`}>Color</span>
         <div className="flex gap-px flex-1">
@@ -569,7 +588,7 @@ function GraphFilterPanel({
               <button
                 key={m}
                 onClick={() => onColorModeChange(m)}
-                className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+                className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors"
                 style={active
                   ? { background: isDark ? '#F9F9F7' : '#2D2D2B', color: isDark ? '#2D2D2B' : '#F9F9F7', border: `1px solid ${isDark ? '#F9F9F7' : '#2D2D2B'}` }
                   : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.6)' }
@@ -587,7 +606,7 @@ function GraphFilterPanel({
         <span className={`${labelCls} w-12 shrink-0`}>Size</span>
         <button
           onClick={() => onSizeByDegreeChange(!sizeByDegree)}
-          className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+          className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors"
           style={sizeByDegree
             ? { background: isDark ? '#F9F9F7' : '#2D2D2B', color: isDark ? '#2D2D2B' : '#F9F9F7', border: `1px solid ${isDark ? '#F9F9F7' : '#2D2D2B'}` }
             : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.6)' }
@@ -603,7 +622,7 @@ function GraphFilterPanel({
         <button
           onClick={() => onShowUnresolvedChange(!showUnresolved)}
           title="Show links to notes that don't exist yet"
-          className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors active:opacity-70"
+          className="flex-1 h-5 text-[10px] uppercase tracking-wider font-bold transition-colors"
           style={showUnresolved
             ? { background: isDark ? '#F9F9F7' : '#2D2D2B', color: isDark ? '#2D2D2B' : '#F9F9F7', border: `1px solid ${isDark ? '#F9F9F7' : '#2D2D2B'}` }
             : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.6)' }
@@ -634,7 +653,7 @@ function GraphFilterPanel({
                 <button
                   key={t}
                   onClick={() => toggleTag(t)}
-                  className="text-[10px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors active:opacity-70"
+                  className="text-[10px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors"
                   style={active
                     ? { background: '#CC7D5E', color: isDark ? '#252523' : '#FFFFFF', border: '1px solid #CC7D5E' }
                     : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }

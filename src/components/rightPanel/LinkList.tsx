@@ -20,6 +20,17 @@ export function linkSubtitle(note: Note, folders?: Folder[]): string {
   return folders?.find((folder) => folder.id === note.folder)?.name ?? '';
 }
 
+// Matches PropertiesPanel's own "no note" state exactly — same sibling tab
+// in the same RightPanel, so the two must agree on how "nothing to show
+// because nothing is open" looks. This is distinct from "a real note with
+// zero links", which the section header already answers with a plain 0;
+// conflating the two here made an open note with no links indistinguishable
+// from no note being open at all.
+export function LinkNoNoteState({ isDark }: { isDark?: boolean }) {
+  const muted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
+  return <div className={`text-xs font-redaction text-center py-8 ${muted}`}>No note selected</div>;
+}
+
 export function LinkSectionHeader({ label, count, isDark }: { label: string; count: number; isDark?: boolean }) {
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   return (
@@ -49,8 +60,14 @@ export function LinkRow({
     ? (isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50')
     : (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]');
   const subtitleColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
+  // Dark mode used a flat #302F2C against the #2D2D2B panel — a 3/2/1 RGB
+  // step, barely perceptible. Light mode's #EFEAE3/70 wasn't much better:
+  // blended against the #F9F9F7 panel it lands around #F1EEE9, a 7-14 RGB
+  // step. Both now match the hover convention used everywhere else in the
+  // app (noa-sidebar-hover-surface): full-strength #EAE5DE in light, a
+  // translucent white wash in dark.
   const hover = onClick
-    ? (isDark ? 'hover:bg-[#302F2C]' : 'hover:bg-[#EFEAE3]/70')
+    ? (isDark ? 'hover:bg-[rgba(249,249,247,0.07)]' : 'hover:bg-[#EAE5DE]')
     : '';
 
   const body = (
@@ -70,31 +87,16 @@ export function LinkRow({
   );
 
   if (!onClick) {
-    return <div className="w-full px-2 py-1 rounded-[4px]">{body}</div>;
+    return <div className="w-full px-2 py-1 rounded-[8px]">{body}</div>;
   }
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group w-full text-left px-2 py-1 rounded-[4px] transition-colors ${hover}`}
+      className={`group w-full text-left px-2 py-1 rounded-[8px] transition-colors ${hover}`}
     >
       {body}
     </button>
-  );
-}
-
-export function LinkEmptyState({ lead, title, isDark }: { lead: string; title?: string; isDark?: boolean }) {
-  const muted = isDark ? 'text-[rgba(249,249,247,0.45)]' : 'text-[#2D2D2B]/50';
-  return (
-    <div className={`text-center mt-10 text-sm ${muted}`}>
-      {lead}
-      {title && (
-        <>
-          <br />
-          <span className={`font-bold ${isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[#2D2D2B]/70'}`}>"{title}"</span>
-        </>
-      )}
-    </div>
   );
 }

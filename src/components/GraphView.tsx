@@ -543,9 +543,9 @@ export default function GraphView({
   }, []);
 
   const zoomControls = [
-    { icon: <ZoomIn size={11} />, title: 'Zoom in', action: () => zoomBy(1.3) },
-    { icon: <ZoomOut size={11} />, title: 'Zoom out', action: () => zoomBy(0.77) },
-    { icon: <Maximize2 size={11} />, title: 'Reset view', action: () => {
+    { icon: <ZoomIn size={10} />, title: 'Zoom in', action: () => zoomBy(1.3) },
+    { icon: <ZoomOut size={10} />, title: 'Zoom out', action: () => zoomBy(0.77) },
+    { icon: <Maximize2 size={10} />, title: 'Reset view', action: () => {
       if (resetAnimationRef.current != null) {
         cancelAnimationFrame(resetAnimationRef.current);
         resetAnimationRef.current = null;
@@ -743,6 +743,15 @@ export default function GraphView({
           // ring at two-thirds weight. One shape carrying two states beats a
           // ring for one and a halo for the other — and the graph stays on the
           // same flat plane as every other surface in the app.
+          //
+          // A brief detour unified both to 1.5 on the theory that this was
+          // the same click-flicker chased elsewhere in the app — it wasn't:
+          // that flicker turned out to be `active:opacity` press-fade
+          // colliding with a DOM element's own click-driven restyle, and a
+          // canvas node has no `:active` pseudo-state to collide with in the
+          // first place. Unifying the weights just deleted the one signal
+          // this ring carries (hovering a node vs. it being the open note)
+          // for no corresponding fix, so it's reverted.
           if (isActive || isHovered) {
             ctx.strokeStyle = textColor;
             ctx.lineWidth = (isActive ? 1.5 : 1) / globalScale;
@@ -816,13 +825,16 @@ export default function GraphView({
           );
         })}
       </nav>
-      <div className="noa-graph-control-surface absolute bottom-2 right-2 flex flex-row rounded-md p-0.5 gap-0.5">
+      {/* right-2.5 matches the header's own px-2.5, so the filter pill above
+          and this pad share the same right inset instead of drifting by the
+          2px that right-2 used to leave on the table. */}
+      <div className="noa-graph-control-surface absolute bottom-2 right-2.5 flex flex-row rounded-md p-0.5 gap-0.5">
         {zoomControls.map(({ icon, title, action }) => (
           <button
             key={title}
             onClick={action}
             title={title}
-            className={`noa-graph-control-button w-6 h-6 rounded active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
+            className={`noa-graph-control-button w-5 h-5 rounded active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
               isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[rgba(45,45,43,0.6)]'
             }`}
           >

@@ -393,7 +393,10 @@ export default function CalendarPanel({
                   type="button"
                   onClick={() => (isSelected ? clearRange() : applyRange(target))}
                   aria-pressed={isSelected}
-                  className={`px-1.5 py-0.5 border rounded-[3px] transition-colors active:opacity-70 cursor-pointer ${
+                  // No active:opacity: the preset already recolours on click
+                  // (border/text/bg all switch to accent), and fading it for
+                  // the press first is what reads as a flicker.
+                  className={`px-1.5 py-0.5 border rounded-[3px] transition-colors cursor-pointer ${
                     isSelected
                       ? 'border-[#CC7D5E] text-[#CC7D5E] bg-[#CC7D5E]/10'
                       : 'border-[#2D2D2B]/15 text-[#2D2D2B]/60 hover:border-[#2D2D2B]/30 hover:text-[#2D2D2B]/80'
