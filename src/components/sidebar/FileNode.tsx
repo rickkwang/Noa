@@ -131,7 +131,7 @@ export const FileNode = React.memo(({
               : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{
-          paddingLeft: `${depth === 0 ? 8 : 2}px`,
+          paddingLeft: `${depth === 0 ? 7 : 2}px`,
         }}
         draggable={draggable}
         onDragStart={onDragStart}
@@ -218,9 +218,10 @@ export const FileNode = React.memo(({
           style={{
             display: 'grid',
             gridTemplateRows: isOpen ? '1fr' : '0fr',
-            // Align the child branch to this row's 14px icon center:
-            // 4px row margin + (8px root / 2px child padding) + 7px radius.
-            marginLeft: depth === 0 ? '19px' : '13px',
+            // Anchor the child branch to this row's 14px icon center: 6px row
+            // margin + (7px root / 2px child padding) + 7px half-icon, minus
+            // the border's own half-pixel so the line's center lands on it.
+            marginLeft: depth === 0 ? '19.5px' : '14.5px',
           }}
         >
           <div className="overflow-hidden border-l border-[var(--divider-subtle)]">

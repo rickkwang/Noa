@@ -108,6 +108,28 @@ body {
   user-select: text;
 }
 
+/* Resize-handle highlight. Drawn on the divider itself (a ::after covering the
+   divider's own 1px box) rather than inside the handle — anything rendered in
+   the handle sits one pixel off the divider and the two lines read as a double
+   image. Neutral text colour, not the accent, so it lights up as the divider
+   getting stronger instead of a coloured beam next to it. */
+[data-sidebar-separator]::after,
+[data-right-panel-separator]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    transparent,
+    color-mix(in srgb, var(--text-primary, #2D2D2B) 40%, transparent) 50%,
+    transparent);
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+.noa-app-shell:has(.noa-resize-handle[data-edge="right"]:is(:hover, :focus-visible)) [data-sidebar-separator]::after,
+.noa-app-shell:has(.noa-resize-handle[data-edge="left"]:is(:hover, :focus-visible)) [data-right-panel-separator]::after { opacity: 0.7; }
+.noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after,
+.noa-app-shell:has(.noa-resize-handle[data-edge="left"][data-dragging="true"]) [data-right-panel-separator]::after { opacity: 1; }
+
 /* Shared surface for the graph's small control clusters (header filter field,
    canvas zoom pad). Two things it has to be at once: opaque, because the zoom
    pad floats over a busy, ever-shifting canvas of nodes and edges rather than
@@ -163,11 +185,12 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
-/* Default tree rows use one muted gray for both their labels and icons. The
-   accent color remains reserved for active or hover feedback, so a resting
-   sidebar does not mix coral icons with near-black text. */
+/* Tree rows sit just under the full text colour — 90% keeps labels and icons
+   reading as primary text without the slight harshness of full strength
+   against the sidebar floor. The accent remains reserved for active or hover
+   feedback, so a resting sidebar does not mix coral icons with dark text. */
 .noa-sidebar-tree-item {
-  color: color-mix(in srgb, var(--text-primary) 78%, var(--bg-sidebar));
+  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 90%, transparent);
 }
 
 /* Sections (CalendarPanel, TagBrowser) are only ever rendered inside the

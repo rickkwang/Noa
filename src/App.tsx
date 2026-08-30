@@ -674,6 +674,7 @@ export default function App() {
       {!isMobile && !isFocusMode && (
         <div
           aria-hidden="true"
+          data-right-panel-separator="true"
           className="pointer-events-none absolute top-0 bottom-0 z-20"
           style={{
             right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px',
@@ -837,7 +838,9 @@ export default function App() {
             </div>
             {!isMobile && (
               <div
-                className="w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
+                className="noa-resize-handle w-1.5 bg-transparent cursor-col-resize absolute right-0 top-0 bottom-0 z-20"
+                data-edge="right"
+                data-dragging={isDraggingSidebar ? 'true' : undefined}
                 onMouseDown={handleSidebarResizeStart}
                 role="separator"
                 aria-orientation="vertical"
@@ -928,7 +931,9 @@ export default function App() {
           >
             {!isMobile && (
               <div
-                className="w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"
+                className="noa-resize-handle w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"
+                data-edge="left"
+                data-dragging={isDraggingRightPanel ? 'true' : undefined}
                 onMouseDown={() => setIsDraggingRightPanel(true)}
                 role="separator"
                 aria-orientation="vertical"

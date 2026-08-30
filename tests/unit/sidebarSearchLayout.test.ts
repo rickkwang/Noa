@@ -28,7 +28,7 @@ describe('sidebar search result layout', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-visible"');
+    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible"');
     expect(source).not.toContain('className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden"');
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
@@ -64,7 +64,7 @@ describe('sidebar search result layout', () => {
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
     expect(vaultSection).toContain('className="mx-1.5 pl-2 pr-2 pt-3 pb-2.5"');
-    expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 8 : 2}px`");
+    expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 2}px`");
   });
 
   it('keeps the sidebar scrollbar gutter, its pull-back, and the row margin all at 6px', async () => {
@@ -115,7 +115,7 @@ describe('sidebar search result layout', () => {
   it('anchors each branch line to its folder icon center at every depth', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain("marginLeft: depth === 0 ? '19px' : '13px'");
+    expect(fileNode).toContain("marginLeft: depth === 0 ? '19.5px' : '14.5px'");
     expect(fileNode).not.toContain("marginLeft: '18px'");
   });
 

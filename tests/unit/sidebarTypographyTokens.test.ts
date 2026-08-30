@@ -7,14 +7,14 @@ const fileNodePath = fileURLToPath(new URL('../../src/components/sidebar/FileNod
 const sidebarPath = fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url));
 
 describe('sidebar typography tokens', () => {
-  it('uses one non-black foreground for default tree labels and icons', async () => {
+  it('puts default tree labels and icons just under the full text colour', async () => {
     const [css, fileNode, sidebar] = await Promise.all([
       readFile(indexCssPath, 'utf8'),
       readFile(fileNodePath, 'utf8'),
       readFile(sidebarPath, 'utf8'),
     ]);
 
-    expect(css).toMatch(/\.noa-sidebar-tree-item\s*\{[^}]*color:\s*color-mix\(in srgb, var\(--text-primary\) 78%, var\(--bg-sidebar\)\)/);
+    expect(css).toMatch(/\.noa-sidebar-tree-item\s*\{[^}]*color:\s*color-mix\(in srgb, var\(--text-primary, #2D2D2B\) 90%, transparent\)/);
     expect(fileNode).toContain('noa-sidebar-tree-item');
     expect(fileNode).not.toContain("isFolder ? 'text-[#CC7D5E]'");
     expect(sidebar).not.toContain('iconColor="#CC7D5E"');
