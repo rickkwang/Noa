@@ -899,10 +899,20 @@ test('reversing a preview exit continues from its current visual progress', asyn
   });
 
   await toggle.hover();
-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-  const opacityAfterReverse = Number(await shell.evaluate((element) => getComputedStyle(element).opacity));
-  expect(Math.abs(opacityAfterReverse - opacityBeforeReverse)).toBeLessThan(0.15);
   await expect(shell).not.toHaveAttribute('data-sidebar-preview-closing', 'true');
+  // Sample the reverse transition's start frame, not one rAF later: on a slow
+  // runner that frame can cover 50ms+ of the steep ease-out, which reads as a
+  // discontinuous jump even when the handoff was smooth.
+  const opacityAfterReverse = await shell.evaluate(async (element) => {
+    const animation = element.getAnimations()[0];
+    if (!animation) throw new Error('Sidebar reverse animation did not start.');
+    await animation.ready;
+    animation.pause();
+    animation.currentTime = 0;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return Number(getComputedStyle(element).opacity);
+  });
+  expect(Math.abs(opacityAfterReverse - opacityBeforeReverse)).toBeLessThan(0.15);
 });
 
 test('enabling reduced motion settles active sidebar preview transitions', async ({ page }) => {
