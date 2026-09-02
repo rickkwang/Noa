@@ -3,11 +3,14 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
 const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
+const { isPermissionAllowed } = require('./permissionPolicy.cjs');
 const { resolveSidebarWindowAppearance } = require('./windowBackground.cjs');
 const { installSingleInstanceGuard } = require('./singleInstance.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
+// Only this directory is in-app navigable over file: — see navigationGuard.
+const BUNDLE_DIR = path.join(__dirname, '..', 'dist');
 
 // Grace periods before forcing app.quit(). Configurable via env so slow machines
 // can extend the window for in-flight saves/installs to drain. Values are
@@ -201,13 +204,13 @@ function createWindow() {
   // External links open in the system browser, never inside the app shell —
   // a new in-app window would inherit the preload bridge.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (resolveNavigationPolicy(url, { isDev }) === 'open-external') {
+    if (resolveNavigationPolicy(url, { isDev, bundleDir: BUNDLE_DIR }) === 'open-external') {
       void shell.openExternal(url);
     }
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (event, url) => {
-    const policy = resolveNavigationPolicy(url, { isDev });
+    const policy = resolveNavigationPolicy(url, { isDev, bundleDir: BUNDLE_DIR });
     if (policy === 'allow') return;
     event.preventDefault();
     if (policy === 'open-external') {
@@ -235,23 +238,12 @@ async function doCheckForUpdates() {
   }
 }
 
-// Re-affirm File System Access grants for the user's already-chosen vault/backup
-// folders. The packaged app runs from a file:// origin, which Chromium treats as
-// opaque and so cannot persist File System Access permissions across relaunches —
-// without this the restored directory handle reads back as 'prompt' on every
-// launch, the bootstrap scan fails with NotAllowedError, and the "reconnect vault"
-// error surfaces each time. Folders are only ever obtained through the native
-// directory picker, so granting 'fileSystem' here re-authorizes a path the user
-// already chose; it cannot reach arbitrary paths. All other permissions keep
-// Electron's default (grant) behavior — this window only ever loads Noa's own
-// content (navigation is locked by setWindowOpenHandler/will-navigate).
+// Grant only the permissions the renderer actually uses; deny everything else.
+// See permissionPolicy.cjs for why 'fileSystem' must be affirmatively re-granted.
 function installPermissionHandlers() {
-  // 'fileSystem' is the permission we must affirmatively re-grant (see above);
-  // every other permission keeps Electron's existing permissive default, so this
-  // changes nothing for them.
-  session.defaultSession.setPermissionCheckHandler(() => true);
-  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
-    callback(true);
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => isPermissionAllowed(permission));
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(isPermissionAllowed(permission));
   });
 }
 
