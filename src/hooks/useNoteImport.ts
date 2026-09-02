@@ -7,6 +7,7 @@ import {
   type ImportedNote,
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
+import { parkRescuedNotes, withTimeout } from '../lib/importRescue';
 import { prepareImportedNotes } from '../lib/importUtils';
 import { extractLinks, extractTags } from '../lib/noteUtils';
 import { storage } from '../lib/storage';
@@ -56,13 +57,19 @@ export function useNoteImport({
     } catch {
       preexistingBlobIds = null;
     }
-    // Acquire import lock BEFORE flushing pending saves so any concurrent
-    // debounceSave calls that arrive mid-flush get queued instead of racing.
-    isImportingRef.current = true;
-    // Persist whatever the user has edited up to this moment. These writes
-    // are what the "rescue" logic below preserves.
-    try { await flushAllPendingSaves(); } catch { /* best-effort */ }
+    // Everything from the lock onward lives inside this try: the finally is the
+    // only thing that releases it and drains deferredSavesRef, so an await that
+    // sits outside would leak the lock on throw. A leaked lock is silent data
+    // loss — debounceSave keeps queueing into deferredSavesRef and nothing ever
+    // reaches storage again.
     try {
+      // Acquire import lock BEFORE flushing pending saves so any concurrent
+      // debounceSave calls that arrive mid-flush get queued instead of racing.
+      isImportingRef.current = true;
+      // Persist whatever the user has edited up to this moment. These writes
+      // are what the "rescue" logic below preserves.
+      try { await withTimeout(flushAllPendingSaves(), 'flushPendingSaves'); } catch { /* best-effort */ }
+
       const attachmentError = findInvalidAttachmentPayload(importedNotes);
       if (attachmentError) {
         throw new Error(attachmentError);
@@ -97,14 +104,15 @@ export function useNoteImport({
       const ATTACHMENT_BATCH_SIZE = 5;
       for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
         const batch = importAttachments.slice(i, i + ATTACHMENT_BATCH_SIZE);
-        const batchResults = await Promise.allSettled(
-          batch.map(async (attachment) => {
+        const batchResults = await withTimeout(
+          Promise.allSettled(batch.map(async (attachment) => {
             // Decode base64 via fetch/blob to avoid holding a giant Uint8Array.
             const blob = await fetch(`data:${attachment.mimeType || 'application/octet-stream'};base64,${attachment.dataBase64}`)
               .then(r => r.blob());
             await storage.saveAttachmentBlob(attachment.id, blob);
             return attachment.id;
-          })
+          })),
+          'saveAttachmentBlobs',
         );
         for (const r of batchResults) {
           if (r.status === 'fulfilled') savedAttachmentIds.push(r.value);
@@ -141,12 +149,14 @@ export function useNoteImport({
       // setFolders(importedFolders) only lands after this runs — resolve
       // path links against the incoming folder list, not foldersRef.
       }), undefined, undefined, importedFolders ?? undefined);
-      await storage.saveNotes(withRefs);
+      // Every await under the lock is timeout-guarded: a wedged IndexedDB that
+      // never settles would skip both catch and finally, stranding the lock.
+      await withTimeout(storage.saveNotes(withRefs), 'saveNotes');
       if (shouldPrune) {
-        await storage.pruneOrphanedNotes(withRefs.map(n => n.id));
+        await withTimeout(storage.pruneOrphanedNotes(withRefs.map(n => n.id)), 'pruneOrphanedNotes');
       }
-      if (importedFolders) await storage.saveFolders(importedFolders);
-      if (newWorkspaceName) await storage.saveWorkspaceName(newWorkspaceName);
+      if (importedFolders) await withTimeout(storage.saveFolders(importedFolders), 'saveFolders');
+      if (newWorkspaceName) await withTimeout(storage.saveWorkspaceName(newWorkspaceName), 'saveWorkspaceName');
       // 清理孤立附件 Blob（best-effort，非关键路径）.
       // Use withRefs (the final merged state including rescued noa-native notes),
       // not importedNotes — otherwise attachments belonging to rescued local notes
@@ -165,7 +175,16 @@ export function useNoteImport({
       const createdByThisImport = preexistingBlobIds === null
         ? []
         : savedAttachmentIds.filter((attachmentId) => !preexistingBlobIds.has(attachmentId));
-      await Promise.allSettled(createdByThisImport.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)));
+      // Timeout-guarded like every other await under the lock, and swallowed:
+      // on a wedged store this cleanup is exactly what hangs, and reaching the
+      // rethrow plus the finally drain matters more. Leaked blobs are reclaimed
+      // by the next successful import's orphan prune (see preexistingBlobIds).
+      try {
+        await withTimeout(
+          Promise.allSettled(createdByThisImport.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId))),
+          'deleteAttachmentBlobs',
+        );
+      } catch { /* wedged store — see above */ }
       throw error;
     } finally {
       // Flush queued edits BEFORE releasing the lock. If we released first,
@@ -175,19 +194,29 @@ export function useNoteImport({
       // edits are already several seconds old and at risk on quit.
       const queued = Array.from(deferredSavesRef.current.values());
       deferredSavesRef.current.clear();
-      let flushFailures = 0;
+      const unsaved: Note[] = [];
       for (const note of queued) {
         try {
-          await storage.saveNote(note);
+          // Timeout-guarded for the same reason as above: if IndexedDB is the
+          // thing that failed, this drain is exactly where it will hang, and a
+          // hang here strands the lock just as surely as one in the try body.
+          await withTimeout(storage.saveNote(note), 'saveNote');
         } catch (err) {
           // On the failed-import path this flush is the only persistence these
           // edits get — swallowing the error silently would lose them on quit.
-          flushFailures += 1;
+          unsaved.push(note);
           console.error('[Noa] Failed to flush deferred edit for note:', note.id, err);
         }
       }
-      if (flushFailures > 0) {
-        setSaveError(`Failed to save ${flushFailures} edit${flushFailures > 1 ? 's' : ''} made during import. Storage may be full.`);
+      if (unsaved.length > 0) {
+        const plural = unsaved.length > 1 ? 's' : '';
+        // localStorage is a different store from IndexedDB, so it is still
+        // reachable in the case that brought us here.
+        setSaveError(
+          parkRescuedNotes(unsaved)
+            ? `Could not save ${unsaved.length} edit${plural} made during import. They have been set aside and will be restored the next time Noa starts.`
+            : `Could not save ${unsaved.length} edit${plural} made during import, and they could not be set aside either. Copy your text out of the editor before closing Noa.`,
+        );
       }
       // The batch's setNotes(withRefs) ran before these edits were queued, so
       // state currently shows the import-delivered body while storage holds

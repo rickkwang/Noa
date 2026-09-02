@@ -7,6 +7,7 @@ import {
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { serializeNoteForVault } from '../lib/fileSystemStorage';
+import { clearRescuedNotes, mergeRescuedNotes, peekRescuedNotes, unparkRescuedNote } from '../lib/importRescue';
 import { sortNotesByRecent } from '../lib/noteSort';
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { isDescendantPath } from '../lib/pathUtils';
@@ -282,23 +283,40 @@ export function useNotes(settings?: AppSettings) {
           ];
         setFolders(loadedFolders);
 
-        if (savedNotes && savedNotes.length > 0) {
+        // Edits an import could not write to IndexedDB, parked in localStorage.
+        // Read before the empty check: if that same failure left the store
+        // empty, these are the only surviving copy of the user's text and must
+        // not be passed over in favour of the welcome note.
+        const rescued = peekRescuedNotes();
+
+        if ((savedNotes && savedNotes.length > 0) || rescued.length > 0) {
           // Trusted path: our own IndexedDB cache. Preserve the vault origin
           // marker so mirror rows keep write-through after a reload.
-          const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes, { preserveVaultMetadata: true });
+          const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes ?? [], { preserveVaultMetadata: true });
           if (!report.ok) {
             throw new Error(
               report.issues.find((issue) => issue.level === 'error')?.message ??
               'Data integrity check failed while loading notes.',
             );
           }
+          const withRescued = mergeRescuedNotes(normalized, rescued);
           // foldersRef hasn't committed yet at this point — pass the loaded
           // folders explicitly or [[folder/Note]] path links resolve against [].
-          const withRefs = syncLinkRefsRef.current(normalized, undefined, undefined, loadedFolders);
-          const changedForPersist = collectChangedRef.current(withRefs, normalized);
-          if (changedForPersist.length > 0) {
-            await storage.saveNotes(changedForPersist);
+          const withRefs = syncLinkRefsRef.current(withRescued, undefined, undefined, loadedFolders);
+          const persistById = new Map(
+            collectChangedRef.current(withRefs, withRescued).map((note) => [note.id, note]),
+          );
+          // Rescued edits exist only in localStorage until this write lands, and
+          // collectChanged won't flag them unless their linkRefs happen to differ.
+          const rescuedIds = new Set(rescued.map((note) => note.id));
+          for (const note of withRefs) {
+            if (rescuedIds.has(note.id)) persistById.set(note.id, note);
           }
+          if (persistById.size > 0) {
+            await storage.saveNotes(Array.from(persistById.values()));
+          }
+          // Only now that they are back in the real store.
+          if (rescued.length > 0) clearRescuedNotes();
           const sorted = sortNotesByRecent(withRefs);
           setNotes(sorted);
           const lastActiveId = lsGet(LAST_ACTIVE_NOTE_KEY);
@@ -710,6 +728,9 @@ Export regularly: use Settings → Data → Export Backup.`,
       remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
     );
     storage.pruneOrphanedAttachments(validIds).catch(() => {});
+    // A deliberately deleted note must not resurface from the import rescue
+    // parking lot on next launch.
+    unparkRescuedNote(id);
     // Cancel any pending debounce save/snapshot for this note so it cannot be
     // re-written to storage after deletion.
     const pending = saveTimers.current.get(id);
@@ -817,6 +838,7 @@ Export regularly: use Settings → Data → Export Backup.`,
         clearTimeout(pending);
         saveTimers.current.delete(id);
       }
+      unparkRescuedNote(id);
     });
     const failedCount = results.length - deletedIds.length;
     let foldersDeleted = false;
@@ -917,6 +939,9 @@ Export regularly: use Settings → Data → Export Backup.`,
   const resetWorkspaceFromRecovery = useCallback(async () => {
     try {
       await storage.clearAll();
+      // A deliberate wipe also voids parked import edits — they belong to the
+      // workspace that was just erased and must not resurface on next launch.
+      clearRescuedNotes();
       await applyEmptyWorkspace('Recovered Workspace');
       setLoadError(null);
     } catch (error) {

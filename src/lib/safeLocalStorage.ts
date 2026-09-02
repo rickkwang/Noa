@@ -50,3 +50,12 @@ export function lsSetJson(key: string, value: unknown): boolean {
     return false;
   }
 }
+
+export function lsRemove(key: string): boolean {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
