@@ -89,7 +89,7 @@ npm run build                # Vite build → dist/
 npm run build:budget         # build + bundle size check
 npm run check:structure      # dependency-cruiser
 npm run desktop:dev          # Electron + Vite
-npm run desktop:pack:mac     # signed dmg+zip, arm64
+npm run desktop:pack:mac     # unsigned dmg+zip, arm64
 ```
 
 ## 桌面版（macOS）
