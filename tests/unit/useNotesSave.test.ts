@@ -144,6 +144,7 @@ describe('useNotes handleImportData attachment rollback', () => {
       saveAttachmentBlob: vi.fn(async () => undefined),
       deleteAttachmentBlob,
       listAttachmentBlobIds: vi.fn(async () => ['pre-existing']),
+      getAttachmentBlob: vi.fn(async () => new Blob(['hello'])),
       saveNotes: vi.fn(async () => {
         throw new Error('quota exceeded');
       }),
@@ -172,8 +173,8 @@ describe('useNotes handleImportData attachment rollback', () => {
 
     await expect(api.handleImportData([note])).rejects.toThrow();
 
-    // Blobs that existed before the import were merely overwritten with the
-    // same immutable content — deleting them would destroy user attachments.
+    expect(storageMock.saveNotes).toHaveBeenCalledOnce();
+    // Existing blobs are restored, never removed by failed-import cleanup.
     expect(deleteAttachmentBlob).toHaveBeenCalledWith('brand-new');
     expect(deleteAttachmentBlob).not.toHaveBeenCalledWith('pre-existing');
   });
@@ -307,7 +308,13 @@ const baseStorageMock = () => ({
   saveAttachmentBlob: vi.fn(async () => undefined),
   deleteAttachmentBlob: vi.fn(async () => undefined),
   listAttachmentBlobIds: vi.fn(async () => [] as string[]),
-  saveNotes: vi.fn(async () => undefined),
+  saveNotes: vi.fn(async (_notes: unknown) => undefined),
+  async saveWorkspace(notes: unknown): Promise<void> {
+    await this.getNotes();
+    await this.getFolders();
+    await this.getWorkspaceName();
+    await this.saveNotes(notes);
+  },
   clearLegacyLocalStorage: vi.fn(),
 });
 
@@ -528,7 +535,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       origin: 'vault' as const,
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([clean], [], 'Vault', true);
+    await api.handleImportData([clean], [], 'Vault', true, [], 'vault');
     harness.resetRender();
     api = useNotes();
     storageMock.saveNote.mockClear();
@@ -566,7 +573,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultBaseText: 'version A',
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([dirty], [], 'Vault', true);
+    await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.flushStateUpdates();
     harness.resetRender();
     api = useNotes();
@@ -606,7 +613,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultBaseText: 'version A',
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([dirty], [], 'Vault', true);
+    await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.flushStateUpdates();
     harness.resetRender();
     api = useNotes();
@@ -643,7 +650,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultBaseText: 'version A',
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([dirty], [], 'Vault', true);
+    await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.flushStateUpdates();
     harness.resetRender();
     api = useNotes();
@@ -686,7 +693,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultBaseText: '---\r\ntitle: Note\r\n---\r\nBody\r\n',
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([dirty], [], 'Vault', true);
+    await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.resetRender();
     api = useNotes();
     storageMock.saveNote.mockClear();
@@ -725,7 +732,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultBaseText: 'Body',
       vaultPath: 'Note.md',
     };
-    await api.handleImportData([dirty], [], 'Vault', true);
+    await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.resetRender();
     api = useNotes();
 
@@ -736,7 +743,7 @@ describe('useNotes vault conflict acknowledgement', () => {
       vaultDirty: undefined,
       vaultBaseText: undefined,
     };
-    await api.handleImportData([authoritative], [], 'Vault', true);
+    await api.handleImportData([authoritative], [], 'Vault', true, [], 'vault');
 
     const calls = storageMock.saveNotes.mock.calls as unknown as Array<[Array<{
       id: string;

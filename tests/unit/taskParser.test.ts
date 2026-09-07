@@ -216,3 +216,21 @@ describe('parseTasksFromNotes per-note cache', () => {
     expect(secondA.content).toBe('task a edited');
   });
 });
+
+it('strips only internal markers for display without changing task IDs or source', async () => {
+  const { stripTaskMarkers } = await import('../../src/lib/taskParser');
+  const source = '- [x] milk <!-- noa-task:stable-id -->\n<!-- ordinary comment -->';
+  expect(stripTaskMarkers(source)).toBe('- [x] milk\n<!-- ordinary comment -->');
+  expect(source).toContain('<!-- noa-task:stable-id -->');
+});
+
+it.each([
+  '```html\n<!-- noa-task:example-id -->\n```',
+  '~~~html\n<!-- noa-task:example-id -->\n~~~',
+  'Use `<!-- noa-task:example-id -->` in Markdown.',
+  'Use ``<!-- noa-task:example-id -->`` in Markdown.',
+])('preserves literal task markers in code: %s', async (code) => {
+  const { stripTaskMarkers } = await import('../../src/lib/taskParser');
+  const source = `${code}\n\n- [x] milk <!-- noa-task:stable-id -->\n<!-- ordinary comment -->`;
+  expect(stripTaskMarkers(source)).toBe(`${code}\n\n- [x] milk\n<!-- ordinary comment -->`);
+});

@@ -12,7 +12,7 @@ export type AttachmentError = 'type_not_allowed' | 'size_exceeded' | 'storage_fu
 
 export function useAttachments(
   note: Note | null,
-  onNoteUpdate: (note: Note) => void
+  onNoteUpdate: (note: Note, update?: (current: Note) => Note) => void
 ) {
   // objectUrl cache: attachmentId -> blobURL
   const [objectUrls, setObjectUrls] = useState<Map<string, string>>(new Map());
@@ -144,11 +144,10 @@ export function useAttachments(
         const url = URL.createObjectURL(file);
         setObjectUrls((prev) => new Map(prev).set(id, url));
 
-        const updatedNote: Note = {
-          ...note,
-          attachments: [...(note.attachments ?? []), attachment],
-        };
-        onNoteUpdate(updatedNote);
+        onNoteUpdate(note, (current) => ({
+          ...current,
+          attachments: [...(current.attachments ?? []), attachment],
+        }));
         return null;
       } catch {
         return 'upload_failed';
@@ -177,11 +176,10 @@ export function useAttachments(
         });
       }
 
-      const updatedNote: Note = {
-        ...note,
-        attachments: (note.attachments ?? []).filter((a) => a.id !== attachmentId),
-      };
-      onNoteUpdate(updatedNote);
+      onNoteUpdate(note, (current) => ({
+        ...current,
+        attachments: (current.attachments ?? []).filter((a) => a.id !== attachmentId),
+      }));
     },
     [note, objectUrls, onNoteUpdate]
   );

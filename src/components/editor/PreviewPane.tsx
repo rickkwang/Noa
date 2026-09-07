@@ -16,6 +16,7 @@ import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
+import { stripTaskMarkers } from '../../lib/taskParser';
 import { Note, Folder, AppSettings } from '../../types';
 import { MermaidBlock } from './MermaidBlock';
 import { canReusePreviewContextNotes } from './previewMemo';
@@ -429,6 +430,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 function getSnippet(content: string, title: string) {
   const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(.{0,40})(\\[\\[${escapedTitle}\\]\\])(.{0,40})`, 'i');
+  content = stripTaskMarkers(content);
   const match = content.match(regex);
   if (match) {
     return (
@@ -497,7 +499,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
     // Step 0: strip %%comments%% (Obsidian comments) so they never render. Done at
     // the string level to match Obsidian's pre-parse behavior; the rare case of a
     // literal %% inside a fenced code block is not special-cased.
-    const withoutComments = note.content.replace(/%%[\s\S]*?%%/g, '');
+    const withoutComments = stripTaskMarkers(note.content).replace(/%%[\s\S]*?%%/g, '');
 
     // Steps 1–2 must not touch code: a literal [[x]] inside a fenced block or
     // inline code span is code, not a link. Split on code segments (odd indices

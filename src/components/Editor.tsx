@@ -35,7 +35,7 @@ interface EditorProps {
   allNotes: Note[];
   folders?: Folder[];
   onUpdate: (content: string) => void;
-  onNoteUpdate?: (note: Note) => void;
+  onNoteUpdate?: (note: Note, update?: (current: Note) => Note) => void;
   onRename?: (title: string) => void;
   onClose?: () => void;
   onNavigateToNoteLegacy: (title: string) => void;
@@ -137,8 +137,8 @@ export default function Editor({
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
 
-  const handleNoteUpdate = useCallback((updated: Note) => {
-    onNoteUpdate?.(updated);
+  const handleNoteUpdate = useCallback((updated: Note, update?: (current: Note) => Note) => {
+    onNoteUpdate?.(updated, update);
   }, [onNoteUpdate]);
 
   const { objectUrls, uploadFile, deleteAttachment, attachmentLoadError } = useAttachments(

@@ -1,4 +1,5 @@
 import Fuse, { type FuseResult } from 'fuse.js';
+import { stripTaskMarkers } from '../lib/taskParser';
 import { Folder, Note } from '../types';
 
 interface ParsedQuery {
@@ -201,10 +202,13 @@ export class SearchEngine {
       const titleMatch = result.matches?.find((match) => match.key === 'title');
       const contentMatch = result.matches?.find((match) => match.key === 'content');
 
+      const displayContent = stripTaskMarkers(result.item.content);
       return {
         note: result.item,
         titleSnippet: titleMatch ? this.highlightFuseMatch(result.item.title, titleMatch.indices as readonly [number, number][]) : this.highlightExact(result.item.title, exactPhrases, isCaseSensitive),
-        contentSnippet: contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
+        contentSnippet: displayContent !== result.item.content
+          ? this.getSnippet(displayContent, [...exactPhrases, ...keywords], isCaseSensitive)
+          : contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
       };
     });
     // True LRU: cached hits re-insert above so the first key is always the
@@ -259,6 +263,7 @@ export class SearchEngine {
   }
 
   private getSnippet(content: string, phrases: string[], caseSensitive: boolean = false): string {
+    content = stripTaskMarkers(content);
     if (phrases.length === 0) {
       if (!content.trim()) return '';
       const plainSnippet = content.slice(0, 120) + (content.length > 120 ? '...' : '');

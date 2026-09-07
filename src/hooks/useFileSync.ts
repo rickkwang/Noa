@@ -41,7 +41,7 @@ interface UseFileSyncOptions {
   workspaceName: string;
   activeNoteId: string;
   ensureInitialNote: () => void;
-  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[]) => Promise<void>;
+  onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[], mode?: 'workspace' | 'vault') => Promise<void>;
   onVaultNotesSynced: (expectations: VaultSyncedNoteExpectation[]) => void;
   onVaultNoteBaselineAdvanced: (id: string, baselineText: string) => void | Promise<void>;
 }
@@ -453,7 +453,7 @@ export function useFileSync({
         VAULT_AUTHORITATIVE_MERGE,
       );
       if (generation !== retryGeneration.current || disconnectingRef.current) return null;
-      await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds);
+      await onImportData(merged, mergedFolders, workspaceNameRef.current, true, deletedNoteIds, 'vault');
       if (generation !== retryGeneration.current || disconnectingRef.current) return null;
       if (conflicts.length > 0) throw conflicts[0];
       return { deletedNoteIds, updatedNoteIds };

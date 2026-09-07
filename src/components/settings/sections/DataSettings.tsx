@@ -85,6 +85,7 @@ export default function DataSettings({
     folders,
     workspaceName,
     onImportData,
+    isVaultConnected: Boolean(fsHandle),
     onConnectFolder: onConnectFs,
     onDisconnectFolder: onDisconnectFs,
     notify: setMessage,

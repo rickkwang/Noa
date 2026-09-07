@@ -7,7 +7,7 @@ import {
   type ImportedNote,
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
-import { parkRescuedNotes, withTimeout } from '../lib/importRescue';
+import { clearRescuedNotes, parkRescuedNotes, STORAGE_STALL_TIMEOUT_MS, withTimeout } from '../lib/importRescue';
 import { prepareImportedNotes } from '../lib/importUtils';
 import { extractLinks, extractTags } from '../lib/noteUtils';
 import { storage } from '../lib/storage';
@@ -30,6 +30,7 @@ interface UseNoteImportOptions {
   setLoadError: React.Dispatch<React.SetStateAction<LoadErrorState | null>>;
   syncLinkRefs: (nextNotes: Note[], previousNotes?: Note[], changedIds?: Set<string>, foldersOverride?: Folder[]) => Note[];
   flushAllPendingSaves: () => Promise<void>;
+  onWorkspaceReplaced?: () => void;
 }
 
 export function useNoteImport({
@@ -43,32 +44,27 @@ export function useNoteImport({
   setLoadError,
   syncLinkRefs,
   flushAllPendingSaves,
+  onWorkspaceReplaced,
 }: UseNoteImportOptions) {
-  const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false, deletedNoteIds?: string[]) => {
+  const handleImportData = useCallback(async (importedNotes: ImportedNote[], importedFolders?: Folder[], newWorkspaceName?: string, shouldPrune = false, deletedNoteIds?: string[], mode: 'workspace' | 'vault' = 'workspace') => {
+    const replacing = shouldPrune && mode === 'workspace';
+    if (isImportingRef.current) throw new Error('Another import is already running.');
+    isImportingRef.current = true;
+    // Writes cannot be cancelled. A slow store must keep the lock until the
+    // write/rollback settles, otherwise it can overwrite the next import.
+    const stallMessage = 'Import is still waiting for local storage. Keep Noa open until it finishes.';
+    let stalled = false;
+    const stallNoticeTimer = setTimeout(() => {
+      stalled = true;
+      setSaveError(stallMessage);
+    }, STORAGE_STALL_TIMEOUT_MS);
     const savedAttachmentIds: string[] = [];
-    // Blob ids that existed before this import. A failed import must only clean
-    // up blobs it created itself — pre-existing ids were merely overwritten with
-    // the same immutable content, and deleting them would destroy the user's
-    // attachments. null = listing failed → delete nothing (the orphan pruner
-    // reclaims leaked blobs on the next successful import).
+    const previousBlobs = new Map<string, Blob>();
     let preexistingBlobIds: ReadonlySet<string> | null = null;
     try {
-      preexistingBlobIds = new Set(await storage.listAttachmentBlobIds());
-    } catch {
-      preexistingBlobIds = null;
-    }
-    // Everything from the lock onward lives inside this try: the finally is the
-    // only thing that releases it and drains deferredSavesRef, so an await that
-    // sits outside would leak the lock on throw. A leaked lock is silent data
-    // loss — debounceSave keeps queueing into deferredSavesRef and nothing ever
-    // reaches storage again.
-    try {
-      // Acquire import lock BEFORE flushing pending saves so any concurrent
-      // debounceSave calls that arrive mid-flush get queued instead of racing.
-      isImportingRef.current = true;
-      // Persist whatever the user has edited up to this moment. These writes
-      // are what the "rescue" logic below preserves.
-      try { await withTimeout(flushAllPendingSaves(), 'flushPendingSaves'); } catch { /* best-effort */ }
+      // Acquire the lock before any I/O; the finally block always drains edits.
+      preexistingBlobIds = new Set(await withTimeout(storage.listAttachmentBlobIds(), 'listAttachmentBlobIds'));
+      await flushAllPendingSaves();
 
       const attachmentError = findInvalidAttachmentPayload(importedNotes);
       if (attachmentError) {
@@ -104,19 +100,23 @@ export function useNoteImport({
       const ATTACHMENT_BATCH_SIZE = 5;
       for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
         const batch = importAttachments.slice(i, i + ATTACHMENT_BATCH_SIZE);
-        const batchResults = await withTimeout(
-          Promise.allSettled(batch.map(async (attachment) => {
-            // Decode base64 via fetch/blob to avoid holding a giant Uint8Array.
-            const blob = await fetch(`data:${attachment.mimeType || 'application/octet-stream'};base64,${attachment.dataBase64}`)
-              .then(r => r.blob());
-            await storage.saveAttachmentBlob(attachment.id, blob);
-            return attachment.id;
-          })),
-          'saveAttachmentBlobs',
-        );
+        const batchResults = await Promise.allSettled(batch.map(async (attachment) => {
+          // Decode base64 via fetch/blob to avoid holding a giant Uint8Array.
+          const blob = await fetch(`data:${attachment.mimeType || 'application/octet-stream'};base64,${attachment.dataBase64}`)
+            .then(r => r.blob());
+          if (preexistingBlobIds?.has(attachment.id) && !previousBlobs.has(attachment.id)) {
+            const previous = await storage.getAttachmentBlob(attachment.id);
+            if (!previous) throw new Error('Could not read an existing attachment before import.');
+            previousBlobs.set(attachment.id, previous);
+          }
+          await storage.saveAttachmentBlob(attachment.id, blob);
+          return attachment.id;
+        }));
         for (const r of batchResults) {
           if (r.status === 'fulfilled') savedAttachmentIds.push(r.value);
         }
+        const failure = batchResults.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
       }
 
       // Preserve the vault origin marker: vault-sync merge results reach here
@@ -130,7 +130,7 @@ export function useNoteImport({
       // A scan can finish after a new local edit. Dirty vault rows are the
       // explicit conflict boundary and must be rebased over that stale scan;
       // clean rows still take the authoritative disk version.
-      const mergedBase = reconcileConcurrentImportEdits(
+      const mergedBase = replacing ? normalizedNotes : reconcileConcurrentImportEdits(
         normalizedNotes,
         notesRef.current,
         deferredSavesRef.current,
@@ -149,14 +149,22 @@ export function useNoteImport({
       // setFolders(importedFolders) only lands after this runs — resolve
       // path links against the incoming folder list, not foldersRef.
       }), undefined, undefined, importedFolders ?? undefined);
-      // Every await under the lock is timeout-guarded: a wedged IndexedDB that
-      // never settles would skip both catch and finally, stranding the lock.
-      await withTimeout(storage.saveNotes(withRefs), 'saveNotes');
-      if (shouldPrune) {
-        await withTimeout(storage.pruneOrphanedNotes(withRefs.map(n => n.id)), 'pruneOrphanedNotes');
+      const checkReplacementEdits = () => {
+        if (replacing && deferredSavesRef.current.size > 0) {
+          throw new Error('Notes changed during replacement. Retry after saving your edits.');
+        }
+      };
+      checkReplacementEdits();
+      if (shouldPrune || importedFolders !== undefined || newWorkspaceName !== undefined) {
+        await storage.saveWorkspace(withRefs, importedFolders, newWorkspaceName, checkReplacementEdits, shouldPrune);
+      } else {
+        await storage.saveNotes(withRefs);
       }
-      if (importedFolders) await withTimeout(storage.saveFolders(importedFolders), 'saveFolders');
-      if (newWorkspaceName) await withTimeout(storage.saveWorkspaceName(newWorkspaceName), 'saveWorkspaceName');
+      if (replacing) {
+        clearRescuedNotes();
+        onWorkspaceReplaced?.();
+      }
+      if (replacing) notesRef.current = withRefs;
       // 清理孤立附件 Blob（best-effort，非关键路径）.
       // Use withRefs (the final merged state including rescued noa-native notes),
       // not importedNotes — otherwise attachments belonging to rescued local notes
@@ -172,19 +180,14 @@ export function useNoteImport({
       if (importedFolders) setFolders(importedFolders);
       if (newWorkspaceName) setWorkspaceName(newWorkspaceName);
     } catch (error) {
-      const createdByThisImport = preexistingBlobIds === null
+      const existingIds = preexistingBlobIds;
+      const createdByThisImport = existingIds === null
         ? []
-        : savedAttachmentIds.filter((attachmentId) => !preexistingBlobIds.has(attachmentId));
-      // Timeout-guarded like every other await under the lock, and swallowed:
-      // on a wedged store this cleanup is exactly what hangs, and reaching the
-      // rethrow plus the finally drain matters more. Leaked blobs are reclaimed
-      // by the next successful import's orphan prune (see preexistingBlobIds).
-      try {
-        await withTimeout(
-          Promise.allSettled(createdByThisImport.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId))),
-          'deleteAttachmentBlobs',
-        );
-      } catch { /* wedged store — see above */ }
+        : savedAttachmentIds.filter((attachmentId) => !existingIds.has(attachmentId));
+      await Promise.allSettled([
+        ...createdByThisImport.map((attachmentId) => storage.deleteAttachmentBlob(attachmentId)),
+        ...Array.from(previousBlobs, ([id, blob]) => storage.saveAttachmentBlob(id, blob)),
+      ]);
       throw error;
     } finally {
       // Flush queued edits BEFORE releasing the lock. If we released first,
@@ -192,22 +195,23 @@ export function useNoteImport({
       // a fresh timer reading stale state and overwrite newer queued content.
       // Writing directly to storage bypasses the 500ms debounce because these
       // edits are already several seconds old and at risk on quit.
-      const queued = Array.from(deferredSavesRef.current.values());
-      deferredSavesRef.current.clear();
-      const unsaved: Note[] = [];
-      for (const note of queued) {
-        try {
-          // Timeout-guarded for the same reason as above: if IndexedDB is the
-          // thing that failed, this drain is exactly where it will hang, and a
-          // hang here strands the lock just as surely as one in the try body.
-          await withTimeout(storage.saveNote(note), 'saveNote');
-        } catch (err) {
-          // On the failed-import path this flush is the only persistence these
-          // edits get — swallowing the error silently would lose them on quit.
-          unsaved.push(note);
-          console.error('[Noa] Failed to flush deferred edit for note:', note.id, err);
+      const queued: Note[] = [];
+      const unsavedById = new Map<string, Note>();
+      while (deferredSavesRef.current.size > 0) {
+        const batch = Array.from(deferredSavesRef.current.values());
+        deferredSavesRef.current.clear();
+        queued.push(...batch);
+        for (const note of batch) {
+          try {
+            await storage.saveNote(note);
+            unsavedById.delete(note.id);
+          } catch (err) {
+            unsavedById.set(note.id, note);
+            console.error('[Noa] Failed to flush deferred edit for note:', note.id, err);
+          }
         }
       }
+      const unsaved = Array.from(unsavedById.values());
       if (unsaved.length > 0) {
         const plural = unsaved.length > 1 ? 's' : '';
         // localStorage is a different store from IndexedDB, so it is still
@@ -225,9 +229,11 @@ export function useNoteImport({
         const queuedById = new Map(queued.map((note) => [note.id, note]));
         setNotes((prev) => prev.map((note) => queuedById.get(note.id) ?? note));
       }
+      clearTimeout(stallNoticeTimer);
+      if (stalled) setSaveError(current => current === stallMessage ? null : current);
       isImportingRef.current = false;
     }
-  }, [deferredSavesRef, flushAllPendingSaves, isImportingRef, notesRef, setFolders, setNotes, setSaveError, setWorkspaceName, syncLinkRefs]);
+  }, [deferredSavesRef, flushAllPendingSaves, isImportingRef, notesRef, setFolders, setNotes, setSaveError, setWorkspaceName, syncLinkRefs, onWorkspaceReplaced]);
 
   const importBackupFromRecovery = useCallback(async (file: File) => {
     try {

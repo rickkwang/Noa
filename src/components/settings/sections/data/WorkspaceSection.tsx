@@ -98,7 +98,7 @@ export default function WorkspaceSection({
         </button>
       </SettingItem>
 
-      <SettingItem label="New Workspace" description="Start an empty workspace. The current one stays on this device.">
+      <SettingItem label="New Workspace" description="Replace the current workspace with an empty one. Export a backup first.">
         <button
           onClick={onCreateWorkspace}
           className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
@@ -161,7 +161,7 @@ export default function WorkspaceSection({
             <p className="text-xs text-[#2D2D2B]/60 leading-relaxed">
               {fsLastSyncAt && `Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}. `}
               {fsHandle
-                ? 'Edits sync both ways; new notes created in Noa stay local.'
+                ? 'Noa edits write to disk. External changes are checked when Noa regains focus and every 60 seconds while visible. Retry Sync refreshes now. New notes created in Noa stay local.'
                 : `Sync status: ${syncStatusLabel}.`}
             </p>
             {fsSyncError && (

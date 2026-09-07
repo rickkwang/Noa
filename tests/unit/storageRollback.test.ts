@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { saveNotesBatch } from '../../src/lib/storage';
+import { saveNotesBatch, storage } from '../../src/lib/storage';
 import type { Note } from '../../src/types';
 
 const makeNote = (id: string, content = 'body'): Note => ({
@@ -54,5 +54,37 @@ describe('saveNotesBatch rollback', () => {
 
     expect(store.map.has('note:n1')).toBe(true);
     expect(store.map.has('note:n2')).toBe(true);
+  });
+});
+
+describe('workspace replacement rollback', () => {
+  it.each(['folders', 'delete', 'concurrent'])('restores notes and metadata when %s fails', async failure => {
+    const notes = new Map([['old', makeNote('old', 'original')]]);
+    let folders = [{ id: 'folder', name: 'Original' }];
+    let name = 'Original';
+    let failed = false;
+    const service = {
+      ...storage,
+      getNotes: async () => [...notes.values()],
+      getFolders: async () => folders,
+      getWorkspaceName: async () => name,
+      saveNotes: async (incoming: Note[]) => { incoming.forEach(n => notes.set(n.id, n)); },
+      saveNote: async (n: Note) => { notes.set(n.id, n); },
+      saveFolders: async (incoming: typeof folders) => {
+        if (failure === 'folders' && !failed) { failed = true; throw new Error('write failed'); }
+        folders = incoming;
+      },
+      saveWorkspaceName: async (value: string) => { name = value; },
+      deleteNote: async (id: string) => {
+        if (failure === 'delete' && !failed) { failed = true; throw new Error('delete failed'); }
+        notes.delete(id);
+      },
+    };
+    await expect(service.saveWorkspace([makeNote('new')], [], 'New', () => {
+      if (failure === 'concurrent') throw new Error('concurrent edit');
+    }, true)).rejects.toThrow();
+    expect([...notes.values()]).toEqual([makeNote('old', 'original')]);
+    expect(folders).toEqual([{ id: 'folder', name: 'Original' }]);
+    expect(name).toBe('Original');
   });
 });

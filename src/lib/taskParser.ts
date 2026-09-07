@@ -208,3 +208,10 @@ export const parseTasksFromNotes = (notes: Note[]): GlobalTask[] => {
     return 0;
   });
 };
+
+export function stripTaskMarkers(content: string): string {
+  const codeSegments = /(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|``[^`]*``|`[^`\n]*`)/g;
+  return content.split(codeSegments).map((part, index) => index % 2 === 1
+    ? part
+    : part.replace(/[ \t]*<!--\s*noa-task:[A-Za-z0-9_-]+\s*-->/g, '')).join('');
+}

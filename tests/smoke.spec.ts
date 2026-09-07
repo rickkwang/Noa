@@ -1088,3 +1088,221 @@ test('attachment previews recycle object URLs when switching notes', async ({ pa
     return Boolean(stats && stats.revoked.length > previous);
   }, revokedBefore);
 });
+
+async function auditStoredNotes(page: import('@playwright/test').Page) {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('redaction-diary-notes-db');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<Array<{ id: string; title: string; content: string; attachments?: Array<{ id: string; filename: string }> }>>((resolve, reject) => {
+        const request = db.transaction('notes').objectStore('notes').getAll();
+        request.onsuccess = () => resolve(request.result.filter(note => note && typeof note.id === 'string'));
+        request.onerror = () => reject(request.error);
+      });
+    } finally { db.close(); }
+
+  });
+}
+
+async function auditImport(page: import('@playwright/test').Page, attachments: unknown[] = [], overwrite = false) {
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data', exact: true }).click();
+  await page.locator('input[type="file"][accept=".json"]').setInputFiles({
+    name: 'audit-backup.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ workspaceName: 'Replacement', folders: [], notes: [{
+      id: 'audit-import', title: 'Imported audit', content: 'Restored body ![[second.png]]',
+      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      folder: '', tags: [], links: [], attachments,
+    }] })),
+  });
+  if (overwrite) await page.getByRole('radio', { name: /Overwrite/i }).check();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+}
+
+test('audit: empty workspace removes old notes, tabs and persisted state', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('- [ ] old workspace task');
+  await waitForMarkerPersisted(page, 'old workspace task');
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText(/Workspace switched/)).toBeVisible();
+  expect(await auditStoredNotes(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('button', { name: /Close .* tab/ })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => ({
+    recent: JSON.parse(localStorage.getItem('redaction-diary-recent-notes') ?? '[]'),
+    tabs: JSON.parse(localStorage.getItem('redaction-diary-open-tabs') ?? '[]'),
+    active: localStorage.getItem('redaction-last-active-note-id'),
+  }))).toEqual({ recent: [], tabs: [], active: null });
+
+  await page.reload();
+  expect(await auditStoredNotes(page)).toEqual([]);
+});
+
+test('audit: batch attachment upload retains every file across reload', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('attachment batch body');
+  await page.locator('input[type="file"][accept="image/*"]').setInputFiles(['first.png', 'second.png'].map(name => ({
+    name, mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'),
+  })));
+  await expect(page.getByRole('button', { name: 'first.png', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'second.png', exact: true })).toBeVisible();
+  await waitForAttachmentPersisted(page, 'first.png');
+  await waitForAttachmentPersisted(page, 'second.png');
+  await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.includes('attachment batch body'))?.attachments?.length).toBe(2);
+  await page.reload();
+  const storedBatch = await auditStoredNotes(page);
+  const note = storedBatch.find(n => n.content.includes('attachment batch body'));
+  expect(note?.attachments?.map(a => a.filename)).toEqual(['first.png', 'second.png']);
+});
+
+test('audit: attachment import failure rejects and rolls back the whole batch', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTitle('New note').click();
+  await waitForMarkerPersisted(page, 'Welcome to Noa');
+  const previous = await auditStoredNotes(page);
+  await page.evaluate(async () => {
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(value, key) {
+      if (this.name === 'attachments' && key === 'blob:audit-bad') {
+        (window as any).__attachmentFailureReached = true;
+        throw new DOMException('Injected storage full', 'QuotaExceededError');
+      }
+      return original.call(this, value, key!);
+    };
+  });
+  await auditImport(page, ['audit-good', 'audit-bad'].map(id => ({ id, noteId: 'audit-import',
+    filename: id === 'audit-good' ? 'first.png' : 'second.png', mimeType: 'image/png', size: 3,
+    createdAt: '2026-01-01T00:00:00Z', dataBase64: 'YWJj',
+  })));
+  await expect.poll(() => page.evaluate(() => (window as any).__attachmentFailureReached)).toBe(true);
+  await expect(page.getByText(/Imported 1 notes/)).toHaveCount(0);
+  await expect(page.getByText(/Local storage is currently unavailable/i)).toBeVisible();
+  expect(await auditStoredNotes(page)).toEqual(previous);
+  expect(await page.evaluate(async () => {
+    const modulePath = '/src/lib/storage.ts';
+    return (await import(modulePath)).storage.listAttachmentBlobIds();
+  })).not.toContain('audit-good');
+});
+
+test('audit: task markers stay in source but not preview or search snippets', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('- [ ] audit milk\n\nAfter task');
+  await page.getByRole('button', { name: 'Tasks', exact: true }).click();
+  await page.getByRole('button', { name: 'Complete task', exact: true }).click();
+  await waitForMarkerPersisted(page, 'noa-task:');
+  await ensurePreviewMode(page);
+  await expect(page.locator('.prose').last()).toContainText('audit milk');
+  await expect(page.locator('.prose').last()).not.toContainText('noa-task:');
+  await page.getByRole('button', { name: 'Search notes', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Search notes' }).fill('audit milk');
+  await expect(page.getByTestId('search-result').first()).toContainText('audit milk');
+  await expect(page.getByTestId('search-result').first()).not.toContainText('noa-task:');
+  await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.includes('audit milk'))?.content).toMatch(/\[x\].*<!-- noa-task:/);
+});
+
+test('audit: external vault edits are automatically read on focus and interval', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.clock.install();
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as any).__pickerSeed = { files: [{ path: 'External.md', content: '# External\nOriginal' }] };
+    const picker = window.showDirectoryPicker!;
+    window.showDirectoryPicker = async (...args) => {
+      const root = await picker(...args);
+      (window as any).__auditRoot = root;
+      return root;
+    };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect Folder', exact: true }).click();
+  await expectVaultSyncStatus(page, 'ready');
+  await page.evaluate(async () => {
+    const handle = await (window as any).__auditRoot.getFileHandle('External.md');
+    handle.content = '# External\nChanged outside';
+    window.dispatchEvent(new Event('focus'));
+  });
+  await expect.poll(async () => (await auditStoredNotes(page)).some(n => n.content.includes('Changed outside'))).toBe(true);
+  await expect(page.getByRole('group', { name: 'Vault Folder', exact: true })).toContainText('every 60 seconds while visible');
+  await page.evaluate(async () => {
+    const handle = await (window as any).__auditRoot.getFileHandle('External.md');
+    handle.content = '# External\nChanged on interval';
+  });
+  await page.clock.fastForward(60_000);
+  await expect.poll(async () => (await auditStoredNotes(page)).some(n => n.content.includes('Changed on interval'))).toBe(true);
+
+});
+
+test('audit: JSON overwrite replaces old data while skip preserves it', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('old workspace body');
+  await waitForMarkerPersisted(page, 'old workspace body');
+  await auditImport(page);
+  await expect(page.getByText(/Imported 1 notes/)).toBeVisible();
+  expect((await auditStoredNotes(page)).some(n => n.content.includes('old workspace body'))).toBe(true);
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await auditImport(page, [], true);
+  await expect(page.getByText(/Imported 1 notes/)).toBeVisible();
+  expect((await auditStoredNotes(page)).map(n => n.id)).toEqual(['audit-import']);
+  await page.reload();
+  await expect.poll(async () => (await auditStoredNotes(page)).map(n => n.id)).toEqual(['audit-import']);
+});
+
+test('audit: attachment completion preserves edits made while the write waits', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('before upload');
+  await waitForMarkerPersisted(page, 'before upload');
+  // Hold the real Blob write before IndexedDB, using the module URL imported by
+  // the currently served hook (Vite can append a hot-update timestamp).
+  await page.evaluate(async () => {
+    const source = await (await fetch('/src/hooks/useAttachments.ts')).text();
+    const modulePath = source.match(/from "([^"]*\/lib\/storage\.ts[^"]*)"/)![1];
+    const { storage } = await import(modulePath);
+    const original = storage.saveAttachmentBlob.bind(storage);
+    storage.saveAttachmentBlob = async (id: string, blob: Blob) => {
+      await new Promise<void>(resolve => { (window as any).__releaseUpload = resolve; });
+      await original(id, blob);
+    };
+  });
+  await page.locator('input[type="file"][accept="image/*"]').setInputFiles({ name: 'delayed.png', mimeType: 'image/png', buffer: Buffer.from('image') });
+  await expect.poll(() => page.evaluate(() => typeof (window as any).__releaseUpload)).toBe('function');
+  await page.locator('.cm-content').fill('edited during upload');
+  await page.evaluate(() => (window as any).__releaseUpload());
+  await waitForAttachmentPersisted(page, 'delayed.png');
+  await expect(page.locator('.cm-content')).toContainText('edited during upload');
+  await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.attachments?.some(a => a.filename === 'delayed.png'))?.content).toContain('edited during upload');
+});
+
+test('audit: metadata failure rolls back a merge import before attachment cleanup', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').fill('retained before metadata failure');
+  await expect.poll(async () => (await auditStoredNotes(page)).some(n => n.content.includes('retained before metadata failure'))).toBe(true);
+  const before = await auditStoredNotes(page);
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    let failed = false;
+    IDBObjectStore.prototype.put = function(value, key) {
+      if (!failed && this.name === 'folders' && key === 'all-folders') {
+        failed = true;
+        throw new DOMException('Injected metadata failure', 'QuotaExceededError');
+      }
+      return original.call(this, value, key!);
+    };
+  });
+  await auditImport(page, [{ id: 'metadata-image', noteId: 'audit-import', filename: 'second.png',
+    mimeType: 'image/png', size: 3, createdAt: '2026-01-01T00:00:00Z', dataBase64: 'YWJj' }]);
+  await expect(page.getByText(/Local storage is currently unavailable/i)).toBeVisible();
+  expect(await auditStoredNotes(page)).toEqual(before);
+});

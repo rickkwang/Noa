@@ -254,9 +254,9 @@ export default function App() {
     return createdId;
   }, [_handleCreateNote, blockVaultCacheWrite, folders, settings.templates?.userTemplates]);
 
-  const handleSaveNoteGuarded = useCallback((note: Parameters<typeof handleSaveNote>[0]) => {
+  const handleSaveNoteGuarded = useCallback((note: Parameters<typeof handleSaveNote>[0], update?: Parameters<typeof handleSaveNote>[1]) => {
     if (blockVaultCacheWrite(note.origin === 'vault')) return;
-    handleSaveNote(note);
+    handleSaveNote(note, update);
   }, [blockVaultCacheWrite, handleSaveNote]);
 
   const handleImportNoteGuarded = useCallback((...args: Parameters<typeof handleImportNote>) => {

@@ -105,6 +105,14 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     } catch { /* ignore */ }
   }, [isLoaded, notes]);
 
+  useEffect(() => {
+    if (!isLoaded) return;
+    const validIds = new Set(notes.map(note => note.id));
+    for (const id of openTabIdsRef.current) {
+      if (!validIds.has(id)) closeTabById(id);
+    }
+  }, [isLoaded, notes, closeTabById]);
+
   // Persist openTabIds to localStorage (debounced — tabs open/close rapidly)
   useEffect(() => {
     if (!isLoaded) return;

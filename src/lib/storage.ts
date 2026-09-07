@@ -115,6 +115,38 @@ export const storage = {
     return saveNotesBatch(notesStore, notes);
   },
 
+  async saveWorkspace(notes: Note[], folders?: Folder[], name?: string, checkUnchanged?: () => void, prune = false): Promise<void> {
+    const previousNotes = await this.getNotes() ?? [];
+    const previousFolders = await this.getFolders();
+    const previousName = await this.getWorkspaceName();
+    const nextIds = new Set(notes.map(note => note.id));
+    try {
+      await this.saveNotes(notes);
+      if (folders !== undefined) await this.saveFolders(folders);
+      if (name !== undefined) await this.saveWorkspaceName(name);
+      for (const note of previousNotes) {
+        if (prune && !nextIds.has(note.id)) await this.deleteNote(note.id);
+      }
+      checkUnchanged?.();
+    } catch (error) {
+      const previousIds = new Set(previousNotes.map(note => note.id));
+      const rollback = await Promise.allSettled([
+        ...previousNotes.map(note => this.saveNote(note)),
+        ...notes.filter(note => !previousIds.has(note.id)).map(note => this.deleteNote(note.id)),
+        previousFolders === null ? foldersStore.removeItem('all-folders') : this.saveFolders(previousFolders),
+        previousName === null ? workspaceStore.removeItem('workspace-name') : this.saveWorkspaceName(previousName),
+      ]);
+      if (rollback.some(result => result.status === 'rejected')) {
+        throw new Error('Workspace replacement failed and could not be fully rolled back. Restore from backup.');
+      }
+      throw error;
+    }
+  },
+
+  async clearHistory(): Promise<void> {
+    await historyStore.clear();
+  },
+
   // Migration: old 'all-notes' key → per-note keys
   // Safe: writes all new keys first, only removes the legacy key after
   // all writes succeed. If the process dies mid-flight the migration flag

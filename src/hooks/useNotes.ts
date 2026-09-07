@@ -275,7 +275,7 @@ export function useNotes(settings?: AppSettings) {
 
         if (savedWorkspace) setWorkspaceName(savedWorkspace);
 
-        const loadedFolders: Folder[] = savedFolders && savedFolders.length > 0
+        const loadedFolders: Folder[] = savedFolders !== null
           ? savedFolders
           : [
             { id: 'diary', name: 'diaries', source: 'noa' },
@@ -324,6 +324,9 @@ export function useNotes(settings?: AppSettings) {
             ? lastActiveId
             : sorted[0].id;
           setActiveNoteId(initialActiveId);
+        } else if (savedFolders !== null) {
+          setNotes([]);
+          setActiveNoteId('');
         } else {
           const welcomeNote: Note = {
           id: 'welcome',
@@ -472,10 +475,11 @@ Export regularly: use Settings → Data → Export Backup.`,
     });
   }, [debounceSave, syncLinkRefs, sameStringArray]);
 
-  const handleSaveNote = useCallback((note: Note) => {
+  const handleSaveNote = useCallback((note: Note, update?: (current: Note) => Note) => {
     setNotes(prev => {
-      const previous = prev.find((item) => item.id === note.id) ?? note;
-      const nextNote = markVaultDirty({ ...note, updatedAt: new Date().toISOString() }, previous);
+      const previous = prev.find((item) => item.id === note.id);
+      if (update && !previous) return prev;
+      const nextNote = markVaultDirty({ ...(update ? update(previous!) : note), updatedAt: new Date().toISOString() }, previous ?? note);
       const updated = prev.map(n => n.id === note.id ? nextNote : n);
       debounceSave(nextNote);
       return updated;
@@ -917,6 +921,21 @@ Export regularly: use Settings → Data → Export Backup.`,
     return { noteId: task.noteId, content: updatedContent };
   }, [debounceSave, syncLinkRefs]);
 
+  const onWorkspaceReplaced = useCallback(() => {
+    saveTimers.current.forEach(clearTimeout);
+    saveTimers.current.clear();
+    snapshotTimers.current.forEach(clearTimeout);
+    snapshotTimers.current.clear();
+    snapshotFirstScheduled.current.clear();
+    void storage.clearHistory().catch(() => setSaveError('Could not clear old note history.'));
+    setActiveNoteId('');
+    setRecentNoteIds([]);
+    saveRecentNoteIds([]);
+    for (const key of [STORAGE_KEYS.LAST_ACTIVE_NOTE, STORAGE_KEYS.OPEN_TABS, STORAGE_KEYS.DAILY_FOLDER_ID]) {
+      try { localStorage.removeItem(key); } catch { /* storage unavailable */ }
+    }
+  }, []);
+
   const { handleImportData, importBackupFromRecovery } = useNoteImport({
     notesRef,
     isImportingRef,
@@ -928,6 +947,7 @@ Export regularly: use Settings → Data → Export Backup.`,
     setLoadError,
     syncLinkRefs,
     flushAllPendingSaves,
+    onWorkspaceReplaced,
   });
 
   const retryInitialization = useCallback(() => {

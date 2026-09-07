@@ -74,6 +74,7 @@ interface UseDataTransferOptions {
   folders: Folder[];
   workspaceName: string;
   onImportData: (notes: ImportedNote[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean) => Promise<void>;
+  isVaultConnected?: boolean;
   onConnectFolder: () => Promise<void>;
   onDisconnectFolder: () => Promise<void>;
   notify: (message: DataTransferMessage) => void;
@@ -401,6 +402,7 @@ export function useDataTransfer({
   workspaceName,
   onImportData,
   onConnectFolder,
+  isVaultConnected = false,
   onDisconnectFolder,
   notify,
   requestConfirm,
@@ -415,6 +417,9 @@ export function useDataTransfer({
 
   // Wrap onImportData to track loading state
   const trackedImportData: typeof onImportData = useCallback(async (...args) => {
+    if (args[3] && isVaultConnected) {
+      throw new Error('Disconnect the vault folder before replacing this workspace.');
+    }
     setImportingData(true);
     setImportStatusText('Saving imported data...');
     try {
@@ -423,7 +428,7 @@ export function useDataTransfer({
       setImportingData(false);
       setImportStatusText(null);
     }
-  }, [onImportData]);
+  }, [onImportData, isVaultConnected]);
 
   const ensureExportIntegrity = useCallback(() => {
     const report = validateExportData(exportWorkspace.notes, exportWorkspace.folders);
@@ -668,6 +673,10 @@ export function useDataTransfer({
             onStrategyChange: (s) => { importStrategyRef.current = s; },
             onConfirm: async () => {
               const strategy = importStrategyRef.current;
+              if (strategy === 'overwrite' && isVaultConnected) {
+                notify({ type: 'error', text: 'Disconnect the vault folder before replacing this workspace.' });
+                return;
+              }
               const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, strategy);
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
               const importedCount = countImportedNotes(finalNotes, notes, strategy);
@@ -719,7 +728,7 @@ export function useDataTransfer({
       };
       reader.readAsText(file);
     },
-    [notes, folders, notify, trackedImportData, requestConfirm],
+    [notes, folders, notify, trackedImportData, requestConfirm, isVaultConnected],
   );
 
   const importVaultFolder = useCallback(async () => {
@@ -954,6 +963,10 @@ export function useDataTransfer({
   );
 
   const createNewWorkspace = useCallback(() => {
+      if (isVaultConnected) {
+        notify({ type: 'error', text: 'Disconnect the vault folder before replacing this workspace.' });
+        return;
+      }
       requestConfirm({
         message:
           `Create a new workspace? This will clear current data (${notes.length} note(s), ${folders.length} folder(s)). Export backup first.`,
@@ -977,7 +990,7 @@ export function useDataTransfer({
           }
         },
       });
-    }, [notes, folders, notify, trackedImportData, requestConfirm]);
+    }, [notes, folders, notify, trackedImportData, requestConfirm, isVaultConnected]);
 
   const connectFolder = useCallback(async () => {
     setConnectingFs(true);
