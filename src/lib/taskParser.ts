@@ -76,6 +76,27 @@ function parseTaskLine(line: string, index: number, occurrenceMap: Map<string, n
   };
 }
 
+function parseTaskLines(lines: string[]): ParsedTaskLine[] {
+  const tasks: ParsedTaskLine[] = [];
+  const occurrences = new Map<string, number>();
+  let fence = '';
+  lines.forEach((line, index) => {
+    const delimiter = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (delimiter && delimiter[1][0] === fence[0]
+        && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = '';
+      return;
+    }
+    if (delimiter && !(delimiter[1][0] === '`' && delimiter[2].includes('`'))) {
+      fence = delimiter[1];
+      return;
+    }
+    const task = parseTaskLine(line, index, occurrences);
+    if (task) tasks.push(task);
+  });
+  return tasks;
+}
+
 function toggleCheckbox(line: string, completed: boolean): string {
   return completed ? line.replace(/\[x\]/i, '[ ]') : line.replace('[ ]', '[x]');
 }
@@ -87,10 +108,7 @@ function withTaskId(line: string): string {
 
 export function toggleTaskInNoteContent(content: string, task: GlobalTask): { updatedContent: string; updated: boolean } {
   const lines = content.split('\n');
-  const occurrenceMap = new Map<string, number>();
-  const parsedLines = lines
-    .map((line, index) => parseTaskLine(line, index, occurrenceMap))
-    .filter((item): item is ParsedTaskLine => Boolean(item));
+  const parsedLines = parseTaskLines(lines);
 
   let target = task.taskId
     ? parsedLines.find((item) => item.taskId === task.taskId)
@@ -134,11 +152,8 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
 const parseTasksFromNote = (note: Note): GlobalTask[] => {
   const tasks: GlobalTask[] = [];
   const lines = note.content.split('\n');
-  const occurrenceMap = new Map<string, number>();
-
-  lines.forEach((line, index) => {
-    const parsed = parseTaskLine(line, index, occurrenceMap);
-    if (!parsed) return;
+  parseTaskLines(lines).forEach((parsed) => {
+    const { index, originalLine: line } = parsed;
     // Empty text (editor list auto-continuation leaves "- [ ] ", or the text
     // was only metadata tokens) — not a real task; don't surface it. The line
     // still passes through parseTaskLine so occurrence indices stay aligned

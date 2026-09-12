@@ -880,3 +880,45 @@ describe('useNotes importBackupFromRecovery', () => {
     expect(fromStorageError).not.toHaveBeenCalled();
   });
 });
+
+describe('flushAllPendingSaves failure recovery', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    });
+  });
+
+  it.each([false, true])('reports and preserves failed flushes even if snapshots also fail: %s', async snapshotFails => {
+    const storageMock = baseStorageMock();
+    storageMock.getNotes.mockResolvedValue([makeNote()]);
+    const harness = createEffectHarness();
+    vi.doMock('react', () => harness.react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+    const { useNotes } = await import('../../src/hooks/useNotes');
+    useNotes();
+    await vi.advanceTimersByTimeAsync(0);
+    harness.resetRender();
+    let api = useNotes();
+    storageMock.saveNote.mockClear();
+    storageMock.saveNote.mockRejectedValueOnce(new Error('disk full'));
+    if (snapshotFails) storageMock.saveSnapshot.mockRejectedValueOnce(new Error('snapshot full'));
+    api.handleUpdateNote('n1', 'edit before switching');
+    await api.flushAllPendingSaves();
+    harness.resetRender();
+    api = useNotes();
+    expect(api.saveError).toMatch(/Failed to save/);
+    expect(storageMock.saveSnapshot).toHaveBeenCalledWith(expect.objectContaining({ content: 'edit before switching' }));
+    expect(JSON.parse(localStorage.getItem('noa:rescued-import-edits')!)).toEqual([
+      expect.objectContaining({ id: 'n1', content: 'edit before switching' }),
+    ]);
+    // Explicit save retries the parked note even though its debounce was cancelled.
+    await api.flushAllPendingSaves();
+    expect(storageMock.saveNote).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(localStorage.getItem('noa:rescued-import-edits') ?? '[]')).toEqual([]);
+  });
+});

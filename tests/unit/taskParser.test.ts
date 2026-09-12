@@ -234,3 +234,29 @@ it.each([
   const source = `${code}\n\n- [x] milk <!-- noa-task:stable-id -->\n<!-- ordinary comment -->`;
   expect(stripTaskMarkers(source)).toBe(`${code}\n\n- [x] milk\n<!-- ordinary comment -->`);
 });
+
+describe('tasks outside code fences', () => {
+  it.each(['```markdown', '~~~markdown', '````markdown', '  ```markdown'])('ignores examples inside %s and preserves real task line numbers', opening => {
+    const fence = opening.trim().match(/^(`+|~+)/)![0];
+    const content = `${opening}\n- [ ] repeat\n${fence}\n\n- [ ] repeat\n  - [ ] nested real`;
+    const tasks = parseTasksFromNotes([note(content)]);
+    expect(tasks.map(t => [t.content, t.lineIndex, t.occurrenceIndex])).toEqual([
+      ['repeat', 4, 0], ['nested real', 5, 0],
+    ]);
+    const toggled = toggleTaskInNoteContent(content, tasks[0]);
+    expect(toggled.updatedContent.split('\n')[1]).toBe('- [ ] repeat');
+    expect(toggled.updatedContent.split('\n')[4]).toMatch(/^- \[x\] repeat <!-- noa-task:/);
+  });
+
+  it('keeps shorter and mismatched fences inside the code block', () => {
+    const content = '````md\n```\n~~~\n- [ ] example\n````\n- [ ] real';
+    expect(parseTasksFromNotes([note(content)]).map(t => t.content)).toEqual(['real']);
+  });
+
+  it('ignores an unclosed code block and refuses to toggle a task moved into it', () => {
+    const [task] = parseTasksFromNotes([note('- [ ] task <!-- noa-task:t1 -->')]);
+    const content = '```md\n- [ ] task <!-- noa-task:t1 -->';
+    expect(parseTasksFromNotes([note(content)])).toEqual([]);
+    expect(toggleTaskInNoteContent(content, task)).toEqual({ updated: false, updatedContent: content });
+  });
+});

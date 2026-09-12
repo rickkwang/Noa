@@ -1306,3 +1306,54 @@ test('audit: metadata failure rolls back a merge import before attachment cleanu
   await expect(page.getByText(/Local storage is currently unavailable/i)).toBeVisible();
   expect(await auditStoredNotes(page)).toEqual(before);
 });
+
+for (const recovery of ['reload', 'retry'] as const) {
+  test(`closing audit: failed tab-switch save is recoverable by ${recovery}`, async ({ page }) => {
+    await page.goto('/');
+    await createNewNote(page);
+    const marker = `flush-recovery-${recovery}`;
+    await page.evaluate(() => {
+      const win = window as any;
+      win.__rejectFlush = true;
+      win.__flushFailures = 0;
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function(value, key) {
+        if (win.__rejectFlush && String(value?.content).includes('flush-recovery-')
+          && (this.name === 'notes' || this.name === 'history')) {
+          win.__flushFailures++;
+          throw new DOMException('Injected storage full', 'QuotaExceededError');
+        }
+        return put.call(this, value, key!);
+      };
+    });
+    await page.locator('.cm-content').fill(marker);
+    await page.getByText('Welcome to Noa', { exact: true }).first().click();
+    await expect.poll(() => page.evaluate(() => (window as any).__flushFailures)).toBeGreaterThan(0);
+    await expect(page.getByText(/Failed to save note/)).toBeVisible();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('noa:rescued-import-edits') ?? '[]')))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ content: marker })]));
+    if (recovery === 'retry') {
+      await page.evaluate(() => { (window as any).__rejectFlush = false; });
+      await page.keyboard.press('ControlOrMeta+s');
+    } else {
+      // Reload removes the injected failure; bootstrap restores the rescue copy.
+      await page.reload();
+    }
+    await expect.poll(async () => (await auditStoredNotes(page)).some(n => n.content === marker)).toBe(true);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('noa:rescued-import-edits') ?? '[]'))).toEqual([]);
+    await page.reload();
+    await expect.poll(async () => (await auditStoredNotes(page)).some(n => n.content === marker)).toBe(true);
+  });
+}
+
+test('closing audit: code examples are excluded while real tasks still toggle', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  const code = '```markdown\n- [ ] same task\n```';
+  await page.locator('.cm-content').fill(`${code}\n\n- [ ] same task`);
+  await page.getByRole('button', { name: 'Tasks', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Complete task', exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Complete task', exact: true }).click();
+  await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.startsWith(code))?.content)
+    .toMatch(/```markdown\n- \[ \] same task\n```\n\n- \[x\] same task <!-- noa-task:/);
+});

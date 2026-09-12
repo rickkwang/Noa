@@ -7,7 +7,7 @@ import {
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { serializeNoteForVault } from '../lib/fileSystemStorage';
-import { clearRescuedNotes, mergeRescuedNotes, peekRescuedNotes, unparkRescuedNote } from '../lib/importRescue';
+import { clearRescuedNotes, mergeRescuedNotes, parkRescuedNotes, peekRescuedNotes, unparkRescuedNote } from '../lib/importRescue';
 import { sortNotesByRecent } from '../lib/noteSort';
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { isDescendantPath } from '../lib/pathUtils';
@@ -140,8 +140,11 @@ export function useNotes(settings?: AppSettings) {
       const latest = notesRef.current.find(n => n.id === noteId) ?? note;
       try {
         await storage.saveNote(latest);
+        if (notesRef.current.find(n => n.id === noteId) === latest) unparkRescuedNote(noteId);
         scheduleSnapshot(latest);
       } catch {
+        const current = notesRef.current.find(n => n.id === noteId);
+        if (current) parkRescuedNotes([current]);
         setSaveError('Failed to save note. Storage may be full.');
         // Snapshots live in a separate store; preserving the edit there keeps
         // it recoverable even when the primary note write keeps failing.
@@ -201,6 +204,7 @@ export function useNotes(settings?: AppSettings) {
   // Cleanup all pending save/snapshot timers on unmount
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       saveTimers.current.forEach(t => clearTimeout(t));
@@ -219,7 +223,10 @@ export function useNotes(settings?: AppSettings) {
     // awaiting. This prevents a late debounceSave between iterations from
     // inserting a newer timer whose note we'd then read from a possibly
     // stale-by-the-time-await-resolves notesRef.
-    const pending = Array.from(saveTimers.current.keys());
+    const pending = new Set([
+      ...saveTimers.current.keys(),
+      ...peekRescuedNotes().map(note => note.id),
+    ]);
     const notesToFlush: Note[] = [];
     for (const id of pending) {
       clearTimeout(saveTimers.current.get(id));
@@ -232,7 +239,22 @@ export function useNotes(settings?: AppSettings) {
       // already cleared timers and any further writes race with whatever
       // re-mounts after us.
       if (!isMountedRef.current) return;
-      try { await storage.saveNote(note); } catch { /* best effort on quit */ }
+      try {
+        await storage.saveNote(note);
+        if (notesRef.current.find(n => n.id === note.id) === note) unparkRescuedNote(note.id);
+      } catch {
+        const latest = notesRef.current.find(n => n.id === note.id);
+        if (!latest) continue;
+        const rescued = parkRescuedNotes([latest]);
+        setSaveError(rescued
+          ? 'Failed to save note. Edits were set aside for recovery; save again to retry.'
+          : 'Failed to save note. Copy your text before closing Noa.');
+        try {
+          await storage.saveSnapshot({ noteId: latest.id, title: latest.title,
+            content: latest.content, savedAt: new Date().toISOString() });
+          await storage.pruneSnapshots(latest.id);
+        } catch { /* rescue copy and error reporting already handled above */ }
+      }
     }
   }, []);
 
