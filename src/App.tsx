@@ -246,7 +246,7 @@ export default function App() {
     const targetFolder = folders.find((folder) => folder.id === folderId);
     if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return '';
     const createdId = _handleCreateNote(folderId, initialContent);
-    // New note will be saved by useNotes via storage.saveNote; FS sync on next update
+    // New notes remain Noa-owned; only vault-origin notes write through to disk.
     const userTemplates = settings.templates?.userTemplates ?? [];
     if (createdId && userTemplates.length > 0 && !initialContent) {
       waitingForTemplateRef.current = true;
@@ -561,8 +561,8 @@ export default function App() {
   useEffect(() => {
     const desktop = window.noaDesktop;
     if (!desktop?.lifecycle?.onBeforeQuit) return;
-    return desktop.lifecycle.onBeforeQuit(() => {
-      void flushAllPendingSaves();
+    return desktop.lifecycle.onBeforeQuit(async () => {
+      await flushAllPendingSaves(undefined, true);
     });
   }, [flushAllPendingSaves]);
   useEffect(() => {
@@ -973,71 +973,73 @@ export default function App() {
           </div>
         </div>
       </div>
-      {saveError && (
-        <div className="fixed bottom-4 right-4 z-50 border border-[#EC9A3C]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md noa-floating-panel">
-          <div className="text-xs font-bold text-[#A26721] uppercase tracking-wider mb-1">Warning · Save</div>
-          <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
-          <button
-            onClick={clearSaveError}
-            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 rounded"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      {externalUpdateNotice && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#CC7D5E]/60 bg-[#F9F9F7] px-4 py-2.5 max-w-sm font-redaction rounded-md noa-floating-panel">
-          <div className="text-xs font-bold text-[#CC7D5E] uppercase tracking-wider mb-0.5">Vault Sync</div>
-          <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
-        </div>
-      )}
-      {fsSyncError && fsHandle && (
-        <div className="fixed bottom-4 left-4 z-50 border border-[#2D2D2B]/40 bg-[#F9F9F7] px-4 py-3 max-w-sm font-redaction rounded-md">
-          <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Error · Vault Sync</div>
-          <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
-            {needsReauth
-              ? 'Vault access is paused. Reconnect the folder before editing; cached notes are read-only.'
-              : autoRetryExhausted
-                ? 'Vault sync failed after several attempts. Retry or disconnect before editing; cached notes are read-only.'
-                : fsSyncError}
-          </div>
-          <div className="flex gap-2">
+      <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-redaction">
+        {saveError && (
+          <div role="alert" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Action failed</div>
+            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
             <button
-              disabled={syncStatus === 'syncing'}
-              onClick={needsReauth ? reconnect : retry}
-              className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              onClick={clearSaveError}
+              className="text-xs font-bold border border-[#2D2D2B]/40 px-3 py-1.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 rounded"
             >
-              {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
+              Dismiss
             </button>
-            {permissionRevoked && (
+          </div>
+        )}
+        {externalUpdateNotice && (
+          <div role="status" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder updated</div>
+            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
+          </div>
+        )}
+        {fsSyncError && fsHandle && (
+          <div role="alert" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder sync failed</div>
+            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
+              {needsReauth
+                ? 'Vault access is paused. Reconnect the folder before editing; cached notes are read-only.'
+                : autoRetryExhausted
+                  ? 'Vault sync failed after several attempts. Retry or disconnect before editing; cached notes are read-only.'
+                  : fsSyncError}
+            </div>
+            <div className="flex gap-2">
               <button
                 disabled={syncStatus === 'syncing'}
-                onClick={() => { void handleDisconnectFolderAndDismissOnboarding().catch(() => {}); }}
-                className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/40 px-2 py-0.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                onClick={needsReauth ? reconnect : retry}
+                className="text-xs font-bold border border-[#2D2D2B]/40 px-3 py-1.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
-                Disconnect
+                {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
               </button>
-            )}
+              {permissionRevoked && (
+                <button
+                  disabled={syncStatus === 'syncing'}
+                  onClick={() => { void handleDisconnectFolderAndDismissOnboarding().catch(() => {}); }}
+                  className="text-xs font-bold border border-[#2D2D2B]/40 px-3 py-1.5 text-[#2D2D2B] hover:bg-[#EFEAE3] transition-colors active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      {showStorageNotice && !showVaultOnboarding && (
-        <div className="fixed bottom-20 right-4 z-50 border border-[#2D2D2B]/20 bg-[#EFEAE3] px-4 py-3 max-w-xs font-redaction noa-floating-panel">
-          <div className="text-xs font-bold text-[#2D2D2B] uppercase tracking-wider mb-1">Local Storage Only</div>
-          <div className="text-xs text-[#2D2D2B]/60 leading-relaxed mb-3">
-            {LOCAL_DATA_BOUNDARY_COPY}
+        )}
+        {showStorageNotice && !showVaultOnboarding && (
+          <div className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Local storage only</div>
+            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
+              {LOCAL_DATA_BOUNDARY_COPY}
+            </div>
+            <button
+              onClick={() => {
+                setShowStorageNotice(false);
+                try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
+              }}
+              className="text-xs font-bold border border-[#2D2D2B]/30 px-3 py-1.5 text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:border-[#2D2D2B]/60 transition-colors"
+            >
+              Got it
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setShowStorageNotice(false);
-              try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
-            }}
-            className="text-[10px] uppercase tracking-wider font-bold border border-[#2D2D2B]/30 px-2 py-0.5 text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:border-[#2D2D2B]/60 transition-colors"
-          >
-            Got it
-          </button>
-        </div>
-      )}
+        )}
+      </div>
       {commandPalette.isOpen && <CommandPaletteDialog palette={commandPalette} />}
       {isSettingsOpen && (
         <Suspense fallback={null}>

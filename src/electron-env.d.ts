@@ -17,7 +17,7 @@ declare global {
         setSidebarTranslucency: (enabled: boolean, fallbackColor: string, themeSource: 'system' | 'light' | 'dark') => Promise<boolean>;
       };
       lifecycle: {
-        onBeforeQuit: (listener: () => void) => () => void;
+        onBeforeQuit: (listener: () => Promise<void>) => () => void;
       };
     };
   }

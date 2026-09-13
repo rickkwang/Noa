@@ -40,7 +40,7 @@ describe('settings search index', () => {
     const anchors = SETTINGS_INDEX.map((entry) => settingAnchorId(entry.label));
     expect(new Set(anchors).size).toBe(anchors.length);
     expect(settingAnchorId('Backup & Import')).toBe('setting-backup-import');
-    expect(settingAnchorId('Use pointer cursors')).toBe('setting-use-pointer-cursors');
+    expect(settingAnchorId('Use Pointer Cursors')).toBe('setting-use-pointer-cursors');
   });
 
   it('matches on label, section, and keyword, and returns nothing when empty', () => {

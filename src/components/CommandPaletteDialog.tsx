@@ -1,12 +1,20 @@
 import type { useCommandPalette } from '../hooks/useCommandPalette';
+import { useDialogKeyboard } from '../hooks/useDialogKeyboard';
 
 type CommandPalette = ReturnType<typeof useCommandPalette>;
 
 export default function CommandPaletteDialog({ palette }: { palette: CommandPalette }) {
+  const { dialogRef, onKeyDown } = useDialogKeyboard(palette.close);
   return (
     <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={palette.close}>
       <div
-        className="w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+        className="outline-none w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">

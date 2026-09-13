@@ -469,6 +469,7 @@ export function serializeNoteForVault(note: Note): string {
 export interface WrittenNoteFile {
   path: string;
   lastModified: number;
+  size: number;
 }
 
 export async function writeNote(
@@ -545,7 +546,7 @@ export async function writeNote(
       }
       // Attachments may still be pending even when the text is unchanged.
       await syncAttachmentsForNote(rootHandle, note);
-      return { path: nextPath, lastModified: existingFile.lastModified };
+      return { path: nextPath, lastModified: existingFile.lastModified, size: existingFile.size };
     }
   } catch {
     // No file at the target path yet — write it below.
@@ -568,7 +569,7 @@ export async function writeNote(
   // Report the written file's path+mtime so the external-change poller can
   // tell self-writes apart from edits made by other apps.
   const writtenFile = await fileHandle.getFile();
-  return { path: nextPath, lastModified: writtenFile.lastModified };
+  return { path: nextPath, lastModified: writtenFile.lastModified, size: writtenFile.size };
 }
 
 export async function deleteNoteFile(
@@ -774,14 +775,13 @@ export async function removeEmptyFolderTree(
 }
 
 /**
- * Lightweight vault walk for external-change polling: collects path → mtime for
- * every markdown note file without reading any file contents. Attachments and
- * hidden/config directories are skipped — polling only watches note files.
+ * Collect directory paths and file mtime/size without reading file contents.
+ * Hidden/config entries stay excluded; attachment changes also trigger a scan.
  */
 export async function scanNoteFileStats(
   rootHandle: FileSystemDirectoryHandle
-): Promise<Map<string, number>> {
-  const stats = new Map<string, number>();
+): Promise<Map<string, string>> {
+  const stats = new Map<string, string>();
   const MAX_DIR_DEPTH = 50;
   async function walk(dirHandle: FileSystemDirectoryHandle, pathSegments: string[], depth: number): Promise<void> {
     if (depth > MAX_DIR_DEPTH) return;
@@ -790,11 +790,11 @@ export async function scanNoteFileStats(
       // content — same convention as Obsidian.
       if (name.startsWith('.')) continue;
       if (handle.kind === 'file') {
-        if (!name.endsWith('.md')) continue;
+        if (!name.endsWith('.md') && !pathSegments.includes('attachments')) continue;
         const file = await (handle as FileSystemFileHandle).getFile();
-        stats.set([...pathSegments, name].join('/'), file.lastModified);
+        stats.set([...pathSegments, name].join('/'), `${file.lastModified}:${file.size}`);
       } else if (handle.kind === 'directory') {
-        if (name === 'attachments') continue;
+        stats.set(`${[...pathSegments, name].join('/')}/`, '');
         await walk(handle as FileSystemDirectoryHandle, [...pathSegments, name], depth + 1);
       }
     }
@@ -805,12 +805,10 @@ export async function scanNoteFileStats(
 
 export interface ScanDirectoryOptions {
   /**
-   * Attachment blob ids already present in storage. Blobs are immutable per
-   * id, so their file payloads are skipped instead of being re-read and
-   * re-base64'd on every scan — without this, large vaults pay a full
-   * attachment read on every merge and can trip the import size guard.
+   * Skip cached payloads only when their disk metadata still matches.
    */
   existingAttachmentBlobIds?: ReadonlySet<string>;
+  existingAttachments?: ReadonlyMap<string, Attachment>;
 }
 
 export async function scanDirectory(
@@ -918,7 +916,12 @@ export async function scanDirectory(
               const attachmentId = uuidMatch[1];
               const originalFilename = uuidMatch[2];
               const file = await attachmentHandle.getFile();
-              const blobAlreadyStored = options?.existingAttachmentBlobIds?.has(attachmentId) ?? false;
+              const vaultPath = `attachments/${noteId}/${attachmentName}`;
+              const cached = options?.existingAttachments?.get(attachmentId);
+              const blobAlreadyStored = options?.existingAttachmentBlobIds?.has(attachmentId)
+                && cached?.vaultPath === vaultPath
+                && cached.size === file.size
+                && cached.createdAt === new Date(file.lastModified).toISOString();
               noteAttachments.push({
                 id: attachmentId,
                 noteId,
@@ -927,7 +930,7 @@ export async function scanDirectory(
                 size: file.size,
                 createdAt: new Date(file.lastModified).toISOString(),
                 ...(blobAlreadyStored ? {} : { dataBase64: await fileToBase64(file) }),
-                vaultPath: `attachments/${noteId}/${attachmentName}`,
+                vaultPath,
               });
             }
             if (noteAttachments.length > 0) attachmentsByNoteId.set(noteId, noteAttachments);

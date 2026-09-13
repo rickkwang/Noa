@@ -43,12 +43,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 
   // Appearance
   { tab: 'appearance', section: 'Theme', label: 'Base Theme', keywords: 'dark light system appearance colour color' },
-  { tab: 'appearance', section: 'Theme', label: 'Translucent sidebar', keywords: 'frosted glass blur material vibrancy' },
+  { tab: 'appearance', section: 'Theme', label: 'Translucent Sidebar', keywords: 'frosted glass blur material vibrancy' },
   { tab: 'appearance', section: 'Typography', label: 'Font Family', keywords: 'typeface serif mono' },
   { tab: 'appearance', section: 'Typography', label: 'Font Size', keywords: 'text bigger smaller zoom' },
   { tab: 'appearance', section: 'Reading', label: 'Line Height', keywords: 'leading spacing' },
   { tab: 'appearance', section: 'Reading', label: 'Max Width', keywords: 'measure column line length' },
-  { tab: 'appearance', section: 'Reading', label: 'Use pointer cursors', keywords: 'hand mouse hover' },
+  { tab: 'appearance', section: 'Reading', label: 'Use Pointer Cursors', keywords: 'hand mouse hover' },
 
   // Workspace
   { tab: 'workspace', section: 'Workspace', label: 'Workspace Name', keywords: 'rename label title' },
@@ -60,9 +60,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   { tab: 'data', section: 'Backup', label: 'Export JSON Backup', keywords: 'download save archive' },
   { tab: 'data', section: 'Backup', label: 'Export Vault', keywords: 'markdown files download zip' },
   { tab: 'data', section: 'Backup', label: 'Export as HTML', keywords: 'download share print' },
-  { tab: 'data', section: 'Automatic backup', label: 'Backup folder', keywords: 'daily snapshot directory disk' },
-  { tab: 'data', section: 'Automatic backup', label: 'Last automatic backup', keywords: 'when ran history' },
-  { tab: 'data', section: 'Automatic backup', label: 'Retention', keywords: 'keep delete old files how many' },
+  { tab: 'data', section: 'Automatic Backup', label: 'Backup Folder', keywords: 'daily snapshot directory disk' },
+  { tab: 'data', section: 'Automatic Backup', label: 'Last Automatic Backup', keywords: 'when ran history' },
+  { tab: 'data', section: 'Automatic Backup', label: 'Retention', keywords: 'keep delete old files how many' },
   { tab: 'data', section: 'Import', label: 'Import JSON', keywords: 'restore backup load' },
 
   // About

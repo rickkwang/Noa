@@ -7,6 +7,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.24] - 2026-09-13
+
+### Added
+- Calendar activity filters and task indicators.
+- First-launch guidance for connecting a Markdown folder.
+
+### Fixed
+- Wait for pending note edits, moves, and history restores before closing the desktop window; keep the window open when saving fails.
+- Preserve edits and attachments when imports or storage writes fail.
+- Detect empty-folder and attachment changes during vault polling, and refresh replaced attachment previews.
+- Improve panel alignment, dark-mode visibility, dialog keyboard navigation, and overlapping notifications.
+- Exclude Markdown code examples from task detection.
+
+### Changed
+- Clarify where local notes are stored and when automatic backups run.
+- Update dependencies with published security fixes.
+
 ## [1.0.23] - 2026-08-25
 
 ### Added

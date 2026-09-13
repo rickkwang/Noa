@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
-import { mergeScannedNotes, replayVaultPendingOperation, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
+import { checkExternalVaultChanges, mergeScannedNotes, replayVaultPendingOperation, resetVaultStatSnapshot, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
 import type { Note } from '../../src/types';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 
@@ -25,6 +25,39 @@ const makeNote = (overrides: Partial<Note> = {}): Note => ({
 // that fileSystemStorage actually touches.
 const asFsHandle = (root: ReturnType<typeof createMemRoot>) =>
   root as unknown as FileSystemDirectoryHandle;
+
+describe('external vault change detection', () => {
+  it('detects empty directory creation and removal', async () => {
+    const root = createMemRoot();
+    resetVaultStatSnapshot();
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(false);
+    await root.getDirectoryHandle('Empty', { create: true });
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(true);
+    resetVaultStatSnapshot();
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(false);
+    await root.removeEntry('Empty');
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(true);
+    resetVaultStatSnapshot();
+  });
+
+  it('detects changed note size with preserved mtime and attachment changes', async () => {
+    const root = createMemRoot();
+    const note = await root.getFileHandle('Note.md', { create: true });
+    note.getFile = async () => new File(['old'], 'Note.md', { lastModified: 1000 });
+    const attachments = await root.getDirectoryHandle('attachments', { create: true });
+    const image = await attachments.getFileHandle('image.png', { create: true });
+    image.getFile = async () => new File(['image'], 'image.png', { lastModified: 1000 });
+    resetVaultStatSnapshot();
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(false);
+    note.getFile = async () => new File(['longer note'], 'Note.md', { lastModified: 1000 });
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(true);
+    resetVaultStatSnapshot();
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(false);
+    image.getFile = async () => new File(['other'], 'image.png', { lastModified: 2000 });
+    expect(await checkExternalVaultChanges(asFsHandle(root))).toBe(true);
+    resetVaultStatSnapshot();
+  });
+});
 
 describe('vault identity', () => {
   it('persists one identity per vault root', async () => {
@@ -747,8 +780,11 @@ describe('manifest path consistency for folders with spaces', () => {
     ].join('\n'));
     await writeRawFile(root, `attachments/${noteId}/${attachmentId}-photo.png`, 'hello');
 
+    const initial = await scanDirectory(asFsHandle(root), []);
+    const cached = initial.notes[0].attachments![0];
     const { notes } = await scanDirectory(asFsHandle(root), [], {
       existingAttachmentBlobIds: new Set([attachmentId]),
+      existingAttachments: new Map([[attachmentId, cached]]),
     });
 
     const attachment = notes[0].attachments?.[0];
@@ -760,6 +796,12 @@ describe('manifest path consistency for folders with spaces', () => {
       size: 5,
       vaultPath: `attachments/${noteId}/${attachmentId}-photo.png`,
     });
+    await writeRawFile(root, `attachments/${noteId}/${attachmentId}-photo.png`, 'replacement image');
+    const refreshed = await scanDirectory(asFsHandle(root), [], {
+      existingAttachmentBlobIds: new Set([attachmentId]),
+      existingAttachments: new Map([[attachmentId, cached]]),
+    });
+    expect(refreshed.notes[0].attachments?.[0].dataBase64).toBe(Buffer.from('replacement image').toString('base64'));
   });
 
   it('scanDirectory returns the current vault folder tree without stale cached folders', async () => {

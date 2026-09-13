@@ -1,3 +1,4 @@
+import { useDialogKeyboard } from '../hooks/useDialogKeyboard';
 import type { Note } from '../types';
 
 interface NavigationConflictDialogProps {
@@ -17,9 +18,10 @@ export default function NavigationConflictDialog({
   onSelect,
   onClose,
 }: NavigationConflictDialogProps) {
+  const { dialogRef, onKeyDown } = useDialogKeyboard(onClose);
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3]">
           <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
           <div className="text-sm text-[#2D2D2B] mt-1">

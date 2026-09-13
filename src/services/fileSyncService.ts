@@ -250,8 +250,7 @@ export async function mergeScannedNotes(
   // that lands mid-scan keeps an older mtime in the snapshot and is re-detected
   // on the next poll instead of being silently missed.
   const stats = await withTimeout(scanNoteFileStats(handle), SCAN_TIMEOUT_MS, 'Vault stat scan');
-  // Blobs already in storage are immutable per id — telling the scan about them
-  // skips re-reading every attachment payload on every merge.
+  // Reuse cached attachment bytes only while their disk metadata is unchanged.
   let existingAttachmentBlobIds: ReadonlySet<string> | undefined;
   try {
     existingAttachmentBlobIds = new Set(await storage.listAttachmentBlobIds());
@@ -259,7 +258,10 @@ export async function mergeScannedNotes(
     existingAttachmentBlobIds = undefined; // storage unavailable → scan reads payloads as before
   }
   const { notes: scanned, folders: scannedFolders, newFolders, manifestIds } = await withTimeout(
-    scanDirectory(handle, folders, { existingAttachmentBlobIds }),
+    scanDirectory(handle, folders, {
+      existingAttachmentBlobIds,
+      existingAttachments: new Map(notes.flatMap(note => (note.attachments ?? []).map(attachment => [attachment.id, attachment] as const))),
+    }),
     SCAN_TIMEOUT_MS,
     'Vault directory scan'
   );
@@ -281,13 +283,13 @@ export async function mergeScannedNotes(
 // external changes.
 // ---------------------------------------------------------------------------
 
-let _vaultStatSnapshot: Map<string, number> | null = null;
+let _vaultStatSnapshot: Map<string, string> | null = null;
 
 export function resetVaultStatSnapshot(): void {
   _vaultStatSnapshot = null;
 }
 
-function statsDiffer(a: Map<string, number>, b: Map<string, number>): boolean {
+function statsDiffer(a: Map<string, string>, b: Map<string, string>): boolean {
   if (a.size !== b.size) return true;
   for (const [path, mtime] of a) {
     if (b.get(path) !== mtime) return true;
@@ -325,7 +327,7 @@ async function writeNoteTracked(
 ): Promise<Awaited<ReturnType<typeof writeNote>>> {
   const written = await writeNote(handle, note, folders, payloadOverride);
   if (written && _vaultStatSnapshot) {
-    _vaultStatSnapshot.set(written.path, written.lastModified);
+    _vaultStatSnapshot.set(written.path, `${written.lastModified}:${written.size}`);
   }
   return written;
 }

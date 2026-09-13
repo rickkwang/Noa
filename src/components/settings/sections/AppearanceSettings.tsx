@@ -21,7 +21,7 @@ const THEME_OPTIONS = [
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   return (
     <div className="space-y-8">
-      <SettingSection title="Theme" description="Change how Noa looks.">
+      <SettingSection title="Theme">
         <SettingItem label="Base Theme" description="Choose between light, dark, or sync with system.">
           <SegmentedControl
             ariaLabel="Base theme"
@@ -30,10 +30,10 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             onChange={(theme) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, theme } }))}
           />
         </SettingItem>
-        <SettingItem label="Translucent sidebar" description="Give the expanded desktop sidebar a softly frosted surface.">
+        <SettingItem label="Translucent Sidebar" description="Applies to the expanded sidebar in the desktop app.">
           <SettingsToggle
             checked={settings.appearance.translucentSidebar}
-            label="Translucent sidebar"
+            label="Translucent Sidebar"
             onChange={(checked) => updateSettings(s => ({
               ...s,
               appearance: { ...s.appearance, translucentSidebar: checked },
@@ -42,7 +42,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
       </SettingSection>
 
-      <SettingSection title="Typography" description="Customize fonts and text sizing.">
+      <SettingSection title="Typography">
         <SettingItem
           label="Font Family"
           description="Any font installed on this device. Keep System Default to follow your OS."
@@ -87,7 +87,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
       </SettingSection>
 
-      <SettingSection title="Reading" description="Line width, spacing, and other on-page reading settings.">
+      <SettingSection title="Reading">
         <SettingItem label="Max Width" description="Maximum width of the editor content area.">
           <div className="flex items-center space-x-3">
             <span className="text-xs text-[#2D2D2B]/70">{settings.appearance.maxWidth}px</span>
@@ -103,10 +103,10 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             />
           </div>
         </SettingItem>
-        <SettingItem label="Use pointer cursors" description="Change the cursor to a pointer when hovering over interactive elements.">
+        <SettingItem label="Use Pointer Cursors" description="Change the cursor to a pointer when hovering over interactive elements.">
           <SettingsToggle
             checked={settings.appearance.usePointerCursors}
-            label="Use pointer cursors"
+            label="Use Pointer Cursors"
             onChange={(checked) => updateSettings(s => ({
               ...s,
               appearance: { ...s.appearance, usePointerCursors: checked },

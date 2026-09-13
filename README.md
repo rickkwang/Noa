@@ -58,7 +58,7 @@ Noa 想做第三种：**足够简单，随时能写；足够结构，值得长�
 设置 → Data 提供两条备份路径：
 
 - **手动导出**：Data 页支持三种格式——完整 JSON 快照（含元数据和设置，用于备份）、Vault ZIP（Markdown + 附件，可迁移到其他工具）、静态 HTML（仅供阅读，不是备份）。该区域会显示备份健康度（7 天内为 healthy，14 天内为 warning，更久为 risk）。
-- **自动备份**：选择一个本地文件夹后，Noa 会每 24 小时自动写入一次快照，无需手动操作。
+- **自动备份**：选择本地文件夹后立即创建一次快照；之后每次启动时，若距离上次备份已满 24 小时，会自动备份。连续打开应用不会按天重复备份，可在设置中点击 Run backup now 手动执行。
 
 ## 快捷键
 
@@ -94,7 +94,7 @@ npm run desktop:pack:mac     # unsigned dmg+zip, arm64
 
 ## 桌面版（macOS）
 
-从 [Releases](https://github.com/rickkwang/Noa/releases) 下载最新 `.dmg`，安装后即用。应用启动后会自动检查更新。
+目前面向个人和朋友内测，仅支持 Apple Silicon Mac。从 [Releases](https://github.com/rickkwang/Noa/releases) 下载 `.dmg`。当前安装包未经开发者签名和公证，首次打开可能被 macOS 拦截；只从上述官方发布页获取安装包。应用启动后会自动检查更新，重要笔记请保留独立备份。
 
 ## 技术栈
 

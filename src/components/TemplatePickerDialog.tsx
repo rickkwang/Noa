@@ -1,3 +1,4 @@
+import { useDialogKeyboard } from '../hooks/useDialogKeyboard';
 import { applyTemplate, builtinTemplates, type Template } from '../lib/templates';
 
 interface TemplatePickerDialogProps {
@@ -15,16 +16,16 @@ export default function TemplatePickerDialog({
   onApply,
   onClose,
 }: TemplatePickerDialogProps) {
+  const { dialogRef, onKeyDown } = useDialogKeyboard(onClose);
   const allTemplates = [...builtinTemplates, ...userTemplates];
   return (
     <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
           <div>
-            <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Choose Template</div>
-            <div className="text-sm text-[#2D2D2B] mt-0.5">Pick a template for this note</div>
+            <div className="text-sm text-[#2D2D2B] font-bold">Choose template</div>
           </div>
-          <button onClick={onClose} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none active:opacity-70">×</button>
+          <button aria-label="Close template picker" onClick={onClose} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none active:opacity-70">×</button>
         </div>
         <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
           {allTemplates.map(t => (

@@ -18,6 +18,7 @@ export function useAttachments(
   const [objectUrls, setObjectUrls] = useState<Map<string, string>>(new Map());
   const [attachmentLoadError, setAttachmentLoadError] = useState<string | null>(null);
   const objectUrlsRef = useRef<Map<string, string>>(new Map());
+  const attachmentVersionsRef = useRef<Map<string, string>>(new Map());
 
   const revokeUrls = useCallback((urls: string[]) => {
     urls.forEach((url) => URL.revokeObjectURL(url));
@@ -27,9 +28,11 @@ export function useAttachments(
     objectUrlsRef.current = objectUrls;
   }, [objectUrls]);
 
-  const attachmentSignature = note?.attachments
-    ?.map((attachment) => `${attachment.id}:${attachment.filename}:${attachment.mimeType}:${attachment.size}`)
-    .join('|') ?? '';
+  const attachmentVersions = new Map((note?.attachments ?? []).map(attachment => [
+    attachment.id,
+    JSON.stringify([attachment.filename, attachment.mimeType, attachment.size, attachment.createdAt, attachment.vaultPath]),
+  ]));
+  const attachmentSignature = JSON.stringify([...attachmentVersions]);
 
   // Load blob URLs for all attachments of the current note.
   // Incremental: only revoke URLs whose attachment id is gone (or whose size/
@@ -39,25 +42,31 @@ export function useAttachments(
   // double-revoked by this effect.
   useEffect(() => {
     let cancelled = false;
-    const previousMap = objectUrlsRef.current;
+    const previousMap = new Map(objectUrlsRef.current);
     const nextAttachments = note?.attachments ?? [];
     const nextIds = new Set(nextAttachments.map((a) => a.id));
 
     // Revoke URLs that are no longer needed (attachment removed or note cleared).
     const toRevoke: string[] = [];
     previousMap.forEach((url, id) => {
-      if (!nextIds.has(id)) toRevoke.push(url);
+      const previousVersion = attachmentVersionsRef.current.get(id);
+      if (!nextIds.has(id) || (previousVersion !== undefined && previousVersion !== attachmentVersions.get(id))) {
+        toRevoke.push(url);
+        previousMap.delete(id);
+      }
     });
     if (toRevoke.length > 0) revokeUrls(toRevoke);
 
     if (nextAttachments.length === 0) {
-      if (previousMap.size > 0) setObjectUrls(new Map());
+      attachmentVersionsRef.current = attachmentVersions;
+      if (objectUrlsRef.current.size > 0) setObjectUrls(new Map());
       return;
     }
 
     // Only fetch blobs for ids we don't already have a URL for.
     const missing = nextAttachments.filter((a) => !previousMap.has(a.id));
     if (missing.length === 0) {
+      attachmentVersionsRef.current = attachmentVersions;
       // Prune the map in place if anything was revoked above.
       if (toRevoke.length > 0) {
         const next = new Map<string, string>();
@@ -82,9 +91,10 @@ export function useAttachments(
         revokeUrls(pendingUrls);
         return;
       }
+      attachmentVersionsRef.current = attachmentVersions;
       setObjectUrls((prev) => {
         const next = new Map<string, string>();
-        prev.forEach((url, id) => { if (nextIds.has(id)) next.set(id, url); });
+        prev.forEach((url, id) => { if (nextIds.has(id) && !toRevoke.includes(url)) next.set(id, url); });
         results.forEach((r) => {
           if (r.status === 'fulfilled') next.set(r.value.id, r.value.url);
         });

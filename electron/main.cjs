@@ -6,22 +6,20 @@ const { resolveNavigationPolicy } = require('./navigationGuard.cjs');
 const { isPermissionAllowed } = require('./permissionPolicy.cjs');
 const { resolveSidebarWindowAppearance } = require('./windowBackground.cjs');
 const { installSingleInstanceGuard } = require('./singleInstance.cjs');
+const { installCloseGuard } = require('./closeGuard.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
 // Only this directory is in-app navigable over file: — see navigationGuard.
 const BUNDLE_DIR = path.join(__dirname, '..', 'dist');
 
-// Grace periods before forcing app.quit(). Configurable via env so slow machines
-// can extend the window for in-flight saves/installs to drain. Values are
-// clamped to a safe floor to avoid a misconfiguration corrupting pending writes.
+// Brief delay after scheduling the installer; app.quit still waits for saves.
 function parseDelay(envVar, fallback) {
   const raw = Number(process.env[envVar]);
   if (!Number.isFinite(raw) || raw < 100) return fallback;
   return Math.min(raw, 10_000);
 }
 const MAC_POST_INSTALL_QUIT_DELAY_MS = parseDelay('NOA_MAC_INSTALL_QUIT_DELAY_MS', 400);
-const BEFORE_QUIT_FLUSH_DELAY_MS = parseDelay('NOA_BEFORE_QUIT_FLUSH_DELAY_MS', 800);
 
 let win;
 let updateState = { state: 'idle', message: '' };
@@ -193,6 +191,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  installCloseGuard({ app, win, ipcMain });
 
   // A frameless window removes macOS's reflective edge while retaining the
   // native controls and rounded corners. Keep the traffic lights explicitly
@@ -435,18 +435,4 @@ if (isPrimaryInstance) app.whenReady().then(() => {
 
 if (isPrimaryInstance) app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-let isQuitting = false;
-if (isPrimaryInstance) app.on('before-quit', (event) => {
-  if (isQuitting) return;
-  event.preventDefault();
-  isQuitting = true;
-  const activeWindow = BrowserWindow.getAllWindows()[0];
-  if (!activeWindow) {
-    app.quit();
-    return;
-  }
-  activeWindow.webContents.send('app:before-quit');
-  setTimeout(() => app.quit(), BEFORE_QUIT_FLUSH_DELAY_MS);
 });

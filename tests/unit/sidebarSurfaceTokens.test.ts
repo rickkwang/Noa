@@ -250,7 +250,7 @@ describe('sidebar surface tokens', () => {
     expect(css).not.toMatch(
       /html\[data-translucent-sidebar="enabled"\][^{]*\[data-sidebar-preview-shell="true"\][^{]*\{/,
     );
-    expect(appearanceSettings).toContain('label="Translucent sidebar"');
+    expect(appearanceSettings).toContain('label="Translucent Sidebar"');
     expect(appearanceSettings).toContain('checked={settings.appearance.translucentSidebar}');
     expect(appearanceSettings).toContain('translucentSidebar: checked');
   });

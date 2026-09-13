@@ -57,7 +57,7 @@ export default function AutoBackupSection({
 
   if (!isFileSystemSupported()) {
     return (
-      <SettingSection title="Automatic backup" description="Automatically save a snapshot to a folder on your disk every day.">
+      <SettingSection title="Automatic Backup" description="Automatically save a snapshot to a folder on your disk every day.">
         <div className="px-1 py-3 text-xs text-[#2D2D2B]/70">
           Not supported in this browser. Use Chrome or the Noa desktop app.
         </div>
@@ -68,8 +68,8 @@ export default function AutoBackupSection({
   const busy = status === 'running';
 
   return (
-    <SettingSection title="Automatic backup" description="Writes a full snapshot to a folder on your disk on first launch each day. Keeps the most recent backups and deletes the rest.">
-      <SettingItem label="Backup folder" description={directoryName ? `Connected to "${directoryName}"` : 'No folder chosen yet.'}>
+    <SettingSection title="Automatic Backup" description="Writes a full snapshot to a folder on your disk on first launch each day. Keeps the most recent backups and deletes the rest.">
+      <SettingItem label="Backup Folder" description={directoryName ? `Connected to "${directoryName}"` : 'No folder chosen yet.'}>
         <div className="flex gap-2">
           {hasBackupHandle ? (
             <>
@@ -102,7 +102,7 @@ export default function AutoBackupSection({
         </div>
       </SettingItem>
 
-      <SettingItem label="Last automatic backup" description={lastAutoBackupAt ? new Date(lastAutoBackupAt).toLocaleString() : 'No automatic backup has run yet.'}>
+      <SettingItem label="Last Automatic Backup" description={lastAutoBackupAt ? new Date(lastAutoBackupAt).toLocaleString() : 'No automatic backup has run yet.'}>
         <div className="text-xs font-bold text-[#2D2D2B]">
           {formatRelative(lastAutoBackupAt)}
         </div>

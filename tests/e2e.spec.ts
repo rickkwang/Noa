@@ -1577,7 +1577,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  const translucentSwitch = page.getByRole('switch', { name: 'Translucent sidebar' });
+  const translucentSwitch = page.getByRole('switch', { name: 'Translucent Sidebar' });
   await expect(translucentSwitch).not.toBeChecked();
   await translucentSwitch.click();
   await expect(translucentSwitch).toBeChecked();
@@ -1603,7 +1603,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await page.reload();
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  await expect(page.getByRole('switch', { name: 'Translucent sidebar' })).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Translucent Sidebar' })).toBeChecked();
   await page.getByRole('button', { name: 'Close settings' }).click();
 
   await page.getByTitle('Toggle Sidebar').click();

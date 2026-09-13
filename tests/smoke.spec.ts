@@ -381,27 +381,27 @@ test.describe('first launch', () => {
   test('offers vault setup, then local-storage guidance', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByText('Local-First Setup')).toBeVisible();
-    await expect(page.getByText('Choose a home for your notes')).toBeVisible();
+    await expect(page.getByText('Folder connection')).toBeVisible();
+    await expect(page.getByText('Connect a Markdown folder')).toBeVisible();
     // Suppressed while the dialog is up — the notices must not stack.
-    await expect(page.getByText('Local Storage Only')).toBeHidden();
+    await expect(page.getByText('Local storage only')).toBeHidden();
 
-    await page.getByRole('button', { name: 'Keep in browser' }).click();
-    await expect(page.getByText('Local-First Setup')).toBeHidden();
+    await page.getByRole('button', { name: 'Continue without a folder' }).click();
+    await expect(page.getByText('Folder connection')).toBeHidden();
 
-    await expect(page.getByText('Local Storage Only')).toBeVisible();
-    await expect(page.getByText(/browser\/device profile only|browser and desktop app data are separate/i)).toBeVisible();
+    await expect(page.getByText('Local storage only')).toBeVisible();
+    await expect(page.getByText(/Local notes and settings are separate in the browser and desktop app/)).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
-    await expect(page.getByText('Local Storage Only')).toBeHidden();
+    await expect(page.getByText('Local storage only')).toBeHidden();
   });
 
   test('vault choice is remembered across reloads', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Keep in browser' }).click();
-    await expect(page.getByText('Local-First Setup')).toBeHidden();
+    await page.getByRole('button', { name: 'Continue without a folder' }).click();
+    await expect(page.getByText('Folder connection')).toBeHidden();
 
     await page.reload();
-    await expect(page.getByText('Local-First Setup')).toBeHidden();
+    await expect(page.getByText('Folder connection')).toBeHidden();
   });
 });
 

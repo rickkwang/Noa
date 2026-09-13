@@ -51,7 +51,7 @@ export default function WorkspaceSection({
   };
 
   return (
-    <SettingSection title="Workspace" description="Manage your current working directory.">
+    <SettingSection title="Workspace" description="Manage local notes and your connected Markdown folder.">
       <SettingItem label="Workspace Name" description="The label used for this local workspace and exports.">
         <input
           type="text"
@@ -80,8 +80,8 @@ export default function WorkspaceSection({
       <SettingItem
         label="Import Vault Folder"
         description={isFileSystemSupported && !fsHandle
-          ? 'A one-time migration into Noa. To keep a live mirror on disk instead, connect a vault folder below.'
-          : 'A one-time migration into Noa.'}
+          ? 'Copy files into Noa once. To edit the original files instead, connect a vault folder below.'
+          : 'Copy files into Noa once; later edits do not change the original files.'}
       >
         <button
           onClick={() => {
@@ -122,10 +122,11 @@ export default function WorkspaceSection({
       {isFileSystemSupported && (
         <SettingItem
           label="Vault Folder"
-          description={fsHandle ? `Using ${fsHandle.name} as the Markdown vault (${syncStatusLabel})` : 'Connect a folder to make Markdown files on disk the source of truth.'}
+          description={fsHandle ? `Using ${fsHandle.name} as the Markdown vault (${syncStatusLabel})` : 'Open existing Markdown files and save edits back to their folder.'}
           stacked
         >
           <div className="space-y-3">
+            <p className="text-sm text-[#2D2D2B]">New notes created in Noa stay in this app, not in the connected folder.</p>
             {fsHandle ? (
               <div className="flex items-center gap-2">
                 <button
@@ -161,7 +162,7 @@ export default function WorkspaceSection({
             <p className="text-xs text-[#2D2D2B]/60 leading-relaxed">
               {fsLastSyncAt && `Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}. `}
               {fsHandle
-                ? 'Noa edits write to disk. External changes are checked when Noa regains focus and every 60 seconds while visible. Retry Sync refreshes now. New notes created in Noa stay local.'
+                ? 'Edits to notes from this folder write to disk. External changes are checked when Noa regains focus and every 60 seconds while visible. Retry Sync refreshes now.'
                 : `Sync status: ${syncStatusLabel}.`}
             </p>
             {fsSyncError && (

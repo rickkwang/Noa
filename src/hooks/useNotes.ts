@@ -81,6 +81,13 @@ export function useNotes(settings?: AppSettings) {
   // Deferred notes are flushed and rescued after the import transaction.
   const isImportingRef = useRef(false);
   const deferredSavesRef = useRef<Map<string, Note>>(new Map());
+  const activeNoteWrites = useRef(new Set<Promise<void>>());
+  const writeNote = useCallback(async (note: Note) => {
+    const write = storage.saveNote(note);
+    activeNoteWrites.current.add(write);
+    try { await write; }
+    finally { activeNoteWrites.current.delete(write); }
+  }, []);
 
   const scheduleSnapshot = useCallback((note: Note) => {
     const noteId = note.id;
@@ -139,7 +146,7 @@ export function useNotes(settings?: AppSettings) {
       // (e.g. during initial mount or in test environments).
       const latest = notesRef.current.find(n => n.id === noteId) ?? note;
       try {
-        await storage.saveNote(latest);
+        await writeNote(latest);
         if (notesRef.current.find(n => n.id === noteId) === latest) unparkRescuedNote(noteId);
         scheduleSnapshot(latest);
       } catch {
@@ -158,10 +165,10 @@ export function useNotes(settings?: AppSettings) {
           await storage.pruneSnapshots(latest.id);
         } catch { /* both stores failed; error already surfaced */ }
       }
-      saveTimers.current.delete(noteId);
+      if (saveTimers.current.get(noteId) === t) saveTimers.current.delete(noteId);
     }, 500);
     saveTimers.current.set(noteId, t);
-  }, [scheduleSnapshot]);
+  }, [scheduleSnapshot, writeNote]);
 
   const sameStringArray = useCallback((a: string[] = [], b: string[] = []) => {
     if (a.length !== b.length) return false;
@@ -218,7 +225,12 @@ export function useNotes(settings?: AppSettings) {
 
   const getIsImporting = useCallback(() => isImportingRef.current, []);
 
-  const flushAllPendingSaves = useCallback(async (_currentNotes?: Note[]) => {
+  const flushAllPendingSaves = useCallback(async (_currentNotes?: Note[], beforeClose = false) => {
+    if (beforeClose && isImportingRef.current) {
+      setSaveError('Import is still running. Wait for it to finish before closing Noa.');
+      throw new Error('Import is still running');
+    }
+    if (beforeClose) await Promise.allSettled([...activeNoteWrites.current]);
     // Snapshot pending ids AND their corresponding notes atomically, before
     // awaiting. This prevents a late debounceSave between iterations from
     // inserting a newer timer whose note we'd then read from a possibly
@@ -234,15 +246,19 @@ export function useNotes(settings?: AppSettings) {
       const note = notesRef.current.find(n => n.id === id);
       if (note) notesToFlush.push(note);
     }
+    // Unload cannot await IndexedDB; retain a synchronous recovery copy first.
+    parkRescuedNotes(notesToFlush);
+    let failed = false;
     for (const note of notesToFlush) {
       // If the component unmounted mid-flush, abort — the unmount cleanup
       // already cleared timers and any further writes race with whatever
       // re-mounts after us.
       if (!isMountedRef.current) return;
       try {
-        await storage.saveNote(note);
+        await writeNote(note);
         if (notesRef.current.find(n => n.id === note.id) === note) unparkRescuedNote(note.id);
       } catch {
+        failed = true;
         const latest = notesRef.current.find(n => n.id === note.id);
         if (!latest) continue;
         const rescued = parkRescuedNotes([latest]);
@@ -256,7 +272,13 @@ export function useNotes(settings?: AppSettings) {
         } catch { /* rescue copy and error reporting already handled above */ }
       }
     }
-  }, []);
+    if (beforeClose) {
+      if (failed) throw new Error('Notes could not be saved');
+      if (saveTimers.current.size > 0 || activeNoteWrites.current.size > 0 || peekRescuedNotes().some(note => notesRef.current.some(current => current.id === note.id))) {
+        await flushAllPendingSaves(undefined, true);
+      }
+    }
+  }, [writeNote]);
 
   const applyEmptyWorkspace = useCallback(async (name: string) => {
     const initialFolders = [
@@ -373,13 +395,13 @@ Your private, local-first writing space.
 - **Tasks** — Use \`- [ ] task\` syntax, track in right panel
 - **Tags** — Use \`#tag\` in notes, browse in sidebar
 - **Graph View** — Visualize note connections
-- **Vault Folder** — Connect a local folder to mirror notes as \`.md\` files
+- **Vault Folder** — Edit existing Markdown files in a connected folder
 - **Daily Notes** — One note per day, auto-dated
 
 ## Data Safety
 
-All notes are stored **locally in your browser** (IndexedDB).
-Export regularly: use Settings → Data → Export Backup.`,
+New notes stay **in this Noa app or browser profile**. Edits to notes from a connected folder are saved back to that folder. New notes are not added to it.
+Export regularly: use Settings → Data → Export JSON Backup.`,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           folder: 'diary',
@@ -614,14 +636,15 @@ Export regularly: use Settings → Data → Export Backup.`,
       }
       const nextNote = markVaultDirty({ ...target, folder: folderId, updatedAt: new Date().toISOString() }, target);
       const updated = prev.map((note) => (note.id === id ? nextNote : note));
-      void storage.saveNote(nextNote).catch(() => {
+      void writeNote(nextNote).catch(() => {
+        parkRescuedNotes([notesRef.current.find(note => note.id === id) ?? nextNote]);
         setSaveError('Failed to move note. Storage may be full.');
       });
       // Full recompute: moving a note between folders changes which
       // [[folder/Note]] path links resolve in OTHER notes, not just this one.
       return syncLinkRefs(updated, prev);
     });
-  }, [folders, syncLinkRefs]);
+  }, [folders, syncLinkRefs, writeNote]);
 
   const handleImportNote = useCallback(async (title: string, content: string, folderId: string = 'diary', attachmentFile?: File | null) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
@@ -1131,11 +1154,13 @@ Export regularly: use Settings → Data → Export Backup.`,
       return next;
     });
     try {
-      if (restoredNote) await storage.saveNote(restoredNote);
+      if (restoredNote) await writeNote(restoredNote);
     } catch {
+      const latest = notesRef.current.find(note => note.id === currentNote.id);
+      if (latest) parkRescuedNotes([latest]);
       setSaveError('Failed to save restored note. Storage may be full.');
     }
-  }, [syncLinkRefs]);
+  }, [syncLinkRefs, writeNote]);
 
   const markVaultNotesSynced = useCallback((expectations: VaultSyncedNoteExpectation[]) => {
     if (expectations.length === 0) return;

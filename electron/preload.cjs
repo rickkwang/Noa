@@ -22,8 +22,16 @@ contextBridge.exposeInMainWorld('noaDesktop', {
   },
   lifecycle: {
     onBeforeQuit: (listener) => {
-      const handler = () => listener();
+      const handler = async () => {
+        try {
+          await listener();
+          ipcRenderer.send('app:save-complete', true);
+        } catch {
+          ipcRenderer.send('app:save-complete', false);
+        }
+      };
       ipcRenderer.on('app:before-quit', handler);
+      ipcRenderer.send('app:save-ready');
       return () => ipcRenderer.removeListener('app:before-quit', handler);
     },
   },

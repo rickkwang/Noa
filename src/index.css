@@ -47,7 +47,7 @@ a:focus-visible,
 select:focus-visible,
 [role="button"]:focus-visible,
 [role="separator"]:focus-visible,
-[tabindex]:focus-visible:not(input):not(textarea) {
+[tabindex]:focus-visible:not(input):not(textarea):not([role="dialog"]) {
   outline: 2px solid var(--accent-color, #CC7D5E);
   outline-offset: 1px;
 }
