@@ -620,7 +620,7 @@ export default function Editor({
             className="absolute bottom-0 left-0 right-0 z-10 h-7 flex items-center justify-end px-4 text-xs font-redaction pointer-events-none"
             style={{
               color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
-              backgroundColor: isDark ? '#2D2D2B' : '#F9F9F7',
+              backgroundColor: isDark ? '#2D2D2B' : '#FCFCFB',
               borderTop: '1px solid var(--divider-subtle, #E6E2DA)',
             }}
           >

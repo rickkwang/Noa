@@ -106,7 +106,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
             onKeyDown={handleSearchKeyDown}
             placeholder="Search"
             aria-label="Search settings"
-            className="w-full rounded-[3px] border border-[var(--divider-subtle)] bg-[var(--bg-primary,#F9F9F7)] py-1.5 pl-9 pr-2.5 text-sm outline-none transition-colors placeholder:text-[var(--text-secondary)] focus:border-[var(--border-strong)] [&::-webkit-search-cancel-button]:appearance-none"
+            className="w-full rounded-[3px] border border-[var(--divider-subtle)] bg-[var(--bg-primary,#FCFCFB)] py-1.5 pl-9 pr-2.5 text-sm outline-none transition-colors placeholder:text-[var(--text-secondary)] focus:border-[var(--border-strong)] [&::-webkit-search-cancel-button]:appearance-none"
           />
         </div>
       </div>

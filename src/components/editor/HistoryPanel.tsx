@@ -61,7 +61,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
     }
   }, [selected, onRestore, noteId]);
 
-  const bg = isDark ? '#252523' : '#F9F9F7';
+  const bg = isDark ? '#252523' : '#FCFCFB';
   const border = 'var(--divider-subtle, #E6E2DA)';
   const textPrimary = isDark ? '#F9F9F7' : '#2D2D2B';
   const textMuted = isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.55)';

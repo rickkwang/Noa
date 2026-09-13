@@ -794,7 +794,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
             >
               {isChecked && (
                 <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#2D2D2B' : '#F9F9F7'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#2D2D2B' : '#FCFCFB'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </span>

@@ -78,7 +78,7 @@ body {
   /* Pre-hydration fallback only; ThemeInjector overrides this with the
      resolved user font once settings load. See --font-redaction above. */
   font-family: var(--font-redaction);
-  background-color: #F9F9F7;
+  background-color: #FCFCFB;
   color: #2D2D2B;
   margin: 0;
   padding: 0;
@@ -146,12 +146,12 @@ body {
    reserved for interaction, same as everywhere else in the app — it only
    mixes in on hover/focus, and pressed icons still turn solid accent. */
 .noa-graph-control-surface {
-  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #F9F9F7));
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #FCFCFB));
   transition: background-color 120ms ease;
 }
 .noa-graph-control-surface:hover,
 .noa-graph-control-surface:focus-within {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #F9F9F7)));
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #FCFCFB)));
 }
 .noa-graph-control-button:hover {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
@@ -368,7 +368,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: var(--bg-primary, #F9F9F7);
+  background-color: var(--bg-primary, #FCFCFB);
   transform: translateX(var(--noa-sidebar-material-width));
   transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }

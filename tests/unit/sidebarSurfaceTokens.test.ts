@@ -21,7 +21,7 @@ describe('sidebar surface tokens', () => {
     ]);
 
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#323230');");
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#F7F7F6');");
+    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#FBFBF9');");
     // Multi-layer falloff, not a single mid-blur cast: one blurless contact
     // line plus three negative-spread layers. The old single 6px/14px shadow
     // banded visibly against the dark canvas.
@@ -38,8 +38,8 @@ describe('sidebar surface tokens', () => {
     // The preview itself uses --bg-primary, but BrowserWindow is the backing
     // plane for the whole app and must continue matching --bg-primary during
     // startup and live resize.
-    expect(injector).toContain("isDark ? '#2D2D2B' : '#F9F9F7'");
-    expect(electronMain).toContain("backgroundColor: '#F9F9F7'");
+    expect(injector).toContain("isDark ? '#2D2D2B' : '#FCFCFB'");
+    expect(electronMain).toContain("backgroundColor: '#FCFCFB'");
   });
 
   it('routes the sidebar surface through the token, never a literal', async () => {
@@ -73,7 +73,7 @@ describe('sidebar surface tokens', () => {
       app.indexOf('!isFocusMode && <TopBar'),
     );
     expect(previewSurface).toContain("backgroundColor: isSidebarPreviewOpen");
-    expect(previewSurface).toContain("? 'var(--bg-primary, #F9F9F7)'");
+    expect(previewSurface).toContain("? 'var(--bg-primary, #FCFCFB)'");
     expect(previewSurface).toContain(": 'var(--bg-sidebar, #F4F4F2)'");
     expect(topBar).not.toContain('sidebar-titlebar-surface');
     expect(topBar).not.toContain('backgroundImage: `linear-gradient');
@@ -169,7 +169,7 @@ describe('sidebar surface tokens', () => {
 
     expect(injector).toContain("root.dataset.translucentSidebar = settings.appearance.translucentSidebar ? 'enabled' : 'disabled';");
     expect(injector).toMatch(
-      /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#F9F9F7',\s*settings\.appearance\.theme/,
+      /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#FCFCFB',\s*settings\.appearance\.theme/,
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
@@ -224,7 +224,7 @@ describe('sidebar surface tokens', () => {
       /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*background:\s*transparent\s*!important;[^}]*isolation:\s*isolate/,
     );
     expect(css).toMatch(
-      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #F9F9F7\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*transform 220ms/,
+      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #FCFCFB\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*transform 220ms/,
     );
     // The titlebar only goes transparent so that veil shows through. Giving it
     // a veil — and so a stacking context — of its own re-rasterized the

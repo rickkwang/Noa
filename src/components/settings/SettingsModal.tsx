@@ -400,7 +400,7 @@ export default function SettingsModal({
               // and dissolves below it, instead of sliding past it to the top.
               className="pointer-events-none absolute inset-x-0 top-0 h-[46px]"
               style={{
-                background: 'linear-gradient(to bottom, var(--bg-primary, #F9F9F7) 0 40px, transparent)',
+                background: 'linear-gradient(to bottom, var(--bg-primary, #FCFCFB) 0 40px, transparent)',
               }}
             />
           </div>

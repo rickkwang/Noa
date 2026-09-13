@@ -62,7 +62,7 @@ export function LinkRow({
   const subtitleColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
   // Dark mode used a flat #302F2C against the #2D2D2B panel — a 3/2/1 RGB
   // step, barely perceptible. Light mode's #EFEAE3/70 wasn't much better:
-  // blended against the #F9F9F7 panel it lands around #F1EEE9, a 7-14 RGB
+  // blended against the #FCFCFB panel it lands around #F1EEE9, a 7-14 RGB
   // step. Both now match the hover convention used everywhere else in the
   // app (noa-sidebar-hover-surface): full-strength #EAE5DE in light, a
   // translucent white wash in dark.

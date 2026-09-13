@@ -33,7 +33,7 @@ interface TopBarProps {
 export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, hasOpenNote, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
-  const titlebarBaseColor = isDark ? '#2D2D2B' : '#F9F9F7';
+  const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
   // Accent coral is the active-state color everywhere else, but on the dark
   // charcoal titlebar it reads as too loud right next to the traffic lights —
   // use a bright neutral instead so "open" still reads as brighter-than-idle.
@@ -72,7 +72,7 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
               width: isSearchOpen
                 ? (isMobile ? 'auto' : 'max(1.75rem, min(11rem, calc(100vw - 12rem)))')
                 : '1.75rem',
-              backgroundColor: isSearchOpen ? 'var(--bg-primary, #F9F9F7)' : 'transparent',
+              backgroundColor: isSearchOpen ? 'var(--bg-primary, #FCFCFB)' : 'transparent',
               borderColor: isSearchOpen ? 'var(--divider-subtle, #E6E2DA)' : 'transparent',
             }}
           >

@@ -182,7 +182,7 @@ function createWindow() {
     // 'window:set-sidebar-translucency'. macOS paints this color at the window
     // edges while renderer frames lag during live resize, so a mismatch with
     // the page background shows as bright ghosting along the frame.
-    backgroundColor: '#F9F9F7',
+    backgroundColor: '#FCFCFB',
     titleBarStyle: 'hidden',
     trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,
     webPreferences: {

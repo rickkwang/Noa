@@ -10,7 +10,7 @@
       root.style.setProperty('--bg-primary', '#2D2D2B');
       root.style.setProperty('--bg-secondary', '#252523');
     } else {
-      root.style.setProperty('--bg-primary', '#F9F9F7');
+      root.style.setProperty('--bg-primary', '#FCFCFB');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
     }
   } catch {

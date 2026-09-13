@@ -194,7 +194,7 @@ export function MentionDropdown({
             // `bg-[#F9F9F7]` is globally remapped to the dark surface colour,
             // while a literal `bg-[#2D2D2B]` is not remapped at all — so in dark
             // mode the two would collide and the selection would be invisible.
-            className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2B]/10 last:border-0 truncate ${active ? 'bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#F9F9F7)]' : 'hover:bg-[#EFEAE3]'}`}
+            className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2B]/10 last:border-0 truncate ${active ? 'bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)]' : 'hover:bg-[#EFEAE3]'}`}
             onMouseDown={(e) => {
               e.preventDefault();
               onInsert(item.title, mentionQuery.index);
@@ -203,7 +203,7 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[var(--bg-primary,#F9F9F7)]/70' : 'text-[#CC7D5E]'}`}>New</span>
+                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[var(--bg-primary,#FCFCFB)]/70' : 'text-[#CC7D5E]'}`}>New</span>
                 <span className="text-xs">{item.title}</span>
               </>
             ) : (

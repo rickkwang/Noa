@@ -92,7 +92,7 @@ export default function SegmentedControl<T extends string>({
       {pill && (
         <span
           aria-hidden="true"
-          className="noa-segmented-pill absolute top-0.5 bottom-0.5 left-0 rounded-[7px] bg-[var(--bg-primary,#F9F9F7)] shadow-[0_1px_2px_rgba(45,45,43,0.12)]"
+          className="noa-segmented-pill absolute top-0.5 bottom-0.5 left-0 rounded-[7px] bg-[var(--bg-primary,#FCFCFB)] shadow-[0_1px_2px_rgba(45,45,43,0.12)]"
           style={{ transform: `translateX(${pill.left}px)`, width: pill.width }}
         />
       )}

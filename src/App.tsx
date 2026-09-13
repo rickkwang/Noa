@@ -595,7 +595,7 @@ export default function App() {
     return (
       <>
       <ThemeInjector settings={settings} />
-      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #F9F9F7)' }}>
+      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #FCFCFB)' }}>
         <div className="h-12 border-b shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #EFEAE3)', borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
           <div className="h-3 w-44 bg-[#2D2D2B]/10 animate-pulse" />
         </div>
@@ -700,7 +700,7 @@ export default function App() {
               ? 'var(--noa-sidebar-width, 320px)'
               : '0px',
             backgroundColor: isSidebarPreviewOpen
-              ? 'var(--bg-primary, #F9F9F7)'
+              ? 'var(--bg-primary, #FCFCFB)'
               : 'var(--bg-sidebar, #F4F4F2)',
             opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
             transition: isSidebarPreviewOpen
@@ -1108,7 +1108,7 @@ export default function App() {
         // Token pair, not the literal one: `bg-[#2D2D2B]` is not remapped, so
         // in dark mode it lands on the identically-coloured app background and
         // the toast disappears.
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#F9F9F7)] text-xs px-3 py-1.5 font-redaction pointer-events-none">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] text-xs px-3 py-1.5 font-redaction pointer-events-none">
           A tab was closed to make room (max 20 tabs)
         </div>
       )}

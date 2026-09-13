@@ -181,7 +181,7 @@ export function exportNoteAsHtml(note: Note): void {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${safeTitle}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #2D2D2B; background: #F9F9F7; line-height: 1.7; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #2D2D2B; background: #FCFCFB; line-height: 1.7; }
     h1,h2,h3,h4,h5,h6 { font-weight: bold; margin-top: 1.5em; }
     pre { background: #EFEAE3; padding: 12px; border: 1px solid #2D2D2B; overflow-x: auto; }
     code { background: #EFEAE3; padding: 0 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; color: #CC7D5E; }

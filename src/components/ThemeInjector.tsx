@@ -17,7 +17,6 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.setAttribute('data-theme', 'dark');
       root.style.setProperty('--bg-primary', '#2D2D2B');
       root.style.setProperty('--bg-secondary', '#252523');
-      root.style.setProperty('--bg-tertiary', '#302F2C');
       // Sidebar uses a soft lift above the editor plane. The color keeps the
       // editor's red-blue spread at 2 (50/50/48 versus 45/45/43), so it reads
       // as depth rather than as a colour cast.
@@ -49,13 +48,13 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--control-shadow-ink', '#000000');
     } else {
       root.removeAttribute('data-theme');
-      root.style.setProperty('--bg-primary', '#F9F9F7');
+      root.style.setProperty('--bg-primary', '#FCFCFB');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
-      root.style.setProperty('--bg-tertiary', '#E5DCD2');
-      // Same neutral family as the editor plane, softened from 249/249/247 to
-      // 247/247/246. An earlier pass used a warmer paper tone and it read as
-      // the sidebar turning yellow rather than creating a quiet plane change.
-      root.style.setProperty('--bg-sidebar', '#F7F7F6');
+      // Same neutral family as the editor plane, nudged to 251/251/249 so the
+      // sidebar reads as a quieter plane change rather than a colour shift. An
+      // earlier pass used a warmer paper tone and it read as the sidebar turning
+      // yellow rather than creating a quiet plane change.
+      root.style.setProperty('--bg-sidebar', '#FBFBF9');
       root.style.setProperty('--sidebar-material-tint', '44%');
       // Light counterpart of the dark stack above, same four-layer geometry at
       // roughly the previous total weight — on a light floor the single-layer
@@ -86,7 +85,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     // disabled or the platform does not support native sidebar material.
     void window.noaDesktop?.appearance?.setSidebarTranslucency(
       settings.appearance.translucentSidebar,
-      isDark ? '#2D2D2B' : '#F9F9F7',
+      isDark ? '#2D2D2B' : '#FCFCFB',
       settings.appearance.theme,
     )
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
