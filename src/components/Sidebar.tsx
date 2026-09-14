@@ -388,7 +388,7 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
+      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pt-1.5 pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/90 hover:text-[#CC7D5E] transition-colors active:opacity-70"
@@ -403,7 +403,7 @@ export default function Sidebar({
           title="New folder"
           aria-label="New folder"
         >
-          <FolderPlus size={14} />
+          <FolderPlus size={16} />
         </button>
         <button
           onClick={() => {
@@ -414,7 +414,7 @@ export default function Sidebar({
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
         </button>
         <button
           onClick={() => onOpenDailyNote?.()}
@@ -422,7 +422,7 @@ export default function Sidebar({
           title="Open today's daily note"
           aria-label="Open today's daily note"
         >
-          <Calendar size={14} />
+          <Calendar size={13.5} />
         </button>
         <button
           onClick={() => {
@@ -434,7 +434,7 @@ export default function Sidebar({
           title="Open random note"
           aria-label="Open random note"
         >
-          <Dices size={14} />
+          <Dices size={14.5} />
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}

@@ -68,7 +68,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         />
       )}
       <button
-        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center shrink-0 transition-colors cursor-pointer"
+        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/70 hover:text-[#2D2D2B] font-redaction flex items-center shrink-0 transition-colors cursor-pointer"
         onClick={() => setIsTagsOpen(v => !v)}
         aria-expanded={isTagsOpen}
       >

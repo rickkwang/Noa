@@ -228,7 +228,7 @@ export default function CalendarPanel({
     <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
       {/* Section header */}
       <button
-        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/50 hover:text-[#2D2D2B]/70 font-redaction flex items-center transition-colors cursor-pointer"
+        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/70 hover:text-[#2D2D2B] font-redaction flex items-center transition-colors cursor-pointer"
         onClick={() => setIsOpen(v => !v)}
         aria-expanded={isOpen}
       >

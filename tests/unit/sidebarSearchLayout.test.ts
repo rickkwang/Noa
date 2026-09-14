@@ -28,7 +28,7 @@ describe('sidebar search result layout', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible"');
+    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center pt-1.5 pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible"');
     expect(source).not.toContain('className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden"');
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
