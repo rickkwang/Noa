@@ -16,6 +16,7 @@ import { X } from '@/src/lib/icons';
 
 interface SettingsModalProps {
   onClose: () => void;
+  initialTab?: SettingsTab;
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
   editorViewMode: 'edit' | 'preview' | 'split';
@@ -37,6 +38,7 @@ interface SettingsModalProps {
 
 export default function SettingsModal({
   onClose,
+  initialTab,
   settings,
   updateSettings,
   editorViewMode,
@@ -56,6 +58,9 @@ export default function SettingsModal({
   autoBackup,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    // An explicit target (e.g. the sidebar's "Manage vault…") wins over the
+    // remembered tab; the modal remounts per open, so this only steers that one.
+    if (initialTab) return initialTab;
     const saved = lsGet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB);
     // Tabs have been reorganized twice: Data first split into Workspace +
     // Backup & Import with App Update folded into About, then Editor split into
@@ -116,7 +121,14 @@ export default function SettingsModal({
     }
   };
 
+  // An injected tab is a one-shot destination, not a new preference: persisting
+  // it would make "Workspace settings…" the landing tab for every later open.
+  const skipTabPersist = useRef(Boolean(initialTab));
   useEffect(() => {
+    if (skipTabPersist.current) {
+      skipTabPersist.current = false;
+      return;
+    }
     lsSet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB, activeTab);
   }, [activeTab]);
 

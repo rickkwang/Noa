@@ -2,14 +2,13 @@ import React, { CSSProperties } from 'react';
 import { TITLEBAR_PANEL_TABS_SLOT_ID } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
 import { AppSettings } from '../types';
-import { Search, Settings, PanelLeft, PanelRight, X } from '@/src/lib/icons';
+import { Search, PanelLeft, PanelRight, X } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
 
 interface TopBarProps {
   settings: AppSettings;
-  onOpenSettings: () => void;
   onToggleSidebar: () => void;
   sidebarToggleRef: React.RefObject<HTMLButtonElement | null>;
   onSidebarPreviewEnter: () => void;
@@ -30,7 +29,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onOpenSettings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, hasOpenNote, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, hasOpenNote, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
@@ -161,14 +160,6 @@ export default function TopBar({ settings, onOpenSettings, onToggleSidebar, side
       {/* Right Section: Actions */}
       <div className="flex items-center justify-end pr-3">
         <div className="relative z-30 flex items-center gap-1" style={noDragRegion}>
-          <button
-            onClick={onOpenSettings}
-            className="p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
-            title="Settings"
-            aria-label="Open settings"
-          >
-            <Settings size={16} />
-          </button>
           <button
             onClick={onToggleRightPanel}
             className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}

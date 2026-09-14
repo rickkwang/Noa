@@ -10,6 +10,7 @@ import { GlobalTask, Note, Folder as FolderType } from '../types';
 import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
+import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
 import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
@@ -99,6 +100,7 @@ interface SidebarProps {
   onRenameFolder: (id: string, newName: string) => void;
   onDeleteFolder: (id: string) => void;
   onOpenDailyNote?: (targetDate?: string) => void;
+  vault: VaultFooterProps;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
   onSearchQuery?: (query: string) => void;
@@ -112,7 +114,7 @@ export default function Sidebar({
   notes, folders, tasks, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
-  onOpenDailyNote,
+  onOpenDailyNote, vault,
   onImportNote, onSearchTag, onSearchQuery, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
 
@@ -679,6 +681,8 @@ export default function Sidebar({
       />
 
       <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} />
+
+      <VaultFooter {...vault} />
     </div>
   );
 }

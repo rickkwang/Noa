@@ -10,6 +10,7 @@ import { EmptyStatePrompt } from './components/icons/EmptyStatePrompt';
 import { NoaWordmark } from './components/icons/NoaWordmark';
 import NavigationConflictDialog from './components/NavigationConflictDialog';
 import RecoveryDialog from './components/RecoveryDialog';
+import type { SettingsTab } from './components/settings/SettingsSidebar';
 import Sidebar from './components/Sidebar';
 import TemplatePickerDialog from './components/TemplatePickerDialog';
 import ThemeInjector from './components/ThemeInjector';
@@ -37,6 +38,7 @@ const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 export default function App() {
   useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -67,6 +69,9 @@ export default function App() {
     }
   });
   const [vaultOnboardingBusy, setVaultOnboardingBusy] = useState(false);
+  // Separate from vaultOnboardingBusy on purpose: that latch force-shows the
+  // onboarding dialog, which must not appear while the footer drives a switch.
+  const [vaultActionBusy, setVaultActionBusy] = useState(false);
   const [vaultOnboardingError, setVaultOnboardingError] = useState<string | null>(null);
   const [pendingTemplateNoteId, setPendingTemplateNoteId] = useState<string | null>(null);
   const waitingForTemplateRef = useRef(false);
@@ -171,6 +176,10 @@ export default function App() {
     onVaultNoteBaselineAdvanced: advanceVaultNoteBaseline,
   });
 
+  // lib/fileSystemStorage's isFileSystemSupported() is off-limits to App.tsx
+  // (dependency-cruiser), so probe the picker the same way the rest of the file does.
+  const canPickVaultFolder = typeof window.showDirectoryPicker === 'function';
+
   const dismissVaultOnboarding = useCallback(() => {
     setVaultOnboardingDismissed(true);
     try { localStorage.setItem(STORAGE_KEYS.VAULT_ONBOARDING_SEEN, 'true'); } catch { /* private mode */ }
@@ -194,7 +203,7 @@ export default function App() {
   // flash. The busy latch keeps the dialog mounted while connect() runs —
   // otherwise a picker cancel (syncStatus -> 'error') would unmount it.
   const showVaultOnboarding = (isDataReady
-    && typeof window.showDirectoryPicker === 'function'
+    && canPickVaultFolder
     && !fsHandle
     && !vaultHydrationPending
     && !vaultOnboardingDismissed) || vaultOnboardingBusy;
@@ -338,6 +347,53 @@ export default function App() {
     await handleDisconnectFolder();
     dismissVaultOnboarding();
   }, [handleDisconnectFolder, dismissVaultOnboarding]);
+
+  // Switching vaults is disconnect-then-connect, never a bare connect():
+  // connect() on top of a live vault skips handleDisconnectFolder's guards
+  // (unflushed vaultDirty edits, pending structural ops) and would merge the new
+  // folder into a cache still holding the old vault's notes. A cancelled picker
+  // therefore leaves no vault attached — the footer confirms before calling this.
+  const handleSwitchVaultFolder = useCallback(async () => {
+    setVaultActionBusy(true);
+    try {
+      await handleDisconnectFolder();
+      await connect();
+      dismissVaultOnboarding();
+    } catch (error) {
+      // Picker dismissal is the expected "changed my mind" path; the vault is
+      // already disconnected by then, which the confirmation step spelled out.
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      // A disconnect failure has already set this to the same message, so this
+      // is a no-op there and the real report for a connect() failure.
+      setSaveError(error instanceof Error && error.message ? error.message : 'Could not open that folder.');
+    } finally {
+      setVaultActionBusy(false);
+    }
+  }, [connect, dismissVaultOnboarding, handleDisconnectFolder, setSaveError]);
+
+  const handleConnectVaultFolder = useCallback(async () => {
+    setVaultActionBusy(true);
+    try {
+      await connect();
+      dismissVaultOnboarding();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setSaveError(error instanceof Error && error.message ? error.message : 'Could not open that folder.');
+    } finally {
+      setVaultActionBusy(false);
+    }
+  }, [connect, dismissVaultOnboarding, setSaveError]);
+
+  const handleDisconnectVaultFolder = useCallback(async () => {
+    setVaultActionBusy(true);
+    try {
+      await handleDisconnectFolderAndDismissOnboarding();
+    } catch {
+      // handleDisconnectFolder already surfaced this through setSaveError.
+    } finally {
+      setVaultActionBusy(false);
+    }
+  }, [handleDisconnectFolderAndDismissOnboarding]);
 
   const {
     isMobile,
@@ -713,7 +769,6 @@ export default function App() {
       )}
       {!isFocusMode && <TopBar
         settings={settings}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={toggleSidebar}
         sidebarToggleRef={sidebarToggleRef}
         onSidebarPreviewEnter={openSidebarPreview}
@@ -817,6 +872,34 @@ export default function App() {
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
                 onOpenDailyNote={handleOpenDailyNoteGuarded}
+                vault={{
+                  workspaceName,
+                  vaultName: fsHandle?.name ?? null,
+                  syncStatus,
+                  lastSyncAt: fsLastSyncAt,
+                  syncError: fsSyncError,
+                  busy: vaultActionBusy,
+                  // Undefined on browsers without the File System Access API, so
+                  // the menu drops the vault actions instead of offering dead ones.
+                  onConnectVault: canPickVaultFolder
+                    ? () => { void handleConnectVaultFolder(); }
+                    : undefined,
+                  onSwitchVault: canPickVaultFolder
+                    ? () => { void handleSwitchVaultFolder(); }
+                    : undefined,
+                  onDisconnectVault: canPickVaultFolder
+                    ? () => { void handleDisconnectVaultFolder(); }
+                    : undefined,
+                  onRetrySync: retry,
+                  onOpenWorkspaceSettings: () => {
+                    setSettingsInitialTab('workspace');
+                    setIsSettingsOpen(true);
+                  },
+                  onOpenSettings: () => {
+                    setSettingsInitialTab(undefined);
+                    setIsSettingsOpen(true);
+                  },
+                }}
                 onImportNote={handleImportNoteGuarded}
                 // Both of these replace the file tree with a result list, so
                 // the query behind it has to be on screen. Setting the query
@@ -1045,6 +1128,7 @@ export default function App() {
         <Suspense fallback={null}>
           <SettingsModal
             onClose={() => setIsSettingsOpen(false)}
+            initialTab={settingsInitialTab}
             settings={settings}
             updateSettings={updateSettings}
             editorViewMode={editorViewMode}
