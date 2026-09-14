@@ -453,7 +453,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
     width: expandedSidebarBox!.width,
     height: 720,
   });
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(247, 247, 246)');
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(251, 251, 249)');
   await expect.poll(() => expandedSurface.evaluate((surface) => (
     getComputedStyle(surface).backgroundColor
       === getComputedStyle(document.querySelector<HTMLElement>('.noa-sidebar-surface')!).backgroundColor
