@@ -80,7 +80,7 @@ describe('sidebar search result layout', () => {
     expect(styles).toContain('.noa-sidebar-scroll {\n  scrollbar-gutter: stable;\n}');
     expect(styles).toContain('.noa-sidebar-scroll > * {\n  margin-right: -6px;\n}');
     expect(styles).toContain('::-webkit-scrollbar {\n  width: 6px;');
-    expect(fileNode).toContain('py-1 px-2 mx-1.5 rounded-md');
+    expect(fileNode).toContain('py-1 px-2 mx-1.5 rounded-lg');
   });
 
   it('does not retain a right-edge scrollbar-gutter compensation on file rows', async () => {
