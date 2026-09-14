@@ -7,7 +7,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-## [1.0.24] - 2026-09-13
+## [1.0.24] - 2026-09-14
 
 ### Added
 - Calendar activity filters and task indicators.
@@ -21,6 +21,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Exclude Markdown code examples from task detection.
 
 ### Changed
+- Lighten the light-theme canvas and sidebar backgrounds.
 - Clarify where local notes are stored and when automatic backups run.
 - Update dependencies with published security fixes.
 
