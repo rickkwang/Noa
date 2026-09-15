@@ -697,6 +697,28 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
 .prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-bold); }
 
+/* ── Preview heading scale ──
+   Obsidian's ×1.125 modular scale (--h1-size…--h5-size and the per-level line
+   heights, pulled from Obsidian 1.5.8's obsidian.asar), duplicated in the
+   CodeMirror highlight styles in useCodeMirror.ts so a heading keeps the same
+   size when toggling between edit and preview. Typography's sm theme otherwise
+   ships 30/20/18px for h1–h3, no size at all for h4, and nothing for h5/h6. */
+.prose h1 { font-size: 1.802em; line-height: 1.2; }
+.prose h2 { font-size: 1.602em; line-height: 1.2; }
+.prose h3 { font-size: 1.424em; line-height: 1.3; }
+.prose h4 { font-size: 1.266em; line-height: 1.4; }
+.prose h5 { font-size: 1.125em; line-height: 1.5; }
+
+/* ── Preview heading spacing ──
+   Obsidian's model: 1rem on both sides of every heading (--p-spacing), so the
+   gap above and below a heading is identical; a heading that directly follows
+   body content gets a 2.5rem section break above it (--heading-spacing).
+   Typography instead gives h2/h3 ~2× more margin above than below, which read
+   as uneven spacing around every heading. rem (not em) keeps the gap constant
+   across heading sizes, matching Obsidian. */
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
+.prose :is(p, pre, table, ul, ol) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
+
 /* ── List markers (bullets / numbers) ──
    Typography's --tw-prose-bullets/counters default to grays that wash out on
    the light cream background; pin markers to the body text color per theme. */

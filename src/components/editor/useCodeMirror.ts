@@ -48,10 +48,15 @@ const darkTheme = EditorView.theme({
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'var(--font-weight-bold)' },
+  // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
+  // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
+  // heading keeps the same size when toggling between edit and preview.
+  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
   // Matches the preview's `.prose strong` weight in index.css, so the same
   // **text** keeps its thickness when switching between edit and preview.
   { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
@@ -83,10 +88,15 @@ const lightTheme = EditorView.theme({
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.5em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading2, fontSize: '1.3em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading3, fontSize: '1.15em', fontWeight: 'var(--font-weight-bold)' },
-  { tag: [tags.heading4, tags.heading5, tags.heading6], fontWeight: 'var(--font-weight-bold)' },
+  // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
+  // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
+  // heading keeps the same size when toggling between edit and preview.
+  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
   // Matches the preview's `.prose strong` weight in index.css, so the same
   // **text** keeps its thickness when switching between edit and preview.
   { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
