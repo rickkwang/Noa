@@ -999,6 +999,10 @@ export const PreviewPane = React.memo(function PreviewPane({
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
+          {/* Obsidian-style inline title: the file name heads the rendered
+              document, mirroring the editor's CodeMirror title widget. Kept
+              out of print output so PDF exports are unchanged. */}
+          {!printMode && <div className="noa-inline-title">{note.title || 'Untitled'}</div>}
           <NoteMarkdownBody
             note={note}
             allNotes={allNotes}

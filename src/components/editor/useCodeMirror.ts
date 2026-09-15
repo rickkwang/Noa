@@ -9,6 +9,7 @@ import { Note } from '../../types';
 import { codeDecorations } from './codeDecorations';
 import { buildMinimalReplaceChange } from './contentSync';
 import { hideTaskMarkers } from './hideTaskMarkers';
+import { inlineTitle, setInlineTitle } from './inlineTitle';
 
 // Annotation to mark external content syncs so history does not merge them
 // into the user's local undo stack.
@@ -262,6 +263,7 @@ export function useCodeMirror({
       keymap.of([...defaultKeymap]),
       cmPlaceholder('Start typing...'),
       readOnlyCompartmentRef.current.of(buildReadOnlyExtensions(readOnlyRef.current)),
+      inlineTitle(note?.title || 'Untitled'),
       EditorView.lineWrapping,
       isDark ? darkTheme : lightTheme,
       widthCompartmentRef.current.of(buildWidthTheme(maxWidthRef.current)),
@@ -349,6 +351,15 @@ export function useCodeMirror({
     // effect on unrelated note field changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.content]);
+
+  // Rename of the open note: refresh the inline-title widget without touching
+  // the editor. Editor rebuilds (note switch, theme toggle) get the title from
+  // the field's init instead, which is why this only watches note?.title.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: setInlineTitle.of(note?.title || 'Untitled') });
+  }, [note?.title]);
 
   const insertFormatting = useCallback((before: string, after: string = '') => {
     const view = editorViewRef.current;

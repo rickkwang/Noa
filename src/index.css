@@ -719,6 +719,22 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
 .prose :is(p, pre, table, ul, ol) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
 
+/* ── Inline title (file name) ──
+   Obsidian's inline title mirrors its h1 metrics (--inline-title-size /
+   -weight / -line-height → --h1-*) with a 0.5em margin below (values from
+   Obsidian 1.5.8's obsidian.asar). Edit mode renders it as a CodeMirror block
+   widget (.cm-noa-inline-title), the preview as the prose column's first child
+   (.noa-inline-title); colour is inherited in both, so no per-theme rules. The
+   element right after the title sheds its top margin so the title reads as the
+   head of the page instead of doubling the gap. */
+.cm-noa-inline-title, .noa-inline-title {
+  font-size: 1.802em;
+  line-height: 1.2;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 0.5em;
+}
+.prose .noa-inline-title + * { margin-top: 0; }
+
 /* ── List markers (bullets / numbers) ──
    Typography's --tw-prose-bullets/counters default to grays that wash out on
    the light cream background; pin markers to the body text color per theme. */
