@@ -755,6 +755,26 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .prose blockquote.noa-blockquote p::before,
 .prose blockquote.noa-blockquote p::after { content: none; }
 
+/* ── External link icon ──
+   Obsidian-style trailing arrow-out-of-box glyph on links that leave the app,
+   so they read differently from in-app note links. Masked rather than an <img>
+   so it takes a theme token colour; muted, like Obsidian's, so the link text
+   stays the accent-coloured part. Inline-block keeps the underline off it. The
+   viewBox is cropped to the stroke's outer edge (lucide's 24-unit grid pads 2
+   units per side), so the box bottom is the drawn bottom and vertical-align:
+   baseline sets the glyph on the text baseline. */
+.prose a.noa-external-link::after {
+  content: '';
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-left: 0.25em;
+  vertical-align: baseline;
+  background-color: var(--text-secondary, rgba(45,45,43,0.55));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='2 2 20 20' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='2 2 20 20' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
 /* ── List markers (bullets / numbers) ──
    Typography's --tw-prose-bullets/counters default to grays that wash out on
    the light cream background; pin markers to the body text color per theme. */

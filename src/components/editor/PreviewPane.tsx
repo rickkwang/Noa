@@ -573,7 +573,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           const noteId = href.replace('note-internal://id/', '').split('#')[0];
           return (
             <span
-              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer hover:underline font-bold`}
+              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer underline underline-offset-2 font-bold`}
               onClick={() => onNavigateToNoteById(noteId)}
             >
               {children}
@@ -585,7 +585,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           const noteTitle = decodeURIComponent(encoded);
           return (
             <span
-              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer hover:underline font-bold`}
+              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer underline underline-offset-2 font-bold`}
               onClick={() => onNavigateToNoteLegacy(noteTitle)}
             >
               {children}
@@ -601,7 +601,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           if (mdTargetId) {
             return (
               <span
-                className="text-[#CC7D5E] cursor-pointer hover:underline font-bold"
+                className="text-[#CC7D5E] cursor-pointer underline underline-offset-2 font-bold"
                 onClick={() => onNavigateToNoteById(mdTargetId)}
               >
                 {children}
@@ -641,7 +641,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           return <span {...props}>{children}</span>;
         }
         return (
-          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props} className="noa-external-link">
             {children}
           </a>
         );
@@ -992,7 +992,7 @@ export const PreviewPane = React.memo(function PreviewPane({
     >
       <div className="flex-1">
         <div
-          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:no-underline hover:prose-a:underline prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
+          className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:underline prose-a:underline-offset-2 prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
               ? 'text-[#F9F9F7] prose-headings:text-[#F9F9F7] prose-p:text-[#F9F9F7] prose-li:text-[#F9F9F7] prose-strong:text-[#F9F9F7] prose-em:text-[#F9F9F7] prose-blockquote:text-[#F9F9F7] prose-ol:text-[#F9F9F7] prose-ul:text-[#F9F9F7] prose-a:text-[#CC7D5E] prose-pre:text-[#F9F9F7] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F9F9F7] prose-hr:border-[var(--divider-subtle)] prose-th:text-[#F9F9F7] prose-td:text-[#F9F9F7]'
               : 'text-[#2D2D2B] prose-headings:text-[#2D2D2B] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2B] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2B]'
