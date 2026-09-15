@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { useResizeDrag } from './useResizeDrag';
 
-const SIDEBAR_DEFAULT_WIDTH = 320;
+const SIDEBAR_DEFAULT_WIDTH = 325;
 const RIGHT_PANEL_DEFAULT_WIDTH = 340;
 // Neither panel narrows below the width it opens at. A minimum under the
 // default is a width the user can reach once and never get back to by dragging,
