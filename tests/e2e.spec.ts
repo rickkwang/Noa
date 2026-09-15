@@ -1757,3 +1757,30 @@ test('settings keeps primary controls inside the dialog at narrower widths', asy
 
   expect(themeSelectBox.x + themeSelectBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
 });
+
+test('split preview remounts with the current note after every sidebar switch', async ({ page }) => {
+  // Regression: mounting the preview was gated on React's deferred value
+  // catching up with the freshly selected note. On a note switch that lane
+  // sometimes never committed, leaving the preview permanently blank until a
+  // full reload. The preview must reappear — showing the note just switched
+  // to — after every switch.
+  await page.goto('/');
+  // The first-launch storage notice overlays lower content until dismissed.
+  await page.getByRole('button', { name: 'Got it' }).click();
+  const preview = page.locator('.prose').last();
+  await expect(preview).toBeVisible();
+
+  const marker = `switch-${Date.now()}`;
+  await page.getByTitle('New note').click();
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(marker);
+  await expect(preview).toContainText(marker);
+
+  // Switch via the tab strip (same active-note transition the sidebar drives).
+  const tabs = page.locator('[data-tab-id]');
+  await tabs.filter({ hasText: 'Welcome to Noa' }).first().click();
+  await expect(preview).toContainText('Welcome to Noa');
+
+  await tabs.filter({ hasText: 'New Note' }).first().click();
+  await expect(preview).toContainText(marker);
+});

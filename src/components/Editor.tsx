@@ -150,12 +150,24 @@ export default function Editor({
   // Markdown preview parsing is expensive for large notes. Feeding the preview
   // deferred values keeps NoteMarkdownBody's memo props stable during the
   // urgent render, so keystrokes paint first and the re-parse runs in a
-  // follow-up low-priority render. When switching notes, don't show the
-  // previous deferred note under the current header/attachments; hold the
-  // preview empty for that frame instead of forcing an eager parse.
+  // follow-up low-priority render. The deferred value is only
+  // eventually-consistent, though: after a note switch React keeps serving the
+  // previous note, and that catch-up can be starved indefinitely (observed:
+  // preview stayed blank until a full reload). So mounting must not wait on
+  // it — gate on a one-frame lag of the note id instead, which still keeps the
+  // switch frame free of an eager parse, and read the fresh note while the
+  // deferred one lags. Same-id typing always takes the deferred branch.
   const deferredNote = useDeferredValue<Note | undefined>(note, undefined);
   const deferredAllNotes = useDeferredValue(allNotes);
-  const previewNote = deferredNote?.id === note?.id ? deferredNote : undefined;
+  const [settledNoteId, setSettledNoteId] = useState(note?.id);
+  useEffect(() => {
+    setSettledNoteId(note?.id);
+  }, [note?.id]);
+  const previewNote = note?.id !== settledNoteId
+    ? undefined
+    : deferredNote?.id === note?.id
+      ? deferredNote
+      : note;
 
   const { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
