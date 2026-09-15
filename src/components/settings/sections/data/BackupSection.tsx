@@ -4,6 +4,7 @@ import { formatExportTimestamp } from '../../../../lib/exportTimestamp';
 import { formatBytes } from '../../../../lib/formatBytes';
 import { BackupHealthStatus } from '../../../../types';
 import SettingItem from '../../SettingItem';
+import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
 import { Download, FileArchive, FileText, Loader2 } from '@/src/lib/icons';
 
@@ -43,7 +44,7 @@ export default function BackupSection({
       : 'text-[#A93B3B]';
   return (
     <SettingSection title="Backup" description="Export your data for safekeeping.">
-      <div className="px-1 pb-2 space-y-1 text-xs">
+      <div className="pb-2 space-y-1 text-xs">
         <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
         <div className="text-[#2D2D2B]/60">
           Last export: {formatExportTimestamp(lastExportAt)}
@@ -53,7 +54,7 @@ export default function BackupSection({
         <div className="text-[#2D2D2B]/60">Recommended cadence: export JSON or Vault at least every 7 days.</div>
       </div>
       {showStorage && storageEstimate && (
-        <div className="px-1 pb-2 space-y-1">
+        <div className="pb-2 space-y-1">
           <div className="text-xs text-[#2D2D2B]/60 font-redaction">
             Storage used: {formatBytes(storageEstimate.usageBytes)} / ~{formatBytes(storageEstimate.quotaBytes)} (estimated)
           </div>
@@ -74,35 +75,24 @@ export default function BackupSection({
         </div>
       )}
       <SettingItem label="Export JSON Backup" description="Complete backup including metadata and settings.">
-        <button
-          onClick={onExportJson}
-          className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90"
-        >
+        <SettingsButton variant="primary" onClick={onExportJson}>
           <Download size={14} />
           <span>Export JSON</span>
-        </button>
+        </SettingsButton>
       </SettingItem>
 
       <SettingItem label="Export Vault" description="Export a local vault-style ZIP with markdown notes, attachments, and a manifest.">
-        <button
-          onClick={onExportZip}
-          disabled={exportingZip}
-          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:bg-[#EFEAE3] disabled:opacity-60 disabled:pointer-events-none"
-        >
+        <SettingsButton onClick={onExportZip} disabled={exportingZip}>
           {exportingZip ? <Loader2 size={14} className="animate-spin" /> : <FileArchive size={14} />}
           <span>{exportingZip ? 'Exporting…' : 'Export Vault'}</span>
-        </button>
+        </SettingsButton>
       </SettingItem>
 
       <SettingItem label="Export as HTML" description="Export all notes as static HTML pages in a ZIP archive (not a backup).">
-        <button
-          onClick={onExportHtmlZip}
-          disabled={exportingHtml}
-          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:bg-[#EFEAE3] disabled:opacity-60 disabled:pointer-events-none"
-        >
+        <SettingsButton onClick={onExportHtmlZip} disabled={exportingHtml}>
           {exportingHtml ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
           <span>{exportingHtml ? 'Exporting…' : 'Export HTML'}</span>
-        </button>
+        </SettingsButton>
       </SettingItem>
     </SettingSection>
   );

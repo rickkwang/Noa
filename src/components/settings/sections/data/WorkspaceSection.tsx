@@ -1,5 +1,6 @@
 import React, { RefObject, useEffect, useState } from 'react';
 import SettingItem from '../../SettingItem';
+import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
 import { FolderOpen, HardDrive, Loader2, PlusSquare, Unlink } from '@/src/lib/icons';
 
@@ -83,7 +84,7 @@ export default function WorkspaceSection({
           ? 'Copy files into Noa once. To edit the original files instead, connect a vault folder below.'
           : 'Copy files into Noa once; later edits do not change the original files.'}
       >
-        <button
+        <SettingsButton
           onClick={() => {
             if (typeof window.showDirectoryPicker === 'function') {
               onImportVaultFolder();
@@ -91,21 +92,18 @@ export default function WorkspaceSection({
             }
             folderInputRef.current?.click();
           }}
-          className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
+          className="w-full md:w-auto"
         >
           <FolderOpen size={14} />
           <span>Import</span>
-        </button>
+        </SettingsButton>
       </SettingItem>
 
       <SettingItem label="New Workspace" description="Replace the current workspace with an empty one. Export a backup first.">
-        <button
-          onClick={onCreateWorkspace}
-          className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
-        >
+        <SettingsButton onClick={onCreateWorkspace} className="w-full md:w-auto">
           <PlusSquare size={14} />
           <span>Create</span>
-        </button>
+        </SettingsButton>
       </SettingItem>
 
       <input
@@ -129,34 +127,22 @@ export default function WorkspaceSection({
             <p className="text-sm text-[#2D2D2B]">New notes created in Noa stay in this app, not in the connected folder.</p>
             {fsHandle ? (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={onDisconnectFolder}
-                  disabled={connectingFs}
-                  className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
-                >
+                <SettingsButton onClick={onDisconnectFolder} disabled={connectingFs}>
                   <Unlink size={14} />
                   <span>Disconnect</span>
-                </button>
+                </SettingsButton>
                 {onRetryFsSync && (
-                  <button
-                    onClick={onRetryFsSync}
-                    disabled={connectingFs}
-                    className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
-                  >
+                  <SettingsButton variant="primary" onClick={onRetryFsSync} disabled={connectingFs}>
                     <HardDrive size={14} />
                     <span>Retry Sync</span>
-                  </button>
+                  </SettingsButton>
                 )}
               </div>
             ) : (
-              <button
-                onClick={onConnectFolder}
-                disabled={connectingFs}
-                className="flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
-              >
+              <SettingsButton variant="primary" onClick={onConnectFolder} disabled={connectingFs}>
                 {connectingFs ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
                 <span>{connectingFs ? 'Connecting…' : 'Connect Folder'}</span>
-              </button>
+              </SettingsButton>
             )}
 
             <p className="text-xs text-[#2D2D2B]/60 leading-relaxed">

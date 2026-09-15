@@ -1,5 +1,6 @@
 import React, { RefObject } from 'react';
 import SettingItem from '../../SettingItem';
+import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
 import { Upload } from '@/src/lib/icons';
 
@@ -12,13 +13,10 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
   return (
     <SettingSection title="Import" description="Restore data from backups or other apps.">
       <SettingItem label="Import JSON" description="Restore a complete Noa backup.">
-        <button
-          onClick={() => jsonInputRef.current?.click()}
-          className="flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm"
-        >
+        <SettingsButton onClick={() => jsonInputRef.current?.click()}>
           <Upload size={14} />
           <span>Import JSON</span>
-        </button>
+        </SettingsButton>
         <input
           type="file"
           accept=".json"
@@ -27,7 +25,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
           onChange={onImportJsonInput}
         />
       </SettingItem>
-      <p className="text-xs text-[#2D2D2B]/60 px-1">
+      <p className="text-xs text-[#2D2D2B]/60">
         To migrate an Obsidian vault or restore a Vault ZIP, use Import Vault Folder in the Workspace tab.
       </p>
     </SettingSection>

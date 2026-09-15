@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';
 import SettingItem from '../SettingItem';
+import SettingsButton from '../SettingsButton';
 import SettingSection from '../SettingSection';
 import { RefreshCcw, Download } from '@/src/lib/icons';
 
@@ -44,22 +45,14 @@ export default function AppUpdateSettings() {
           <span>{status.message || (status.state === 'idle' ? 'Click "Check Updates" to check.' : '')}</span>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => void checkForUpdates()}
-            disabled={!isDesktop || busy}
-            className="flex items-center justify-center gap-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
-          >
+          <SettingsButton onClick={() => void checkForUpdates()} disabled={!isDesktop || busy}>
             <RefreshCcw size={14} className={busy ? 'animate-spin' : ''} />
             <span>{busy ? 'Checking…' : 'Check Updates'}</span>
-          </button>
-          <button
-            onClick={() => void installUpdate()}
-            disabled={installDisabled}
-            className="flex items-center justify-center gap-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none active:opacity-70"
-          >
+          </SettingsButton>
+          <SettingsButton variant="primary" onClick={() => void installUpdate()} disabled={installDisabled}>
             <Download size={14} />
             <span>{installLabel}</span>
-          </button>
+          </SettingsButton>
         </div>
         </div>
       </SettingItem>

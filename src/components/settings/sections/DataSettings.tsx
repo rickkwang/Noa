@@ -7,6 +7,7 @@ import { getLastExportAt } from '../../../lib/exportTimestamp';
 import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
 import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
 import { Folder, Note, SyncStatus } from '../../../types';
+import SettingsButton from '../SettingsButton';
 import AutoBackupSection from './data/AutoBackupSection';
 import BackupSection from './data/BackupSection';
 import ImportSection from './data/ImportSection';
@@ -139,21 +140,19 @@ export default function DataSettings({
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-[#2D2D2B] flex-1">{confirmState.message}</p>
             <div className="flex gap-2 shrink-0">
-              <button
+              <SettingsButton
+                variant="primary"
+                size="compact"
                 onClick={() => {
                   confirmState.onConfirm(confirmState.inputValue);
                   setConfirmState(null);
                 }}
-                className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] rounded-[3px] hover:opacity-90"
               >
                 Confirm
-              </button>
-              <button
-                onClick={() => setConfirmState(null)}
-                className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] hover:bg-[#EFEAE3]"
-              >
+              </SettingsButton>
+              <SettingsButton size="compact" onClick={() => setConfirmState(null)}>
                 Cancel
-              </button>
+              </SettingsButton>
             </div>
           </div>
           {confirmState.conflictSummary && (

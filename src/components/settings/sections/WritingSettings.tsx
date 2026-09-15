@@ -3,6 +3,7 @@ import { formatDate } from '../../../lib/templates';
 import { AppSettings, UserTemplate } from '../../../types';
 import SegmentedControl from '../SegmentedControl';
 import SettingItem from '../SettingItem';
+import SettingsButton from '../SettingsButton';
 import SettingSection from '../SettingSection';
 import SettingsToggle from '../SettingsToggle';
 
@@ -154,26 +155,17 @@ export default function WritingSettings({ group, settings, updateSettings, edito
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => openEdit(t)}
-                  className="border border-[#2D2D2B] rounded-[3px] px-2 py-1 text-xs active:opacity-70"
-                >
+                <SettingsButton size="compact" onClick={() => openEdit(t)}>
                   Edit
-                </button>
+                </SettingsButton>
                 {confirmDeleteId === t.id ? (
-                  <button
-                    onClick={() => deleteTemplate(t.id)}
-                    className="border border-[#C24444] text-[#C24444] rounded-[3px] px-2 py-1 text-xs active:opacity-70"
-                  >
+                  <SettingsButton variant="danger" size="compact" onClick={() => deleteTemplate(t.id)}>
                     Confirm?
-                  </button>
+                  </SettingsButton>
                 ) : (
-                  <button
-                    onClick={() => setConfirmDeleteId(t.id)}
-                    className="border border-[#2D2D2B] rounded-[3px] px-2 py-1 text-xs active:opacity-70"
-                  >
+                  <SettingsButton size="compact" onClick={() => setConfirmDeleteId(t.id)}>
                     Delete
-                  </button>
+                  </SettingsButton>
                 )}
               </div>
             </div>
@@ -210,19 +202,12 @@ export default function WritingSettings({ group, settings, updateSettings, edito
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={cancelEdit}
-                  className="rounded-[3px] px-3 py-1.5 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[#EFEAE3] hover:text-[#2D2D2B] active:opacity-70"
-                >
+                <SettingsButton variant="ghost" size="compact" onClick={cancelEdit}>
                   Cancel
-                </button>
-                <button
-                  onClick={saveTemplate}
-                  disabled={!editName.trim()}
-                  className="border border-[#2D2D2B] bg-[#2D2D2B] text-[#F9F9F7] rounded-[3px] px-3 py-1.5 text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-40 disabled:pointer-events-none"
-                >
+                </SettingsButton>
+                <SettingsButton variant="primary" size="compact" onClick={saveTemplate} disabled={!editName.trim()}>
                   Save
-                </button>
+                </SettingsButton>
               </div>
             </div>
           )}

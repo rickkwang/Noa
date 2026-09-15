@@ -9,6 +9,7 @@ import AppearanceSettings from './sections/AppearanceSettings';
 import AppUpdateSettings from './sections/AppUpdateSettings';
 import DataSettings from './sections/DataSettings';
 import WritingSettings from './sections/WritingSettings';
+import SettingsButton, { settingsButtonClass } from './SettingsButton';
 import SettingSection from './SettingSection';
 import { SettingsIndexEntry, settingAnchorId } from './settingsIndex';
 import SettingsSidebar, { SETTINGS_TABS, SettingsTab } from './SettingsSidebar';
@@ -379,20 +380,19 @@ export default function SettingsModal({
                     href={feedbackUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center space-x-2 bg-[#CC7D5E] text-white px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:opacity-90"
+                    className={settingsButtonClass({ variant: 'primary' })}
                   >
                     <span>Send Feedback</span>
                   </a>
                 </SettingSection>
                 <SettingSection bare title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
+                    <SettingsButton
                       onClick={handleExportDiagnostics}
-                      className="inline-flex items-center justify-center space-x-2 bg-[#F9F9F7] text-[#2D2D2B] px-4 py-2 font-bold border border-[#2D2D2B] rounded-[3px] transition-colors text-sm hover:bg-[#EFEAE3]"
                       disabled={diagnosticsState === 'exporting'}
                     >
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
-                    </button>
+                    </SettingsButton>
                     {diagnosticsState === 'success' && (
                       <span className="text-xs text-[#2D2D2B]/70">Saved to your downloads.</span>
                     )}

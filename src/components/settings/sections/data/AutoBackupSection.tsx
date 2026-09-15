@@ -3,6 +3,7 @@ import { AutoBackupStatus } from '../../../../hooks/useAutoBackup';
 import { isFileSystemSupported } from '../../../../lib/backupDirectoryStorage';
 import { DEFAULT_KEEP_BACKUPS } from '../../../../services/autoBackupService';
 import SettingItem from '../../SettingItem';
+import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
 import { AlertTriangle, CheckCircle2, FolderOpen, Loader2 } from '@/src/lib/icons';
 
@@ -58,7 +59,7 @@ export default function AutoBackupSection({
   if (!isFileSystemSupported()) {
     return (
       <SettingSection title="Automatic Backup" description="Automatically save a snapshot to a folder on your disk every day.">
-        <div className="px-1 py-3 text-xs text-[#2D2D2B]/70">
+        <div className="py-3 text-xs text-[#2D2D2B]/70">
           Not supported in this browser. Use Chrome or the Noa desktop app.
         </div>
       </SettingSection>
@@ -73,31 +74,19 @@ export default function AutoBackupSection({
         <div className="flex gap-2">
           {hasBackupHandle ? (
             <>
-              <button
-                onClick={() => { void onRunNow(); }}
-                disabled={busy}
-                className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] rounded-[3px] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {busy ? <Loader2 size={12} className="animate-spin" /> : null}
+              <SettingsButton variant="primary" onClick={() => { void onRunNow(); }} disabled={busy}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : null}
                 Run backup now
-              </button>
-              <button
-                onClick={() => { void onDisconnect(); }}
-                disabled={busy}
-                className="px-3 py-1.5 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] hover:bg-[#EFEAE3] disabled:opacity-50"
-              >
+              </SettingsButton>
+              <SettingsButton onClick={() => { void onDisconnect(); }} disabled={busy}>
                 Disconnect
-              </button>
+              </SettingsButton>
             </>
           ) : (
-            <button
-              onClick={() => { void onChooseDirectory(); }}
-              disabled={busy}
-              className="px-3 py-1.5 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
-            >
-              <FolderOpen size={12} />
+            <SettingsButton variant="primary" onClick={() => { void onChooseDirectory(); }} disabled={busy}>
+              <FolderOpen size={14} />
               Choose folder
-            </button>
+            </SettingsButton>
           )}
         </div>
       </SettingItem>
@@ -117,12 +106,9 @@ export default function AutoBackupSection({
           <span className="text-[#74491A] flex items-center gap-1.5">
             <AlertTriangle size={12} /> Folder permission was revoked.
           </span>
-          <button
-            onClick={() => { void onReconnect(); }}
-            className="px-3 py-1 text-xs font-bold bg-[#EC9A3C] text-white border border-[#2D2D2B] rounded-[3px] hover:opacity-90"
-          >
+          <SettingsButton variant="warning" size="compact" onClick={() => { void onReconnect(); }}>
             Reconnect
-          </button>
+          </SettingsButton>
         </div>
       )}
 
