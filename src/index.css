@@ -735,6 +735,26 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .prose .noa-inline-title + * { margin-top: 0; }
 
+/* ── Blockquote ──
+   Obsidian-style: accent bar, upright text, no auto quote marks. Typography's
+   defaults (gray bar, italic, open/close-quote pseudo-content) made quotes look
+   like disabled text. Text is dimmed via colour, not opacity, so the bar keeps
+   full accent strength; the p selector outranks the dark theme's prose-p colour. */
+.prose blockquote.noa-blockquote {
+  border-left: 2px solid var(--accent-color, #CC7D5E);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  font-style: normal;
+  font-weight: inherit;
+  quotes: none;
+}
+.prose blockquote.noa-blockquote,
+.prose blockquote.noa-blockquote p { color: rgba(45, 45, 43, 0.75); }
+[data-theme="dark"] .prose blockquote.noa-blockquote,
+[data-theme="dark"] .prose blockquote.noa-blockquote p { color: rgba(249, 249, 247, 0.72); }
+.prose blockquote.noa-blockquote p::before,
+.prose blockquote.noa-blockquote p::after { content: none; }
+
 /* ── List markers (bullets / numbers) ──
    Typography's --tw-prose-bullets/counters default to grays that wash out on
    the light cream background; pin markers to the body text color per theme. */

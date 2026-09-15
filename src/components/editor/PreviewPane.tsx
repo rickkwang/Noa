@@ -373,7 +373,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
   if (!config) {
     return (
-      <blockquote style={{ borderLeft: `3px solid ${isDark ? '#F9F9F730' : '#2D2D2B40'}`, paddingLeft: '1rem', margin: '0.5rem 0', opacity: 0.8 }}>
+      <blockquote className="noa-blockquote">
         {children}
       </blockquote>
     );
