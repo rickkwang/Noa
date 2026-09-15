@@ -23,6 +23,8 @@ interface GraphViewProps {
   colorMode?: GraphColorMode;
   sizeByDegree?: boolean;
   showUnresolved?: boolean;
+  /** Offered from the empty state when filters leave no nodes. */
+  onClearFilters?: () => void;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -190,6 +192,7 @@ export default function GraphView({
   colorMode = 'tag',
   sizeByDegree = true,
   showUnresolved = true,
+  onClearFilters,
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -804,6 +807,25 @@ export default function GraphView({
         }}
       />
       </div>
+      {graphData.nodes.length === 0 && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center pointer-events-none">
+          {/* 70% is the contrast floor for 12px text on these surfaces. */}
+          <p className={`text-xs font-redaction ${isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'}`}>
+            {notes.length === 0 ? 'No notes to graph yet' : 'No notes match the current filters'}
+          </p>
+          {notes.length > 0 && onClearFilters && (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-[10px] font-redaction transition-colors hover:text-[#CC7D5E] ${
+                isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'
+              }`}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
       <nav aria-label="Graph nodes" className="absolute left-2 top-2 z-20">
         {graphData.nodes.filter((node) => !node.ghost).map((node) => {
           const degree = node.degree ?? 0;

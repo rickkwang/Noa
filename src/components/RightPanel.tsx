@@ -97,6 +97,20 @@ export default function RightPanel({
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<GraphColorMode>('tag');
   const [sizeByDegree, setSizeByDegree] = useState(true);
+  // Drawer settings that drop nodes. Colour and size are display-only, and
+  // search / hide-isolated already show their state in the header. Depth with
+  // no active note has no anchor, so GraphView ignores it.
+  const activeFilterCount =
+    (localDepth > 0 && activeNoteId ? 1 : 0) +
+    (tagFilter.length > 0 ? 1 : 0) +
+    (showUnresolved ? 0 : 1);
+  const clearGraphFilters = () => {
+    setGraphSearch('');
+    setHideIsolated(false);
+    setLocalDepth(0);
+    setTagFilter([]);
+    setShowUnresolved(true);
+  };
 
   // Topology-stable snapshot of notes/folders. The notes array gets a new
   // identity on every keystroke (debounce only guards storage writes, not
@@ -278,7 +292,7 @@ export default function RightPanel({
       )}
       {(hasVisitedGraph || activeTab === 'graph') && (
         <div
-          className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-2 gap-2"
+          className="flex-1 flex-col overflow-hidden px-2 pb-2 pt-2 gap-2 [container-type:size]"
           style={{ display: activeTab === 'graph' ? 'flex' : 'none' }}
         >
           {showGraphGuide && (
@@ -296,7 +310,12 @@ export default function RightPanel({
               </button>
             </div>
           )}
-          <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ height: '55%', minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
+          {/* No fixed height: the canvas below holds 55% of the column and the
+              card grows around the filter drawer, taking the room from
+              Connections. A fixed-height card made the drawer squeeze the
+              canvas instead, and GraphView deliberately doesn't re-fit on
+              resize, so the squeeze just cropped nodes out of view. */}
+          <div className={`noa-elevated-panel flex flex-col border rounded-md overflow-hidden ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`} style={{ minHeight: 180, borderColor: 'var(--divider-subtle, #E6E2DA)' }}>
             <GraphPanelHeader label="Graph View" isDark={isDark}>
               {/*
                 Matches the graph's own zoom-control cluster (bottom-right
@@ -329,12 +348,20 @@ export default function RightPanel({
                   style={{ color: hideIsolated ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Network size={10} />
                 </button>
-                <button onClick={() => setShowFilters(v => !v)} title={showFilters ? 'Hide filters' : 'Show filters'}
-                  aria-label="Filters"
+                {/* Colour says the drawer is open; the dot says filters are
+                    applied, which has to stay visible once the drawer closes.
+                    Unlike hide-isolated above, the name may carry the count:
+                    "Filters, 2 active, pressed" doesn't contradict itself. */}
+                <button onClick={() => setShowFilters(v => !v)}
+                  title={`${showFilters ? 'Hide filters' : 'Show filters'}${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
+                  aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : 'Filters'}
                   aria-pressed={showFilters}
-                  className="noa-graph-control-button flex items-center justify-center w-5 h-5 rounded transition-colors shrink-0"
+                  className="noa-graph-control-button relative flex items-center justify-center w-5 h-5 rounded transition-colors shrink-0"
                   style={{ color: showFilters ? '#CC7D5E' : (isDark ? 'rgba(249,249,247,0.6)' : 'rgba(45,45,43,0.6)') }}>
                   <Filter size={10} />
+                  {activeFilterCount > 0 && (
+                    <span aria-hidden="true" className="absolute top-px right-px w-1 h-1 rounded-full bg-[var(--accent-color,#CC7D5E)]" />
+                  )}
                 </button>
               </div>
             </GraphPanelHeader>
@@ -355,11 +382,16 @@ export default function RightPanel({
                 onTagFilterChange={setTagFilter}
               />
             )}
-            <div className="flex-1 overflow-hidden">
+            {/* 55cqh of the graph column (a size container) minus the 36px
+                header and the card's 2px border — the same canvas height the
+                old 55% card gave with the drawer closed. It only shrinks when
+                the column can't fit the card at its 180px floor. */}
+            <div className="min-h-0 overflow-hidden" style={{ flex: '0 1 calc(55cqh - 38px)' }}>
               <GraphView notes={topologyNotes} folders={topologyFolders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                 hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
-                colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved} />
+                colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved}
+                onClearFilters={clearGraphFilters} />
             </div>
           </div>
           <GraphInfoPanel
@@ -453,7 +485,7 @@ function GraphInfoPanel({
       <div className="p-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {[{ label: 'Notes', value: stats.totalNotes }, { label: 'Links', value: stats.totalLinks }, { label: 'Isolated', value: stats.isolated }].map(({ label, value }) => (
-            <div key={label} className="border border-[var(--divider-subtle)] rounded-[3px] p-2 text-center">
+            <div key={label} className="border border-[var(--divider-subtle)] rounded-md p-2 text-center">
               <div className={`text-sm font-bold leading-none tabular-nums ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}>{value}</div>
               <div className={`text-[10px] uppercase tracking-wider mt-1 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>{label}</div>
             </div>
