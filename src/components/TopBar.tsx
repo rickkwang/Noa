@@ -158,7 +158,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
       />
 
       {/* Right Section: Actions */}
-      <div className="flex items-center justify-end pr-3">
+      <div className="flex items-center justify-end pr-4">
         <div className="relative z-30 flex items-center gap-1" style={noDragRegion}>
           <button
             onClick={onToggleRightPanel}
