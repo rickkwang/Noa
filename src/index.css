@@ -811,21 +811,98 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10.animate-pulse,
 [data-theme="dark"] .animate-pulse.bg-\[\#2D2D2B\]\/10 { background-color: rgba(249,249,247,0.06) !important; }
 
-/* Root drop target. The outline is drawn on a pseudo-element inset by the same
-   6px the rows use, for two reasons: marking a target must not change the
-   layout of the rows inside it (a margin here would shove every row sideways
-   mid-drag), and a full-bleed ring would reach past the scrollport, where
-   content is painted-clipped — the right line simply would not render. */
-.noa-sidebar-drop-root {
+/* Sidebar drag & drop, following Obsidian's file-explorer model (app.css:
+   `.nav-folder.is-being-dragged-over`, `.tree-item-self.is-being-dragged`).
+   The whole vocabulary there is *washes*, never outlines: a drop target is
+   `hsla(accent, 0.1)` with no border and no shadow. The wash goes on the
+   *block* — folder title plus subtree — because dropping into a folder drops
+   into everything under it; the title row inside takes only the highlighted
+   colour, never a second wash, or the two stack into a band twice the
+   intended strength.
+
+   The wash is painted on a ::before, not on the block's own background. A
+   real margin would shove every row inside the block sideways the moment the
+   target lit up, so the box stays full-width and the inset happens in the
+   paint layer. The inset is the rows' own 6px: on the right, a full-bleed
+   wash reaches into the scrollbar strip the content is pulled back over,
+   where the scrollport clips the corner radius off; on the left, it sits the
+   wash off the parent's guide line, which ends only 1px before the block's
+   edge. The ::before paints at z-index:-1 so the wash lands behind the rows'
+   own backgrounds and text, and the block's z-index:0 keeps that -1 from
+   slipping behind the sidebar floor. Corners stay at the rows' `rounded-lg`
+   8px, so every corner in the tree — hover, active, target, source — agrees. */
+.noa-sidebar-drop-root,
+.noa-sidebar-drop-branch {
   position: relative;
+  z-index: 0;
 }
-.noa-sidebar-drop-root::after {
+.noa-sidebar-drop-root::before,
+.noa-sidebar-drop-branch::before {
   content: '';
   position: absolute;
   inset: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--accent-color, #CC7D5E) 50%, transparent);
-  border-radius: 6px;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 10%, transparent);
   pointer-events: none;
+  z-index: -1;
+}
+
+/* Title row of the targeted folder: colour only (Obsidian's
+   --nav-item-color-highlighted), which is what names the target inside the
+   block wash. */
+.noa-sidebar-drop-row {
+  color: var(--accent-color, #CC7D5E);
+}
+
+/* The source row stays put and is filled solid, rather than dimmed: the tree
+   never appears to lose an item, and the fill is the one place in the
+   interaction where the accent is at full strength. The fill stands alone —
+   FileNode drops the row's hover/active/selected surface class while dragging,
+   so no `!important` hover rule is there to contest it (they would win:
+   their specificity beats a bare class, and Chromium freezes :hover at
+   dragstart, so the wash would stick for the whole drag). The `!important`
+   stays only as a guard against future surface classes on the row. */
+.noa-sidebar-row-dragging {
+  background-color: var(--accent-color, #CC7D5E) !important;
+  color: #F9F9F7;
+  border-radius: 8px;
+}
+
+/* Hover is noise once a drag is in flight — Obsidian gates every hover rule in
+   the explorer behind `body:not(.is-grabbing)`. The :not() guards keep the
+   suppression from overriding the drag/drop fills above, which would otherwise
+   lose to this `!important` (it is needed only to beat the hover rules' own). */
+[data-grabbing='true'] .noa-sidebar-hover-surface:hover:not(.noa-sidebar-row-dragging):not(.noa-sidebar-drop-row),
+[data-grabbing='true'] .noa-sidebar-hover-surface-subtle:hover:not(.noa-sidebar-row-dragging):not(.noa-sidebar-drop-row) {
+  background-color: transparent !important;
+}
+[data-grabbing='true'] .noa-sidebar-row-actions {
+  opacity: 0 !important;
+}
+
+/* Drag chip (built in lib/treeDragImage.ts). Geometry is Obsidian's
+   `.drag-ghost`: 6px/8px padding, --radius-s, a 300px cap and `0 2px 8px`.
+   Like Obsidian's, it stays dark in both themes — it has to read over the
+   sidebar, the editor and whatever is behind the window — so dark mode only
+   adds the hairline that keeps it off a near-black surface. */
+.noa-tree-drag-ghost {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 300px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  background-color: rgba(30, 30, 29, 0.9);
+  color: #F9F9F7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+[data-theme='dark'] .noa-tree-drag-ghost {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(249, 249, 247, 0.14);
 }
 
 /* The sidebar scrollbar overlays the row gutter instead of taking layout from

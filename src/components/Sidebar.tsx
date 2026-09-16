@@ -53,6 +53,7 @@ interface SidebarNoteRowProps {
   depth: number;
   isActive: boolean;
   isSelected: boolean;
+  isDragging: boolean;
   onSelect: (id: string, multi: boolean) => void;
   onRequestDelete: (id: string, name: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -65,7 +66,7 @@ interface SidebarNoteRowProps {
 // untouched notes keep the same props and skip. All callbacks must stay
 // referentially stable or this memo is defeated.
 const SidebarNoteRow = React.memo(function SidebarNoteRow({
-  note, depth, isActive, isSelected,
+  note, depth, isActive, isSelected, isDragging,
   onSelect, onRequestDelete, onRename, onDragStart, onDragEnd,
 }: SidebarNoteRowProps) {
   const displayName = note.title || 'Untitled';
@@ -74,6 +75,7 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
       name={displayName + '.md'}
       isActive={isActive}
       isSelected={isSelected}
+      isDragging={isDragging}
       onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
       onDelete={() => onRequestDelete(note.id, displayName)}
       onRename={(newName: string) => onRename(note.id, newName)}
@@ -129,12 +131,12 @@ export default function Sidebar({
   const searchResults = useSidebarSearch({ notes, folders, searchQuery, caseSensitive, fuzzySearch });
 
   const {
+    draggingId,
     dropTargetId,
     handleDropItem,
     handleDragStartItem,
     handleDragEndItem,
-    handleDragOverTarget,
-    handleDragEnterTarget,
+    handleDragTarget,
   } = useSidebarDrag({ notes, folders, onMoveNote, onRenameFolder });
   const noaFolders = useMemo(() => folders.filter((folder) => !isVaultFolder(folder)), [folders, isVaultFolder]);
   const vaultFolders = useMemo(() => folders.filter(isVaultFolder), [folders, isVaultFolder]);
@@ -227,8 +229,20 @@ export default function Sidebar({
     return notes.filter((note) => targetIds.has(note.folder)).length;
   }, [folders, isVaultFolder, notes]);
 
+  // Both roots drop into the same (null) folder and are told apart by their
+  // ownership flag; the ids exist only to say which region lights up.
+  const markNoaRootTarget = useMemo(
+    () => handleDragTarget(NOA_ROOT_DROP_TARGET_ID, null),
+    [handleDragTarget]
+  );
+  const markVaultRootTarget = useMemo(
+    () => handleDragTarget(IMPORT_ROOT_DROP_TARGET_ID, null, true),
+    [handleDragTarget]
+  );
+
   const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, activeId: string, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
+    const markFolderTarget = handleDragTarget(node.folder.id, node.folder.id);
     const canCreateInsideFolder = !isVaultFolder(node.folder);
     const childNotes = notesByFolderId.get(node.folder.id) || [];
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
@@ -267,11 +281,12 @@ export default function Sidebar({
           onAddFolder={canCreateInsideFolder ? () => onCreateFolder(node.folder.id) : undefined}
           draggable
           onDragStart={handleDragStartItem('folder', node.folder.id, node.folder.name)}
-          onDragEnter={handleDragEnterTarget(node.folder.id)}
-          onDragOver={handleDragOverTarget(node.folder.id)}
+          onDragEnter={markFolderTarget}
+          onDragOver={markFolderTarget}
           onDrop={(e) => handleDropItem(node.folder.id, e)}
           onDragEnd={handleDragEndItem}
           isDropTarget={dropTargetId === node.folder.id}
+          isDragging={draggingId === node.folder.id}
           addButtonProps={{ 'data-template-btn': node.folder.id }}
           onRename={(newName: string) => renameFolderWithValidation(node.folder.id, parentPath ? `${parentPath}/${newName}` : newName)}
           onDelete={() => setPendingDelete({ type: 'folder', id: node.folder.id, name: node.folder.name })}
@@ -285,6 +300,7 @@ export default function Sidebar({
               depth={depth + 1}
               isActive={activeId === note.id}
               isSelected={selectedNoteIds.has(note.id)}
+              isDragging={draggingId === note.id}
               onSelect={handleNoteRowSelect}
               onRequestDelete={handleNoteRowDelete}
               onRename={onRenameNote}
@@ -297,7 +313,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragEnterTarget, handleDragOverTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, isVaultFolder, notesByFolderId, onCreateFolder, onCreateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
+  }, [draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, isVaultFolder, notesByFolderId, onCreateFolder, onCreateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -378,6 +394,9 @@ export default function Sidebar({
   return (
     <div 
       className="noa-sidebar-surface w-full h-full min-h-0 flex flex-col shrink-0 relative"
+      // Suppresses hover surfaces and row actions while a tree drag is in
+      // flight, the way Obsidian gates them behind `body:not(.is-grabbing)`.
+      data-grabbing={draggingId ? 'true' : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -608,10 +627,9 @@ export default function Sidebar({
               <div data-testid="sidebar-file-tree" className="pt-1">
                 {/* Noa-native notes — flat root, no wrapper node */}
                 <div
-                  onDragEnter={handleDragEnterTarget(NOA_ROOT_DROP_TARGET_ID)}
-                  onDragOver={handleDragOverTarget(NOA_ROOT_DROP_TARGET_ID)}
+                  onDragEnter={markNoaRootTarget}
+                  onDragOver={markNoaRootTarget}
                   onDrop={(e) => handleDropItem(null, e)}
-                  onDragLeave={() => handleDragEndItem()}
                   className={dropTargetId === NOA_ROOT_DROP_TARGET_ID ? 'noa-sidebar-drop-root' : ''}
                 >
                   {noaFolderTree.map((node) => renderFolderNode(node, 0, activeNoteId))}
@@ -622,6 +640,7 @@ export default function Sidebar({
                       depth={0}
                       isActive={activeNoteId === note.id}
                       isSelected={selectedNoteIds.has(note.id)}
+                      isDragging={draggingId === note.id}
                       onSelect={handleNoteRowSelect}
                       onRequestDelete={handleNoteRowDelete}
                       onRename={onRenameNote}
@@ -638,8 +657,8 @@ export default function Sidebar({
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction">Obsidian Vault</span>
                     </div>
                     <div
-                      onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}
-                      onDragOver={handleDragOverTarget(IMPORT_ROOT_DROP_TARGET_ID)}
+                      onDragEnter={markVaultRootTarget}
+                      onDragOver={markVaultRootTarget}
                       onDrop={(e) => handleDropItem(null, e, true)}
                       onDragEnd={handleDragEndItem}
                       className={dropTargetId === IMPORT_ROOT_DROP_TARGET_ID ? 'noa-sidebar-drop-root' : ''}
@@ -652,6 +671,7 @@ export default function Sidebar({
                           depth={0}
                           isActive={activeNoteId === note.id}
                           isSelected={selectedNoteIds.has(note.id)}
+                          isDragging={draggingId === note.id}
                           onSelect={handleNoteRowSelect}
                           onRequestDelete={handleNoteRowDelete}
                           onRename={onRenameNote}

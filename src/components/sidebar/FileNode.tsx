@@ -24,6 +24,7 @@ export interface FileNodeProps {
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   isDropTarget?: boolean;
+  isDragging?: boolean;
   addButtonProps?: Record<string, unknown>;
   depth?: number;
 }
@@ -73,7 +74,7 @@ export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText,
   onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver,
-  onDrop, onDragEnd, isDropTarget, addButtonProps = {}, depth = 0,
+  onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0,
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
@@ -121,23 +122,36 @@ export const FileNode = React.memo(({
   };
 
   return (
-    <div className="font-redaction mb-px noa-sidebar-tree-item">
+    /* Drop handlers sit on the whole node — title plus subtree — not on the
+       title row, so that dragging over a note inside a folder resolves to that
+       folder rather than bubbling past it to the root. Obsidian binds its drop
+       target to `.nav-folder` for exactly this reason; the handlers stop
+       propagation, so the innermost folder under the cursor wins. */
+    <div
+      className={`font-redaction mb-px noa-sidebar-tree-item ${isFolder && isDropTarget ? 'noa-sidebar-drop-branch' : ''}`}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <div
+        /* While dragging, the row carries ONLY the dragging fill: emitting the
+           hover class too would hand the background to the hover wash, whose
+           `!important` out-specifies the fill (and Chromium freezes :hover at
+           dragstart, so it never comes back mid-drag). */
         className={`flex items-center justify-between py-1 px-2 mx-1.5 rounded-lg cursor-pointer select-none group ${
-          isDropTarget
-            ? 'bg-[#CC7D5E]/16 ring-2 ring-inset ring-[#CC7D5E] shadow-[inset_0_0_0_1px_rgba(204,125,94,0.45)]'
-            : isSelected
-              ? 'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'
-              : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
+          isDragging
+            ? 'noa-sidebar-row-dragging'
+            : isDropTarget
+              ? 'noa-sidebar-drop-row'
+              : isSelected
+                ? 'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'
+                : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{
           paddingLeft: `${depth === 0 ? 7 : 2}px`,
         }}
         draggable={draggable}
         onDragStart={onDragStart}
-        onDragEnter={onDragEnter}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
         onDragEnd={onDragEnd}
         onClick={(e) => {
           if (isFolder) setIsOpen(!isOpen);
@@ -151,7 +165,9 @@ export const FileNode = React.memo(({
               <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
             </span>
           )}
-          <span className={`mr-2 shrink-0 ${isActive ? 'text-[#CC7D5E]' : ''}`}>
+          {/* The active accent would fight the solid fill the dragged row
+              carries, so the icon just inherits while dragging. */}
+          <span className={`mr-2 shrink-0 ${isActive && !isDragging ? 'text-[#CC7D5E]' : ''}`}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
               return <RenderIcon size={14} weight="regular" />;
@@ -176,7 +192,7 @@ export const FileNode = React.memo(({
             </span>
           )}
         </div>
-        <div className="flex items-center opacity-0 group-hover:opacity-100 shrink-0 ml-2">
+        <div className="noa-sidebar-row-actions flex items-center opacity-0 group-hover:opacity-100 shrink-0 ml-2">
           {isFolder && onAddFolder && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddFolder(); }}

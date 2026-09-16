@@ -59,7 +59,7 @@ describe('sidebar search result layout', () => {
       readFile(sidebarPath, 'utf8'),
       readFile(fileNodePath, 'utf8'),
     ]);
-    const vaultSection = source.slice(source.indexOf('Connected vault section'), source.indexOf('onDragEnter={handleDragEnterTarget(IMPORT_ROOT_DROP_TARGET_ID)}'));
+    const vaultSection = source.slice(source.indexOf('Connected vault section'), source.indexOf('onDragEnter={markVaultRootTarget}'));
 
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
@@ -109,7 +109,7 @@ describe('sidebar search result layout', () => {
   it('keeps a one-pixel breath between adjacent tree-row highlights', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toMatch(/<div className="font-redaction mb-px\b[^"]*">/);
+    expect(fileNode).toMatch(/className={?[`"]font-redaction mb-px\b/);
   });
 
   it('anchors each branch line to its folder icon center at every depth', async () => {
