@@ -779,6 +779,60 @@ test('expanded sidebar surface follows the resize edge without a trailing transi
   await page.mouse.up();
 });
 
+test('a resize drag moves the sidebar without rewriting the width variable on the root', async ({ page }) => {
+  await page.goto('/');
+
+  // Custom properties inherit, and Blink invalidates style for everything that
+  // could inherit a write — the whole document, whether or not anything reads
+  // the property. At a thousand notes (the sidebar list is not virtualised)
+  // that was ~8ms of style recalc on every dragged frame against a 16ms budget.
+  // So the drag writes resolved pixels onto the handful of boxes that consume
+  // the width instead, and hands the variable back on release. Asserting on the
+  // mechanism rather than the geometry: every visible edge lands in the same
+  // place either way, which is exactly why this regressed silently.
+  const readDragState = () => page.evaluate(() => ({
+    root: document.documentElement.style.getPropertyValue('--noa-sidebar-width'),
+    sidebarInline: document.querySelector<HTMLElement>('[data-sidebar-container]')!.style.width,
+    sidebarWidth: document.querySelector<HTMLElement>('[data-sidebar-container]')!.getBoundingClientRect().width,
+    contentInline: document.querySelector<HTMLElement>('[data-sidebar-content-layer="true"]')!.style.width,
+    separatorInline: document.querySelector<HTMLElement>('[data-sidebar-separator="true"]')!.style.left,
+    titlebarVar: document.querySelector<HTMLElement>('[data-titlebar="true"]')!.style.getPropertyValue('--noa-sidebar-width'),
+  }));
+
+  const separator = page.getByRole('separator', { name: 'Resize sidebar' });
+  const separatorBox = await separator.boundingBox();
+  expect(separatorBox).not.toBeNull();
+  const before = await readDragState();
+  expect(before.root).toBe('325px');
+
+  await page.mouse.move(separatorBox!.x + separatorBox!.width / 2, separatorBox!.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(420, separatorBox!.y + 40);
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+  const during = await readDragState();
+  expect(during.sidebarWidth).toBeCloseTo(420, 0);
+  expect(during.root).toBe('325px');
+  expect(during.sidebarInline).toBe('420px');
+  expect(during.contentInline).toBe('420px');
+  expect(during.separatorInline).toBe('420px');
+  // The titlebar's hairline hangs off a pseudo-element, which can only read the
+  // variable from its own element — so this one stays a variable write, scoped
+  // to a subtree that does not grow with the vault.
+  expect(during.titlebarVar).toBe('420px');
+
+  // Release hands every declaration back to React, with the variable already
+  // holding the width the drag ended on so nothing resolves to a stale value.
+  await page.mouse.up();
+  const after = await readDragState();
+  expect(after.root).toBe('420px');
+  expect(after.sidebarWidth).toBeCloseTo(420, 0);
+  expect(after.sidebarInline).toBe('var(--noa-sidebar-width, 325px)');
+  expect(after.contentInline).toBe('var(--noa-sidebar-width, 325px)');
+  expect(after.separatorInline).toBe('var(--noa-sidebar-width, 325px)');
+  expect(after.titlebarVar).toBe('');
+});
+
 test('a second toggle during preview promotion reverses without moving the editor discontinuously', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
