@@ -172,11 +172,15 @@ function createWindow() {
     title: 'Noa',
     icon: iconPath,
     frame: false,
-    // The optional macOS sidebar material clears the native backing after the
-    // renderer loads. Opt into alpha compositing when the window is created;
-    // converting an opaque compositor surface at runtime can expose stale
-    // colours when GraphView mounts its GPU-backed canvas.
-    transparent: isMac,
+    // No `transparent`, like Codex. With it, every Stage Manager switch back to
+    // Noa ended with ~0.45s of flat, material-less sidebar after the window
+    // landed. It was added (0cdaf22) for stale colours when GraphView mounted
+    // its GPU canvas after the material cleared the backing; that no longer
+    // reproduces without it, frame by frame, on the current Electron.
+    // Keep the sidebar material in its active look when the window loses
+    // focus. Following the window, macOS swaps to the pale inactive material
+    // and the swap back on refocus reads as the sidebar flashing.
+    visualEffectState: 'active',
     hasShadow: true,
     // Light-theme default; the renderer re-syncs this to the active theme via
     // 'window:set-sidebar-translucency'. macOS paints this color at the window
