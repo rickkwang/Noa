@@ -58,7 +58,7 @@ describe('sidebar surface tokens', () => {
       /\.noa-sidebar-surface\s*\{[^}]*background-color:\s*var\(--bg-sidebar,\s*#F4F4F2\)/,
     );
     expect(css).toMatch(
-      /\[data-sidebar-preview="true"\]\s+\.noa-sidebar-surface,\s*\[data-sidebar-preview="true"\]\s+\.noa-sidebar-section-surface\s*\{[^}]*background-color:\s*transparent/,
+      /\[data-sidebar-preview="true"\]\s+\.noa-sidebar-surface,\s*\[data-sidebar-preview="true"\]\s+\.noa-sidebar-section-surface[^{]*\{[^}]*background-color:\s*transparent/,
     );
 
     // Preview is one full-height floating surface rooted in the app shell and

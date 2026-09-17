@@ -289,7 +289,11 @@ describe('light theme border tokens', () => {
     expect(app).toContain("${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}");
     expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
     expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
-    expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview \|\| isDraggingSidebar/);
+    expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview\s*\n\s*\? `opacity \$\{SIDEBAR_PROMOTION_EDGE_CLOCK\}`\s*\n\s*: isDraggingSidebar/);
+    // Promotion fades the elevation away on the spacer's clock rather than
+    // dropping shadow, corner and floor colour on the first frame.
+    expect(app).toMatch(/: isPromotingSidebarPreview\s*\n\s*\? SIDEBAR_PROMOTION_SURFACE_TRANSITION/);
+    expect(app).toContain("const SIDEBAR_PROMOTION_EDGE_CLOCK = '320ms cubic-bezier(0.4, 0, 0.2, 1)';");
     expect(app).toContain('`left 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'320ms\'}`');
     expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 325px);\n}');
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
@@ -317,7 +321,7 @@ describe('light theme border tokens', () => {
     // two edges onto one clock and nothing else catches it — EditorHeader.tsx
     // carries the reasoning.
     expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
-    expect(editorHeader).toContain("'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'");
+    expect(editorHeader).toContain("'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'");
     expect(editorHeader).not.toContain("transition: liftTabStrip ? 'margin 220ms");
     expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
     expect(editorHeader).not.toContain("paddingRight: reserveTitlebarActions");
@@ -359,7 +363,7 @@ describe('light theme border tokens', () => {
     // surface from a full column to 0 in the same commit, and the surface alone
     // played the collapse the other two were spared.
     expect(app).toMatch(
-      /isPromotingSidebarPreview \|\| isSettlingSidebarPromotionClose \|\| isDraggingSidebar \|\| isSidebarPreviewSettling\s*\n\s*\? 'none'/,
+      /isSettlingSidebarPromotionClose \|\| isDraggingSidebar \|\| isSidebarPreviewSettling\s*\n\s*\? 'none'/,
     );
     expect(indexCss).toContain('transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);');
     // Only !important outranks an inline transition, and all five have to drop
@@ -368,7 +372,7 @@ describe('light theme border tokens', () => {
     expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 320ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
     // The right panel still slides, so it must keep its fixed width throughout.
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px'");
-    expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
+    expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)')");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");
   });
 

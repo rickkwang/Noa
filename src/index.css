@@ -502,20 +502,27 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    opaque fallback in a translucent column, or it becomes a visible horizontal
    band; preview mode has the same single-shell paint rule. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-toolbar-mask,
-[data-sidebar-preview="true"] .noa-sidebar-toolbar-mask {
+[data-sidebar-preview="true"] .noa-sidebar-toolbar-mask,
+[data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-toolbar-mask {
   background-color: transparent;
 }
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-toolbar-mask::after,
-[data-sidebar-preview="true"] .noa-sidebar-toolbar-mask::after {
+[data-sidebar-preview="true"] .noa-sidebar-toolbar-mask::after,
+[data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-toolbar-mask::after {
   display: none;
 }
 
 /* Preview is painted once by the full-height shell. Its mounted sidebar and
    nested sections stay transparent so the titlebar and content cannot form
    separate colour bands. The rule is preview-scoped; expanded sidebars keep
-   their normal --bg-sidebar floor. */
+   their normal --bg-sidebar floor. Promotion keeps them transparent too: the
+   shell eases its floor from the preview's colour to --bg-sidebar, and inner
+   surfaces snapping opaque on the first frame would hide that fade. They land
+   on the same colour the shell has reached when the phase ends. */
 [data-sidebar-preview="true"] .noa-sidebar-surface,
-[data-sidebar-preview="true"] .noa-sidebar-section-surface {
+[data-sidebar-preview="true"] .noa-sidebar-section-surface,
+[data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-surface,
+[data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-section-surface {
   background-color: transparent;
 }
 

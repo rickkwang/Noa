@@ -35,6 +35,16 @@ const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
+// The preview's elevation (index.css .noa-sidebar-preview-shell, the
+// rounded-r corner, the --bg-primary floor) drops on the same 320ms clock as
+// the promotion spacer, so the panel settles while the editor makes room.
+const SIDEBAR_PROMOTION_EDGE_CLOCK = '320ms cubic-bezier(0.4, 0, 0.2, 1)';
+const SIDEBAR_PROMOTION_SURFACE_TRANSITION = [
+  `box-shadow ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
+  `border-radius ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
+  `background-color ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
+].join(', ');
+
 export default function App() {
   useGlobalScrollingClass();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -769,8 +779,11 @@ export default function App() {
             opacity: isSidebarOpen ? 1 : 0,
             // A direct toggle follows the sliding sidebar edge. During preview
             // promotion the divider is already at its final edge and remains
-            // fixed while the editor layout catches up.
-            transition: isPromotingSidebarPreview || isDraggingSidebar
+            // fixed while the editor layout catches up, fading in as the
+            // preview's shadow settles rather than landing on the first frame.
+            transition: isPromotingSidebarPreview
+              ? `opacity ${SIDEBAR_PROMOTION_EDGE_CLOCK}`
+              : isDraggingSidebar
               ? 'none'
               : `left 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '320ms'}`,
           }}
@@ -799,7 +812,7 @@ export default function App() {
           onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
           onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
           onTransitionEnd={finishSidebarPreviewExit}
-          className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-[14px]' : 'pointer-events-none z-10'}`}
+          className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-[14px]' : isPromotingSidebarPreview ? 'pointer-events-none z-40' : 'pointer-events-none z-10'}`}
           style={{
             width: isSidebarOpen || isSidebarPreviewOpen || isPromotingSidebarPreview
               ? 'var(--noa-sidebar-width, 325px)'
@@ -808,6 +821,10 @@ export default function App() {
               ? 'var(--bg-primary, #FCFCFB)'
               : 'var(--bg-sidebar, #F4F4F2)',
             opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
+            // Promotion eases the preview's elevation away on the spacer's clock
+            // — shadow, corner and floor colour — so the floating panel settles
+            // into the dock as one motion instead of snapping flat on the first
+            // frame while the editor is still only starting to move.
             // isSidebarPreviewSettling for the same reason the container and its
             // content layer carry it: leaving the preview drops this surface
             // from the preview's full column to 0 in one commit, and without a
@@ -815,7 +832,9 @@ export default function App() {
             // user already dismissed — behind the preview that is fading out.
             transition: isSidebarPreviewOpen
               ? undefined
-              : isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isDraggingSidebar || isSidebarPreviewSettling
+              : isPromotingSidebarPreview
+                ? SIDEBAR_PROMOTION_SURFACE_TRANSITION
+              : isSettlingSidebarPromotionClose || isDraggingSidebar || isSidebarPreviewSettling
                 ? 'none'
                 : `width 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '320ms'}`,
           }}
@@ -878,6 +897,7 @@ export default function App() {
           inert={isFocusMode || (!isSidebarOpen && !isSidebarPreviewOpen) ? true : undefined}
           data-sidebar-preview={isSidebarPreviewOpen ? 'true' : undefined}
           data-sidebar-preview-closing={isSidebarPreviewClosing ? 'true' : undefined}
+          data-sidebar-promoting={isPromotingSidebarPreview ? 'true' : undefined}
           onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
           onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
           onTransitionEnd={finishSidebarDockMotion}
@@ -902,6 +922,8 @@ export default function App() {
               : undefined,
             transition: isSidebarPreviewOpen
               ? undefined
+              : isPromotingSidebarPreview
+                ? `border-radius ${SIDEBAR_PROMOTION_EDGE_CLOCK}`
               : isDraggingSidebar || isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isSidebarPreviewSettling
                 ? 'none'
                 : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'width 320ms cubic-bezier(0.4, 0, 0.2, 1)'),
