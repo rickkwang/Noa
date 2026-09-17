@@ -1183,6 +1183,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .slide-down {
     animation: none;
   }
+  .noa-sidebar-collapse,
+  .noa-sidebar-collapse[data-open="true"],
+  .noa-sidebar-collapse > *,
+  .noa-sidebar-collapse[data-open="true"] > *,
+  .noa-sidebar-collapse-chevron,
+  [aria-expanded="true"] > .noa-sidebar-collapse-chevron {
+    transition: none;
+  }
   .noa-top-scroll-fade,
   .noa-split-editor-mask .cm-editor {
     transition: none;
@@ -1194,6 +1202,53 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   [data-theme="dark"] .is-scrolling-out::-webkit-scrollbar-thumb {
     animation: none;
   }
+}
+
+/* Collapsible sidebar sections (Calendar, Tags Explorer). The track animates
+   grid rows 0fr ↔ 1fr, like a folder in the file tree, but on two curves: the
+   sections are bottom-anchored drawers up to ~300px tall, and one symmetric
+   ease across that distance read as flat. Opening starts fast and settles long;
+   closing is shorter and standard-eased so the header does not slam into the
+   footer.
+   The body rides the drawer rather than being wiped by it — a few pixels of
+   rise in the direction of travel — and its fade is staggered against the
+   track: in after the track has started (a half-transparent, half-clipped
+   calendar mid-motion read as a ghost), out before the track has gone far. The
+   wrapper clips, not the body, so that rise never spills onto the section
+   below. The body stays mounted through the collapse (useCollapsePresence,
+   whose timer mirrors the closing duration). */
+.noa-sidebar-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.noa-sidebar-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+.noa-sidebar-collapse > * {
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 120ms cubic-bezier(0.4, 0, 1, 1),
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.noa-sidebar-collapse[data-open="true"] > * {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 200ms cubic-bezier(0, 0, 0.2, 1) 60ms,
+    transform 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* rotate, not transform: Tailwind v4's -rotate-90 writes the individual
+   property. */
+.noa-sidebar-collapse-chevron {
+  transition: rotate 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+[aria-expanded="true"] > .noa-sidebar-collapse-chevron {
+  transition: rotate 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ── Slide-down reveal (delete confirm bar, banners) ── */

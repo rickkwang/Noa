@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCollapsePresence } from '../hooks/useCollapsePresence';
 import { formatDate } from '../lib/templates';
 import { GlobalTask, Note } from '../types';
 import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
@@ -46,6 +47,7 @@ export default function CalendarPanel({
   dateFormat = 'YYYY-MM-DD',
 }: CalendarPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const isBodyMounted = useCollapsePresence(isOpen);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -62,12 +64,13 @@ export default function CalendarPanel({
   const today = formatDate('YYYY-MM-DD');
 
   // One pass over notes + tasks per open month, rather than 31 × O(n) lookups
-  // from inside the cell loop. Gated on isOpen: this component re-renders on
-  // every notes change (every keystroke) and must do no per-note work while
-  // collapsed.
+  // from inside the cell loop. Gated on the body being mounted — open, or still
+  // easing closed, so the dots don't vanish mid-collapse: this component
+  // re-renders on every notes change (every keystroke) and must do no per-note
+  // work while collapsed.
   const { days: dayMeta, activeKey } = useMemo(() => {
     const days = new Map<string, DayMeta>();
-    if (!isOpen) return { days, activeKey: null as string | null };
+    if (!isBodyMounted) return { days, activeKey: null as string | null };
 
     const prefix = `${year}-${pad(month + 1)}-`;
     const ensure = (key: string): DayMeta => {
@@ -111,7 +114,7 @@ export default function CalendarPanel({
     }
 
     return { days, activeKey };
-  }, [isOpen, notes, tasks, year, month, dateFormat, activeNoteId, today]);
+  }, [isBodyMounted, notes, tasks, year, month, dateFormat, activeNoteId, today]);
 
   const applyRange = useCallback((next: Range) => {
     setRange(next);
@@ -234,191 +237,195 @@ export default function CalendarPanel({
       >
         <Calendar size={11} className="mr-1.5 shrink-0" />
         Calendar
-        <ChevronDown size={10} className={`ml-auto transition-transform duration-100 ease-out ${isOpen ? '' : '-rotate-90'}`} />
+        <ChevronDown size={10} className={`ml-auto noa-sidebar-collapse-chevron ${isOpen ? '' : '-rotate-90'}`} />
       </button>
 
-      {isOpen && (
-        <div className="slide-down select-none">
-          {/* Range summary sits under the section header, not above the
-              weekday row. Two alignment systems meet in this panel: left-set
-              text (header, summary, chips) starts at 12px, while weekday
-              labels and dates are centred inside 32px cells and so start
-              ~20px in. Neither is wrong, but butted against each other they
-              read as a misalignment — so the text rows group together and the
-              grid rows group together.
+      <div className="noa-sidebar-collapse" data-open={isOpen ? 'true' : undefined}>
+        <div inert={!isOpen ? true : undefined}>
+          {isBodyMounted && (
+            <div className="select-none">
+              {/* Range summary sits under the section header, not above the
+                  weekday row. Two alignment systems meet in this panel: left-set
+                  text (header, summary, chips) starts at 12px, while weekday
+                  labels and dates are centred inside 32px cells and so start
+                  ~20px in. Neither is wrong, but butted against each other they
+                  read as a misalignment — so the text rows group together and the
+                  grid rows group together.
 
-              It must also stay above the grid: the panel is bottom-anchored,
-              so a row appearing below the grid shoves the grid up by its own
-              height mid-drag and the pointer lands a whole week off target. */}
-          {activeRange && (
-            <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] font-redaction">
-              <span className="text-[#CC7D5E] font-medium truncate">
-                {activeRange.start === activeRange.end
-                  ? shortDate(activeRange.start)
-                  : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
-              </span>
-              {/* "edited", not "notes": the filter runs on updatedAt, so a
-                  note written months ago and touched yesterday belongs in the
-                  count. Calling them "notes" read as "notes from this week". */}
-              <span className="text-[#2D2D2B]/40 shrink-0" title="Notes edited in this range">
-                {rangeNoteCount} edited
-              </span>
+                  It must also stay above the grid: the panel is bottom-anchored,
+                  so a row appearing below the grid shoves the grid up by its own
+                  height mid-drag and the pointer lands a whole week off target. */}
+              {activeRange && (
+                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] font-redaction">
+                  <span className="text-[#CC7D5E] font-medium truncate">
+                    {activeRange.start === activeRange.end
+                      ? shortDate(activeRange.start)
+                      : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
+                  </span>
+                  {/* "edited", not "notes": the filter runs on updatedAt, so a
+                      note written months ago and touched yesterday belongs in the
+                      count. Calling them "notes" read as "notes from this week". */}
+                  <span className="text-[#2D2D2B]/40 shrink-0" title="Notes edited in this range">
+                    {rangeNoteCount} edited
+                  </span>
+                </div>
+              )}
+
+              {/* Month navigation — the label doubles as "jump back to today" */}
+              <div className="flex items-center justify-between px-3 pt-0.5 pb-2">
+                <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={goToToday}
+                  title="Jump to today"
+                  aria-label="Jump to today"
+                  className={`px-2 py-1 rounded-md text-xs font-medium font-redaction transition-colors cursor-pointer noa-sidebar-hover-surface ${isViewingToday ? 'text-[#2D2D2B]/80' : 'text-[#CC7D5E]'}`}
+                >
+                  <span className="font-semibold">{monthName}</span>
+                  <span className="ml-1 text-[#2D2D2B]/40">{year}</span>
+                </button>
+                <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              {/* Weekday headers */}
+              <div className="grid grid-cols-[repeat(7,2rem)] justify-between px-3 pb-1">
+                {WEEKDAYS.map(wd => (
+                  <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
+                    <span className="font-medium text-[#2D2D2B]/50">{wd}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Day grid */}
+              {/* Fixed 32px tracks, space-between — not grid-cols-7. Seven flexible
+                  columns made a 32px cell's edge a function of the sidebar width,
+                  so the grid drifted away from the header, summary and chip rows,
+                  which sit at a fixed 12px. The sidebar cannot go below 320px and
+                  7x32 + 24 = 248, so the tracks always fit. */}
+              <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-3 pb-2" onDragStart={e => e.preventDefault()}>
+                {cells.map((cell, i) => {
+                  if (cell.day === null) return <div key={`empty-${i}`} className="w-8 h-8" />;
+                  const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
+                  const meta = dayMeta.get(dateStr);
+                  const isToday = dateStr === today;
+                  const isActive = dateStr === activeKey;
+                  const hasNote = meta?.daily ?? false;
+                  const inRange = !!activeRange && dateStr >= activeRange.start && dateStr <= activeRange.end;
+                  const isRangeEdge = !!activeRange && (dateStr === activeRange.start || dateStr === activeRange.end);
+
+                  let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-redaction rounded-md transition-colors cursor-pointer ';
+                  if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
+                  else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
+                  // Only the two edges take accent ink. Tinting every day in the
+                  // range turned a week into a solid orange block that shouted
+                  // louder than today's marker sitting inside it.
+                  else if (inRange) cellClass += isRangeEdge
+                    ? 'bg-[#CC7D5E]/22 text-[#CC7D5E] font-bold'
+                    : 'bg-[#CC7D5E]/10 text-[#2D2D2B]/80';
+                  else if (hasNote) cellClass += 'text-[#2D2D2B]/80 noa-sidebar-hover-surface';
+                  // /75 against the /50 weekday header. At the old /60 the two rows
+                  // sat at nearly the same weight and the grid read as one flat block.
+                  else cellClass += 'text-[#2D2D2B]/75';
+
+                  // Two 3px dots at most: notes on the left, open tasks on the
+                  // right. They read as one small cluster instead of competing for
+                  // the same slot under the numeral.
+                  const noteDot = meta && (meta.daily || meta.notes > 0);
+                  const taskDot = (meta?.due ?? 0) > 0;
+                  const taskStatus = meta?.due
+                    ? `${meta.due} task${meta.due > 1 ? 's' : ''} due${meta.overdue ? `, ${meta.overdue} overdue` : ''}`
+                    : null;
+                  const tip = [
+                    meta?.daily ? 'daily note' : null,
+                    meta?.notes ? `${meta.notes} note${meta.notes > 1 ? 's' : ''} edited` : null,
+                    taskStatus,
+                  ].filter(Boolean).join(' · ');
+                  const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(', ');
+
+                  return (
+                    <button
+                      key={dateStr}
+                      type="button"
+                      className={cellClass}
+                      onClick={(e) => handleDayClick(dateStr, e.shiftKey)}
+                      onPointerDown={handlePointerDown(dateStr)}
+                      onPointerEnter={handlePointerEnter(dateStr)}
+                      title={tip || undefined}
+                      aria-label={ariaLabel}
+                      aria-current={isToday ? 'date' : undefined}
+                    >
+                      <span className="leading-none">{cell.day}</span>
+                      {!isActive && (noteDot || taskDot) && (
+                        <span className="absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px] pointer-events-none">
+                          {noteDot && (
+                            <span
+                              className="w-[3px] h-[3px] rounded-full"
+                              style={{
+                                backgroundColor: meta!.daily
+                                  ? 'var(--accent-color, #CC7D5E)'
+                                  : 'color-mix(in srgb, var(--accent-color, #CC7D5E) 45%, transparent)',
+                              }}
+                            />
+                          )}
+                          {taskDot && (
+                            <span className={`w-[3px] h-[3px] rounded-full ${meta!.overdue > 0 ? 'bg-[#C24444]' : 'bg-[#D9862B]'}`} />
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Range presets. Outlined, not bare text: as plain labels in the
+                  sidebar's muted grey they read as a caption rather than four
+                  things you can press. The 3px radius is the codebase's default
+                  for controls — TasksPanel's filter chips are the same shape. */}
+              {/* px-3, not the px-2 the grid rows use: those centre a 32px cell in a
+                  wider column, so their ink starts ~13px in. These chips are
+                  left-aligned, so they need the padding to do that job themselves. */}
+              <div className="flex items-center gap-1 px-3 pb-3 text-[10px] font-redaction">
+                {PRESETS.map(preset => {
+                  const target = presetRange(preset);
+                  const isSelected = !!range && range.start === target.start && range.end === target.end;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => (isSelected ? clearRange() : applyRange(target))}
+                      aria-pressed={isSelected}
+                      // No active:opacity: the preset already recolours on click
+                      // (border/text/bg all switch to accent), and fading it for
+                      // the press first is what reads as a flicker.
+                      className={`px-1.5 py-0.5 border rounded-[3px] transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'border-[#CC7D5E] text-[#CC7D5E] bg-[#CC7D5E]/10'
+                          : 'border-[#2D2D2B]/15 text-[#2D2D2B]/60 hover:border-[#2D2D2B]/30 hover:text-[#2D2D2B]/80'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  );
+                })}
+                {activeRange && (
+                  <button
+                    type="button"
+                    onClick={clearRange}
+                    aria-label="Clear date filter"
+                    className="ml-auto shrink-0 px-1 text-[#2D2D2B]/40 hover:text-[#2D2D2B]/80 transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
           )}
-
-          {/* Month navigation — the label doubles as "jump back to today" */}
-          <div className="flex items-center justify-between px-3 pt-0.5 pb-2">
-            <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
-              <ChevronLeft size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={goToToday}
-              title="Jump to today"
-              aria-label="Jump to today"
-              className={`px-2 py-1 rounded-md text-xs font-medium font-redaction transition-colors cursor-pointer noa-sidebar-hover-surface ${isViewingToday ? 'text-[#2D2D2B]/80' : 'text-[#CC7D5E]'}`}
-            >
-              <span className="font-semibold">{monthName}</span>
-              <span className="ml-1 text-[#2D2D2B]/40">{year}</span>
-            </button>
-            <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-[repeat(7,2rem)] justify-between px-3 pb-1">
-            {WEEKDAYS.map(wd => (
-              <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
-                <span className="font-medium text-[#2D2D2B]/50">{wd}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          {/* Fixed 32px tracks, space-between — not grid-cols-7. Seven flexible
-              columns made a 32px cell's edge a function of the sidebar width,
-              so the grid drifted away from the header, summary and chip rows,
-              which sit at a fixed 12px. The sidebar cannot go below 320px and
-              7x32 + 24 = 248, so the tracks always fit. */}
-          <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-3 pb-2" onDragStart={e => e.preventDefault()}>
-            {cells.map((cell, i) => {
-              if (cell.day === null) return <div key={`empty-${i}`} className="w-8 h-8" />;
-              const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
-              const meta = dayMeta.get(dateStr);
-              const isToday = dateStr === today;
-              const isActive = dateStr === activeKey;
-              const hasNote = meta?.daily ?? false;
-              const inRange = !!activeRange && dateStr >= activeRange.start && dateStr <= activeRange.end;
-              const isRangeEdge = !!activeRange && (dateStr === activeRange.start || dateStr === activeRange.end);
-
-              let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-redaction rounded-md transition-colors cursor-pointer ';
-              if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
-              else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-              // Only the two edges take accent ink. Tinting every day in the
-              // range turned a week into a solid orange block that shouted
-              // louder than today's marker sitting inside it.
-              else if (inRange) cellClass += isRangeEdge
-                ? 'bg-[#CC7D5E]/22 text-[#CC7D5E] font-bold'
-                : 'bg-[#CC7D5E]/10 text-[#2D2D2B]/80';
-              else if (hasNote) cellClass += 'text-[#2D2D2B]/80 noa-sidebar-hover-surface';
-              // /75 against the /50 weekday header. At the old /60 the two rows
-              // sat at nearly the same weight and the grid read as one flat block.
-              else cellClass += 'text-[#2D2D2B]/75';
-
-              // Two 3px dots at most: notes on the left, open tasks on the
-              // right. They read as one small cluster instead of competing for
-              // the same slot under the numeral.
-              const noteDot = meta && (meta.daily || meta.notes > 0);
-              const taskDot = (meta?.due ?? 0) > 0;
-              const taskStatus = meta?.due
-                ? `${meta.due} task${meta.due > 1 ? 's' : ''} due${meta.overdue ? `, ${meta.overdue} overdue` : ''}`
-                : null;
-              const tip = [
-                meta?.daily ? 'daily note' : null,
-                meta?.notes ? `${meta.notes} note${meta.notes > 1 ? 's' : ''} edited` : null,
-                taskStatus,
-              ].filter(Boolean).join(' · ');
-              const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(', ');
-
-              return (
-                <button
-                  key={dateStr}
-                  type="button"
-                  className={cellClass}
-                  onClick={(e) => handleDayClick(dateStr, e.shiftKey)}
-                  onPointerDown={handlePointerDown(dateStr)}
-                  onPointerEnter={handlePointerEnter(dateStr)}
-                  title={tip || undefined}
-                  aria-label={ariaLabel}
-                  aria-current={isToday ? 'date' : undefined}
-                >
-                  <span className="leading-none">{cell.day}</span>
-                  {!isActive && (noteDot || taskDot) && (
-                    <span className="absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px] pointer-events-none">
-                      {noteDot && (
-                        <span
-                          className="w-[3px] h-[3px] rounded-full"
-                          style={{
-                            backgroundColor: meta!.daily
-                              ? 'var(--accent-color, #CC7D5E)'
-                              : 'color-mix(in srgb, var(--accent-color, #CC7D5E) 45%, transparent)',
-                          }}
-                        />
-                      )}
-                      {taskDot && (
-                        <span className={`w-[3px] h-[3px] rounded-full ${meta!.overdue > 0 ? 'bg-[#C24444]' : 'bg-[#D9862B]'}`} />
-                      )}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Range presets. Outlined, not bare text: as plain labels in the
-              sidebar's muted grey they read as a caption rather than four
-              things you can press. The 3px radius is the codebase's default
-              for controls — TasksPanel's filter chips are the same shape. */}
-          {/* px-3, not the px-2 the grid rows use: those centre a 32px cell in a
-              wider column, so their ink starts ~13px in. These chips are
-              left-aligned, so they need the padding to do that job themselves. */}
-          <div className="flex items-center gap-1 px-3 pb-3 text-[10px] font-redaction">
-            {PRESETS.map(preset => {
-              const target = presetRange(preset);
-              const isSelected = !!range && range.start === target.start && range.end === target.end;
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => (isSelected ? clearRange() : applyRange(target))}
-                  aria-pressed={isSelected}
-                  // No active:opacity: the preset already recolours on click
-                  // (border/text/bg all switch to accent), and fading it for
-                  // the press first is what reads as a flicker.
-                  className={`px-1.5 py-0.5 border rounded-[3px] transition-colors cursor-pointer ${
-                    isSelected
-                      ? 'border-[#CC7D5E] text-[#CC7D5E] bg-[#CC7D5E]/10'
-                      : 'border-[#2D2D2B]/15 text-[#2D2D2B]/60 hover:border-[#2D2D2B]/30 hover:text-[#2D2D2B]/80'
-                  }`}
-                >
-                  {preset}
-                </button>
-              );
-            })}
-            {activeRange && (
-              <button
-                type="button"
-                onClick={clearRange}
-                aria-label="Clear date filter"
-                className="ml-auto shrink-0 px-1 text-[#2D2D2B]/40 hover:text-[#2D2D2B]/80 transition-colors cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
