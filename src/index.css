@@ -249,7 +249,7 @@ body {
    against the sidebar floor. The accent remains reserved for active or hover
    feedback, so a resting sidebar does not mix coral icons with dark text. */
 .noa-sidebar-tree-item {
-  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 90%, transparent);
+  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 80%, transparent);
 }
 
 /* Sections (CalendarPanel, TagBrowser) are only ever rendered inside the
