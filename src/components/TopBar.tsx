@@ -39,6 +39,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   return (
     <div
+      data-titlebar="true"
       data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
       className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${hasOpenNote ? (!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0') : 'after:hidden'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
       style={{

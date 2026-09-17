@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // Mirror the durations in index.css / the inline styles below, plus slack for a
 // frame that lands late. These back the fallbacks that end each animated phase:
 // transitionend is not a guaranteed event, and every phase here has exactly one
 // way out.
 const SIDEBAR_PREVIEW_EXIT_MS = 180;
-const SIDEBAR_DOCK_MOTION_MS = 220;
-const SIDEBAR_PROMOTION_MS = 220;
+const SIDEBAR_DOCK_MOTION_MS = 320;
+const SIDEBAR_PROMOTION_MS = 320;
 const SIDEBAR_MOTION_FALLBACK_SLACK_MS = 80;
 
 export type SidebarPreviewPhase = 'idle' | 'open' | 'closing' | 'promoting-open' | 'promoting-close' | 'settling-close';
@@ -36,6 +36,7 @@ export function useSidebarPreview({
   const isReversingSidebarPromotion = sidebarPreviewPhase === 'promoting-close';
   const isSettlingSidebarPromotionClose = sidebarPreviewPhase === 'settling-close';
   const [isSidebarDockClosing, setIsSidebarDockClosing] = useState(false);
+  const [isSidebarPreviewSettling, setIsSidebarPreviewSettling] = useState(false);
   const isSidebarMaterialActive = !isMobile && (
     isSidebarOpen
     || isSidebarDockClosing
@@ -44,6 +45,7 @@ export function useSidebarPreview({
   );
   const sidebarToggleRef = useRef<HTMLButtonElement>(null);
   const sidebarPreviewCloseTimerRef = useRef<number | null>(null);
+  const wasSidebarPreviewOpenRef = useRef(false);
   const isDraggingSidebarRef = useRef(isDraggingSidebar);
   const wasDraggingSidebarRef = useRef(isDraggingSidebar);
   const cancelSidebarPreviewClose = useCallback(() => {
@@ -103,7 +105,7 @@ export function useSidebarPreview({
     setIsSidebarOpen(nextOpen);
   }, [cancelSidebarPreviewClose, isMobile, isSidebarOpen, isSidebarPreviewOpen, setIsSidebarOpen, sidebarPreviewPhase]);
   const finishSidebarDockMotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'margin-left') return;
+    if (event.target !== event.currentTarget || event.propertyName !== 'width') return;
     setIsSidebarDockClosing(false);
   }, []);
   const finishSidebarPromotion = useCallback((event: React.TransitionEvent<HTMLDivElement>) => {
@@ -112,6 +114,21 @@ export function useSidebarPreview({
       phase === 'promoting-close' ? 'settling-close' : phase === 'promoting-open' ? 'idle' : phase
     ));
   }, []);
+  // Leaving the preview drops the sidebar back into the docked flow, where its
+  // own width is the collapse mask — so that width goes from the full column to
+  // 0 in the same commit. Without a frame of suppression the mask would play a
+  // phantom collapse for a sidebar the user already dismissed, shoving the
+  // editor across the screen and back. The layout effect lands the suppressed
+  // style before the browser gets a chance to start that transition.
+  useLayoutEffect(() => {
+    if (wasSidebarPreviewOpenRef.current && !isSidebarPreviewOpen) setIsSidebarPreviewSettling(true);
+    wasSidebarPreviewOpenRef.current = isSidebarPreviewOpen;
+  }, [isSidebarPreviewOpen]);
+  useEffect(() => {
+    if (!isSidebarPreviewSettling) return;
+    const frame = window.requestAnimationFrame(() => setIsSidebarPreviewSettling(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isSidebarPreviewSettling]);
   useEffect(() => {
     if (!isSettlingSidebarPromotionClose) return;
     const frame = window.requestAnimationFrame(() => setSidebarPreviewPhase('idle'));
@@ -146,7 +163,7 @@ export function useSidebarPreview({
     return () => window.clearTimeout(timer);
   }, [sidebarPreviewPhase]);
   // Same hazard on the dock: toggling while a resize drag holds the transition
-  // at none leaves no margin-left animation to end, and a stuck true keeps the
+  // at none leaves no width animation to end, and a stuck true keeps the
   // translucent material painted for a sidebar that is already closed.
   useEffect(() => {
     if (!isSidebarDockClosing) return;
@@ -216,6 +233,7 @@ export function useSidebarPreview({
   return {
     isSidebarPreviewOpen,
     isSidebarPreviewClosing,
+    isSidebarPreviewSettling,
     isPromotingSidebarPreview,
     isReversingSidebarPromotion,
     isSettlingSidebarPromotionClose,

@@ -270,12 +270,27 @@ describe('light theme border tokens', () => {
     expect(topBar).not.toContain('className="h-8 border-b grid');
     expect(topBar).not.toContain('className="pointer-events-none absolute bottom-0 right-0 h-px transition-[left]"');
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
+    // The titlebar hairline starts at the sidebar's edge, so it has to ride the
+    // dock motion. A bare class swap lands it on the first frame and the line
+    // jumps across a sidebar that is still on screen. Pinned as an opt-in: the
+    // hairline's left tracks "is a sidebar visible", which the hover preview
+    // also satisfies, and the preview arrives in one frame — a default-on
+    // transition eased the line across the titlebar behind a panel that was
+    // already in place, and back out from under one that had already left.
+    expect(topBar).toContain('data-titlebar="true"');
+    expect(indexCss).toContain('[data-titlebar="true"]::after {\n  transition: none;\n}');
+    expect(indexCss).toContain('.noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {\n  transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);\n}');
+    expect(indexCss).not.toContain('.noa-app-shell[data-sidebar-dragging="true"] [data-titlebar="true"]::after');
+    expect(app).toContain('data-sidebar-dock-motion={isSidebarDockMotionLive ? \'true\' : undefined}');
+    expect(app).toMatch(
+      /const isSidebarDockMotionLive = !isMobile\s*&& !isSidebarPreviewOpen\s*&& !isPromotingSidebarPreview\s*&& !isSettlingSidebarPromotionClose\s*&& !isSidebarPreviewSettling\s*&& !isDraggingSidebar;/,
+    );
     expect(app).toContain('data-sidebar-separator="true"');
     expect(app).toContain("${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}");
     expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
     expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
     expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview \|\| isDraggingSidebar/);
-    expect(app).toContain('`left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'220ms\'}`');
+    expect(app).toContain('`left 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'320ms\'}`');
     expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 325px);\n}');
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
@@ -286,34 +301,74 @@ describe('light theme border tokens', () => {
   });
 
   it('reserves the macOS window-control area when lifted tabs have no sidebar beside them', async () => {
-    const [topBar, editorHeader, editor, app] = await Promise.all([
+    const [topBar, editorHeader, editor, app, indexCss] = await Promise.all([
       readFile(topBarPath, 'utf8'),
       readFile(editorHeaderPath, 'utf8'),
       readFile(fileURLToPath(new URL('../../src/components/Editor.tsx', import.meta.url)), 'utf8'),
       readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8'),
+      readFile(indexCssPath, 'utf8'),
     ]);
 
     expect(topBar).toContain('relative z-50 flex min-w-0 items-center gap-0.5');
     expect(editorHeader).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editorHeader).toContain('reserveTitlebarTraffic = false,');
-    expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
     expect(editorHeader).toContain("marginRight: reserveTitlebarActions ? '7.25rem' : undefined");
-    expect(editorHeader).toContain("transition: liftTabStrip ? 'margin 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined");
+    // Pinned as separate longhands because a `margin` shorthand recombines the
+    // two edges onto one clock and nothing else catches it — EditorHeader.tsx
+    // carries the reasoning.
+    expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
+    expect(editorHeader).toContain("'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'");
+    expect(editorHeader).not.toContain("transition: liftTabStrip ? 'margin 220ms");
     expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
     expect(editorHeader).not.toContain("paddingRight: reserveTitlebarActions");
+    expect(editorHeader).toContain("noa-editor-header-floor");
+    // Scoped to the rule body on purpose: a bare toContain('pointer-events: none;')
+    // matches a dozen unrelated rules in this file and proves nothing about this
+    // one. These two declarations are what make the floor paint at all and carry
+    // the divider; the e2e test measures the result, this pins the source.
+    expect(indexCss).toMatch(
+      /\.noa-editor-header-floor::before \{[^}]*\bright: 100%;[^}]*\bborder-bottom: 1px solid var\(--divider-subtle, #E6E2DA\);[^}]*\bpointer-events: none;[^}]*\}/,
+    );
+    expect(indexCss).toMatch(/\.noa-editor-header-floor-reserved::before \{\s*left: -9rem;\s*\}/);
     expect(editor).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editor).toContain('reserveTitlebarTraffic={reserveTitlebarTraffic}');
     expect(app).toContain('reserveTitlebarTraffic={!isMobile && !isFocusMode && !isSidebarOpen}');
   });
 
-  it('slides fixed-width side panels instead of cropping them with width animation', async () => {
-    const app = await readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8');
+  it('masks the sidebar in place while the right panel slides', async () => {
+    const [app, indexCss, sidebarPreview] = await Promise.all([
+      readFile(fileURLToPath(new URL('../../src/App.tsx', import.meta.url)), 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/hooks/useSidebarPreview.ts', import.meta.url)), 'utf8'),
+    ]);
 
-    expect(app).toMatch(/marginLeft: !isMobile && !isPromotingSidebarPreview && \(isFocusMode \|\| !isSidebarOpen\)[\s\S]*?'calc\(-1 \* var\(--noa-sidebar-width, 325px\)\)'[\s\S]*?: '0px'/);
-    expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'margin-left 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
+    // Pins the mask against a return to the slide it replaced: a negative margin
+    // on the container drags the content off screen instead of clipping it, and
+    // without the opacity the edge hard-cuts whatever it crosses.
+    expect(app).toContain('const isSidebarContentMasked = !isMobile && !isPromotingSidebarPreview && !isSidebarPreviewOpen && (isFocusMode || !isSidebarOpen);');
+    expect(app).toContain("width: isMobile\n              ? '80%'\n              : isSidebarContentMasked ? '0px' : 'var(--noa-sidebar-width, 325px)',");
+    expect(app).toContain('opacity: isSidebarContentMasked ? 0 : 1,');
+    expect(app).not.toMatch(/marginLeft:[\s\S]{0,120}?calc\(-1 \* var\(--noa-sidebar-width/);
+    expect(app).toContain(": 'opacity 260ms cubic-bezier(0.4, 0, 0.2, 1), width 320ms cubic-bezier(0.4, 0, 0.2, 1)',");
+    // 320ms is one motion in five places. The JS fallback is the one that can
+    // drift unnoticed: shorter than the motion, it drops the translucent
+    // material mid-collapse.
+    expect(sidebarPreview).toContain('const SIDEBAR_DOCK_MOTION_MS = 320;');
+    // All three boxes on the masking edge need the one-frame suppression, not
+    // just the two the mask is written on: leaving the preview drops the column
+    // surface from a full column to 0 in the same commit, and the surface alone
+    // played the collapse the other two were spared.
+    expect(app).toMatch(
+      /isPromotingSidebarPreview \|\| isSettlingSidebarPromotionClose \|\| isDraggingSidebar \|\| isSidebarPreviewSettling\s*\n\s*\? 'none'/,
+    );
+    expect(indexCss).toContain('transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);');
+    // Only !important outranks an inline transition, and all five have to drop
+    // together or the masking edge and its content come apart.
+    expect(indexCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\[data-sidebar-container\],\s*\[data-sidebar-content-layer="true"\],\s*\[data-sidebar-separator="true"\],\s*\[data-sidebar-column-surface="true"\],\s*\[data-titlebar="true"\]::after \{\s*transition: none !important;/);
+    expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 320ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
+    // The right panel still slides, so it must keep its fixed width throughout.
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px'");
     expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)')");
-    expect(app).not.toContain("transition: isDraggingSidebar ? 'none' : 'width 220ms");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");
   });
 

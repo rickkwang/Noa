@@ -200,7 +200,11 @@ describe('sidebar surface tokens', () => {
     expect(app).toContain("transition: 'none',");
     expect(css).not.toMatch(/transition:[^;]*--noa-sidebar-material-width/);
     expect(app).not.toMatch(/transition:[^,]*--noa-sidebar-material-width/);
-    expect(app).toContain("data-sidebar-dragging={isDraggingSidebar ? 'true' : undefined}");
+    // The drag used to carry its own attribute here purely so the veil could opt
+    // out of transitioning. It is one of the states the arming flag excludes now,
+    // and nothing else ever read it.
+    expect(app).toContain("data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}");
+    expect(app).not.toContain('data-sidebar-dragging');
     // Every translucency rule is gated on :where(:not([data-settings-open])),
     // which switches without contributing specificity.
     // The settings scrim blurs the frame behind it in premultiplied alpha, and
@@ -224,7 +228,22 @@ describe('sidebar surface tokens', () => {
       /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*background:\s*transparent\s*!important;[^}]*isolation:\s*isolate/,
     );
     expect(css).toMatch(
-      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #FCFCFB\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*transform 220ms/,
+      /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #FCFCFB\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*none;/,
+    );
+    // Dropping the start value costs one frame of translucent titlebar on open,
+    // which no computed-style assertion can see after the fact.
+    expect(css).toMatch(
+      /@starting-style \{\s*transform: translateX\(0\);/,
+    );
+    // And the arming rule that gives that start value something to interpolate
+    // from — only for the dock motion, and only once the shell has painted. The
+    // veil rides the sidebar's own edge; every other way that edge moves puts it
+    // somewhere in one frame, and a 320ms sweep over a column that is already
+    // full reads as an opaque plane crossing the editor. Promoting the hover
+    // preview is exactly that case, and it is also a first render, so
+    // @starting-style fires on it.
+    expect(css).toMatch(
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\) \.noa-app-shell\[data-sidebar-dock-motion="true"\]\[data-sidebar-material-painted="true"\]:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{\s*transition:\s*transform 320ms/,
     );
     // The titlebar only goes transparent so that veil shows through. Giving it
     // a veil — and so a stacking context — of its own re-rasterized the
@@ -235,9 +254,14 @@ describe('sidebar surface tokens', () => {
     );
     expect(css).not.toMatch(/\[data-translucent-sidebar-titlebar="true"\]::before/);
     // A pointer drag already delivers one width per frame; a transition on top
-    // of that only lags behind the cursor.
-    expect(css).toMatch(
-      /\.noa-app-shell\[data-sidebar-dragging="true"\]::before\s*\{\s*transition:\s*none;/,
+    // of that only lags behind the cursor. It needs no rule of its own now —
+    // the drag is one of the states the arming flag above excludes — but it
+    // must not come back as a default with exclusions hung off it.
+    expect(css).not.toMatch(
+      /\.noa-app-shell\[data-sidebar-dragging="true"\]::before/,
+    );
+    expect(css).not.toMatch(
+      /\.noa-app-shell:not\(\[data-sidebar-material-painted="true"\]\)/,
     );
     // Reduced motion must reach the veil, not just its host — the host no
     // longer carries the animation.

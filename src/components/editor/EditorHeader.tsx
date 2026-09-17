@@ -185,14 +185,28 @@ export function EditorHeader({
 
   return (
     <div
-      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 after:bg-[var(--divider-subtle)] ${liftTabStrip ? '-mt-8' : ''} ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
+      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 after:bg-[var(--divider-subtle)] ${liftTabStrip ? '-mt-8 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
       style={{
         ...dragRegion,
         paddingLeft: '0.75rem',
         paddingRight: '0.5rem',
         marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined,
         marginRight: reserveTitlebarActions ? '7.25rem' : undefined,
-        transition: liftTabStrip ? 'margin 220ms cubic-bezier(0.4, 0, 0.2, 1)' : undefined,
+        // Two edges, two clocks. The left reservation is the sidebar's traffic
+        // -light clearance and has to arrive exactly when the sidebar edge does
+        // — under a translucent sidebar the titlebar is transparent, so a strip
+        // that lands early sits over the wrong plane in plain sight. It stays
+        // margin (a padding reservation would put the header's box over the
+        // titlebar buttons and swallow their clicks) and a pointer-events-none
+        // pseudo extends the header's own floor across the margin gap instead
+        // — otherwise the translucent window's compositor leaves the native
+        // material showing in that band until the strip arrives (a gray ghost
+        // riding the tab strip). The right reservation belongs to the right
+        // panel, which still slides in 220ms. A `margin` shorthand cannot
+        // hold both.
+        transition: liftTabStrip
+          ? 'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'
+          : undefined,
       }}
     >
       {/* Tab strip */}

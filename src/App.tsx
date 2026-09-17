@@ -428,6 +428,7 @@ export default function App() {
   const {
     isSidebarPreviewOpen,
     isSidebarPreviewClosing,
+    isSidebarPreviewSettling,
     isPromotingSidebarPreview,
     isReversingSidebarPromotion,
     isSettlingSidebarPromotionClose,
@@ -491,6 +492,33 @@ export default function App() {
     const frame = window.requestAnimationFrame(() => setHasMountedRightPanel(true));
     return () => window.cancelAnimationFrame(frame);
   }, [hasMountedRightPanel, isLoaded, isRightPanelOpen]);
+
+  // The translucent veil earns its entry animation only after the app has
+  // painted once. Its @starting-style exists so the layer grows with the edge
+  // that reveals it, but @starting-style fires on any first render — and a
+  // restart with the sidebar already open is one, so the veil swept the whole
+  // column open behind a sidebar that was never closed. Settings are read
+  // synchronously into the first render, so the veil can only appear in that
+  // first paint or later from something the user did.
+  //
+  // Both waits are load-bearing, and both were measured rather than guessed.
+  // isLoaded, because the app renders a skeleton first: an unguarded effect
+  // spends its frames there and the flag is already set by the time the shell
+  // exists. Then two frames rather than one, because this effect can still run
+  // before the browser paints the commit that created the veil, which puts a
+  // single rAF inside that same paint.
+  const [hasPaintedSidebarMaterial, setHasPaintedSidebarMaterial] = useState(false);
+  useEffect(() => {
+    if (!isLoaded) return;
+    let second = 0;
+    const first = window.requestAnimationFrame(() => {
+      second = window.requestAnimationFrame(() => setHasPaintedSidebarMaterial(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(first);
+      window.cancelAnimationFrame(second);
+    };
+  }, [isLoaded]);
 
   // Warm the lazy settings chunk while idle so the first open doesn't spend a
   // beat fetching it before anything renders (its Suspense fallback is null).
@@ -683,13 +711,34 @@ export default function App() {
     );
   }
 
+  // The docked sidebar collapses under a mask instead of sliding: its own box
+  // shrinks over stationary content. True means the mask is closed — the state
+  // both the shrinking edge and the content's dissolve are driven from.
+  const isSidebarContentMasked = !isMobile && !isPromotingSidebarPreview && !isSidebarPreviewOpen && (isFocusMode || !isSidebarOpen);
+
+  // True exactly when the docked sidebar's own width is the thing moving. The
+  // titlebar's hairline starts at that edge but is a stylesheet rule on a
+  // pseudo-element, so it cannot read the same inline conditions the boxes on
+  // that edge do — it gets this instead. Stated as an opt-in rather than a list
+  // of exclusions: every other way the edge moves puts it somewhere in one
+  // frame (the preview appears at full width, promotion and the drag run their
+  // own clocks), and a line that eases 325px behind an edge that is already
+  // there is the whole defect. A state added later gets the snap by default.
+  const isSidebarDockMotionLive = !isMobile
+    && !isSidebarPreviewOpen
+    && !isPromotingSidebarPreview
+    && !isSettlingSidebarPromotionClose
+    && !isSidebarPreviewSettling
+    && !isDraggingSidebar;
+
   return (
     <>
     <div
       inert={loadError ? true : undefined}
       aria-hidden={loadError ? true : undefined}
       className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
-      data-sidebar-dragging={isDraggingSidebar ? 'true' : undefined}
+      data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}
+      data-sidebar-material-painted={hasPaintedSidebarMaterial ? 'true' : undefined}
       style={{
         '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
         '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
@@ -723,7 +772,7 @@ export default function App() {
             // fixed while the editor layout catches up.
             transition: isPromotingSidebarPreview || isDraggingSidebar
               ? 'none'
-              : `left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '220ms'}`,
+              : `left 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '320ms'}`,
           }}
         />
       )}
@@ -759,11 +808,16 @@ export default function App() {
               ? 'var(--bg-primary, #FCFCFB)'
               : 'var(--bg-sidebar, #F4F4F2)',
             opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
+            // isSidebarPreviewSettling for the same reason the container and its
+            // content layer carry it: leaving the preview drops this surface
+            // from the preview's full column to 0 in one commit, and without a
+            // frame of suppression it plays a 320ms collapse of a column the
+            // user already dismissed — behind the preview that is fading out.
             transition: isSidebarPreviewOpen
               ? undefined
-              : isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isDraggingSidebar
+              : isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isDraggingSidebar || isSidebarPreviewSettling
                 ? 'none'
-                : `width 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '220ms'}`,
+                : `width 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? '0ms' : '320ms'}`,
           }}
         />
       )}
@@ -830,29 +884,53 @@ export default function App() {
           onTransitionCancel={finishSidebarDockMotion}
           className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
-            width: isMobile ? '80%' : 'var(--noa-sidebar-width, 325px)',
+            // The docked sidebar never moves. Its own width is the mask: the
+            // content sits in a fixed-width child that stays put at the app's
+            // left edge while this box's right edge — the separator's track —
+            // travels left across it and clips it away.
+            width: isMobile
+              ? '80%'
+              : isSidebarContentMasked ? '0px' : 'var(--noa-sidebar-width, 325px)',
             maxWidth: isMobile ? '320px' : undefined,
-            marginLeft: !isMobile && !isPromotingSidebarPreview && (isFocusMode || !isSidebarOpen)
-              ? 'calc(-1 * var(--noa-sidebar-width, 325px))'
-              : '0px',
-            left: !isMobile
-              ? (isSidebarPreviewOpen ? 'var(--noa-sidebar-width, 325px)' : isPromotingSidebarPreview ? '0px' : undefined)
+            // Both float at the app's left edge; docked, the box is in flow and
+            // takes its own position.
+            left: !isMobile && (isSidebarPreviewOpen || isPromotingSidebarPreview)
+              ? '0px'
               : undefined,
             transform: isMobile
               ? (isFocusMode || !isSidebarOpen ? 'translateX(-100%)' : 'translateX(0)')
               : undefined,
             transition: isSidebarPreviewOpen
               ? undefined
-              : isDraggingSidebar || isPromotingSidebarPreview || isSettlingSidebarPromotionClose
+              : isDraggingSidebar || isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isSidebarPreviewSettling
                 ? 'none'
-                : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
+                : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'width 320ms cubic-bezier(0.4, 0, 0.2, 1)'),
             minWidth: 0,
           }}
         >
           <div
+            data-sidebar-content-layer="true"
             style={{
               width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 325px)',
               maxWidth: isMobile ? '320px' : undefined,
+              // The edge alone would hard-cut whatever it crosses. Dimming the
+              // whole column on a slightly shorter curve means the part still
+              // ahead of the edge is already dissolving, and the last sliver is
+              // gone before the edge reaches it.
+              opacity: isSidebarContentMasked ? 0 : 1,
+              // Width matters here only when the column is resized, not when it
+              // collapses. A keyboard nudge or a viewport clamp moves the same
+              // variable outside a drag, and the masking edge eases to it — so
+              // the content has to ease with it or spend the whole motion
+              // clipped short of its own box.
+              transition: isMobile
+                || isDraggingSidebar
+                || isSidebarPreviewOpen
+                || isPromotingSidebarPreview
+                || isSettlingSidebarPromotionClose
+                || isSidebarPreviewSettling
+                ? 'none'
+                : 'opacity 260ms cubic-bezier(0.4, 0, 0.2, 1), width 320ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
             className="flex h-full shrink-0"
           >

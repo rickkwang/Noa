@@ -651,7 +651,7 @@ test('entering focus mode cancels an in-flight sidebar preview promotion', async
   expect((await editor.boundingBox())!.x).toBe(collapsedEditorBox!.x);
 });
 
-test('direct sidebar toggle keeps the separator attached to the moving sidebar edge', async ({ page }) => {
+test('direct sidebar toggle wipes the separator across stationary content', async ({ page }) => {
   await page.goto('/');
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
@@ -676,8 +676,11 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
     const surface = document.querySelector<HTMLElement>('[data-sidebar-column-surface="true"]')!;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const box = element.getBoundingClientRect();
+    const content = element.firstElementChild!.getBoundingClientRect();
     const sample = {
       edge: box.right,
+      contentX: content.x,
+      contentWidth: content.width,
       surfaceEdge: surface.getBoundingClientRect().right,
       separator: separator.getBoundingClientRect().x,
       opacity: Number(getComputedStyle(separator).opacity),
@@ -695,6 +698,10 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
   expect(closing.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
   expect(Math.abs(closing.edge - closing.separator)).toBeLessThan(1.5);
   expect(Math.abs(closing.edge - closing.surfaceEdge)).toBeLessThan(1.5);
+  // The content is masked, not moved: it stays full width at the app edge while
+  // the separator sweeps left over it.
+  expect(closing.contentX).toBe(expandedSidebarBox!.x);
+  expect(closing.contentWidth).toBe(expandedSidebarBox!.width);
   expect(closing.opacity).toBe(1);
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
   await expect(separator).toHaveCSS('opacity', '0');
@@ -706,7 +713,208 @@ test('direct sidebar toggle keeps the separator attached to the moving sidebar e
   expect(opening.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
   expect(Math.abs(opening.edge - opening.separator)).toBeLessThan(1.5);
   expect(Math.abs(opening.edge - opening.surfaceEdge)).toBeLessThan(1.5);
+  expect(opening.contentX).toBe(expandedSidebarBox!.x);
+  expect(opening.contentWidth).toBe(expandedSidebarBox!.width);
   expect(opening.opacity).toBe(1);
+});
+
+test('sidebar toggle stays clickable while a note lifts the tab strip over the titlebar', async ({ page }) => {
+  await page.goto('/');
+
+  // With a note open the editor header lifts its tab strip into the titlebar
+  // band, and when the sidebar is closed its traffic-light reservation reaches
+  // left across the band. A padding-based reservation once put the header's
+  // box over the toggle and swallowed its clicks; the margin-based one must
+  // not (the floor extension is pointer-events none).
+  await page.getByTitle('New note').click();
+  await expect(page.locator('.noa-editor-header-floor')).toBeAttached();
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const sidebar = page.locator('[data-sidebar-container]');
+  await toggle.click();
+  await expect(sidebar).toHaveCSS('width', '0px');
+
+  // Measured rather than matched: the floor can lose its width entirely and
+  // every selector-level assertion in the unit tests still passes, because the
+  // failure is a resolved value, not a missing declaration.
+  const floor = await page.locator('.noa-editor-header-floor').evaluate((element) => {
+    const before = getComputedStyle(element, '::before');
+    return {
+      marginLeft: getComputedStyle(element).marginLeft,
+      left: before.left,
+      width: before.width,
+      border: `${before.borderBottomWidth} ${before.borderBottomColor}`,
+    };
+  });
+  const titlebarHairline = await page.locator('[data-titlebar="true"]').evaluate((element) => (
+    getComputedStyle(element, '::after').backgroundColor
+  ));
+  expect(floor.marginLeft).toBe('144px');
+  expect(floor.left).toBe('-144px');
+  expect(floor.width).toBe('144px');
+  expect(floor.border).toBe(`1px ${titlebarHairline}`);
+
+  // Direct hit-test at the toggle's center: the topmost element must be the
+  // button itself, not the lifted header crossing it.
+  const swallowed = await toggle.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return hit !== element && !element.contains(hit);
+  });
+  expect(swallowed).toBe(false);
+
+  await toggle.click();
+  await expect(sidebar).toHaveCSS('width', '325px');
+});
+
+test('the hover preview leaves the titlebar hairline and column surface where it puts them', async ({ page }) => {
+  // The preview arrives at full width in one frame and leaves on a 180ms fade.
+  // Nothing on that edge has a 320ms dock motion to ride, so anything that runs
+  // one is a line crawling out from under a panel that is already gone. Both
+  // regressed at once here: the hairline because its transition was a default
+  // with exclusions rather than an opt-in, and the column surface because it
+  // was the one box on the masking edge that never got the settle suppression.
+  //
+  // Asserting on the transitions themselves — the resting values are identical
+  // either way, which is exactly why this was invisible to every existing test.
+  await page.addInitScript(() => {
+    const entries: string[] = [];
+    (window as unknown as { __edgeMotion: string[] }).__edgeMotion = entries;
+    document.addEventListener('transitionrun', (event) => {
+      const transition = event as TransitionEvent;
+      if (transition.propertyName !== 'left' && transition.propertyName !== 'width') return;
+      const target = transition.target as HTMLElement;
+      const name = target?.dataset?.titlebar ? 'titlebar'
+        : target?.dataset?.sidebarColumnSurface ? 'surface'
+        : target?.hasAttribute?.('data-sidebar-container') ? 'container'
+          : null;
+      if (name) entries.push(`${name}${transition.pseudoElement}:${transition.propertyName}`);
+    }, true);
+  });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  // The hairline only exists with a note open, and only then does it start at
+  // the sidebar's edge rather than the window's.
+  await page.getByTitle('New note').click();
+  await expect(page.locator('[data-titlebar="true"]')).toBeVisible();
+
+  const motion = () => page.evaluate(() => {
+    const entries = (window as unknown as { __edgeMotion: string[] }).__edgeMotion;
+    return entries.splice(0, entries.length);
+  });
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  const hairlineLeft = () => page.locator('[data-titlebar="true"]').evaluate((element) => (
+    getComputedStyle(element, '::after').left
+  ));
+
+  // Positive control first: the dock toggle is the one motion this edge has, and
+  // the hairline has to ride it or the line jumps across a sidebar still on
+  // screen. Both directions, because the settle suppression only guards one.
+  await toggle.click();
+  await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
+  expect(await motion()).toContain('titlebar::after:left');
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  expect(await hairlineLeft()).toBe('0px');
+
+  // Closing by click leaves the pointer on the toggle; the preview needs a
+  // genuine leave-and-reenter.
+  await page.mouse.move(900, 500);
+  await motion();
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  await page.waitForTimeout(420);
+  expect(await motion()).toEqual([]);
+  expect(await hairlineLeft()).toBe('325px');
+
+  await page.mouse.move(900, 500);
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
+  await page.waitForTimeout(420);
+  expect(await motion()).toEqual([]);
+  expect(await hairlineLeft()).toBe('0px');
+  await expect(page.locator('[data-sidebar-column-surface="true"]')).toHaveCSS('width', '0px');
+});
+
+test('promoting the preview opens the dock gap without sweeping the veil or walking the tab strip back', async ({ page }) => {
+  // Promotion takes a column the preview is already filling and hands it to the
+  // docked sidebar. Nothing about that column's width changes, so anything that
+  // animates across it is animating over a gap that was never there:
+  //  - the translucent veil, whose @starting-style cannot tell "the sidebar
+  //    opened" from "the element that paints it was just created", swept 325px
+  //    of opaque plane across the editor;
+  //  - the lifted tab strip, whose traffic-light reservation shrank on the dock
+  //    motion's clock while the spacer that moves the editor's left edge ran a
+  //    shorter one, so the strip arrived and then crept back left with nothing
+  //    else on screen moving.
+  await page.addInitScript(() => {
+    localStorage.setItem('app-settings', JSON.stringify({ appearance: { translucentSidebar: true } }));
+    const entries: string[] = [];
+    (window as unknown as { __veilMotion: string[] }).__veilMotion = entries;
+    document.addEventListener('transitionrun', (event) => {
+      const transition = event as TransitionEvent;
+      const target = transition.target as HTMLElement;
+      if (transition.pseudoElement !== '::before') return;
+      if (!target?.classList?.contains('noa-app-shell')) return;
+      entries.push(transition.propertyName);
+    }, true);
+  });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+
+  await page.getByTitle('New note').click();
+  const shell = page.locator('.noa-app-shell');
+  const veil = () => shell.evaluate((element) => getComputedStyle(element, '::before').transform);
+  const veilMotion = () => page.evaluate(() => {
+    const entries = (window as unknown as { __veilMotion: string[] }).__veilMotion;
+    return entries.splice(0, entries.length);
+  });
+  const settled = 'matrix(1, 0, 0, 1, 325, 0)';
+  await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
+  await page.mouse.move(900, 500);
+  await toggle.hover();
+  await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
+  await page.waitForTimeout(240);
+  await veilMotion();
+
+  // Sample every frame of the promotion: the veil must hold one value and the
+  // tab strip must never move left.
+  await toggle.click();
+  const promotion = await page.evaluate(async () => {
+    const shell = document.querySelector<HTMLElement>('.noa-app-shell')!;
+    const veils = new Set<string>();
+    const tabs: number[] = [];
+    const deadline = performance.now() + 520;
+    while (performance.now() < deadline) {
+      veils.add(getComputedStyle(shell, '::before').transform);
+      const tab = document.querySelector<HTMLElement>('[data-tab-id]');
+      if (tab) tabs.push(tab.getBoundingClientRect().x);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    }
+    return { veils: [...veils], tabs };
+  });
+
+  expect(promotion.veils).toEqual([settled]);
+  expect(await veilMotion()).toEqual([]);
+  // Monotonic to within a sub-pixel of rounding noise. The regression walked it
+  // back 16px, so this has room to spare without going slack.
+  const retreat = promotion.tabs.reduce(
+    (worst, x, index) => (index === 0 ? worst : Math.max(worst, promotion.tabs[index - 1] - x)),
+    0,
+  );
+  expect(promotion.tabs.length).toBeGreaterThan(8);
+  expect(retreat).toBeLessThan(1);
+  expect(promotion.tabs[promotion.tabs.length - 1]).toBeGreaterThan(promotion.tabs[0]);
+
+  // The dock motion is the one thing the veil does ride, and promotion must not
+  // have cost it that. Positive control for both assertions above.
+  await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '325px');
+  await expect.poll(veil).toBe(settled);
+  await toggle.click();
+  await expect.poll(veilMotion).toContain('transform');
 });
 
 test('Escape closes the sidebar preview and returns focus to its toggle', async ({ page }) => {
@@ -1672,7 +1880,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await expect.poll(() => shell.evaluate((element) => (
     (element as HTMLElement).style.getPropertyValue('--noa-sidebar-material-width')
   ))).toBe('0px');
-  await page.waitForTimeout(260);
+  await page.waitForTimeout(420);
   await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
 
   await page.mouse.move(700, 500);
@@ -1738,6 +1946,92 @@ test('translucent sidebar material does not animate with reduced motion', async 
   await expect(shell).toHaveCSS('transition-property', 'none');
   await page.getByTitle('Toggle Sidebar').click();
   await expect(shell).toHaveCSS('transition-property', 'none');
+});
+
+test('leaving settings does not replay the translucent sidebar expansion', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-settings', JSON.stringify({
+      appearance: { translucentSidebar: true },
+    }));
+  });
+  await page.goto('/');
+
+  const shell = page.locator('.noa-app-shell');
+  const veil = (property: string) => shell.evaluate(
+    (element, name) => getComputedStyle(element, '::before').getPropertyValue(name),
+    property,
+  );
+  const settled = 'matrix(1, 0, 0, 1, 325, 0)';
+  await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
+  await expect.poll(() => veil('transform')).toBe(settled);
+
+  await page.getByTitle('Settings').click();
+  await expect(page.locator('html')).toHaveAttribute('data-settings-open', 'true');
+  // Collected, not asserted yet: the frame sampler below is the assertion this
+  // bug actually trips, and it has to be the one that gates the test.
+  const whileOpen = { opacity: await veil('opacity'), transform: await veil('transform') };
+
+  await page.getByRole('button', { name: 'Close settings' }).click();
+
+  // Sample every frame across the window the replay would have occupied. The
+  // sidebar never moves here, so the veil must hold one value throughout.
+  const transforms = await shell.evaluate(async (element) => {
+    const seen = new Set<string>();
+    const deadline = performance.now() + 420;
+    while (performance.now() < deadline) {
+      seen.add(getComputedStyle(element, '::before').transform);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    }
+    return [...seen];
+  });
+  expect(transforms).toEqual([settled]);
+  // And the mechanism that keeps it that way: hidden for the dialog, not destroyed.
+  expect(whileOpen).toEqual({ opacity: '0', transform: settled });
+  expect(await veil('opacity')).toBe('1');
+});
+
+test('a restart with the sidebar already open does not sweep the translucent veil in', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('redaction-storage-notice-seen', '1');
+    localStorage.setItem('app-settings', JSON.stringify({
+      appearance: { translucentSidebar: true },
+    }));
+    const entries: string[] = [];
+    (window as unknown as { __veilEntries: string[] }).__veilEntries = entries;
+    document.addEventListener('transitionrun', (event) => {
+      const transition = event as TransitionEvent;
+      const target = transition.target as HTMLElement;
+      if (transition.pseudoElement !== '::before') return;
+      if (!target?.classList?.contains('noa-app-shell')) return;
+      entries.push(transition.propertyName);
+    }, true);
+  });
+  await page.goto('/');
+
+  const shell = page.locator('.noa-app-shell');
+  const entries = () => page.evaluate(() => (window as unknown as { __veilEntries: string[] }).__veilEntries);
+  const settled = 'matrix(1, 0, 0, 1, 325, 0)';
+  await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
+  await expect.poll(() => shell.evaluate((element) => (
+    getComputedStyle(element, '::before').transform
+  ))).toBe(settled);
+
+  // @starting-style fires on any first render, and a restart is one — so the
+  // veil used to sweep the full column open behind a sidebar that was never
+  // closed. Asserting on the entry transition itself, because the end state is
+  // identical either way.
+  expect(await entries()).toEqual([]);
+
+  // Positive control for that assertion: the listener must be able to see an
+  // entry at all, or the check above would hold no matter what the veil did.
+  // A real toggle is also the animation @starting-style is there to produce.
+  const toggle = page.getByTitle('Toggle Sidebar');
+  await toggle.click();
+  await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
+  await toggle.click();
+  await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '325px');
+  expect(await entries()).toContain('transform');
 });
 
 test('a recovered settings read merges and persists a queued change', async ({ page }) => {

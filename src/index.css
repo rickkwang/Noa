@@ -130,6 +130,65 @@ body {
 .noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after,
 .noa-app-shell:has(.noa-resize-handle[data-edge="left"][data-dragging="true"]) [data-right-panel-separator]::after { opacity: 1; }
 
+/* The titlebar's hairline starts where the sidebar ends, so it is part of the
+   dock motion whether it likes it or not: the class swap alone lands its new
+   left edge on the first frame, which reads as the line jumping across a
+   sidebar that then takes the full motion to leave. Same clock as everything
+   else on that edge — but only for that motion, which is why this is an opt-in
+   keyed on the shell rather than a default with exclusions hung off it. The
+   hairline's own left comes from a class on the titlebar, and that class tracks
+   "is a sidebar visible", which is also true for the hover preview: the preview
+   arrives at full width in one frame and leaves on a 180ms fade, so a hairline
+   easing 325px across the titlebar behind it is the line crawling out from
+   under a panel that is already gone. A resize drag and the promotion phases
+   are the same story from the other end — each lands the edge on its own clock.
+   App.tsx computes the one case that is the dock motion; everything else snaps,
+   including anything added later. */
+[data-titlebar="true"]::after {
+  transition: none;
+}
+.noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {
+  transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The lifted editor header's left traffic-light reservation is margin, so the
+   titlebar buttons it floats over stay clickable — but under a translucent
+   sidebar the titlebar is transparent, and the band between the sidebar edge
+   and the strip must read as one surface from the first frame of the dock
+   motion. This pseudo carries the header's own floor across that margin gap:
+   base-layer paint (a transformed layer lagged and left the native material
+   showing as a gray ghost), pointer-events none (it must not swallow the
+   buttons it crosses), and background-color inherit so the dark remap that
+   rewrites the header's own class follows automatically. It rides the same
+   320ms clock as the margin it shadows.
+   `right: 100%` pins its right edge to the header's own left edge and is what
+   gives the box any width at all: with only `left` set, width resolves
+   shrink-to-fit over empty content and the whole rule paints nothing. Pinned,
+   the single animated `left` is both the position and the width — 0 when there
+   is no reservation, one margin's worth when there is.
+   It covers the titlebar's own hairline while it is there, so it has to carry
+   that line too, or the divider ends at the tab strip and the band reads as a
+   notch. Redrawing beats uncovering: the titlebar hairline is 8% alpha, so a
+   1px gap in this surface would let the native material ghost straight through
+   it. The seam stays invisible because both segments are on one clock — this
+   edge sits at `left: 325px * progress` throughout the motion, which is exactly
+   where the titlebar hairline's own animated left edge is. */
+.noa-editor-header-floor::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 100%;
+  background-color: inherit;
+  border-bottom: 1px solid var(--divider-subtle, #E6E2DA);
+  pointer-events: none;
+  transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.noa-editor-header-floor-reserved::before {
+  left: -9rem;
+}
+
 /* Shared surface for the graph's small control clusters (header filter field,
    canvas zoom pad). Two things it has to be at once: opaque, because the zoom
    pad floats over a busy, ever-shifting canvas of nodes and edges rather than
@@ -326,7 +385,8 @@ body {
    the native macOS sidebar material; this layer only adds the theme tint. 
 
    Every translucency rule in this block is gated on
-   :where(:not([data-settings-open="true"])).
+   :where(:not([data-settings-open="true"])), except the veil layer, which
+   hides for the dialog instead.
    :where() contributes no specificity, so the gate is purely a switch and the
    cascade these rules already win stays exactly as it was. The settings
    scrim carries a backdrop-filter, which blurs the composited frame behind it
@@ -362,7 +422,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   isolation: isolate;
 }
 
-html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell:has([data-sidebar-expanded="true"])::before {
+/* This one rule is the block's exception to the settings gate, because its
+   @starting-style makes the gate's mechanism visible. A gate in the selector
+   works by destroying the element, and @starting-style fires on whatever brings
+   the element back — it cannot tell "the sidebar just opened" from "the dialog
+   just closed". Gated here, leaving settings replayed the whole 320ms expansion
+   over a sidebar that had not moved. So existence tracks the sidebar alone, and
+   the dialog hides the layer it already has, below. */
+html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expanded="true"])::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -370,13 +437,51 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   pointer-events: none;
   background-color: var(--bg-primary, #FCFCFB);
   transform: translateX(var(--noa-sidebar-material-width));
-  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Parked. The rule below is the only thing that arms this, and it is the only
+     motion on this edge the veil is allowed to join. */
+  transition: none;
+
+  /* Closing is symmetric on its own: the layer already exists and slides back
+     to 0 before the selector stops matching. Opening is not — the veil comes
+     into existence with the attribute, so without a start value it materializes
+     already parked at the full column width and the whole titlebar flashes
+     translucent one frame before anything has moved. Starting it at 0 lets the
+     translucent region grow with the edge that reveals it.
+     It only has that meaning for the dock motion, which is why this needs the
+     transition to stay off by default: @starting-style fires on whatever brings
+     the element into existence, and promoting the hover preview does that over
+     a column the preview is already filling. Unarmed, there is no transition to
+     interpolate from and the start value is inert. */
+  @starting-style {
+    transform: translateX(0);
+  }
 }
 
-/* A resize drag drives the width from pointermove, which already lands one
-   value per frame — transitioning on top of that only adds lag. Same
-   specificity as the rule above, so this has to stay below it. */
-html[data-translucent-sidebar="enabled"] .noa-app-shell[data-sidebar-dragging="true"]::before {
+/* The veil grows with the sidebar's own edge, so it rides that edge's clock and
+   nothing else. data-sidebar-dock-motion is App.tsx's answer to "is the docked
+   width what is moving right now": false for the hover preview and its
+   promotion (the column is already at full width — the veil sweeping across it
+   is an opaque plane crossing the editor for no reason), false during a resize
+   drag (pointermove already lands one value per frame and a transition only
+   adds lag), and false for the settle frames on either side. The painted flag
+   is the other half: first paint is not an entry, so a restart with the sidebar
+   already open must not animate a column that was never closed.
+   :where() for the dialog gate so this contributes no specificity there and the
+   hide-for-settings rule above keeps its `transition: none`. */
+html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell[data-sidebar-dock-motion="true"][data-sidebar-material-painted="true"]:has([data-sidebar-expanded="true"])::before {
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The dialog's share of the gate: hide the veil instead of destroying it, so
+   the element survives the round trip and @starting-style stays a sidebar-only
+   signal. The surfaces underneath have their opaque floors back by then (the
+   gated rules above), so there is nothing for this layer to contribute anyway.
+   `transition: none` covers the other direction — enabling translucency from
+   inside the dialog builds the veil right there, and its entry animation has to
+   be over before the dialog uncovers it. The arming rule above carries the
+   dialog in a :where(), so it does not reach past this one. */
+html[data-translucent-sidebar="enabled"][data-settings-open="true"] .noa-app-shell:has([data-sidebar-expanded="true"])::before {
+  opacity: 0;
   transition: none;
 }
 
@@ -1146,9 +1251,16 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: var(--sidebar-preview-shadow, 0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05));
 }
 
+/* The spacer is what opens the docked gap under a promoted preview, so it moves
+   the editor's left edge — the same edge the lifted tab strip's traffic-light
+   reservation is measured back from. Those two have to share a clock or the
+   strip is not monotonic: the reservation used to shrink over 320ms while this
+   finished in 220ms, so the strip ran right with the edge, arrived, and then
+   crept ~16px back left over the last 100ms with nothing else moving. One
+   clock for the whole left edge. */
 .noa-sidebar-promotion-spacer {
   width: var(--noa-sidebar-width, 325px);
-  transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1);
 
   @starting-style {
     width: 0;
@@ -1176,5 +1288,21 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 
   .noa-sidebar-promotion-spacer {
     transition: none;
+  }
+
+  /* The docked collapse is driven from inline styles on four elements that have
+     to stay on one clock: the masking edge, the separator riding it, the column
+     surface, and the content dissolving underneath. Inline wins over a plain rule,
+     so this needs !important to reach them at all. The titlebar hairline joins
+     them here because it starts at the same edge, even though its own transition
+     is a stylesheet rule. The hook already skips its closing flag under reduced
+     motion, and every phase has a timer fallback, so nothing here depends on a
+     transitionend that no longer fires. */
+  [data-sidebar-container],
+  [data-sidebar-content-layer="true"],
+  [data-sidebar-separator="true"],
+  [data-sidebar-column-surface="true"],
+  [data-titlebar="true"]::after {
+    transition: none !important;
   }
 }
