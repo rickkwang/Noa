@@ -202,10 +202,10 @@ export function EditorHeader({
         // — otherwise the translucent window's compositor leaves the native
         // material showing in that band until the strip arrives (a gray ghost
         // riding the tab strip). The right reservation belongs to the right
-        // panel, which still slides in 220ms. A `margin` shorthand cannot
-        // hold both.
+        // panel, which slides on the same 320ms clock as the sidebar. A
+        // `margin` shorthand cannot hold both.
         transition: liftTabStrip
-          ? 'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'
+          ? 'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'
           : undefined,
       }}
     >

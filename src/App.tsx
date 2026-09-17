@@ -524,7 +524,7 @@ export default function App() {
   // beat fetching it before anything renders (its Suspense fallback is null).
   // The right panel rides along: if it was restored closed, hasMountedRightPanel
   // stays false until the first toggle, which would otherwise fetch the
-  // graph/tasks chunk in the middle of the panel's 220ms slide. Warming only
+  // graph/tasks chunk in the middle of the panel's 320ms slide. Warming only
   // the module keeps the mount itself deferred, so the bundle still stays out
   // of the first render.
   useEffect(() => {
@@ -785,7 +785,7 @@ export default function App() {
             right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px',
             width: '1px',
             backgroundColor: 'var(--panel-divider, #2D2D2B)',
-            transition: isDraggingRightPanel ? 'none' : 'right 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: isDraggingRightPanel ? 'none' : 'right 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
       )}
@@ -1079,7 +1079,7 @@ export default function App() {
             transform: isMobile
               ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
               : undefined,
-            transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 220ms cubic-bezier(0.4, 0, 0.2, 1)'),
+            transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'),
             minWidth: 0,
           }}
         >
