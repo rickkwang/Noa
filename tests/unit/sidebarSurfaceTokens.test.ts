@@ -171,8 +171,9 @@ describe('sidebar surface tokens', () => {
     expect(injector).toMatch(
       /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#FCFCFB',\s*settings\.appearance\.theme/,
     );
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '54%');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '44%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '70%');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#3B3B39');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#FAFAF8');");
     // The app-shell separator is a plain hairline on the shared divider token,
     // with no weight step and no shadow of its own: both the bespoke
     // --sidebar-divider-color and --sidebar-divider-shadow are gone, so it can
@@ -213,7 +214,7 @@ describe('sidebar surface tokens', () => {
     // the opaque floor it already carries — nothing is restated, so a
     // transparent surface added later cannot forget to opt in.
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--bg-sidebar, #F4F4F2\) var\(--sidebar-material-tint, 44%\), transparent\)/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--sidebar-material-color, #FAFAF8\) var\(--sidebar-material-tint, 70%\), transparent\)/,
     );
     expect(css).not.toContain('[data-sidebar-separator="true"] {');
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');

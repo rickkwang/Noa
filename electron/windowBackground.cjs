@@ -15,7 +15,7 @@ function resolveSidebarWindowAppearance(enabled, fallbackColor, supportsVibrancy
   if (!resolvedFallback) return null;
 
   if (enabled && supportsVibrancy) {
-    return { backgroundColor: '#00000000', vibrancy: 'sidebar' };
+    return { backgroundColor: '#00000000', vibrancy: 'menu' };
   }
   return { backgroundColor: resolvedFallback, vibrancy: null };
 }

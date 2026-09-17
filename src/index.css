@@ -400,7 +400,7 @@ body {
    transparent surface added later cannot forget to opt in. The material is
    fully hidden behind the dialog anyway. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
-  background-color: color-mix(in srgb, var(--bg-sidebar, #F4F4F2) var(--sidebar-material-tint, 44%), transparent) !important;
+  background-color: color-mix(in srgb, var(--sidebar-material-color, #FAFAF8) var(--sidebar-material-tint, 70%), transparent) !important;
 }
 
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) body {

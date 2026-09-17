@@ -21,7 +21,12 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // editor's red-blue spread at 2 (50/50/48 versus 45/45/43), so it reads
       // as depth rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#323230');
-      root.style.setProperty('--sidebar-material-tint', '54%');
+      // Translucent-sidebar tint, matched to Codex's runtime theme: surface
+      // #2D2D2B mixed 7% toward ink #F9F9F7, at 70% over the native `menu`
+      // material. Separate from --bg-sidebar, the opaque floor when
+      // translucency is off.
+      root.style.setProperty('--sidebar-material-color', '#3B3B39');
+      root.style.setProperty('--sidebar-material-tint', '70%');
       // Four stacked layers instead of one 6px/14px cast. A single mid-blur
       // shadow lands on a dark floor as a band with a readable outer edge —
       // the preview looks like a sheet pasted over the canvas rather than
@@ -55,7 +60,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // earlier pass used a warmer paper tone and it read as the sidebar turning
       // yellow rather than creating a quiet plane change.
       root.style.setProperty('--bg-sidebar', '#FBFBF9');
-      root.style.setProperty('--sidebar-material-tint', '44%');
+      // Codex light: surface #F9F9F7 mixed 12% toward white, at 70% over `menu`.
+      root.style.setProperty('--sidebar-material-color', '#FAFAF8');
+      root.style.setProperty('--sidebar-material-tint', '70%');
       // Light counterpart of the dark stack above, same four-layer geometry at
       // roughly the previous total weight — on a light floor the single-layer
       // version was already faint enough not to band.

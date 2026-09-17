@@ -25,10 +25,10 @@ describe('resolveBackgroundColor', () => {
 });
 
 describe('resolveSidebarWindowAppearance', () => {
-  it('uses a clear native backing and sidebar vibrancy on macOS when enabled', () => {
+  it('uses a clear native backing and menu vibrancy on macOS when enabled', () => {
     expect(resolveSidebarWindowAppearance(true, '#2D2D2B', true)).toEqual({
       backgroundColor: '#00000000',
-      vibrancy: 'sidebar',
+      vibrancy: 'menu',
     });
   });
 
