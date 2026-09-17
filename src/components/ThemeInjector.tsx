@@ -123,6 +123,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .text-\\[\\#2D2D2B\\]\\/40 { color: color-mix(in srgb, var(--text-primary) 40%, transparent) !important; }
       .text-\\[\\#2D2D2B\\]\\/75 { color: color-mix(in srgb, var(--text-primary) 75%, transparent) !important; }
       .text-\\[\\#2D2D2B\\]\\/80 { color: color-mix(in srgb, var(--text-primary) 80%, transparent) !important; }
+      .text-\\[\\#2D2D2B\\]\\/85 { color: color-mix(in srgb, var(--text-primary) 85%, transparent) !important; }
       .text-\\[\\#2D2D2B\\]\\/90 { color: color-mix(in srgb, var(--text-primary) 90%, transparent) !important; }
       .hover\\:text-\\[\\#CC7D5E\\]:hover { color: var(--accent-color) !important; }
       .hover\\:text-\\[\\#2D2D2B\\]:hover { color: var(--text-primary) !important; }

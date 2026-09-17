@@ -412,7 +412,7 @@ export default function Sidebar({
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pt-1.5 pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
-          className="p-1 text-[#2D2D2B]/80 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New note"
           aria-label="New note"
         >
@@ -420,7 +420,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder()}
-          className="p-1 text-[#2D2D2B]/80 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="New folder"
           aria-label="New folder"
         >
@@ -431,7 +431,7 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="p-1 text-[#2D2D2B]/80 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
@@ -439,7 +439,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="p-1 text-[#2D2D2B]/80 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open today's daily note"
           aria-label="Open today's daily note"
         >
@@ -451,7 +451,7 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="p-1 text-[#2D2D2B]/80 hover:text-[#CC7D5E] transition-colors active:opacity-70"
+          className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
           title="Open random note"
           aria-label="Open random note"
         >
@@ -459,7 +459,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          className="flex items-center gap-1 px-1 py-1 transition-colors ml-auto text-[#2D2D2B]/80 hover:text-[#CC7D5E]"
+          className="flex items-center gap-1 px-1 py-1 transition-colors ml-auto text-[#2D2D2B]/85 hover:text-[#CC7D5E]"
           style={{ color: noteSortOrder !== 'updatedAt' ? '#CC7D5E' : undefined }}
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}

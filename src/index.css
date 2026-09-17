@@ -249,7 +249,7 @@ body {
    against the sidebar floor. The accent remains reserved for active or hover
    feedback, so a resting sidebar does not mix coral icons with dark text. */
 .noa-sidebar-tree-item {
-  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 80%, transparent);
+  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 85%, transparent);
 }
 
 /* Sections (CalendarPanel, TagBrowser) are only ever rendered inside the
@@ -643,6 +643,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .text-\[\#2D2D2B\]\/70  { color: rgba(220,220,214,0.70) !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/75  { color: rgba(220,220,214,0.75) !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/80  { color: rgba(220,220,214,0.80) !important; }
+[data-theme="dark"] .text-\[\#2D2D2B\]\/85  { color: rgba(220,220,214,0.85) !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/90  { color: rgba(220,220,214,0.90) !important; }
 [data-theme="dark"] .text-\[\#CC7D5E\]      { color: #CC7D5E !important; }
 
