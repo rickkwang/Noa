@@ -1186,13 +1186,25 @@ test('enabling reduced motion settles active sidebar preview transitions', async
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
   await page.mouse.move(700, 400);
   await toggle.hover();
-  await page.mouse.move(700, 400);
-  await page.waitForTimeout(150);
-  expect(await page.locator('[data-sidebar-preview-shell="true"]').getAttribute('data-sidebar-preview-closing')).toBe('true');
+  await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(1);
+  // 'closing' is a transient — its own fallback retires it 260ms in. Escape
+  // enters the phase synchronously, where leaving by pointer first burns 140ms
+  // of that budget on hover intent and leaves a window narrow enough for a
+  // loaded runner to step over entirely.
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    () => document.querySelector('[data-sidebar-preview-shell="true"]')
+      ?.getAttribute('data-sidebar-preview-closing') === 'true',
+    undefined,
+    { polling: 'raf' },
+  );
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  // Escape leaves the pointer on the toggle, and hovering where it already is
+  // fires no mouseenter — step off first so the next hover reopens the preview.
+  await page.mouse.move(700, 400);
   await toggle.hover();
   await toggle.click();
   await expect(page.locator('[data-sidebar-promotion-spacer="true"]')).toHaveCount(1);
@@ -1328,38 +1340,28 @@ test('a second tab opened mid-entrance does not cut the first tab\'s animation',
 
   // The entering tab used to be tracked in a single slot, so a second open
   // stripped the first tab's animation class mid-flight and it jumped straight
-  // to full width (measured: 1.9px -> 126px in one frame).
-  const overlap = await page.evaluate(() => new Promise<{ concurrent: number; maxJump: number }>((resolve) => {
+  // to full width. Assert the class overlap directly rather than sampling
+  // widths per frame: on a starved runner a whole 170ms entrance can play
+  // between two rAF ticks, so a per-frame width delta cannot tell a cut from
+  // a legitimately fast ease-out step.
+  const concurrent = await page.evaluate(() => new Promise<number>((resolve) => {
     const plus = () => [...document.querySelectorAll('button')]
       .find((button) => button.getAttribute('aria-label') === 'New tab') as HTMLButtonElement;
-    const widthsById = new Map<string, number>();
     let concurrent = 0;
-    let maxJump = 0;
     const start = performance.now();
     const tick = () => {
       const entering = [...document.querySelectorAll<HTMLElement>('[data-tab-id]')]
         .filter((tab) => tab.className.includes('editor-tab-enter'));
       concurrent = Math.max(concurrent, entering.length);
-      for (const tab of document.querySelectorAll<HTMLElement>('[data-tab-id]')) {
-        const id = tab.dataset.tabId as string;
-        const width = tab.getBoundingClientRect().width;
-        const previous = widthsById.get(id);
-        // A tab whose entrance is cut jumps from part-width to full width in one
-        // frame; an entrance that runs to completion never moves more than the
-        // easing's largest step.
-        if (previous !== undefined) maxJump = Math.max(maxJump, width - previous);
-        widthsById.set(id, width);
-      }
       if (performance.now() - start < 600) requestAnimationFrame(tick);
-      else resolve({ concurrent, maxJump });
+      else resolve(concurrent);
     };
     requestAnimationFrame(tick);
     plus().click();
     window.setTimeout(() => plus().click(), 20);
   }));
 
-  expect(overlap.concurrent).toBe(2);
-  expect(overlap.maxJump).toBeLessThan(60);
+  expect(concurrent).toBe(2);
   await expect(page.locator('[data-tab-id]')).toHaveCount(3);
 });
 
