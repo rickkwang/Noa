@@ -887,8 +887,14 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
     const shell = document.querySelector<HTMLElement>('.noa-app-shell')!;
     const veils = new Set<string>();
     const tabs: number[] = [];
+    // Cover the whole promotion, then keep sampling until there are enough
+    // points to say anything about the path. A starved runner can fit only a
+    // handful of frames into the 520ms, and that says nothing about the motion;
+    // the extra samples land on the settled value and cost the assertions
+    // nothing. The second deadline only stops a runaway loop.
     const deadline = performance.now() + 520;
-    while (performance.now() < deadline) {
+    const hardStop = performance.now() + 5000;
+    while ((performance.now() < deadline || tabs.length <= 8) && performance.now() < hardStop) {
       veils.add(getComputedStyle(shell, '::before').transform);
       const tab = document.querySelector<HTMLElement>('[data-tab-id]');
       if (tab) tabs.push(tab.getBoundingClientRect().x);
