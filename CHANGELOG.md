@@ -7,6 +7,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.25] - 2026-09-18
+
+### Added
+- Rework sidebar drag-and-drop on a wash-and-chip interaction model.
+
+### Fixed
+- Stop the translucent sidebar flashing when the app regains focus.
+
+### Changed
+- Unify the sidebar collapse, right panel, and Calendar/Tags drawer animations on one 320ms clock.
+- Keep the sidebar resize drag off the root custom property for smoother resizing.
+- Match the translucent sidebar to the platform menu material and settle icon and label tones.
+- Put every scroll-edge fade on one eased, distance-driven curve.
+
 ## [1.0.24] - 2026-09-14
 
 ### Added
