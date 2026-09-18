@@ -268,7 +268,7 @@ export default function SettingsModal({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="absolute right-3 top-3 z-10 p-1 rounded-[3px] border border-transparent text-[var(--text-secondary)] transition-colors hover:bg-[#D45555] hover:text-white hover:border-[#2D2D2B]"
+          className="absolute right-3 top-3 z-10 p-1 rounded-[3px] border border-transparent text-[var(--text-secondary)] transition-colors hover:bg-[#D45555] hover:text-white"
         >
           <X size={18} />
         </button>

@@ -119,7 +119,7 @@ export default function AutoBackupSection({
       )}
 
       {status === 'success' && !bannerDismissed && (
-        <div className="px-3 py-2 border border-[#4CAF8A] bg-[#4CAF8A]/10 rounded-[3px] flex items-center gap-1.5 text-xs text-[#2C6E57]">
+        <div className="px-3 py-2 border border-[#37876B] bg-[#37876B]/10 rounded-[3px] flex items-center gap-1.5 text-xs text-[#2C6E57]">
           <CheckCircle2 size={12} /> Backup written · {formatRelative(lastAutoBackupAt)}
         </div>
       )}

@@ -14,10 +14,10 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
         aria-label="Command palette"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="outline-none w-full max-w-xl border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down"
+        className="outline-none w-full max-w-xl border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-[#2D2D2B] p-3 bg-[#EFEAE3]">
+        <div className="border-b border-[var(--divider-subtle)] px-4 py-3">
           <input
             ref={palette.inputRef}
             type="text"
@@ -35,7 +35,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
               }
             }}
             placeholder="Type a command or note title..."
-            className="w-full bg-[#F9F9F7] border border-[#2D2D2B] px-3 py-2 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
+            className="w-full bg-transparent text-sm font-redaction outline-none placeholder:text-[#2D2D2B]/40"
           />
         </div>
         <div className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
@@ -46,7 +46,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
               <button
                 key={item.id}
                 onClick={() => palette.run(item.action)}
-                className="w-full text-left px-3 py-2 text-sm border border-transparent hover:border-[#2D2D2B]/30 hover:bg-[#EFEAE3]/50 font-redaction"
+                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-[#EFEAE3]/50 font-redaction"
               >
                 {item.label}
               </button>

@@ -16,7 +16,7 @@ export default function SettingsToggle({ checked, onChange, label }: SettingsTog
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-14 rounded-full border border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${checked ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'}`}
     >
-      <span className={`absolute left-1 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full border border-[#2D2D2B] bg-[#F9F9F7] shadow-[2px_2px_0_0_rgba(45,45,43,1)] transition-transform ${checked ? 'translate-x-7' : 'translate-x-0'}`} />
+      <span className={`absolute left-1 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-transform ${checked ? 'translate-x-7' : 'translate-x-0'}`} />
     </button>
   );
 }

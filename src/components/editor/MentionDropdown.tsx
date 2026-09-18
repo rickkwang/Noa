@@ -178,10 +178,10 @@ export function MentionDropdown({
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-md noa-floating-panel font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
-      <div className="px-3 py-1 bg-[#EFEAE3] border-b border-[#2D2D2B] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2B]/70">
+      <div className="px-3 py-1 bg-[#EFEAE3] border-b border-[var(--divider-subtle)] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2B]/70">
         Link to note
       </div>
       {items.map((item, i) => {

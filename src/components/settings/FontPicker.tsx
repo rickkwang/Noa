@@ -217,7 +217,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[#2D2D2B] rounded noa-floating-panel overflow-hidden">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] noa-floating-panel overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2D2D2B]/15">
             <Search size={13} className="shrink-0 text-[var(--text-secondary)]" />
             <input

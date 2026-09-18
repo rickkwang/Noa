@@ -20,8 +20,8 @@ export default function TemplatePickerDialog({
   const allTemplates = [...builtinTemplates, ...userTemplates];
   return (
     <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[#2D2D2B] bg-[#F9F9F7] noa-floating-panel slide-down" onClick={(e) => e.stopPropagation()}>
-        <div className="border-b border-[#2D2D2B] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="border-b border-[var(--divider-subtle)] px-4 py-3 bg-[#EFEAE3] flex items-center justify-between">
           <div>
             <div className="text-sm text-[#2D2D2B] font-bold">Choose template</div>
           </div>
@@ -37,7 +37,7 @@ export default function TemplatePickerDialog({
                 }
                 onClose();
               }}
-              className="w-full text-left border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40 active:opacity-70"
+              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40 active:opacity-70"
             >
               <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
               {t.content && (

@@ -45,7 +45,7 @@ export default function RecoveryDialog({ message, onRetry, onImportBackup, onRes
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4"
     >
-      <div className="w-full max-w-xl bg-[#F9F9F7] border border-[#2D2D2B] noa-floating-panel p-4 font-redaction space-y-3 slide-down">
+      <div className="w-full max-w-xl bg-[#F9F9F7] border border-[var(--divider-subtle)] noa-floating-panel p-4 font-redaction space-y-3 slide-down rounded-[14px]">
         <h3 id="recovery-dialog-title" className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
         <p id="recovery-dialog-message" className="text-sm text-[#2D2D2B]/80">{message}</p>
         <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
@@ -54,13 +54,13 @@ export default function RecoveryDialog({ message, onRetry, onImportBackup, onRes
           <button
             ref={retryButtonRef}
             onClick={onRetry}
-            className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[#2D2D2B] hover:bg-[#EFEAE3]"
+            className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[3px] hover:bg-[#EFEAE3]"
           >
             Retry Read
           </button>
           <button
             onClick={() => importInputRef.current?.click()}
-            className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[#2D2D2B] hover:opacity-90"
+            className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[var(--divider-subtle)] rounded-[3px] hover:opacity-90"
           >
             Import Backup
           </button>
