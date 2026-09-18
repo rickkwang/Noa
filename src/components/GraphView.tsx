@@ -25,6 +25,8 @@ interface GraphViewProps {
   showUnresolved?: boolean;
   /** Offered from the empty state when filters leave no nodes. */
   onClearFilters?: () => void;
+  /** One-click action on the large-graph perf warning. */
+  onEnableHideIsolated?: () => void;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -49,8 +51,11 @@ function getStableCanvasSize() {
   };
 }
 
-// Tag palette — cycles through these for the first N unique tags
-const TAG_PALETTE = [
+// Tag palette — cycles through these for the first N unique tags. Exported so
+// the filter drawer's tag chips can double as the colour legend: RightPanel's
+// allTags and the map below are both first-appearance order over the same
+// notes array, so index-based lookups agree.
+export const TAG_PALETTE = [
   '#4A90E2', // blue
   '#50C878', // green
   '#E25C4A', // red-orange
@@ -179,6 +184,16 @@ const EARLY_FIT_DURATION = 240;
 // zoom nudge a third of a second after the graph already looked settled.
 const LATE_FIT_MIN_DELTA = 0.03;
 
+// Below the label fade-in threshold (~0.5 zoom, hit around 150+ nodes) all
+// labels used to vanish, leaving an anonymous dot field. Keep the handful of
+// structural anchors readable instead: the top-degree hubs always show their
+// names, which is what orients the user at overview zoom.
+const HUB_LABEL_COUNT = 8;
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
 export default function GraphView({
   notes,
   folders,
@@ -193,6 +208,7 @@ export default function GraphView({
   sizeByDegree = true,
   showUnresolved = true,
   onClearFilters,
+  onEnableHideIsolated,
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -204,6 +220,14 @@ export default function GraphView({
   const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
   const dimensionsRef = useRef(canvasSize);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [perfBannerDismissed, setPerfBannerDismissed] = useState(false);
+  // Previous graph's node objects. d3 mutates x/y in place, so this ref always
+  // holds the latest settled positions of the last rendered graph.
+  const prevNodesRef = useRef<GraphNode[]>([]);
+  // Long-lived id → position cache. Unlike prevNodesRef it survives nodes
+  // being filtered OUT, so a filter round-trip (tag on → tag off) restores
+  // the pre-filter layout instead of re-seeding the returning nodes.
+  const positionsCacheRef = useRef(new Map<string, { x: number; y: number }>());
   const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
   const initialView = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const resetAnimationRef = useRef<number | null>(null);
@@ -405,6 +429,26 @@ export default function GraphView({
       return node;
     });
 
+    // Carry surviving nodes' positions across the rebuild. Every filter/search/
+    // depth change mints fresh node objects, and d3 re-seeds positionless ones
+    // — without this, each keystroke in the filter box jump-cuts to an
+    // unfamiliar layout and the user's spatial memory of the graph is lost.
+    // The flush must happen here (rebuild time), not in an effect: by now the
+    // previous graph's nodes hold their fully settled positions, while an
+    // effect right after the rebuild would capture new nodes pre-settle.
+    // Genuinely new nodes (no cache entry) still get d3's phyllotaxis seed.
+    const cache = positionsCacheRef.current;
+    for (const prev of prevNodesRef.current) {
+      if (prev.x != null && prev.y != null) cache.set(String(prev.id), { x: prev.x, y: prev.y });
+    }
+    for (const node of nodes) {
+      const pos = cache.get(String(node.id));
+      if (pos) {
+        node.x = pos.x;
+        node.y = pos.y;
+      }
+    }
+
     const links: GraphLink[] = model.links.map((link) => ({
       source: link.source,
       target: link.target,
@@ -430,6 +474,14 @@ export default function GraphView({
     }
     return neighbours;
   }, [hoveredNodeId, graphData.links]);
+
+  // Top-degree real nodes whose labels stay on regardless of zoom.
+  const hubLabelIds = useMemo(() => {
+    const ranked = graphData.nodes
+      .filter((node) => !node.ghost && (node.degree ?? 0) > 0)
+      .sort((a, b) => (b.degree ?? 0) - (a.degree ?? 0));
+    return new Set(ranked.slice(0, HUB_LABEL_COUNT).map((node) => String(node.id)));
+  }, [graphData]);
 
   // Dynamic physics based on node count
   useEffect(() => {
@@ -471,6 +523,10 @@ export default function GraphView({
   }, [graphData, sizeByDegree]);
 
   useEffect(() => {
+    // Hand the new node objects to the position carry-over above. d3 mutates
+    // these in place from here on, so the ref stays current until the next
+    // rebuild reads it.
+    prevNodesRef.current = graphData.nodes;
     if (!fgRef.current) return;
     // A reset-view animation still running against the previous graph would
     // keep writing stale positions and, on finish, restore force strengths
@@ -500,7 +556,12 @@ export default function GraphView({
   // finite and would fit the camera to the wrong layout.
   const handleEngineTick = useCallback(() => {
     if (!pendingEarlyFitRef.current) return;
-    if (fitView(EARLY_FIT_DURATION)) pendingEarlyFitRef.current = false;
+    // minRelDelta matters more than it used to: position carry-over keeps the
+    // bbox stable across filter toggles, and without the guard every rebuild
+    // ends in a pointless 240ms camera nudge over an unchanged layout. The
+    // guard only ever skips when the camera is already within 3% of the
+    // fitted view — i.e. when the nudge would be invisible anyway.
+    if (fitView(prefersReducedMotion() ? 0 : EARLY_FIT_DURATION, LATE_FIT_MIN_DELTA)) pendingEarlyFitRef.current = false;
   }, [fitView]);
 
   const captureInitialLayout = useCallback(() => {
@@ -515,7 +576,7 @@ export default function GraphView({
 
     // Fit only after the force engine has frozen the layout. Hidden graph tabs
     // defer the fit until their container has non-zero dimensions.
-    const didFit = fitView(300, LATE_FIT_MIN_DELTA);
+    const didFit = fitView(prefersReducedMotion() ? 0 : 300, LATE_FIT_MIN_DELTA);
     pendingFitRef.current = !didFit;
     if (didFit && lastFittedViewRef.current) {
       initialView.current = lastFittedViewRef.current;
@@ -542,7 +603,7 @@ export default function GraphView({
     const cur = graph?.zoom();
     if (cur == null) return;
     graph?.resumeAnimation();
-    graph?.zoom(cur * scale, 200);
+    graph?.zoom(cur * scale, prefersReducedMotion() ? 0 : 200);
   }, []);
 
   const zoomControls = [
@@ -560,7 +621,7 @@ export default function GraphView({
         return;
       }
 
-      const duration = 720;
+      const duration = prefersReducedMotion() ? 0 : 720;
       const start = performance.now();
       const from = new Map(graphData.nodes.map((node) => [String(node.id), { x: node.x ?? 0, y: node.y ?? 0 }]));
       const chargeForce = fgRef.current?.d3Force('charge');
@@ -583,7 +644,7 @@ export default function GraphView({
       fgRef.current?.d3ReheatSimulation();
 
       const tick = (now: number) => {
-        const t = Math.min(1, (now - start) / duration);
+        const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
         const ease = smoothStep(t);
         graphData.nodes.forEach((node) => {
           const target = snapshot.get(String(node.id));
@@ -629,11 +690,36 @@ export default function GraphView({
     }},
   ];
 
+  // Re-arm the perf banner once the graph shrinks back below the threshold.
+  const overPerfThreshold = graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD;
+  useEffect(() => {
+    if (!overPerfThreshold) setPerfBannerDismissed(false);
+  }, [overPerfThreshold]);
+
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
-      {graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD && (
-        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-redaction flex items-center justify-between">
-          <span>Graph contains {graphData.nodes.length} nodes and may render slowly. Try enabling "Hide isolated nodes".</span>
+      {overPerfThreshold && !perfBannerDismissed && (
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-redaction flex items-center justify-between gap-2">
+          <span>Graph contains {graphData.nodes.length} nodes and may render slowly.</span>
+          <span className="flex items-center gap-2 shrink-0">
+            {onEnableHideIsolated && (
+              <button
+                type="button"
+                onClick={onEnableHideIsolated}
+                className="transition-colors hover:text-[#CC7D5E] underline underline-offset-2"
+              >
+                Hide isolated nodes
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPerfBannerDismissed(true)}
+              aria-label="Dismiss performance warning"
+              className="transition-colors hover:text-[#CC7D5E] leading-none"
+            >
+              ×
+            </button>
+          </span>
         </div>
       )}
       <div style={{ width: canvasSize.width, height: canvasSize.height, flexShrink: 0 }}>
@@ -761,10 +847,14 @@ export default function GraphView({
             ctx.stroke();
           }
 
-          // Label: smooth fade in based on globalScale, with text shadow for legibility
+          // Label: smooth fade in based on globalScale, with text shadow for legibility.
+          // Hubs, the open note, and the hovered node skip the fade — they are
+          // the graph's orientation anchors and stay readable at any zoom.
           const labelFadeStart = 0.5;
           const labelFadeEnd = 0.9;
-          const labelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
+          const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
+          const alwaysLabel = isActive || isHovered || hubLabelIds.has(String(node.id));
+          const labelAlpha = alwaysLabel ? 1 : zoomLabelAlpha;
 
           if (labelAlpha > 0) {
             // globalScale is the zoom factor and ctx is already scaled by it, so

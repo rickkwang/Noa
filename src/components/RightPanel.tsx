@@ -7,7 +7,7 @@ import { computeOutgoingLinks } from '../hooks/useOutgoingLinks';
 import { buildGraphModel, pruneGraphTagFilter } from '../lib/graphModel';
 import { computeTopologySignature, getBacklinks } from '../lib/noteUtils';
 import { GlobalTask, Note, Folder, AppSettings } from '../types';
-import GraphView, { type GraphColorMode } from './GraphView';
+import GraphView, { TAG_PALETTE, type GraphColorMode } from './GraphView';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
@@ -138,6 +138,12 @@ export default function RightPanel({
     }
     return out;
   }, [topologyNotes]);
+  // Same first-appearance order GraphView uses for its tag → colour map, so a
+  // chip's dot is the legend for the node's dot.
+  const tagColors = useMemo(
+    () => new Map(allTags.map((tag, i) => [tag, TAG_PALETTE[i % TAG_PALETTE.length]])),
+    [allTags]
+  );
   useLayoutEffect(() => {
     setTagFilter((selected) => pruneGraphTagFilter(selected, allTags));
   }, [allTags]);
@@ -378,6 +384,7 @@ export default function RightPanel({
                 showUnresolved={showUnresolved}
                 onShowUnresolvedChange={setShowUnresolved}
                 allTags={allTags}
+                tagColors={tagColors}
                 tagFilter={tagFilter}
                 onTagFilterChange={setTagFilter}
               />
@@ -391,7 +398,7 @@ export default function RightPanel({
                 searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                 hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
                 colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved}
-                onClearFilters={clearGraphFilters} />
+                onClearFilters={clearGraphFilters} onEnableHideIsolated={() => setHideIsolated(true)} />
             </div>
           </div>
           <GraphInfoPanel
@@ -558,6 +565,7 @@ interface GraphFilterPanelProps {
   showUnresolved: boolean;
   onShowUnresolvedChange: (v: boolean) => void;
   allTags: string[];
+  tagColors: Map<string, string>;
   tagFilter: string[];
   onTagFilterChange: (v: string[]) => void;
 }
@@ -574,6 +582,7 @@ function GraphFilterPanel({
   showUnresolved,
   onShowUnresolvedChange,
   allTags,
+  tagColors,
   tagFilter,
   onTagFilterChange,
 }: GraphFilterPanelProps) {
@@ -685,12 +694,15 @@ function GraphFilterPanel({
                 <button
                   key={t}
                   onClick={() => toggleTag(t)}
-                  className="text-[10px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors"
+                  className="flex items-center gap-1 text-[10px] px-1.5 h-4 uppercase tracking-wider font-bold transition-colors"
                   style={active
                     ? { background: '#CC7D5E', color: isDark ? '#252523' : '#FFFFFF', border: '1px solid #CC7D5E' }
                     : { border: `1px solid ${borderCol}`, color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }
                   }
                 >
+                  {/* The dot doubles as the graph's colour legend: same palette,
+                      same order as the node fill in GraphView. */}
+                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagColors.get(t) }} />
                   {t}
                 </button>
               );
