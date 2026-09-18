@@ -103,6 +103,7 @@ interface SidebarProps {
   onRenameFolder: (id: string, newName: string) => void;
   onDeleteFolder: (id: string) => void;
   onOpenDailyNote?: (targetDate?: string) => void;
+  dailyNotesEnabled?: boolean;
   vault: VaultFooterProps;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onSearchTag?: (tag: string) => void;
@@ -117,7 +118,7 @@ export default function Sidebar({
   notes, folders, tasks, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
-  onOpenDailyNote, vault,
+  onOpenDailyNote, dailyNotesEnabled = true, vault,
   onImportNote, onSearchTag, onSearchQuery, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
 }: SidebarProps) {
 
@@ -452,6 +453,7 @@ export default function Sidebar({
         >
           {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
         </button>
+        {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
           className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
@@ -460,6 +462,7 @@ export default function Sidebar({
         >
           <Calendar size={13.5} />
         </button>
+        )}
         <button
           onClick={() => {
             if (notes.length === 0) return;
@@ -528,13 +531,13 @@ export default function Sidebar({
                 else onDeleteFolder(pendingDelete.id);
                 setPendingDelete(null);
               }}
-              className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+              className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
             >
               Delete
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B]"
+              className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)]"
             >
               Cancel
             </button>
@@ -551,13 +554,13 @@ export default function Sidebar({
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -571,13 +574,13 @@ export default function Sidebar({
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[#2D2D2B] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[#2D2D2B] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
                 >
                   Cancel
                 </button>
