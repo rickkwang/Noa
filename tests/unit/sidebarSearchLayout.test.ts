@@ -22,7 +22,7 @@ describe('sidebar search result layout', () => {
     expect(styles).not.toContain('.noa-sidebar-scroll::-webkit-scrollbar');
   });
 
-  it('uses a short sidebar-surface fade instead of a hard toolbar-content boundary', async () => {
+  it('fades the toolbar-content boundary only once the tree has scrolled under it', async () => {
     const [source, styles] = await Promise.all([
       readFile(sidebarPath, 'utf8'),
       readFile(indexCssPath, 'utf8'),
@@ -40,8 +40,17 @@ describe('sidebar search result layout', () => {
       styles.indexOf('}', styles.indexOf('.noa-sidebar-toolbar-mask::after {')),
     );
     expect(toolbarFade).toContain('right: 6px;');
-    expect(styles).toContain('height: 10px;');
-    expect(styles).toContain('background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);');
+    // The seam runs on the app's shared edge-fade curve: strength comes from
+    // --noa-fade-top (lib/edgeFade, written on the sidebar root because the
+    // overlay is the scroller's sibling), so an unscrolled tree keeps its first
+    // row at full strength. The band is a fixed 32px and spends that strength
+    // as opacity — three times the old always-on 10px linear wash, which cut a
+    // row in a third of its height.
+    expect(toolbarFade).toContain('height: 32px;');
+    expect(toolbarFade).toContain('bottom: -32px;');
+    expect(toolbarFade).toContain('opacity: var(--noa-fade-top, 0);');
+    expect(styles).not.toContain('background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);');
+    expect(source).toContain('attachEdgeFade');
   });
 
   it('keeps the daily-note shortcut in the sidebar instead of duplicating it in the title bar', async () => {

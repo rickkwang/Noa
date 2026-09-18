@@ -127,10 +127,12 @@ describe('light theme border tokens', () => {
     expect(previewPane).not.toContain("rgba(45,45,43,0.2)");
     expect(previewPane).not.toContain("var(--border-strong, #AAA397)");
     // The preview's leading-edge fade lives on the shared scroll-fade class now;
-    // the gradient itself sits in index.css and engages only once scrolled.
+    // the gradient itself sits in index.css and scales off --noa-fade-top, which
+    // lib/edgeFade writes from the scroll position — so the ramp has no height
+    // until the note has actually moved.
     expect(previewPane).toContain('noa-top-scroll-fade');
-    expect(indexCss).toContain(".noa-top-scroll-fade.is-scrolled,");
-    expect(indexCss).toContain("linear-gradient(to bottom, transparent 0, black 48px)");
+    expect(indexCss).toContain('.noa-top-scroll-fade,');
+    expect(indexCss).toContain('calc(var(--noa-fade-top, 0) *');
     expect(rightPanel).not.toContain("border-[#2D2D2B]/90 bg-[#F9F9F7]");
     expect(rightPanel).not.toContain("border-[#2D2D2B]}`");
     expect(rightPanel).toContain("'var(--divider-subtle, #E6E2DA)'");

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredVa
 import { createPortal } from 'react-dom';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
+import { attachEdgeFade } from '../lib/edgeFade';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
@@ -193,22 +194,18 @@ export default function Editor({
     return () => window.cancelAnimationFrame(frame);
   }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
 
-  // Split mode fades the CodeMirror pane's leading edge only once its scroller
-  // has moved — same rule as the preview pane's .noa-top-scroll-fade. The
-  // EditorView (and with it .cm-scroller) is recreated on note id / theme
-  // change, so the listener re-attaches on those deps.
+  // Split mode fades the CodeMirror pane's leading edge as its scroller moves —
+  // same rule as the preview pane's .noa-top-scroll-fade. The variable goes on
+  // the pane and .cm-editor inherits it, because the EditorView (and with it
+  // .cm-scroller) is recreated on note id / theme change, so the listener
+  // re-attaches on those deps and must not be the thing holding the state.
   useEffect(() => {
     if (viewMode !== 'split') return;
     const pane = editPaneRef.current;
-    const scroller = pane?.querySelector('.cm-scroller');
+    const scroller = pane?.querySelector<HTMLElement>('.cm-scroller');
     if (!pane || !scroller) return;
-    const update = () => pane.classList.toggle('is-scrolled', scroller.scrollTop > 1);
-    update();
-    scroller.addEventListener('scroll', update, { passive: true });
-    return () => {
-      scroller.removeEventListener('scroll', update);
-      pane.classList.remove('is-scrolled');
-    };
+    const fade = attachEdgeFade(scroller, { target: pane });
+    return () => fade.dispose();
   }, [viewMode, note?.id, isDark]);
 
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused

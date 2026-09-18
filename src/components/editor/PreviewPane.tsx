@@ -14,6 +14,7 @@ import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
+import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
 import { stripTaskMarkers } from '../../lib/taskParser';
@@ -966,19 +967,14 @@ export const PreviewPane = React.memo(function PreviewPane({
 
   const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
 
-  // The top fade engages only once content has scrolled beneath the tab strip;
-  // at rest the leading edge of the note stays fully opaque. Toggled straight
-  // on the DOM node so scroll events never re-render the markdown body.
+  // The top fade tracks how far the note has travelled under the tab strip; at
+  // rest the leading edge stays fully opaque. Written straight to the DOM node
+  // so scroll events never re-render the markdown body.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || printMode) return;
-    const update = () => el.classList.toggle('is-scrolled', el.scrollTop > 1);
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    return () => {
-      el.removeEventListener('scroll', update);
-      el.classList.remove('is-scrolled');
-    };
+    const fade = attachEdgeFade(el);
+    return () => fade.dispose();
   }, [printMode]);
 
   return (

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
+import { attachEdgeFade } from '../lib/edgeFade';
 import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
@@ -391,8 +392,22 @@ export default function Sidebar({
     }
   };
 
+  // The toolbar's seam only exists once the tree has scrolled under it. The
+  // strength is written on the sidebar root because the overlay lives on the
+  // toolbar, which is the scroller's sibling, not its child.
+  const sidebarRootRef = useRef<HTMLDivElement>(null);
+  const treeScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const scroller = treeScrollRef.current;
+    const root = sidebarRootRef.current;
+    if (!scroller || !root) return;
+    const fade = attachEdgeFade(scroller, { target: root });
+    return () => fade.dispose();
+  }, []);
+
   return (
     <div 
+      ref={sidebarRootRef}
       className="noa-sidebar-surface w-full h-full min-h-0 flex flex-col shrink-0 relative"
       // Suppresses hover surfaces and row actions while a tree drag is in
       // flight, the way Obsidian gates them behind `body:not(.is-grabbing)`.
@@ -573,7 +588,7 @@ export default function Sidebar({
       )}
 
       {/* Main Content Section */}
-      <div className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+      <div ref={treeScrollRef} className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>

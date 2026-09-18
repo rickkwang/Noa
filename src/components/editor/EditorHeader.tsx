@@ -1,4 +1,5 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { attachEdgeFade, type EdgeFadeHandle } from '../../lib/edgeFade';
 import { Note } from '../../types';
 import { X, Plus } from '@/src/lib/icons';
 
@@ -92,15 +93,11 @@ export function EditorHeader({
   const closingTabIdSet = useMemo(() => new Set(closingTabIds), [closingTabIds]);
   const isEnteringActiveTab = enteringTabIdSet.has(note.id);
   const anyTabAnimating = enteringTabIds.length > 0 || closingTabIds.length > 0;
-  const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
-
-  const updateEdgeFade = () => {
-    const el = tabStripRef.current;
-    if (!el) return;
-    const left = el.scrollLeft > 1;
-    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-    setEdgeFade(prev => (prev.left === left && prev.right === right ? prev : { left, right }));
-  };
+  // Both overflow edges fade by distance, through the shared driver — see
+  // lib/edgeFade. Held in a ref rather than state because the strength lives in
+  // CSS variables on the strip itself: a fade that re-rendered the header on
+  // every scroll frame would be paying a render to draw a gradient.
+  const edgeFadeRef = useRef<EdgeFadeHandle | null>(null);
 
   useLayoutEffect(() => {
     const scrollEl = tabStripRef.current;
@@ -158,30 +155,24 @@ export function EditorHeader({
     // writing scrollLeft. The frame is the flex-1 wrapper, so it only changes
     // with the window, sidebar, or right panel: exactly the cases that need a
     // re-snap, and none of the cases the animations already handle.
+    const fade = attachEdgeFade(scrollEl, { axis: 'x', end: true });
+    edgeFadeRef.current = fade;
     const observer = new ResizeObserver(() => {
       const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
       active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
-      updateEdgeFade();
+      fade.refresh();
     });
     observer.observe(frameEl);
-    scrollEl.addEventListener('scroll', updateEdgeFade, { passive: true });
     return () => {
       observer.disconnect();
-      scrollEl.removeEventListener('scroll', updateEdgeFade);
+      fade.dispose();
+      edgeFadeRef.current = null;
     };
   }, []);
 
-  useLayoutEffect(updateEdgeFade, [tabs, anyTabAnimating]);
-
-  // Fade the tab content itself out at overflowing edges (a colored overlay
-  // would need to match the themed header background exactly, which the theme
-  // layer can override at runtime).
-  const maskGradient = edgeFade.left || edgeFade.right
-    ? `linear-gradient(to right, ${edgeFade.left ? 'transparent, black 24px' : 'black'}, ${edgeFade.right ? 'black calc(100% - 24px), transparent' : 'black'})`
-    : undefined;
-  const tabStripMaskStyle: React.CSSProperties = maskGradient
-    ? { maskImage: maskGradient, WebkitMaskImage: maskGradient }
-    : {};
+  // Tabs entering or leaving change how much the strip overflows without
+  // scrolling it, and no scroll event reports that.
+  useLayoutEffect(() => { edgeFadeRef.current?.refresh(); }, [tabs, anyTabAnimating]);
 
   return (
     <div
@@ -225,8 +216,8 @@ export function EditorHeader({
         <div className="relative z-[1] min-w-0 flex items-end overflow-visible">
           <div
             ref={tabStripRef}
-            className="min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-            style={{ scrollPaddingInline: '10px', ...tabStripMaskStyle }}
+            className="noa-edge-fade-x min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            style={{ scrollPaddingInline: '10px' }}
           >
             <div className="flex items-end pt-1 w-full">
             {tabs && tabs.length > 0 ? (

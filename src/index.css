@@ -270,24 +270,66 @@ body {
 /* Stops 6px short of the right edge: that strip is the scroll container's
    scrollbar gutter, and a gradient drawn over the thumb's top reads as a
    rendering bug. Same rule the preview pane's mask follows — must match
-   ::-webkit-scrollbar's width. */
+   ::-webkit-scrollbar's width.
+
+   Unlike the panes above this is a colored overlay, not a mask: it sits over a
+   surface whose color is a known token, and an overlay costs nothing to fade.
+   So it spends the shared strength as opacity over a fixed 32px band rather
+   than growing the band — same curve, same "nothing until the tree has
+   actually scrolled" rule, cheaper to animate. It used to be an always-on 10px
+   linear wash, which meant the first row of an unscrolled tree was dimmed for
+   no reason and a row crossing the seam was cut in a third of its height. */
 .noa-sidebar-toolbar-mask::after {
   content: '';
   position: absolute;
   right: 6px;
-  bottom: -10px;
+  bottom: -32px;
   left: 0;
-  height: 10px;
+  height: 32px;
   pointer-events: none;
-  background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);
+  opacity: var(--noa-fade-top, 0);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 100%, transparent) 0px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 96%, transparent) 4px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 84%, transparent) 8px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 68%, transparent) 12px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 50%, transparent) 16px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 32%, transparent) 20px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 16%, transparent) 24px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 4%, transparent) 28px,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 0%, transparent) 32px);
 }
 
-/* The leading-edge fade exists so scrolled content doesn't meet the tab strip
-   abruptly — but only once content has actually scrolled. Applied at rest it
-   just washes out the first 48px of the note, so both panes start solid and
-   pick the fade up via .is-scrolled (toggled from scroll listeners in
-   PreviewPane and Editor). The two gradients keep matching stop counts so the
-   transition interpolates instead of popping.
+/* ── The shared edge-fade curve ────────────────────────────────────────────
+   Every scroll-edge fade in the app runs the same sampled smoothstep, at a
+   strength lib/edgeFade writes into --noa-fade-top / --noa-fade-left /
+   --noa-fade-right as a 0→1 number. Two properties of that curve are the whole
+   point, and both were learned by getting them wrong:
+
+   It is eased, not linear. A linear alpha ramp changes slope instantly at both
+   ends and the eye reads those kinks as edges — a visible line where the fade
+   stops, a hard clip where it starts.
+
+   It is long relative to the text it crosses. A ramp shorter than about three
+   line-heights crosses a line faster than the line is tall, so the gradient is
+   visible *within* the glyphs and text looks sliced rather than dimmed. 96px
+   vertical against prose; the horizontal ones are shorter on purpose (see
+   below). If the type scale grows, these grow with it.
+
+   The stops are restated per surface rather than shared through one variable:
+   var() inside a custom property is substituted where the property is
+   *declared*, so a ramp defined on :root would resolve --noa-fade-top there
+   (to its 0 fallback) and inherit down already frozen. Declared on the surface
+   itself, it resolves against that surface's own value — which is also why the
+   split editor can read a variable its parent pane owns.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* The preview pane and the split-mode editor: the note's leading edge
+   dissolves as it travels under the tab strip. At rest --noa-fade-top is 0,
+   every stop collapses onto 0px, the ramp has no height, and the first line is
+   fully opaque — so there is no separate "unscrolled" rule to keep in sync.
+
    The second mask layer is a solid strip pinned to the right edge so the
    scrollbar keeps full opacity — a mask covers the element's own scrollbar,
    and a half-faded thumb reads as a rendering bug. Its 6px width must match
@@ -296,20 +338,55 @@ body {
    fade where they overlap. */
 .noa-top-scroll-fade,
 .noa-split-editor-mask .cm-editor {
-  -webkit-mask-image: linear-gradient(to bottom, black 0, black 1px), linear-gradient(to bottom, black, black);
-  mask-image: linear-gradient(to bottom, black 0, black 1px), linear-gradient(to bottom, black, black);
+  --noa-fade-ramp:
+    rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
+    rgb(0 0 0 / 0.04) calc(var(--noa-fade-top, 0) * 12px),
+    rgb(0 0 0 / 0.16) calc(var(--noa-fade-top, 0) * 24px),
+    rgb(0 0 0 / 0.32) calc(var(--noa-fade-top, 0) * 36px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 48px),
+    rgb(0 0 0 / 0.68) calc(var(--noa-fade-top, 0) * 60px),
+    rgb(0 0 0 / 0.84) calc(var(--noa-fade-top, 0) * 72px),
+    rgb(0 0 0 / 0.96) calc(var(--noa-fade-top, 0) * 84px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 96px);
+  -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
+  mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   -webkit-mask-size: 100% 100%, 6px 100%;
   mask-size: 100% 100%, 6px 100%;
   -webkit-mask-position: top left, top right;
   mask-position: top left, top right;
   -webkit-mask-repeat: no-repeat, no-repeat;
   mask-repeat: no-repeat, no-repeat;
-  transition: mask-image 180ms ease-out, -webkit-mask-image 180ms ease-out;
 }
-.noa-top-scroll-fade.is-scrolled,
-.noa-split-editor-mask.is-scrolled .cm-editor {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 48px), linear-gradient(to bottom, black, black);
-  mask-image: linear-gradient(to bottom, transparent 0, black 48px), linear-gradient(to bottom, black, black);
+
+/* The tab strip's two overflow edges. A mask rather than a colored overlay
+   because the header background is themed at runtime and an overlay would have
+   to match it exactly. 24px rather than the vertical 96px: this ramp crosses
+   letters sideways, which is the ordinary look of a clipped strip, and a long
+   one would swallow a whole tab label. Both edges are independent — scrolling
+   away from the left edge eases its ramp in while the right one eases out as
+   the last tab arrives. */
+.noa-edge-fade-x {
+  --noa-fade-ramp:
+    rgb(0 0 0 / 0) calc(var(--noa-fade-left, 0) * 0px),
+    rgb(0 0 0 / 0.04) calc(var(--noa-fade-left, 0) * 3px),
+    rgb(0 0 0 / 0.16) calc(var(--noa-fade-left, 0) * 6px),
+    rgb(0 0 0 / 0.32) calc(var(--noa-fade-left, 0) * 9px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-left, 0) * 12px),
+    rgb(0 0 0 / 0.68) calc(var(--noa-fade-left, 0) * 15px),
+    rgb(0 0 0 / 0.84) calc(var(--noa-fade-left, 0) * 18px),
+    rgb(0 0 0 / 0.96) calc(var(--noa-fade-left, 0) * 21px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-left, 0) * 24px),
+    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-right, 0) * 24px),
+    rgb(0 0 0 / 0.96) calc(100% - var(--noa-fade-right, 0) * 21px),
+    rgb(0 0 0 / 0.84) calc(100% - var(--noa-fade-right, 0) * 18px),
+    rgb(0 0 0 / 0.68) calc(100% - var(--noa-fade-right, 0) * 15px),
+    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-right, 0) * 12px),
+    rgb(0 0 0 / 0.32) calc(100% - var(--noa-fade-right, 0) * 9px),
+    rgb(0 0 0 / 0.16) calc(100% - var(--noa-fade-right, 0) * 6px),
+    rgb(0 0 0 / 0.04) calc(100% - var(--noa-fade-right, 0) * 3px),
+    rgb(0 0 0 / 0) calc(100% - var(--noa-fade-right, 0) * 0px);
+  -webkit-mask-image: linear-gradient(to right, var(--noa-fade-ramp));
+  mask-image: linear-gradient(to right, var(--noa-fade-ramp));
 }
 
 /* Inside the settings dialog the shared 8% divider is too faint to read: its

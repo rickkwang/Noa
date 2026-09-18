@@ -407,12 +407,19 @@ export default function SettingsModal({
             <div
               aria-hidden="true"
               // Opaque down to 40px — just past the close button's lower edge
-              // (top-3 + p-1 + 18px icon = 38px) — then a short fade. Content
-              // scrolling up is fully hidden by the time it reaches the button
-              // and dissolves below it, instead of sliding past it to the top.
-              className="pointer-events-none absolute inset-x-0 top-0 h-[46px]"
+              // (top-3 + p-1 + 18px icon = 38px) — then the app's shared fade
+              // curve (see index.css) over 24px. Content scrolling up is fully
+              // hidden by the time it reaches the button and dissolves below
+              // it, instead of sliding past it to the top.
+              //
+              // The only always-on fade in the app: the other three engage with
+              // scroll, but this one's job is to shield the close button, and
+              // the 40px cap means at rest it covers the panel's own padding
+              // and is invisible anyway. The tail used to be 6px, a quarter of
+              // a line-height, which cut text mid-glyph on its way under.
+              className="pointer-events-none absolute inset-x-0 top-0 h-[64px]"
               style={{
-                background: 'linear-gradient(to bottom, var(--bg-primary, #FCFCFB) 0 40px, transparent)',
+                background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #FCFCFB) 100%, transparent) 40px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 96%, transparent) 43px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 84%, transparent) 46px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 68%, transparent) 49px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 50%, transparent) 52px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 32%, transparent) 55px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 16%, transparent) 58px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 4%, transparent) 61px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 0%, transparent) 64px)',
               }}
             />
           </div>
