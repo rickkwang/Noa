@@ -55,7 +55,7 @@ export function useDailyNotes({
       : builtinTemplates.find((template) => template.id === 'daily')!;
 
     // Read latest folders synchronously — no updater needed.
-    const currentFolders = foldersRef.current;
+    const currentFolders = foldersRef.current.filter(folder => folder.origin !== 'vault');
     let savedId: string | null = null;
     try { savedId = localStorage.getItem(DAILY_FOLDER_KEY); } catch { /* quota exceeded */ }
     const existingFolder = savedId

@@ -762,6 +762,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
 
 
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
+    const candidateIds = new Set(notesRef.current.find(n => n.id === id)?.attachments?.map(a => a.id) ?? []);
     try {
       await storage.deleteNote(id);
     } catch {
@@ -776,7 +777,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     const validIds = new Set(
       remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
     );
-    storage.pruneOrphanedAttachments(validIds).catch(() => {});
+    storage.pruneOrphanedAttachments(validIds, candidateIds).catch(() => {});
     // A deliberately deleted note must not resurface from the import rescue
     // parking lot on next launch.
     unparkRescuedNote(id);
@@ -923,7 +924,8 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       const validIds = new Set(
         remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
       );
-      storage.pruneOrphanedAttachments(validIds).catch(() => {});
+      const candidateIds = new Set(toDelete.filter(n => deletedSet.has(n.id)).flatMap(n => (n.attachments ?? []).map(a => a.id)));
+      storage.pruneOrphanedAttachments(validIds, candidateIds).catch(() => {});
     }
     return { deletedNoteIds: deletedIds, foldersDeleted };
   }, [syncLinkRefs]);
@@ -1060,7 +1062,8 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
         .filter((note) => !deletedNoteIdsSet.has(note.id))
         .flatMap((note) => (note.attachments ?? []).map((a) => a.id)),
     );
-    storage.pruneOrphanedAttachments(survivingAttachmentIds).catch(() => {});
+    const candidateIds = new Set(vaultNotes.filter(n => deletedNoteIdsSet.has(n.id)).flatMap(n => (n.attachments ?? []).map(a => a.id)));
+    storage.pruneOrphanedAttachments(survivingAttachmentIds, candidateIds).catch(() => {});
 
     const remainingVaultNotes = vaultNotes.filter((note) => !deletedNoteIdsSet.has(note.id));
     const vaultFolders = currentFolders.filter((folder) => folder.origin === 'vault');

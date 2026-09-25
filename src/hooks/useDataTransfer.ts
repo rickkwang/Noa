@@ -3,7 +3,9 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import {
   inferAttachmentMimeType,
+  mapAttachmentReferences,
   mergeAttachmentPayloads,
+  resolveAttachmentPath,
   type ImportedNote,
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
@@ -141,6 +143,7 @@ function expandFolderHierarchy(paths: Iterable<string>): string[] {
 }
 
 const MAX_VAULT_SCAN_DEPTH = 50;
+const VAULT_README_BODY = '\n\nThis archive uses a vault-style folder layout.\n\n- Markdown notes live in the archive root or in folder directories.\n- Attachments live in `attachments/`.\n- `manifest.json` lets Noa restore note and attachment metadata.\n\nUnzip this archive into a local folder to use it as an Obsidian-style vault.';
 
 async function collectVaultDirectoryEntries(
   dirHandle: FileSystemDirectoryHandle,
@@ -160,7 +163,7 @@ async function collectVaultDirectoryEntries(
   }
 
   for await (const [entryName, handle] of dirHandle.entries()) {
-    const isVaultRootArtifact = relativeSegments.length <= 1 && (entryName === 'manifest.json' || entryName === 'README.md');
+    const isVaultRootArtifact = relativeSegments.length <= 1 && entryName === 'manifest.json';
     // Hidden entries (.noa, .obsidian, .DS_Store, ...) are never vault content.
     if (entryName.startsWith('.') || isVaultRootArtifact) continue;
     if (handle.kind === 'directory') {
@@ -175,6 +178,7 @@ async function collectVaultDirectoryEntries(
     }
 
     const file = await (handle as FileSystemFileHandle).getFile();
+    if (relativeSegments.length <= 1 && entryName === 'README.md' && (await file.text()).endsWith(VAULT_README_BODY)) continue;
     if (file.name === '.DS_Store') continue;
     files.push({ pathSegments: [...relativeSegments, file.name], file });
   }
@@ -312,12 +316,18 @@ async function buildVaultImportPayload(
     return counts;
   }, new Map<string, number>());
 
+  const references = new Map(noteDrafts.map(draft => {
+    const links = new Set(draft.note.links);
+    mapAttachmentReferences(draft.note.content, target => { links.add(target); return undefined; });
+    return [draft, { links: Array.from(links) }] as const;
+  }));
+
   for (const candidate of attachmentCandidates) {
     const matches = noteDrafts
       .map((draft) => ({
         draft,
         matchedRef: matchingAttachmentReference(
-          draft.note,
+          references.get(draft) ?? draft.note,
           draft.vaultFolderPath,
           candidate.vaultRelativePath,
           (basenameCounts.get(candidate.filename) ?? 0) === 1,
@@ -490,7 +500,7 @@ export function useDataTransfer({
       zip.file('manifest.json', JSON.stringify(manifest, null, 2));
       zip.file(
         'README.md',
-        `# ${workspaceName} Vault\n\nThis archive uses a vault-style folder layout.\n\n- Markdown notes live in the archive root or in folder directories.\n- Attachments live in \`attachments/\`.\n- \`manifest.json\` lets Noa restore note and attachment metadata.\n\nUnzip this archive into a local folder to use it as an Obsidian-style vault.`
+        `# ${workspaceName} Vault${VAULT_README_BODY}`
       );
 
       // Used filenames per archive directory — duplicate titles must not
@@ -505,6 +515,18 @@ export function useDataTransfer({
         }
         return used;
       };
+      const exportContent = (note: Note, folderPath: string) => {
+        const attachments = note.attachments ?? [];
+        const paths = new Set(attachments.flatMap(a => a.vaultPath ? [a.vaultPath] : []));
+        return mapAttachmentReferences(note.content, (target, wiki) => {
+          const path = resolveAttachmentPath(target, note.vaultPath ?? `${folderPath}/${note.title}.md`, paths);
+          const matches = attachments.filter(a => path ? a.vaultPath === path : a.filename === target);
+          const attachment = matches.length === 1 ? matches[0] : undefined;
+          if (!attachment) return undefined;
+          const exportedPath = zipAttachmentPath(note.id, attachment);
+          return wiki ? exportedPath : relativePathFromFolder(folderPath, exportedPath);
+        });
+      };
 
       exportWorkspace.folders.forEach((folder) => {
         const folderNotes = exportWorkspace.notes.filter((note) => note.folder === folder.id);
@@ -513,16 +535,17 @@ export function useDataTransfer({
         if (!folderZip) return;
         const used = usedNamesFor(folder.name);
         folderNotes.forEach((note) => {
-          folderZip.file(uniqueExportFilename(used, note.title, note.id, '.md'), note.content);
+          folderZip.file(uniqueExportFilename(used, note.title, note.id, '.md'), exportContent(note, folder.name));
         });
       });
 
       const rootUsed = usedNamesFor('');
+      rootUsed.add('README.md');
       const exportFolderIds = new Set(exportWorkspace.folders.map((folder) => folder.id));
       exportWorkspace.notes
         .filter((note) => !note.folder || !exportFolderIds.has(note.folder))
         .forEach((note) => {
-          zip.file(uniqueExportFilename(rootUsed, note.title, note.id, '.md'), note.content);
+          zip.file(uniqueExportFilename(rootUsed, note.title, note.id, '.md'), exportContent(note, ''));
         });
 
       // Export attachments using the vault layout so importZip can recover
@@ -531,7 +554,8 @@ export function useDataTransfer({
         exportWorkspace.notes.flatMap((note) =>
           (note.attachments ?? []).map(async (att) => {
             const blob = await storage.getAttachmentBlob(att.id);
-            if (blob) zip.file(zipAttachmentPath(note.id, att), blob);
+            if (!blob) throw new Error(`Could not read attachment "${att.filename}" in note "${note.title}". Remove it from the note's attachments or re-add the file.`);
+            zip.file(zipAttachmentPath(note.id, att), blob);
           })
         )
       );
@@ -869,6 +893,9 @@ export function useDataTransfer({
 
         for (let i = 0; i < files.length; i += 1) {
           const file = files[i];
+          const segments = (file.webkitRelativePath || file.name).split('/').filter(Boolean);
+          if (segments.length <= 2 && (file.name === 'manifest.json'
+            || (file.name === 'README.md' && (await file.text()).endsWith(VAULT_README_BODY)))) continue;
           if ((i + 1) % 25 === 0 || i + 1 === files.length) {
             setImportStatusText(`Scanning folder files (${i + 1}/${files.length})...`);
           }

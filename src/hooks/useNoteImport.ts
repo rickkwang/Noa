@@ -50,6 +50,7 @@ export function useNoteImport({
     const replacing = shouldPrune && mode === 'workspace';
     if (isImportingRef.current) throw new Error('Another import is already running.');
     isImportingRef.current = true;
+    const candidateAttachmentIds = new Set(notesRef.current.flatMap(n => (n.attachments ?? []).map(a => a.id)));
     // Writes cannot be cancelled. A slow store must keep the lock until the
     // write/rollback settles, otherwise it can overwrite the next import.
     const stallMessage = 'Import is still waiting for local storage. Keep Noa open until it finishes.';
@@ -172,7 +173,7 @@ export function useNoteImport({
       const validIds = new Set(
         withRefs.flatMap((n) => (n.attachments ?? []).map((a) => a.id))
       );
-      storage.pruneOrphanedAttachments(validIds).catch((err) => {
+      storage.pruneOrphanedAttachments(validIds, candidateAttachmentIds).catch((err) => {
         console.error('[Noa] Failed to prune orphaned attachments:', err);
       });
       // 所有 storage 写入成功后，更新 React state

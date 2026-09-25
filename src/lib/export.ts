@@ -1,9 +1,7 @@
-import { Attachment, Folder, Note } from '../types';
+import { Folder, Note } from '../types';
 import { blobToBase64, type ImportedNote } from './attachmentUtils';
 import { storage } from './storage';
 import { selectNoaOwnedWorkspace } from './workspaceOwnership';
-
-type BackupAttachment = Attachment & { dataBase64: string };
 
 interface BackupPayload {
   version: 2;
@@ -26,14 +24,14 @@ async function hydrateAttachmentPayloads(notes: ImportedNote[]): Promise<Importe
       const attachments = await Promise.all(
         note.attachments.map(async (attachment) => {
           const blob = await storage.getAttachmentBlob(attachment.id);
-          if (!blob) return null;
+          if (!blob) throw new Error(`Could not read attachment "${attachment.filename}" in note "${note.title}". Remove it from the note's attachments or re-add the file. Backup was not created.`);
           const dataBase64 = await blobToBase64(blob);
           return { ...attachment, dataBase64 };
         }),
       );
       return {
         ...note,
-        attachments: attachments.filter((att): att is BackupAttachment => att !== null),
+        attachments,
       };
     }),
   );

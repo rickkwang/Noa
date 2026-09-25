@@ -3,6 +3,136 @@ import { expect, test } from './fixtures';
 const reactModulePath = '/node_modules/.vite/deps/react.js';
 const reactDomModulePath = '/node_modules/.vite/deps/react-dom_client.js';
 
+test('connected vault images render through wiki and relative Markdown references', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async ({ reactPath, reactDomPath }) => {
+    const React = (await import(reactPath)).default;
+    const { createRoot } = (await import(reactDomPath)).default;
+    const fsPath = '/src/lib/fileSystemStorage.ts';
+    const previewPath = '/src/components/editor/PreviewPane.tsx';
+    const settingsPath = '/src/hooks/useSettings.ts';
+    const { scanDirectory } = await import(fsPath);
+    const { PreviewPane } = await import(previewPath);
+    const { defaultSettings } = await import(settingsPath);
+    const dir = await navigator.storage.getDirectory();
+    const notesDir = await dir.getDirectoryHandle('Notes', { create: true });
+    const imageDir = await dir.getDirectoryHandle('attachments', { create: true });
+    const image = await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==').then(r => r.blob());
+    for (const [parent, name, content] of [
+      [notesDir, 'Note.md', '![[attachments/photo.png]]\n\n![relative](../attachments/photo.png)'],
+      [imageDir, 'photo.png', image],
+    ] as const) {
+      const file = await parent.getFileHandle(name, { create: true });
+      const writer = await file.createWritable();
+      await writer.write(content);
+      await writer.close();
+    }
+    const { notes, folders } = await scanDirectory(dir, []);
+    const urls = new Map();
+    for (const a of notes[0].attachments ?? []) {
+      const blob = await fetch(`data:${a.mimeType};base64,${a.dataBase64}`).then(r => r.blob());
+      urls.set(a.id, URL.createObjectURL(blob));
+    }
+    const host = document.createElement('div');
+    host.id = 'vault-image-regression';
+    document.body.append(host);
+    createRoot(host).render(React.createElement(PreviewPane, {
+      note: notes[0], allNotes: notes, folders, settings: defaultSettings,
+      editorStyle: {}, contentMaxWidthStyle: {}, objectUrls: urls,
+      onNavigateToNoteLegacy: () => {}, onNavigateToNoteById: () => {},
+    }));
+  }, { reactPath: reactModulePath, reactDomPath: reactDomModulePath });
+  const images = page.locator('#vault-image-regression img');
+  await expect(images).toHaveCount(2);
+  for (const image of await images.all()) {
+    await expect(image).toHaveAttribute('src', /^blob:/);
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  }
+});
+
+test('Vault ZIP keeps attachment references usable after folder import', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async ({ reactPath, reactDomPath }) => {
+    const React = (await import(reactPath)).default;
+    const { createRoot } = (await import(reactDomPath)).default;
+    const transferPath = '/src/hooks/useDataTransfer.ts';
+    const storagePath = '/src/lib/storage.ts';
+    const zipPath = '/node_modules/.vite/deps/jszip.js';
+    const { useDataTransfer, buildVaultImportPayload } = await import(transferPath);
+    const { storage } = await import(storagePath);
+    const JSZip = (await import(zipPath)).default;
+    const at = new Date().toISOString();
+    const note = { id: 'note', title: 'Architecture', content: '![[a/diagram.png]]\n![[diagram.png]]\n![diagram](diagram.png)', folder: 'docs', createdAt: at, updatedAt: at, tags: [], links: [], attachments: [
+      { id: 'other', noteId: 'note', filename: 'diagram.png', vaultPath: 'a/diagram.png', mimeType: 'image/png', size: 5, createdAt: at },
+      { id: 'image', noteId: 'note', filename: 'diagram.png', vaultPath: 'diagram.png', mimeType: 'image/png', size: 5, createdAt: at },
+    ] };
+    await storage.saveAttachmentBlob('image', new Blob(['image'], { type: 'image/png' }));
+    await storage.saveAttachmentBlob('other', new Blob(['other'], { type: 'image/png' }));
+    let api: any;
+    let download: Blob | undefined;
+    const original = URL.createObjectURL;
+    URL.createObjectURL = blob => { download = blob as Blob; return original(blob); };
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    function Harness() {
+      api = useDataTransfer({ notes: [note], folders: [{ id: 'docs', name: 'Docs' }], workspaceName: 'Audit', notify: () => {} });
+      return null;
+    }
+    try {
+      root.render(React.createElement(Harness));
+      while (!api) await new Promise(resolve => setTimeout(resolve, 10));
+      await api.exportZip();
+      const zip = await JSZip.loadAsync(await download!.arrayBuffer());
+      const files = [];
+      for (const entry of Object.values(zip.files) as any[]) {
+        if (entry.dir || ['manifest.json', 'README.md'].includes(entry.name)) continue;
+        files.push({ pathSegments: ['Audit', ...entry.name.split('/')], file: new File([await entry.async('uint8array')], entry.name.split('/').pop()) });
+      }
+      const imported = await buildVaultImportPayload(files, new Map());
+      return imported.notes.map((n: any) => ({ title: n.title, attachments: n.attachments?.length ?? 0 }));
+    } finally { URL.createObjectURL = original; root.unmount(); host.remove(); }
+  }, { reactPath: reactModulePath, reactDomPath: reactDomModulePath });
+  expect(result).toEqual([{ title: 'Architecture', attachments: 2 }]);
+});
+
+test('Mermaid preview retains readable SVG labels and styling', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  await page.locator('.cm-content').fill('```mermaid\ngraph TD; A[Start] --> B[Finish]\n```');
+  await page.getByRole('button', { name: 'Switch to preview view' }).click();
+  const label = page.locator('svg text').filter({ hasText: 'Start' });
+  await expect(label).toBeVisible();
+  await expect(page.locator('svg text').filter({ hasText: 'Finish' })).toBeVisible();
+  const finalSvg = page.locator('svg[id^="mermaid-"]').filter({ hasText: 'Start' });
+  await expect(finalSvg.locator('foreignObject, script')).toHaveCount(0);
+  await expect(finalSvg.locator('.node rect').first()).not.toHaveCSS('fill', 'rgb(0, 0, 0)');
+});
+
+test('find keeps focus and repeated replacements use current document positions', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  const editor = page.locator('.cm-content');
+  await editor.fill('apple apple');
+  await editor.press('ControlOrMeta+f');
+  const find = page.getByPlaceholder('Find…');
+  await expect(find).toBeFocused();
+  await find.pressSequentially('apple');
+  await expect(find).toHaveValue('apple');
+  await expect(find).toBeFocused();
+  await expect(editor).toContainText('apple apple');
+  await page.getByRole('button', { name: 'Show replace' }).click();
+  await page.getByPlaceholder('Replace…').fill('X');
+  await page.getByRole('button', { name: 'Replace', exact: true }).click();
+  await expect(editor).toContainText('X apple');
+  await page.getByRole('button', { name: 'Replace', exact: true }).click();
+  await expect(editor).toContainText('X X');
+  await expect(page.getByRole('button', { name: 'Replace', exact: true })).toBeDisabled();
+  await editor.fill('apple tail');
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(editor).toContainText('X tail');
+});
+
 for (const action of ['move', 'restore'] as const) {
   test(`closing waits for a pending ${action} and preserves it on failure`, async ({ page }) => {
     await page.goto('/');

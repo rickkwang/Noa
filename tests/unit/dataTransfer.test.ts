@@ -36,6 +36,18 @@ const makeNote = (id: string, title: string): Note => ({
   linkRefs: [],
 });
 
+it('imports an ordinary root README rather than treating its filename as an export artifact', async () => {
+  const root = createMemRoot();
+  const file = await root.getFileHandle('README.md', { create: true });
+  const writer = await file.createWritable();
+  await writer.write('# My project\nImportant notes');
+  await writer.close();
+  const scan = await collectVaultDirectoryEntries(root as unknown as FileSystemDirectoryHandle, ['Vault']);
+  const imported = await buildVaultImportPayload(scan.files, new Map());
+  expect(imported.notes).toHaveLength(1);
+  expect(imported.notes[0]).toMatchObject({ title: 'README', content: '# My project\nImportant notes' });
+});
+
 describe('selectNoaOwnedWorkspace', () => {
   it('excludes vault cache rows but preserves ordinary one-time imports', () => {
     const local = makeNote('local', 'Local');

@@ -1,4 +1,5 @@
 import { Attachment, Note } from '../types';
+import { decodeLinkPath } from './noteUtils';
 
 type ImportedAttachment = Attachment & { dataBase64?: string };
 export type ImportedNote = Note & { attachments?: ImportedAttachment[] };
@@ -79,4 +80,30 @@ export function mergeAttachmentPayloads(
     dataBase64: rawById.get(attachment.id)?.dataBase64,
   }));
   return { ...normalizedNote, attachments };
+}
+
+export function mapAttachmentReferences(content: string, resolve: (target: string, wiki: boolean) => string | undefined): string {
+  return content.split(/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|``[^`]*``|`[^`\n]*`)/g)
+    .map((part, index) => index % 2 ? part : part
+      .replace(/(!?\[\[)(.*?)(\]\])/g, (match, open, raw: string, close) => {
+        const boundary = raw.search(/\\?\|/);
+        const target = (boundary < 0 ? raw : raw.slice(0, boundary)).trim();
+        const mapped = resolve(target, true);
+        return mapped === undefined ? match : `${open}${mapped}${boundary < 0 ? '' : raw.slice(boundary)}${close}`;
+      })
+      .replace(/(!\[[^\]]*\]\()(<[^>]*>|[^\s)]+)([^)]*\))/g, (match, open, target: string, suffix) => {
+        const mapped = resolve(decodeLinkPath(target.replace(/^<|>$/g, '')), false);
+        return mapped === undefined ? match : `${open}<${mapped.replace(/>/g, '%3E')}>${suffix}`;
+      }))
+    .join('');
+}
+
+export function resolveAttachmentPath(target: string, notePath: string, paths: ReadonlySet<string>): string | undefined {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(target)) return undefined;
+  const relative = decodeLinkPath(new URL(target, `https://vault.invalid/${notePath.split('/').map(encodeURIComponent).join('/')}`).pathname.slice(1));
+  if (paths.has(relative)) return relative;
+  if (paths.has(target)) return target;
+  if (target.includes('/')) return undefined;
+  const matches = [...paths].filter(path => path.split('/').pop() === target);
+  return matches.length === 1 ? matches[0] : undefined;
 }

@@ -300,13 +300,11 @@ export const storage = {
     await Promise.allSettled(toDelete.map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
   },
 
-  async pruneOrphanedAttachments(validAttachmentIds: Set<string>): Promise<void> {
-    const keys = await attachmentsStore.keys();
-    const toDelete = keys.filter((k) => {
-      const id = k.replace('blob:', '');
-      return !validAttachmentIds.has(id);
-    });
-    await Promise.all(toDelete.map((k) => attachmentsStore.removeItem(k)));
+  async pruneOrphanedAttachments(validAttachmentIds: Set<string>, candidateIds: ReadonlySet<string>): Promise<void> {
+    // A blob being uploaded may not have a note reference yet. Only consider
+    // attachments owned by the notes this operation removed or replaced.
+    const toDelete = [...candidateIds].filter(id => !validAttachmentIds.has(id));
+    await Promise.all(toDelete.map(id => attachmentsStore.removeItem(`blob:${id}`)));
   },
 
   // Version history

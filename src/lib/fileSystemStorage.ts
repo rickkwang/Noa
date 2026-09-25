@@ -1,6 +1,6 @@
 import localforage from 'localforage';
 import { Note, Folder, Attachment } from '../types';
-import { blobToBase64 } from './attachmentUtils';
+import { blobToBase64, inferAttachmentMimeType, mapAttachmentReferences, resolveAttachmentPath } from './attachmentUtils';
 import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from './frontmatter';
 import { sanitizeFilename, sanitizeFolderPath } from './importUtils';
 import { extractLinks } from './noteUtils';
@@ -317,8 +317,18 @@ function attachmentVaultFileName(note: Note, attachment: Attachment): string {
   return `${sanitizePathSegment(attachment.id)}-${sanitizeFilename(attachment.filename)}`;
 }
 
+function noaAttachmentDir(note: Note): string {
+  return `attachments/${sanitizePathSegment(vaultDiskNoteId(note))}/`;
+}
+
 function attachmentVaultPath(note: Note, attachment: Attachment): string {
-  return attachment.vaultPath ?? `attachments/${sanitizePathSegment(vaultDiskNoteId(note))}/${attachmentVaultFileName(note, attachment)}`;
+  return attachment.vaultPath ?? `${noaAttachmentDir(note)}${attachmentVaultFileName(note, attachment)}`;
+}
+
+// Images the scan found elsewhere in the vault belong to the user: Noa neither
+// copies them into its attachment folder nor rewrites embeds that point at them.
+function isNoaOwnedAttachment(note: Note, attachment: Attachment): boolean {
+  return !attachment.vaultPath || attachment.vaultPath.startsWith(noaAttachmentDir(note));
 }
 
 async function ensureDirectory(
@@ -426,11 +436,12 @@ async function syncAttachmentsForNote(
   // exist in the vault and must not be modified. Only sync attachments for
   // Noa-native notes.
   if ((note.source ?? 'noa') !== 'noa') return;
-  if (!(note.attachments?.length)) return;
+  const attachments = (note.attachments ?? []).filter((att) => isNoaOwnedAttachment(note, att));
+  if (!attachments.length) return;
 
   const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(vaultDiskNoteId(note))]);
   if (!dirHandle) return;
-  const expected = new Set((note.attachments ?? []).map((att) => attachmentVaultFileName(note, att)));
+  const expected = new Set(attachments.map((att) => attachmentVaultFileName(note, att)));
   const existingEntries = [] as Array<[string, FileSystemHandle]>;
   for await (const entry of dirHandle.entries()) {
     existingEntries.push(entry);
@@ -442,11 +453,11 @@ async function syncAttachmentsForNote(
       }
     })
   );
-  await Promise.all((note.attachments ?? []).map((attachment) => writeAttachment(rootHandle, note, attachment)));
+  await Promise.all(attachments.map((attachment) => writeAttachment(rootHandle, note, attachment)));
 }
 
 function rewriteAttachmentEmbedsForVault(note: Note): string {
-  const attachments = note.attachments ?? [];
+  const attachments = (note.attachments ?? []).filter((att) => isNoaOwnedAttachment(note, att));
   return note.content.replace(/!\[\[(.*?)\]\]/g, (match, rawName) => {
     const name = String(rawName ?? '').trim();
     const attachment = attachments.find((att) =>
@@ -821,6 +832,7 @@ export async function scanDirectory(
   const scannedFolders: Folder[] = [];
   const newFolders: Folder[] = [];
   const attachmentsByNoteId = new Map<string, Attachment[]>();
+  const imageFiles = new Map<string, FileSystemFileHandle>();
   // Combined folder lookup: existing + newly created during this scan
   // Folder names are not globally unique across the two ownership domains.
   // Only a previously scanned vault folder may be reused for a disk directory;
@@ -832,6 +844,17 @@ export async function scanDirectory(
     handle.kind === 'directory';
 
   const MAX_DIR_DEPTH = 50;
+  async function readImageHandles(dir: FileSystemDirectoryHandle, path: string[], depth: number): Promise<void> {
+    if (depth > MAX_DIR_DEPTH) return;
+    for await (const [name, handle] of dir.entries()) {
+      if (name.startsWith('.')) continue;
+      const segments = [...path, name];
+      if (isDirectoryHandle(handle)) await readImageHandles(handle, segments, depth + 1);
+      else if (isFileHandle(handle) && inferAttachmentMimeType({ name, type: '' }).startsWith('image/')) {
+        imageFiles.set(segments.join('/'), handle);
+      }
+    }
+  }
   async function readDir(dirHandle: FileSystemDirectoryHandle, folderId?: string, pathSegments: string[] = [], depth = 0) {
     if (depth > MAX_DIR_DEPTH) {
       console.warn(`[Noa] Vault folder nesting exceeded ${MAX_DIR_DEPTH} levels at "${pathSegments.join('/')}", skipping subtree.`);
@@ -897,6 +920,7 @@ export async function scanDirectory(
         });
       } else if (isDirectoryHandle(handle)) {
         if (name === 'attachments') {
+          await readImageHandles(handle, currentPath, depth + 1);
           // Attachment filename format written by Noa: `${uuid}-${originalFilename}`
           // UUID has 5 dash-separated groups (8-4-4-4-12 chars = 36 chars total).
           const UUID_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i;
@@ -951,15 +975,37 @@ export async function scanDirectory(
           }
           await readDir(handle, matchedFolder.id, currentPath, depth + 1);
         }
+      } else if (isFileHandle(handle) && inferAttachmentMimeType({ name, type: '' }).startsWith('image/')) {
+        imageFiles.set(currentPathKey, handle);
       }
     }
   }
 
   await readDir(rootHandle);
-  notes.forEach((note) => {
+  const imagePaths = new Set(imageFiles.keys());
+  for (const note of notes) {
     const noteAttachments = attachmentsByNoteId.get(sanitizePathSegment(note.id)) ?? attachmentsByNoteId.get(note.id);
     if (noteAttachments?.length) {
       note.attachments = noteAttachments;
+    }
+    const referencedPaths = new Set<string>();
+    mapAttachmentReferences(note.content, target => {
+      const path = resolveAttachmentPath(target, note.vaultPath ?? '', imagePaths);
+      if (path && !note.attachments?.some(a => a.vaultPath === path)) referencedPaths.add(path);
+      return undefined;
+    });
+    for (const path of referencedPaths) {
+      const file = await imageFiles.get(path)!.getFile();
+      const id = stableVaultId(`attachment:${note.id}:${path}`);
+      const createdAt = new Date(file.lastModified).toISOString();
+      const cached = options?.existingAttachments?.get(id);
+      const blobAlreadyStored = options?.existingAttachmentBlobIds?.has(id)
+        && cached?.vaultPath === path && cached.size === file.size && cached.createdAt === createdAt;
+      (note.attachments ??= []).push({
+        id, noteId: note.id, filename: file.name, mimeType: inferAttachmentMimeType(file),
+        size: file.size, createdAt, vaultPath: path,
+        ...(blobAlreadyStored ? {} : { dataBase64: await fileToBase64(file) }),
+      });
     }
     // Canonical files can be reconstructed exactly without duplicating their
     // full content in IndexedDB. Non-canonical but valid files retain their
@@ -967,7 +1013,7 @@ export async function scanDirectory(
     if (note.vaultBaseText === serializeNoteForVault(note)) {
       delete note.vaultBaseText;
     }
-  });
+  }
   // Note ids the manifest tracked when the scan started: any of these whose
   // file is now missing was deleted externally (see mergeScannedNotes).
   const manifestIds = new Set(Object.values(manifest.notes).map((entry) => entry.id));

@@ -1,4 +1,4 @@
-import Fuse, { type FuseResult } from 'fuse.js';
+import Fuse, { type Expression, type FuseResult } from 'fuse.js';
 import { stripTaskMarkers } from '../lib/taskParser';
 import { Folder, Note } from '../types';
 
@@ -90,7 +90,6 @@ export class SearchEngine {
       includeMatches: true,
       threshold: 0.3,
       ignoreLocation: true,
-      useExtendedSearch: true,
       isCaseSensitive: caseSensitive,
     });
   }
@@ -106,7 +105,6 @@ export class SearchEngine {
         includeMatches: true,
         threshold: 0.3,
         ignoreLocation: true,
-        useExtendedSearch: true,
         isCaseSensitive: caseSensitive,
       });
     } else {
@@ -148,9 +146,9 @@ export class SearchEngine {
 
     if (keywords.length > 0) {
       if (this.fuzzySearch) {
-        // Fuse extended search syntax: 'word1 'word2 for AND match
-        const fuseQuery = keywords.map(k => `'${k}`).join(' ');
-        results = this.fuse.search(fuseQuery);
+        results = this.fuse.search({
+          $and: keywords.map((keyword): Expression => ({ $or: [{ title: keyword }, { content: keyword }] })),
+        });
       } else {
         // Exact substring match
         results = this.notes

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { storage } from '../../src/lib/storage';
 import { buildBackupFilename, pruneOldBackups, runAutoBackup, shouldRunAutoBackup } from '../../src/services/autoBackupService';
 import type { Note } from '../../src/types';
 
@@ -16,6 +17,19 @@ const backupNote = (id: string, folder: string): Note => ({
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+it('refuses an incomplete attachment backup without writing or pruning', async () => {
+  vi.spyOn(storage, 'getAttachmentBlob').mockResolvedValue(null);
+  const getFileHandle = vi.fn();
+  const removeEntry = vi.fn();
+  const note = backupNote('note', '');
+  note.attachments = [{ id: 'image', noteId: note.id, filename: 'image.png', mimeType: 'image/png', size: 1, createdAt: note.createdAt }];
+  const result = await runAutoBackup({ getFileHandle, removeEntry } as unknown as FileSystemDirectoryHandle, [note], [], 'Audit');
+  expect(result).toMatchObject({ ok: false, reason: 'write_failed', detail: expect.stringContaining('image.png') });
+  expect(getFileHandle).not.toHaveBeenCalled();
+  expect(removeEntry).not.toHaveBeenCalled();
 });
 
 describe('shouldRunAutoBackup', () => {

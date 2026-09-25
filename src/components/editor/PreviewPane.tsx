@@ -14,6 +14,7 @@ import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
+import { mapAttachmentReferences, resolveAttachmentPath } from '../../lib/attachmentUtils';
 import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
@@ -490,17 +491,24 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   const linkIndex = useMemo(() => buildLinkIndex(componentNotes, folders ?? []), [componentNotes, folders]);
 
   const previewMarkdown = useMemo(() => {
+    const paths = new Set((note.attachments ?? []).flatMap(a => a.vaultPath ? [a.vaultPath] : []));
     const findAttachment = (ref: string) => {
-      const exact = (note.attachments ?? []).find((a) => a.filename === ref || a.vaultPath === ref);
-      if (exact) return exact;
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(ref)) return undefined;
+      const path = resolveAttachmentPath(ref, note.vaultPath ?? '', paths);
+      if (path) return note.attachments?.find(a => a.vaultPath === path);
+      // Pasted screenshots all share a name like image.png; an ambiguous name
+      // must still render something rather than every copy going missing.
       const basename = ref.split('/').pop() ?? ref;
-      return (note.attachments ?? []).find((a) => a.filename === basename || a.vaultPath === ref);
+      return note.attachments?.find((a) => a.filename === ref || a.filename === basename);
     };
 
     // Step 0: strip %%comments%% (Obsidian comments) so they never render. Done at
     // the string level to match Obsidian's pre-parse behavior; the rare case of a
     // literal %% inside a fenced code block is not special-cased.
-    const withoutComments = stripTaskMarkers(note.content).replace(/%%[\s\S]*?%%/g, '');
+    const withoutComments = mapAttachmentReferences(stripTaskMarkers(note.content).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
+      const attachment = wiki ? undefined : findAttachment(target);
+      return attachment ? `note-attachment://id/${encodeURIComponent(attachment.id)}` : undefined;
+    });
 
     // Steps 1–2 must not touch code: a literal [[x]] inside a fenced block or
     // inline code span is code, not a link. Split on code segments (odd indices
@@ -564,7 +572,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       const encoded = encodeURIComponent(realTitle);
       return `[${displayText}](note-internal://title/${encoded}${anchorSuffix})`;
     }));
-  }, [note.id, note.folder, note.content, note.attachments, linkIndex]);
+  }, [note.id, note.folder, note.vaultPath, note.content, note.attachments, linkIndex]);
 
   const markdownComponents = useMemo((): Components => {
     return {

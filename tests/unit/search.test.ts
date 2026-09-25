@@ -55,6 +55,11 @@ describe('parseQuery', () => {
 });
 
 describe('SearchEngine', () => {
+  it('matches misspellings only with fuzzy search and requires every keyword across fields', () => {
+    const notes = [makeNote('1', 'Meeting', 'budget review'), makeNote('2', 'Meeting', 'holiday')];
+    expect(new SearchEngine(notes, false, true).search('meetign budget').map(r => r.note.id)).toEqual(['1']);
+    expect(new SearchEngine(notes, false, false).search('meetign budget')).toEqual([]);
+  });
   const notes = [
     makeNote('1', 'Shopping List', 'buy milk and eggs', ['grocery']),
     makeNote('2', 'Work Notes', 'meeting with the team', ['work']),

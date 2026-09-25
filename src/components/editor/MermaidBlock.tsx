@@ -33,6 +33,8 @@ export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
             startOnLoad: false,
             theme,
             securityLevel: 'strict',
+            htmlLabels: false,
+            secure: [...(mermaid.mermaidAPI.getConfig().secure ?? []), 'themeCSS', 'htmlLabels', 'fontFamily', 'altFontFamily'],
             fontFamily: 'inherit',
           });
           prevThemeRef.current = theme;
@@ -47,14 +49,14 @@ export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
         const safeSvg = DOMPurify.sanitize(renderedSvg, {
           ALLOWED_TAGS: [
             'svg', 'g', 'defs', 'marker', 'path', 'circle', 'ellipse', 'rect',
-            'line', 'polyline', 'polygon', 'text', 'tspan', 'title',
+            'line', 'polyline', 'polygon', 'text', 'tspan', 'title', 'style', '#text',
             'linearGradient', 'radialGradient', 'stop', 'clipPath', 'use', 'pattern',
           ],
           ALLOWED_ATTR: [
             'id', 'class', 'style', 'transform', 'd', 'fill', 'stroke',
             'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
             'stroke-miterlimit', 'opacity', 'fill-opacity', 'stroke-opacity',
-            'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
+            'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'dx', 'dy', 'x1', 'y1', 'x2', 'y2',
             'width', 'height', 'viewBox', 'preserveAspectRatio',
             'points', 'offset', 'stop-color', 'stop-opacity',
             'text-anchor', 'dominant-baseline', 'alignment-baseline',
@@ -64,7 +66,7 @@ export function MermaidBlock({ code, isDark }: MermaidBlockProps) {
             'clip-path', 'clipPathUnits', 'gradientUnits', 'gradientTransform',
             'patternUnits', 'patternTransform',
           ],
-          FORBID_TAGS: ['script', 'style', 'foreignObject', 'iframe', 'object', 'embed'],
+          FORBID_TAGS: ['script', 'foreignObject', 'iframe', 'object', 'embed'],
           KEEP_CONTENT: false,
         });
         if (!cancelled) {

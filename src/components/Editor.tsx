@@ -215,6 +215,7 @@ export default function Editor({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey) {
         e.preventDefault();
+        e.stopPropagation();
         setIsFindReplaceOpen(true);
       }
     };
@@ -564,6 +565,7 @@ export default function Editor({
       {isFindReplaceOpen && viewMode !== 'preview' && (
         <FindReplacePanel
           editorViewRef={editorViewRef}
+          content={note?.content ?? ''}
           isDark={isDark}
           onClose={() => setIsFindReplaceOpen(false)}
         />

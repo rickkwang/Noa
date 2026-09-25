@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, X } from '@/src/lib/icons';
 
 interface FindReplacePanelProps {
   editorViewRef: React.RefObject<EditorView | null>;
+  content: string;
   isDark: boolean;
   onClose: () => void;
 }
@@ -32,7 +33,7 @@ function findAllMatches(doc: string, query: string, caseSensitive: boolean, useR
   }
 }
 
-export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplacePanelProps) {
+export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: FindReplacePanelProps) {
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -50,7 +51,9 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
     findInputRef.current?.select();
   }, []);
 
-  // Recompute matches whenever search params change
+  // Recompute matches whenever search params or the committed note content
+  // change. Read the live document so match positions agree with the ones
+  // replace/scroll recompute, even while an IME composition delays `content`.
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view) return;
@@ -77,20 +80,19 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
     const found = findAllMatches(doc, findText, caseSensitive, useRegex);
     setMatches(found);
     setCurrentIndex(prev => Math.min(prev, Math.max(0, found.length - 1)));
-  }, [findText, caseSensitive, useRegex, editorViewRef]);
+  }, [findText, caseSensitive, useRegex, editorViewRef, content]);
 
   // Scroll to current match
   useEffect(() => {
     const view = editorViewRef.current;
-    if (!view || matches.length === 0) return;
-    const match = matches[currentIndex];
+    if (!view) return;
+    const match = findAllMatches(view.state.doc.toString(), findText, caseSensitive, useRegex)[currentIndex];
     if (!match) return;
     view.dispatch({
       selection: { anchor: match.from, head: match.to },
       scrollIntoView: true,
     });
-    view.focus();
-  }, [currentIndex, matches, editorViewRef]);
+  }, [currentIndex, findText, caseSensitive, useRegex, editorViewRef]);
 
   const goNext = useCallback(() => {
     if (matches.length === 0) return;
@@ -105,7 +107,7 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
   const replaceOne = useCallback(() => {
     const view = editorViewRef.current;
     if (!view || matches.length === 0) return;
-    const match = matches[currentIndex];
+    const match = findAllMatches(view.state.doc.toString(), findText, caseSensitive, useRegex)[currentIndex];
     if (!match) return;
 
     let insertText = replaceText;
@@ -130,8 +132,8 @@ export function FindReplacePanel({ editorViewRef, isDark, onClose }: FindReplace
     const view = editorViewRef.current;
     if (!view || matches.length === 0) return;
 
-    // Build changes in reverse order so positions stay valid
-    const changes = [...matches].reverse().map(m => {
+    // CodeMirror applies all changes against the same document.
+    const changes = findAllMatches(view.state.doc.toString(), findText, caseSensitive, useRegex).map(m => {
       let insertText = replaceText;
       if (useRegex) {
         try {

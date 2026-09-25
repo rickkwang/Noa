@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, writeNote } from '../../src/lib/fileSystemStorage';
+import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, serializeNoteForVault, writeNote } from '../../src/lib/fileSystemStorage';
 import { checkExternalVaultChanges, mergeScannedNotes, replayVaultPendingOperation, resetVaultStatSnapshot, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot } from '../../src/services/fileSyncService';
 import type { Note } from '../../src/types';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
@@ -737,6 +737,20 @@ describe('manifest path consistency for folders with spaces', () => {
       tags: ['work'],
     });
     expect(notes[0].folder).toBe(folders[0].id);
+  });
+
+  it('reads ordinary vault images by root, relative and unique basename references without rewriting them', async () => {
+    const root = createMemRoot();
+    const content = '![[attachments/photo.png]]\n![photo](../attachments/photo.png)\n![[unique.png]]\n![[image.png]]';
+    await writeRawFile(root, 'Notes/Note.md', content);
+    await writeRawFile(root, 'attachments/photo.png', 'photo');
+    await writeRawFile(root, 'assets/unique.png', 'unique');
+    await writeRawFile(root, 'a/image.png', 'one');
+    await writeRawFile(root, 'b/image.png', 'two');
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    expect(notes[0].attachments?.map(a => a.vaultPath).sort()).toEqual(['assets/unique.png', 'attachments/photo.png']);
+    expect(notes[0].attachments?.every(a => a.dataBase64)).toBe(true);
+    expect(serializeNoteForVault(notes[0])).toBe(content);
   });
 
   it('scanDirectory reads Noa-owned attachment payloads from the vault', async () => {
