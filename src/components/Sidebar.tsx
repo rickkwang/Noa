@@ -12,7 +12,7 @@ import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
 import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsDownUp, ChevronsUpDown, ArrowUpDown, Dices, X } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, FoldVertical, UnfoldVertical, ArrowUpDown, Dices, X } from '@/src/lib/icons';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -73,7 +73,7 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
   const displayName = note.title || 'Untitled';
   return (
     <FileNode
-      name={displayName + '.md'}
+      name={displayName}
       isActive={isActive}
       isSelected={isSelected}
       isDragging={isDragging}
@@ -451,7 +451,7 @@ export default function Sidebar({
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
+          {foldersExpandedByDefault ? <FoldVertical size={13.5} /> : <UnfoldVertical size={13.5} />}
         </button>
         {dailyNotesEnabled && (
         <button

@@ -78,7 +78,7 @@ export const FileNode = React.memo(({
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(name.replace('.md', ''));
+  const [editName, setEditName] = useState(name);
   const [renameError, setRenameError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export const FileNode = React.memo(({
     e.stopPropagation();
     if (onRename) {
       setIsEditing(true);
-      setEditName(name.replace('.md', ''));
+      setEditName(name);
       setRenameError(null);
     }
   };
@@ -100,7 +100,7 @@ export const FileNode = React.memo(({
       setRenameError('Name cannot be empty.');
       return;
     }
-    if (nextName !== name.replace('.md', '')) {
+    if (nextName !== name) {
       const error = onRename?.(nextName);
       if (typeof error === 'string' && error.length > 0) {
         setRenameError(error);
@@ -116,7 +116,7 @@ export const FileNode = React.memo(({
       handleRenameSubmit();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
-      setEditName(name.replace('.md', ''));
+      setEditName(name);
       setRenameError(null);
     }
   };
@@ -187,7 +187,7 @@ export const FileNode = React.memo(({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className={`truncate ${isActive ? 'font-bold' : isFolder ? 'font-[425]' : ''}`}>
+            <span className={`truncate ${isActive ? 'font-bold' : ''}`}>
               {name}
             </span>
           )}

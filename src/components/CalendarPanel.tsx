@@ -63,6 +63,19 @@ export default function CalendarPanel({
   const month = viewMonth.getMonth();
   const today = formatDate('YYYY-MM-DD');
 
+  // Always six rows. A 5-row month next to a 6-row one resized the whole
+  // bottom-anchored panel, so the nav arrows moved under the cursor between
+  // clicks. The rows are filled from the neighbouring months (dimmed) rather
+  // than left blank, which otherwise read as a dead band above the presets.
+  // getDay() returns 0=Sun..6=Sat; convert to Mon-based (0=Mon..6=Sun).
+  const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const gridDates = useMemo(
+    () => Array.from({ length: 42 }, (_, i) => new Date(year, month, 1 - firstDayOffset + i)),
+    [year, month, firstDayOffset],
+  );
+  const gridFirstKey = toKey(gridDates[0]);
+  const gridLastKey = toKey(gridDates[41]);
+
   // One pass over notes + tasks per open month, rather than 31 × O(n) lookups
   // from inside the cell loop. Gated on the body being mounted — open, or still
   // easing closed, so the dots don't vanish mid-collapse: this component
@@ -72,7 +85,7 @@ export default function CalendarPanel({
     const days = new Map<string, DayMeta>();
     if (!isBodyMounted) return { days, activeKey: null as string | null };
 
-    const prefix = `${year}-${pad(month + 1)}-`;
+    const inGrid = (key: string) => key >= gridFirstKey && key <= gridLastKey;
     const ensure = (key: string): DayMeta => {
       let meta = days.get(key);
       if (!meta) {
@@ -89,32 +102,31 @@ export default function CalendarPanel({
       const parsed = new Date(note.updatedAt);
       if (Number.isNaN(parsed.getTime())) continue;
       const key = toKey(parsed);
-      if (key.startsWith(prefix)) ensure(key).notes += 1;
+      if (inGrid(key)) ensure(key).notes += 1;
     }
 
     // Daily notes are titled by the formatted date, and dateFormat is
     // user-configurable — so format each day forward and probe the title set
     // rather than trying to parse titles back into dates.
     const activeTitle = notes.find(n => n.id === activeNoteId)?.title ?? '';
-    const lastDay = new Date(year, month + 1, 0).getDate();
     let activeKey: string | null = null;
-    for (let d = 1; d <= lastDay; d++) {
-      const formatted = formatDate(dateFormat, new Date(year, month, d));
-      const key = `${prefix}${pad(d)}`;
+    for (const date of gridDates) {
+      const formatted = formatDate(dateFormat, date);
+      const key = toKey(date);
       if (titles.has(formatted)) ensure(key).daily = true;
       if (activeTitle !== '' && formatted === activeTitle) activeKey = key;
     }
 
     // Open task due dates.
     for (const task of tasks) {
-      if (task.completed || !task.dueDate?.startsWith(prefix)) continue;
+      if (task.completed || !task.dueDate || !inGrid(task.dueDate)) continue;
       const meta = ensure(task.dueDate);
       meta.due += 1;
       if (task.dueDate < today) meta.overdue += 1;
     }
 
     return { days, activeKey };
-  }, [isBodyMounted, notes, tasks, year, month, dateFormat, activeNoteId, today]);
+  }, [isBodyMounted, notes, tasks, gridDates, gridFirstKey, gridLastKey, dateFormat, activeNoteId, today]);
 
   const applyRange = useCallback((next: Range) => {
     setRange(next);
@@ -215,17 +227,6 @@ export default function CalendarPanel({
   const monthName = viewMonth.toLocaleDateString('en-US', { month: 'long' });
   const isViewingToday = today.startsWith(`${year}-${pad(month + 1)}-`);
 
-  // Build grid cells: leading empty + days + trailing empty
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  // getDay() returns 0=Sun..6=Sat; convert to Mon-based (0=Mon..6=Sun)
-  const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
-  // Always six rows. A 5-row month next to a 6-row one resized the whole
-  // bottom-anchored panel, so the nav arrows moved under the cursor between
-  // clicks.
-  const cells: Array<{ day: number | null }> = [];
-  for (let i = 0; i < firstDayOffset; i++) cells.push({ day: null });
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d });
-  while (cells.length < 42) cells.push({ day: null });
 
   return (
     <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
@@ -307,9 +308,9 @@ export default function CalendarPanel({
                   which sit at a fixed 12px. The sidebar cannot go below 320px and
                   7x32 + 24 = 248, so the tracks always fit. */}
               <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-3 pb-2" onDragStart={e => e.preventDefault()}>
-                {cells.map((cell, i) => {
-                  if (cell.day === null) return <div key={`empty-${i}`} className="w-8 h-8" />;
-                  const dateStr = `${year}-${pad(month + 1)}-${pad(cell.day)}`;
+                {gridDates.map((date) => {
+                  const dateStr = toKey(date);
+                  const outside = date.getMonth() !== month;
                   const meta = dayMeta.get(dateStr);
                   const isToday = dateStr === today;
                   const isActive = dateStr === activeKey;
@@ -330,6 +331,11 @@ export default function CalendarPanel({
                   // /75 against the /50 weekday header. At the old /60 the two rows
                   // sat at nearly the same weight and the grid read as one flat block.
                   else cellClass += 'text-[#2D2D2B]/75';
+                  // Neighbouring-month days stay fully usable (open, range-drag,
+                  // dots) but recede: /75 × 40% lands under the /50 weekday row.
+                  // Selection, today and range keep full strength so a state
+                  // never looks disabled just because it sits across a month edge.
+                  if (outside && !isActive && !isToday && !inRange) cellClass += ' opacity-40';
 
                   // Two 3px dots at most: notes on the left, open tasks on the
                   // right. They read as one small cluster instead of competing for
@@ -358,7 +364,7 @@ export default function CalendarPanel({
                       aria-label={ariaLabel}
                       aria-current={isToday ? 'date' : undefined}
                     >
-                      <span className="leading-none">{cell.day}</span>
+                      <span className="leading-none">{date.getDate()}</span>
                       {!isActive && (noteDot || taskDot) && (
                         <span className="absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px] pointer-events-none">
                           {noteDot && (

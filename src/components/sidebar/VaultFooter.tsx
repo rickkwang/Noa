@@ -212,7 +212,7 @@ export function VaultFooter({
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
-        {/* size/margin match the Calendar + Tags Explorer headers above, so all
+        {/* size/margin match the Calendar + Tags headers above, so all
             three icons land on the same 12px rail. */}
         <ChevronsUpDown size={11} className="mr-1.5 shrink-0" />
         <span className="truncate">{label}</span>

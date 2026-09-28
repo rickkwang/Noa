@@ -1302,7 +1302,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   }
 }
 
-/* Collapsible sidebar sections (Calendar, Tags Explorer). The track animates
+/* Collapsible sidebar sections (Calendar, Tags). The track animates
    grid rows 0fr ↔ 1fr, like a folder in the file tree, but on two curves: the
    sections are bottom-anchored drawers up to ~300px tall, and one symmetric
    ease across that distance read as flat. Opening starts fast and settles long;

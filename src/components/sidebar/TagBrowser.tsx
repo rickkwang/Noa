@@ -87,7 +87,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
         aria-expanded={isTagsOpen}
       >
         <Tag size={11} className="mr-1.5 shrink-0" />
-        Tags Explorer
+        Tags
         <ChevronDown size={10} className={`ml-auto noa-sidebar-collapse-chevron ${isTagsOpen ? '' : '-rotate-90'}`} />
       </button>
       <div className="noa-sidebar-collapse" data-open={isTagsOpen ? 'true' : undefined}>

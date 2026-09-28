@@ -42,6 +42,8 @@ import {
   List as PhList,
   CircleNotch,
   ArrowsOut,
+  ArrowsInLineVertical,
+  ArrowsOutLineVertical,
   Graph,
   Palette as PhPalette,
   SidebarSimple,
@@ -89,7 +91,6 @@ export const CheckSquare = icon(PhCheckSquare);
 export const ChevronDown = icon(CaretDown);
 export const ChevronLeft = icon(CaretLeft);
 export const ChevronRight = icon(CaretRight);
-export const ChevronsDownUp = icon(CaretUpDown);
 export const ChevronsUpDown = icon(CaretUpDown);
 export const ChevronUp = icon(CaretUp);
 export const Circle = icon(PhCircle);
@@ -103,6 +104,10 @@ export const Download = icon(DownloadSimple);
 export const Edit2 = icon(PencilSimple);
 export const ExternalLink = icon(ArrowSquareOut);
 export const Eye = icon(PhEye);
+// Collapse / expand all folders. Distinct from ChevronsUpDown (CaretUpDown),
+// which the workspace switcher uses as its disclosure glyph.
+export const FoldVertical = icon(ArrowsInLineVertical);
+export const UnfoldVertical = icon(ArrowsOutLineVertical);
 export const FileArchive = icon(FileZip);
 export const FileText = icon(PhFileText);
 export const Filter = icon(Funnel);

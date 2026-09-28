@@ -512,7 +512,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
 
   // Titled multi-line callout: styled chrome shows the custom title and the
   // raw [!NOTE] marker is consumed, not leaked into a plain blockquote.
-  await page.getByTestId('sidebar-file-tree').getByText('CalloutTitled.md').click();
+  await page.getByTestId('sidebar-file-tree').getByText('CalloutTitled', { exact: true }).click();
   await ensurePreviewMode(page);
   const titledPreview = page.locator('.prose').last();
   await expect(titledPreview.getByText('Callout Title', { exact: true })).toBeVisible();
@@ -522,7 +522,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
   // No-title multi-line callout: default type label; the body line must not
   // be promoted into the title.
   await ensureEditMode(page);
-  await page.getByTestId('sidebar-file-tree').getByText('CalloutUntitled.md').click();
+  await page.getByTestId('sidebar-file-tree').getByText('CalloutUntitled', { exact: true }).click();
   await ensurePreviewMode(page);
   const untitledPreview = page.locator('.prose').last();
   await expect(untitledPreview.getByText('Tip', { exact: true })).toBeVisible();
@@ -626,7 +626,7 @@ test('successful recovery import clears corrupt legacy data across reloads', asy
   await page.reload();
   await expect(page.locator('.noa-app-shell')).not.toHaveAttribute('inert', '');
   await expect(page.getByRole('dialog', { name: 'Recovery Needed' })).toHaveCount(0);
-  await expect(page.getByTestId('sidebar-file-tree').getByText('Recovered Note.md')).toBeVisible();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('Recovered Note', { exact: true })).toBeVisible();
 });
 
 test('right panel tabs render by default and hide when the panel is toggled shut', async ({ page }) => {
@@ -844,7 +844,7 @@ test('filesystem sync status transitions from syncing to error on retry', async 
   // remain available while the user decides whether to retry or disconnect.
   await page.keyboard.press('Escape');
   await page.getByTitle('New note').click();
-  await expect(page.getByText('New Note.md', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('New Note', { exact: true })).toBeVisible();
 });
 
 test('failed vault write keeps the local edit and retry writes that edit to disk', async ({ page }) => {
@@ -866,7 +866,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
   await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
-  await page.getByText('Synced.md', { exact: true }).click();
+  await page.getByTestId('sidebar-file-tree').getByText('Synced', { exact: true }).click();
   await ensureEditMode(page);
   await expect(page.getByTitle('Manage vault attachments from the connected folder.')).toBeDisabled();
   await page.evaluate(() => {
@@ -882,7 +882,7 @@ test('failed vault write keeps the local edit and retry writes that edit to disk
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await expectVaultSyncStatus(page, 'error', { timeout: 5_000 });
   await page.getByLabel('Workspace').getByRole('button', { name: 'Disconnect', exact: true }).click();
-  await expect(page.getByText('Synced.md', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('Synced', { exact: true })).toBeVisible();
   await expect(page.getByText('Disconnected from local folder. Using IndexedDB.', { exact: true })).toHaveCount(0);
   await page.evaluate(() => {
     const syncMode = (window as typeof window & { __syncMode?: { failWrites: boolean } }).__syncMode;
@@ -924,7 +924,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
     const mode = (window as typeof window & { __syncMode?: { failWriteNames: string[] } }).__syncMode;
     if (mode) mode.failWriteNames = ['Alpha.md'];
   });
-  await page.getByText('Alpha.md', { exact: true }).click();
+  await page.getByTestId('sidebar-file-tree').getByText('Alpha', { exact: true }).click();
   await ensureEditMode(page);
   await page.locator('.cm-content').last().click();
   await page.keyboard.type('\nalpha edit');
@@ -933,7 +933,7 @@ test('a later successful vault write does not hide an earlier failed note', asyn
   await expectVaultSyncStatus(page, 'error', { timeout: 5_000 });
 
   await page.keyboard.press('Escape');
-  await page.getByText('Beta.md', { exact: true }).click();
+  await page.getByTestId('sidebar-file-tree').getByText('Beta', { exact: true }).click();
   await ensureEditMode(page);
   await page.locator('.cm-content').last().click();
   await page.keyboard.type('\nbeta edit');
@@ -970,7 +970,7 @@ test('vault editor is read-only while a structural operation is pending', async 
   await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
-  await page.getByText('Root.md', { exact: true }).click();
+  await page.getByTestId('sidebar-file-tree').getByText('Root', { exact: true }).click();
   await ensureEditMode(page);
   const editor = page.locator('.cm-content').last();
   await expect(editor).toHaveAttribute('contenteditable', 'true');
@@ -1009,11 +1009,11 @@ test('disconnect removes every vault-origin cache row regardless of source prove
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByRole('button', { name: 'Connect Folder' }).click();
   await expectVaultSyncStatus(page, 'ready');
-  await expect(page.getByText('Native.md', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('Native', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
 
-  await expect(page.getByText('Native.md', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('sidebar-file-tree').getByText('Native', { exact: true })).toHaveCount(0);
   await expect.poll(async () => page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('redaction-diary-notes-db');
@@ -1327,7 +1327,8 @@ for (const recovery of ['reload', 'retry'] as const) {
       };
     });
     await page.locator('.cm-content').fill(marker);
-    await page.getByText('Welcome to Noa', { exact: true }).first().click();
+    // The tab, not the sidebar row: this exercises the tab-switch flush path.
+    await page.locator('[data-tab-id]').filter({ hasText: 'Welcome to Noa' }).first().click();
     await expect.poll(() => page.evaluate(() => (window as any).__flushFailures)).toBeGreaterThan(0);
     await expect(page.getByText(/Failed to save note/)).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('noa:rescued-import-edits') ?? '[]')))

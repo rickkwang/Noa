@@ -99,12 +99,15 @@ describe('sidebar search result layout', () => {
     expect(fileNode).not.toContain("marginRight: '-1px'");
   });
 
-  it('uses a subtle semantic branch line and gives folders a distinct local text weight', async () => {
+  it('uses a subtle semantic branch line and one resting text weight for folders and notes', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
     expect(fileNode).toContain('border-l border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
-    expect(fileNode).toContain("isActive ? 'font-bold' : isFolder ? 'font-[425]' : ''");
+    // 425 against 400 never rendered as a visible difference; the folder icon
+    // is what tells folders from notes, and only the active row steps up.
+    expect(fileNode).toContain("isActive ? 'font-bold' : ''");
+    expect(fileNode).not.toContain("font-[425]");
     expect(fileNode).not.toContain("isFolder ? 'font-medium' : ''");
   });
 
