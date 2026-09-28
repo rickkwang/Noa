@@ -260,7 +260,16 @@ describe('light theme border tokens', () => {
   it('balances the desktop title-bar icon group against the native traffic lights', async () => {
     const topBar = await readFile(topBarPath, 'utf8');
 
-    expect(topBar).toContain("isMobile ? 'pl-2 pr-1' : 'pl-[82.5px] pr-4'");
+    expect(topBar).toContain("isMobile ? 'pl-2 pr-1' : 'pl-[var(--noa-titlebar-inset)] pr-4'");
+    // The traffic-light clearance only exists in the desktop shell; the web
+    // build gets a plain gutter. The reserve must still resolve to 9rem there.
+    const [indexCss, main] = await Promise.all([
+      readFile(indexCssPath, 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/main.tsx', import.meta.url)), 'utf8'),
+    ]);
+    expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 82.5px; }');
+    expect(indexCss).toContain(':root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }');
+    expect(main).toContain("if (window.noaDesktop) document.documentElement.dataset.desktop = 'true';");
   });
 
   it('animates the separator with direct toggles but keeps it fixed during preview promotion', async () => {
@@ -323,7 +332,7 @@ describe('light theme border tokens', () => {
     // Pinned as separate longhands because a `margin` shorthand recombines the
     // two edges onto one clock and nothing else catches it — EditorHeader.tsx
     // carries the reasoning.
-    expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined");
+    expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? 'var(--noa-titlebar-reserve)' : undefined");
     expect(editorHeader).toContain("'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'");
     expect(editorHeader).not.toContain("transition: liftTabStrip ? 'margin 220ms");
     expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
@@ -336,7 +345,7 @@ describe('light theme border tokens', () => {
     expect(indexCss).toMatch(
       /\.noa-editor-header-floor::before \{[^}]*\bright: 100%;[^}]*\bborder-bottom: 1px solid var\(--divider-subtle, #E6E2DA\);[^}]*\bpointer-events: none;[^}]*\}/,
     );
-    expect(indexCss).toMatch(/\.noa-editor-header-floor-reserved::before \{\s*left: -9rem;\s*\}/);
+    expect(indexCss).toMatch(/\.noa-editor-header-floor-reserved::before \{\s*left: calc\(-1 \* var\(--noa-titlebar-reserve\)\);\s*\}/);
     expect(editor).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editor).toContain('reserveTitlebarTraffic={reserveTitlebarTraffic}');
     expect(app).toContain('reserveTitlebarTraffic={!isMobile && !isFocusMode && !isSidebarOpen}');

@@ -48,7 +48,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
       }}
     >
       {/* Left Section: Traffic lights space + icon + title */}
-      <div className={`flex min-w-0 items-center justify-start ${isMobile ? 'pl-2 pr-1' : 'pl-[82.5px] pr-4'}`}>
+      <div className={`flex min-w-0 items-center justify-start ${isMobile ? 'pl-2 pr-1' : 'pl-[var(--noa-titlebar-inset)] pr-4'}`}>
         <div className={`relative z-50 flex min-w-0 items-center gap-0.5 ${isMobile ? 'w-full' : ''}`} style={noDragRegion}>
           <button
             ref={sidebarToggleRef}

@@ -427,7 +427,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
           alignItems: 'center',
           gap: '0.4rem',
           padding: '0.55rem 1rem',
-          fontWeight: 'var(--font-weight-bold)',
+          fontWeight: 'var(--font-weight-content-bold)',
           color: toneColor,
           fontSize: '0.85em',
           cursor: foldable ? 'pointer' : 'default',
@@ -795,7 +795,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         <tr style={{ borderBottom: '1px solid var(--divider-subtle, #E6E2DA)' }}>{children}</tr>
       ),
       th: ({ children }) => (
-        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 'var(--font-weight-bold)', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', borderBottom: '1px solid var(--divider-subtle, #E6E2DA)', borderLeft: '1px solid var(--divider-subtle, #E6E2DA)', borderRight: '1px solid var(--divider-subtle, #E6E2DA)', color: isDark ? '#F9F9F7' : '#2D2D2B', whiteSpace: 'nowrap' }}>{children}</th>
+        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 'var(--font-weight-content-bold)', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', borderBottom: '1px solid var(--divider-subtle, #E6E2DA)', borderLeft: '1px solid var(--divider-subtle, #E6E2DA)', borderRight: '1px solid var(--divider-subtle, #E6E2DA)', color: isDark ? '#F9F9F7' : '#2D2D2B', whiteSpace: 'nowrap' }}>{children}</th>
       ),
       td: ({ children }) => (
         <td style={{ padding: '0.45rem 0.75rem', verticalAlign: 'top', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', borderLeft: '1px solid var(--divider-subtle, #E6E2DA)', borderRight: '1px solid var(--divider-subtle, #E6E2DA)', color: isDark ? '#F9F9F7' : '#2D2D2B' }}>{children}</td>

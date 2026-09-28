@@ -16,11 +16,27 @@
      geometric sans adds very little stroke. System fonts draw every weight for
      real, so matching the old look means undershooting the "bold" number, not
      hitting some measured equivalent — 450/400 is the current calibration.
-     Markdown `**strong**` and headings are unaffected — that weight is
-     content, not chrome. */
+     Markdown `**strong**` and headings don't use it: that weight is content,
+     not chrome, and takes --font-weight-content-bold below. */
   --font-weight-bold: 450;
   --font-weight-medium: 400;
 }
+
+/* Weight for what the user wrote: `**strong**`, headings, the inline title,
+   table headers — in both the preview and CodeMirror. 450 against 400 body
+   text was indistinguishable on a real system face (and in dark mode, where
+   strong and body share a colour, invisible). Kept off @theme so it doesn't
+   mint a `font-*` utility for chrome to reach for. */
+:root { --font-weight-content-bold: 600; }
+
+/* Titlebar clearance for the macOS traffic lights. Only the desktop shell has
+   them — main.tsx sets data-desktop when the Electron preload bridge exists —
+   so the web build keeps a plain gutter instead of an empty 82.5px band.
+   The reserve is that inset plus the sidebar-toggle/search group (61.5px);
+   on desktop it resolves to exactly the 9rem the tab strip always cleared. */
+:root { --noa-titlebar-inset: 0.5rem; }
+:root[data-desktop="true"] { --noa-titlebar-inset: 82.5px; }
+:root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }
 
 /* Inherited, and cheap to inherit because nothing transitions it: the shell
    sets it twice per toggle and the veils below animate transform instead.
@@ -186,7 +202,7 @@ body {
   transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .noa-editor-header-floor-reserved::before {
-  left: -9rem;
+  left: calc(-1 * var(--noa-titlebar-reserve));
 }
 
 /* Shared surface for the graph's small control clusters (header filter field,
@@ -880,12 +896,13 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    every one of them into a single rendered weight — so the preview looked flat
    and light no matter what the numbers said. Against a real font family those
    numbers resolve to genuinely drawn faces and the preview turns heavy.
-   Collapsing them back to one weight is what actually matches the old look —
-   size alone carried the heading hierarchy before, and still does. `.prose h1`
-   (0,1,1) outranks the plugin's `:where()` selectors (0,1,0) without
-   !important; the inline weights in PreviewPane.tsx are set there instead. */
+   They still collapse to one weight — size carries the heading hierarchy —
+   but that weight is the content semibold, not the chrome's 450, which left
+   `**strong**` indistinguishable from body text. `.prose h1` (0,1,1) outranks
+   the plugin's `:where()` selectors (0,1,0) without !important; the inline
+   weights in PreviewPane.tsx are set there instead. */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
-.prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-bold); }
+.prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-content-bold); }
 
 /* ── Preview heading scale ──
    Obsidian's ×1.125 modular scale (--h1-size…--h5-size and the per-level line
@@ -920,7 +937,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .cm-noa-inline-title, .noa-inline-title {
   font-size: 1.802em;
   line-height: 1.2;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-content-bold);
   margin-bottom: 0.5em;
 }
 .prose .noa-inline-title + * { margin-top: 0; }

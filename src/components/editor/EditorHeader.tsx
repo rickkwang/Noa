@@ -181,7 +181,7 @@ export function EditorHeader({
         ...dragRegion,
         paddingLeft: '0.75rem',
         paddingRight: '0.5rem',
-        marginLeft: liftTabStrip && reserveTitlebarTraffic ? '9rem' : undefined,
+        marginLeft: liftTabStrip && reserveTitlebarTraffic ? 'var(--noa-titlebar-reserve)' : undefined,
         marginRight: reserveTitlebarActions ? '7.25rem' : undefined,
         // Two edges, two clocks. The left reservation is the sidebar's traffic
         // -light clearance and has to arrive exactly when the sidebar edge does

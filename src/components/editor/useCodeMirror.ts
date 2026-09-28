@@ -34,7 +34,9 @@ const darkTheme = EditorView.theme({
   '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
+  // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
+  // inherits — without this the Line Height setting never reaches edit mode.
+  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.06)', borderLeft: '2px solid rgba(204,125,94,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
@@ -52,15 +54,15 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
   // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
   // heading keeps the same size when toggling between edit and preview.
-  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
   // Matches the preview's `.prose strong` weight in index.css, so the same
   // **text** keeps its thickness when switching between edit and preview.
-  { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#F9F9F7' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },
@@ -74,7 +76,7 @@ const lightTheme = EditorView.theme({
   '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
+  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.09)', borderLeft: '2px solid rgba(204,125,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
@@ -92,15 +94,15 @@ const markdownHighlightStyle = HighlightStyle.define([
   // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
   // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
   // heading keeps the same size when toggling between edit and preview.
-  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
-  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
   // Matches the preview's `.prose strong` weight in index.css, so the same
   // **text** keeps its thickness when switching between edit and preview.
-  { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
+  { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2B' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },

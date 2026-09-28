@@ -749,9 +749,11 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
   const titlebarHairline = await page.locator('[data-titlebar="true"]').evaluate((element) => (
     getComputedStyle(element, '::after').backgroundColor
   ));
-  expect(floor.marginLeft).toBe('144px');
-  expect(floor.left).toBe('-144px');
-  expect(floor.width).toBe('144px');
+  // Web build: 0.5rem gutter + 61.5px toggle/search group. The desktop shell
+  // adds traffic-light clearance and resolves this to 144px (9rem).
+  expect(floor.marginLeft).toBe('69.5px');
+  expect(floor.left).toBe('-69.5px');
+  expect(floor.width).toBe('69.5px');
   expect(floor.border).toBe(`1px ${titlebarHairline}`);
 
   // Direct hit-test at the toggle's center: the topmost element must be the

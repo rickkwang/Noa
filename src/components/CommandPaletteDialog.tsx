@@ -59,7 +59,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
               }
             }}
             placeholder="Type a command or note title..."
-            className="w-full bg-transparent text-sm font-redaction outline-none placeholder:text-[#2D2D2B]/40"
+            className="w-full bg-transparent text-sm font-redaction outline-none placeholder:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]"
           />
         </div>
         <div id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
