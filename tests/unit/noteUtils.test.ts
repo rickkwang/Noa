@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection } from '../../src/lib/noteUtils';
+import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, tokenizeInlineRefs } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -321,5 +321,37 @@ describe('sliceHeadingSection', () => {
   it('supports CJK headings', () => {
     const zh = '# 概述\n正文\n# 结论\n结尾';
     expect(sliceHeadingSection(zh, '概述')).toEqual('# 概述\n正文');
+  });
+});
+
+describe('tokenizeInlineRefs', () => {
+  it('splits wikilinks and tags out of plain text', () => {
+    expect(tokenizeInlineRefs('Write intro for [[Welcome to Noa]] #idea now')).toEqual([
+      { kind: 'text', text: 'Write intro for ' },
+      { kind: 'link', text: 'Welcome to Noa' },
+      { kind: 'text', text: ' ' },
+      { kind: 'tag', text: '#idea' },
+      { kind: 'text', text: ' now' },
+    ]);
+  });
+
+  it('shows the alias, else the page without its anchor', () => {
+    expect(tokenizeInlineRefs('[[Plan|the plan]]')).toEqual([{ kind: 'link', text: 'the plan' }]);
+    expect(tokenizeInlineRefs('[[Plan#Goals]]')).toEqual([{ kind: 'link', text: 'Plan' }]);
+    expect(tokenizeInlineRefs('[[#Goals]]')).toEqual([{ kind: 'link', text: 'Goals' }]);
+  });
+
+  it('leaves links and tags inside code spans as plain text', () => {
+    expect(tokenizeInlineRefs('Use `a #x [[Y]]` then #real')).toEqual([
+      { kind: 'text', text: 'Use `a #x [[Y]]` then ' },
+      { kind: 'tag', text: '#real' },
+    ]);
+  });
+
+  it('keeps the tag boundary rules extractTags uses', () => {
+    expect(tokenizeInlineRefs('issue#12 and #项目/子项')).toEqual([
+      { kind: 'text', text: 'issue#12 and ' },
+      { kind: 'tag', text: '#项目/子项' },
+    ]);
   });
 });

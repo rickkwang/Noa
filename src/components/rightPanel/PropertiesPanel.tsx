@@ -29,7 +29,7 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
 
   const txtMuted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
   const labelColor = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
-  const keyColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
+  const keyColor = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   const inputBg = isDark ? 'bg-[#302F2C]' : 'bg-[#EFEAE3]/50';
   const inputBorder = isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]/20';
   const deleteBtn = isDark ? 'text-[rgba(249,249,247,0.3)] hover:text-[#D45555]' : 'text-[#2D2D2B]/30 hover:text-[#D45555]';
@@ -60,21 +60,21 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
 
   if (!activeNote) {
     return (
-      <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
+      <div className="flex-1 overflow-y-auto noa-panel-scroll px-4 pb-3 pt-2">
         <div className={`text-xs font-redaction text-center py-8 ${txtMuted}`}>No note selected</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll px-4 pb-3 pt-2">
       <div className="space-y-1">
 
         {/* Editable frontmatter from note content (raw --- block) */}
         {/* Noa notes: always visible so user can add properties; Obsidian: only when frontmatter exists */}
         {(noteHasFrontmatter || !isObsidian(activeNote)) && (
           <>
-            <div className={`text-[10px] uppercase tracking-widest font-redaction pb-1.5 ${labelColor}`}>
+            <div className={`text-[10px] font-bold uppercase tracking-[0.14em] font-redaction pb-1.5 ${labelColor}`}>
               {isObsidian(activeNote) ? 'Properties' : 'Frontmatter'}
             </div>
             {Object.entries(editedMeta).filter(([key]) => {
@@ -86,7 +86,9 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
               const tagList = isTagField ? value.split(',').map(t => t.trim()).filter(Boolean) : [];
               return (
               <div key={key} className={`flex gap-2 py-0.5 ${isTagField ? 'items-start' : 'items-center'}`}>
-                <div className={`text-[10px] uppercase tracking-wider font-redaction w-20 shrink-0 truncate pt-0.5 ${keyColor}`} title={key}>{key}</div>
+                {/* Keys are the user's data (`createdBy`, `aliases`), not UI labels, so
+                    they keep their own case — uppercasing turned createdBy into CREATEDBY. */}
+                <div className={`text-xs font-redaction w-20 shrink-0 truncate pt-0.5 ${keyColor}`} title={key}>{key}</div>
                 {isTagField ? (
                   tagList.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">

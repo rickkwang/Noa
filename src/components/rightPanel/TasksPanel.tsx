@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
+import { tokenizeInlineRefs } from '../../lib/noteUtils';
 import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
 import { GlobalTask } from '../../types';
 import { Check, ChevronRight, ExternalLink } from '@/src/lib/icons';
@@ -37,6 +38,33 @@ const DUE_OPTIONS = ['all', 'today', 'next7', 'overdue'] as const;
 // Memoized: `tasks` keeps its identity across keystrokes that don't change any
 // task (useGlobalTasks) and the callbacks are stabilized in App, so typing in
 // a task-free note skips this panel entirely.
+// Task lines are raw Markdown. Showing `[[Note]]` and `#tag` verbatim reads as
+// source, not a list — so links drop their brackets and keep the body colour
+// with a soft accent underline, and tags take the accent ink. Tokens only style;
+// the row's own open-note button stays the single navigation target. Struck
+// (completed) rows drop the underline: two rules through one line read as noise.
+const LINK_UNDERLINE = 'color-mix(in srgb, var(--accent-color, #CC7D5E) 45%, transparent)';
+function TaskText({ content, struck = false }: { content: string; struck?: boolean }) {
+  return (
+    <>
+      {tokenizeInlineRefs(content).map((token, i) => {
+        if (token.kind === 'link') {
+          if (struck) return <React.Fragment key={i}>{token.text}</React.Fragment>;
+          return (
+            <span key={i} className="underline decoration-1 underline-offset-[3px]" style={{ textDecorationColor: LINK_UNDERLINE }}>
+              {token.text}
+            </span>
+          );
+        }
+        if (token.kind === 'tag') {
+          return <span key={i} style={{ color: 'var(--accent-color, #CC7D5E)' }}>{token.text}</span>;
+        }
+        return <React.Fragment key={i}>{token.text}</React.Fragment>;
+      })}
+    </>
+  );
+}
+
 export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark = false }: TasksPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTIONS[number]>('all');
   const [dueDateFilter, setDueDateFilter] = useState<typeof DUE_OPTIONS[number]>('all');
@@ -166,9 +194,9 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           {/* ─── Stat header ─────────────────────────────────────────── */}
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className={`text-[11px] uppercase tracking-[0.25em] font-bold ${dimmer}`}>Tasks</span>
+              <span className={`text-[10px] uppercase tracking-[0.14em] font-bold ${dimmer}`}>Tasks</span>
               <div
-                className="flex items-baseline gap-1 tabular-nums text-[11px] font-semibold"
+                className="flex items-baseline gap-1 tabular-nums text-[10px]"
                 aria-label={`${completedTasks.length} completed of ${total} tasks`}
               >
                 <span className={txt}>{completedTasks.length}</span>
@@ -232,7 +260,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className={`block text-sm leading-[1.5] ${txt}`}>{task.content}</span>
+                  <span className={`block text-sm leading-[1.5] ${txt}`}><TaskText content={task.content} /></span>
                   <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
                     aria-label={`Open source note: ${task.noteTitle}`}
                     title={task.noteTitle}
@@ -271,8 +299,8 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               size={11}
               className={`shrink-0 transition-transform ${dimmer} ${completedExpanded ? 'rotate-90' : ''}`}
             />
-            <span className={`text-[11px] uppercase tracking-[0.25em] font-bold shrink-0 ${dimmer}`}>Completed</span>
-            <span className={`text-[11px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
+            <span className={`text-[10px] uppercase tracking-[0.14em] font-bold shrink-0 ${dimmer}`}>Completed</span>
+            <span className={`text-[10px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
           </button>
           {completedExpanded && (
           <div>
@@ -291,7 +319,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className={`block text-sm leading-[1.5] line-through ${txt}`}>{task.content}</span>
+                    <span className={`block text-sm leading-[1.5] line-through ${txt}`}><TaskText content={task.content} struck /></span>
                     <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
                       aria-label={`Open source note: ${task.noteTitle}`}
                       title={task.noteTitle}

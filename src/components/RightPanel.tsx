@@ -12,7 +12,7 @@ import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PropertiesPanel } from './rightPanel/PropertiesPanel';
 import { TasksPanel } from './rightPanel/TasksPanel';
-import { CheckSquare, Network, Search, Circle, SlidersHorizontal, Filter } from '@/src/lib/icons';
+import { CheckSquare, Network, Search, SlidersHorizontal, Filter } from '@/src/lib/icons';
 export type RightPanelTab = RightTab;
 
 // Shared chrome for the two graph panels. They stack directly on top
@@ -303,16 +303,19 @@ export default function RightPanel({
         >
           {showGraphGuide && (
             <div className={`border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[#252523] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
-              <div className={`font-bold uppercase tracking-wider text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
+              <div className={`font-bold uppercase tracking-[0.14em] text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
               <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
               <button
                 onClick={() => {
                   setShowGraphGuide(false);
                   try { localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1'); } catch { /* quota exceeded */ }
                 }}
-                className={`mt-2 text-[10px] uppercase tracking-wider font-bold border px-2 py-0.5 ${isDark ? 'border-[rgba(249,249,247,0.25)] hover:border-[rgba(249,249,247,0.6)] text-[rgba(249,249,247,0.5)]' : 'border-[#2D2D2B]/40 hover:border-[#2D2D2B]'}`}
+                // Same button as the storage notice's "Got it" (App.tsx), except the
+                // hover wash: this card's light floor is already #EFEAE3, so the
+                // notice's hover:bg-[#EFEAE3] would give no feedback here.
+                className="mt-2 text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--divider-subtle)] transition-colors"
               >
-                Got It
+                Got it
               </button>
             </div>
           )}
@@ -510,12 +513,16 @@ function GraphInfoPanel({
                 {activeConnections.slice(0, 6).map(id => {
                   const target = notesById.get(id);
                   if (!target) return null;
+                  const degree = stats.degreeMap.get(id) ?? 0;
                   return (
                     <button key={id} onClick={() => onNavigateToNoteById(id)}
                       className={`flex items-center gap-1.5 w-full text-left text-xs transition-colors ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}>
-                      <Circle size={5} className="shrink-0 fill-[#CC7D5E] text-[#CC7D5E]" />
+                      {/* Same degree-sized square as Most Connected below, so both
+                          lists speak one marker language. (A Phosphor Circle here
+                          drew a hollow ring — `fill-*` can't fill its stroke path.) */}
+                      <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                       <span className="truncate">{target.title}</span>
-                      <span className={`ml-auto text-[10px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{stats.degreeMap.get(id) ?? 0}</span>
+                      <span className={`ml-auto text-[10px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{degree}</span>
                     </button>
                   );
                 })}

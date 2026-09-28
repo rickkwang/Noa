@@ -112,6 +112,37 @@ export const extractTags = (content: string): string[] => {
   return Array.from(new Set(matches.map(m => m[1])));
 };
 
+export type InlineRefToken =
+  | { kind: 'text'; text: string }
+  | { kind: 'link'; text: string }
+  | { kind: 'tag'; text: string };
+
+// Splits one line of Markdown into plain text, [[wikilinks]] and #tags, for
+// surfaces that show a line outside the editor (the tasks panel). A link shows
+// its alias, else its target with any #anchor dropped. Matching runs on the
+// code-stripped line (length-preserving, so indices map back onto the original)
+// with TAG_REGEX's boundaries — exactly what extractTags/extractLinks index, so
+// `#x` or `[[X]]` inside backticks stays plain text.
+const INLINE_REF_REGEX = new RegExp(`\\[\\[([^\\]]+?)\\]\\]|${TAG_REGEX.source}`, 'g');
+export const tokenizeInlineRefs = (line: string): InlineRefToken[] => {
+  const tokens: InlineRefToken[] = [];
+  let last = 0;
+  for (const m of stripCodeSpans(line).matchAll(INLINE_REF_REGEX)) {
+    const start = m.index ?? 0;
+    if (start > last) tokens.push({ kind: 'text', text: line.slice(last, start) });
+    if (m[1] !== undefined) {
+      const [target, alias] = m[1].split('|');
+      const [page, anchor] = target.split('#');
+      tokens.push({ kind: 'link', text: (alias ?? (page || anchor || target)).trim() });
+    } else {
+      tokens.push({ kind: 'tag', text: `#${m[2]}` });
+    }
+    last = start + m[0].length;
+  }
+  if (last < line.length) tokens.push({ kind: 'text', text: line.slice(last) });
+  return tokens;
+};
+
 // ── Obsidian-aligned link resolution ─────────────────────────────────────────
 // Wikilinks resolve the way Obsidian resolves file paths: case-insensitively,
 // tolerating a trailing ".md", treating [[Folder/Note]] as an exact path, and
