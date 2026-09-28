@@ -39,8 +39,10 @@ export function useDailyNotes({
   // Mode) would otherwise each mint a fresh folder UUID before setFolders runs,
   // creating duplicate "Daily Notes" folders.
   const creatingRef = useRef(false);
-  const handleOpenDailyNote = useCallback((targetDate?: string) => {
-    if (creatingRef.current) return;
+  // Returns the note it opened and whether this call created it, or undefined
+  // when a concurrent call already holds the mutex.
+  const handleOpenDailyNote = useCallback((targetDate?: string): { noteId: string; created: boolean } | undefined => {
+    if (creatingRef.current) return undefined;
     creatingRef.current = true;
     try {
     const dateFormat = settings?.dailyNotes?.dateFormat ?? 'YYYY-MM-DD';
@@ -75,7 +77,7 @@ export function useDailyNotes({
         if (prev.find((f) => f.id === dailyFolder.id)) return prev;
         return [...prev, dailyFolder];
       });
-      return;
+      return { noteId: earlyExisting.id, created: false };
     }
 
     // Build the new note — IO happens outside any state updater.
@@ -105,6 +107,7 @@ export function useDailyNotes({
       });
       return recomputeLinkRefsForNotes([...prev, newNote], foldersRef.current);
     });
+    return { noteId: newNote.id, created: true };
     } finally {
       // Release after current microtask so nested synchronous re-entry is
       // blocked, but future user actions are not.

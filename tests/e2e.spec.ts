@@ -1493,7 +1493,7 @@ test('app chrome prevents accidental text selection while content remains select
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Notes' }).click();
-  expect(await userSelect(page.getByPlaceholder('# {{date}}\n\n## Notes\n\n'))).toBe('text');
+  expect(await userSelect(page.getByPlaceholder('## Focus\n\n## Notes\n\n'))).toBe('text');
   await page.getByRole('tab', { name: 'Appearance' }).click();
   expect(await userSelect(page.getByRole('heading', { name: 'Theme' }))).toBe('none');
 });

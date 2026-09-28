@@ -136,7 +136,7 @@ export default function WritingSettings({ group, settings, updateSettings, edito
           <textarea
             value={settings.dailyNotes.template}
             onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, template: e.target.value } }))}
-            placeholder={"# {{date}}\n\n## Notes\n\n"}
+            placeholder={"## Focus\n\n## Notes\n\n"}
             rows={5}
             aria-label="Daily note template"
             className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"

@@ -29,9 +29,10 @@ test('command palette wraps focus and closes from a result button', async ({ pag
   await expect(page.getByRole('button', { name: 'New note', exact: true })).toBeVisible();
   await page.keyboard.press('ControlOrMeta+k');
   const dialog = page.getByRole('dialog', { name: 'Command palette' });
-  await expect(dialog.getByRole('textbox')).toBeFocused();
+  await expect(dialog.getByRole('combobox')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button').last()).toBeFocused();
+  // Results are listbox options (the arrow keys drive them), still reachable by Tab.
+  await expect(dialog.getByRole('option').last()).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });

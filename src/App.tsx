@@ -5,6 +5,7 @@
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommandPaletteDialog from './components/CommandPaletteDialog';
+import type { EditorFocusRequest } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EmptyStatePrompt } from './components/icons/EmptyStatePrompt';
 import { NoaWordmark } from './components/icons/NoaWordmark';
@@ -261,6 +262,16 @@ export default function App() {
     syncNoteOnRename(note, newTitle);
   }, [_handleRenameNote, blockVaultCacheWrite, syncNoteOnRename]);
 
+  const [editorFocusRequest, setEditorFocusRequest] = useState<EditorFocusRequest | null>(null);
+  const editorFocusRequestIdRef = useRef(0);
+  const requestEditorFocus = useCallback((noteId: string, target: EditorFocusRequest['target']) => {
+    editorFocusRequestIdRef.current += 1;
+    setEditorFocusRequest({ noteId, target, requestId: editorFocusRequestIdRef.current });
+  }, []);
+  const handleEditorFocusRequestHandled = useCallback((requestId: number) => {
+    setEditorFocusRequest(current => current?.requestId === requestId ? null : current);
+  }, []);
+
   const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
     if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return '';
@@ -269,9 +280,14 @@ export default function App() {
     const userTemplates = settings.templates?.userTemplates ?? [];
     if (createdId && userTemplates.length > 0 && !initialContent) {
       waitingForTemplateRef.current = true;
+    } else if (createdId) {
+      // Every "new note" entry point lands here. Without this the keystrokes
+      // that follow Cmd+N went to <body> and were lost. The template picker,
+      // when it opens, takes focus itself, so it is left alone.
+      requestEditorFocus(createdId, 'title');
     }
     return createdId;
-  }, [_handleCreateNote, blockVaultCacheWrite, folders, settings.templates?.userTemplates]);
+  }, [_handleCreateNote, blockVaultCacheWrite, folders, requestEditorFocus, settings.templates?.userTemplates]);
 
   const handleSaveNoteGuarded = useCallback((note: Parameters<typeof handleSaveNote>[0], update?: Parameters<typeof handleSaveNote>[1]) => {
     if (blockVaultCacheWrite(note.origin === 'vault')) return;
@@ -287,8 +303,16 @@ export default function App() {
 
   const handleOpenDailyNoteGuarded = useCallback((targetDate?: string) => {
     if (!isDataReady) return;
-    handleOpenDailyNote(targetDate);
-  }, [handleOpenDailyNote, isDataReady]);
+    const opened = handleOpenDailyNote(targetDate);
+    // Only the explicit "today" actions (shortcut, palette, sidebar button)
+    // mean "I'm about to write". A calendar click passes a date and is often
+    // just a look back, so it keeps focus where the user put it.
+    if (!opened || targetDate !== undefined) return;
+    // Only a note this call created may be edited to make its template slot
+    // usable (a space after an empty `- [ ]`). An existing note is focused
+    // without being edited: opening it must not bump its modified time.
+    requestEditorFocus(opened.noteId, opened.created ? 'slot' : opened.noteId === activeNoteId ? 'keep' : 'open');
+  }, [activeNoteId, handleOpenDailyNote, isDataReady, requestEditorFocus]);
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
     const note = notesRef.current.find((item) => item.id === task.noteId);
@@ -629,6 +653,19 @@ export default function App() {
     setEditorLineJumpRequest(current => current?.requestId === requestId ? null : current);
   }, []);
 
+  // On a phone the sidebar is an overlay over the editor. Creating or opening
+  // a note from it must close it, as selecting one does, or the editor focus
+  // that follows lands on a field the sidebar is covering.
+  const handleSidebarCreateNote = useCallback((folderId: string, initialContent?: string) => {
+    handleCreateNote(folderId, initialContent);
+    if (isMobile) setIsSidebarOpen(false);
+  }, [handleCreateNote, isMobile, setIsSidebarOpen]);
+
+  const handleSidebarOpenDailyNote = useCallback((targetDate?: string) => {
+    handleOpenDailyNoteGuarded(targetDate);
+    if (isMobile) setIsSidebarOpen(false);
+  }, [handleOpenDailyNoteGuarded, isMobile, setIsSidebarOpen]);
+
   const handleSidebarSelectNote = useCallback((id: string) => {
     // Switch + arm the entrance synchronously so the editor build and tab
     // animation aren't gated on an IndexedDB write; flush the outgoing note's
@@ -964,14 +1001,14 @@ export default function App() {
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
                 onSelectNote={handleSidebarSelectNote}
-                onCreateNote={handleCreateNote}
+                onCreateNote={handleSidebarCreateNote}
                 onDeleteNote={handleDeleteNote}
                 onRenameNote={handleRenameNote}
                 onMoveNote={handleMoveNote}
                 onCreateFolder={handleCreateFolder}
                 onRenameFolder={handleRenameFolder}
                 onDeleteFolder={handleDeleteFolder}
-                onOpenDailyNote={handleOpenDailyNoteGuarded}
+                onOpenDailyNote={handleSidebarOpenDailyNote}
                 dailyNotesEnabled={settings.corePlugins.dailyNotes}
                 vault={{
                   workspaceName,
@@ -1055,8 +1092,11 @@ export default function App() {
                 onClose={() => handleTabClose(activeNoteId)}
                 onNavigateToNoteLegacy={navigateByTitle}
                 onNavigateToNoteById={navigateById}
-                viewMode={editorViewMode}
+                // Two panes cannot both be readable at phone width. Split is
+                // shown as edit there without overwriting the saved choice.
+                viewMode={isMobile && editorViewMode === 'split' ? 'edit' : editorViewMode}
                 setViewMode={setEditorViewMode}
+                allowSplit={!isMobile}
                 settings={settings}
                 tabs={openTabs}
                 enteringTabIds={enteringTabIds}
@@ -1075,6 +1115,8 @@ export default function App() {
                 attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
                 lineJumpRequest={editorLineJumpRequest}
                 onLineJumpHandled={handleEditorLineJumpHandled}
+                focusRequest={editorFocusRequest}
+                onFocusRequestHandled={handleEditorFocusRequestHandled}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-7 select-none">
@@ -1094,7 +1136,10 @@ export default function App() {
 
         {/* Right Panel — always rendered for slide animation */}
         <div
-          className={`flex shrink-0 min-h-0 relative overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : ''}`}
+          // Exactly one position class: with both `relative` and `absolute`
+          // on the element, Tailwind's source order let `relative` win, so the
+          // mobile overlay stayed in flow and squeezed the editor to ~80px.
+          className={`flex shrink-0 min-h-0 overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : 'relative'}`}
           style={{
             width: isMobile ? '80%' : 'var(--noa-right-panel-width, 340px)',
             maxWidth: isMobile ? '320px' : undefined,

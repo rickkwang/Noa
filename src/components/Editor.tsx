@@ -7,6 +7,7 @@ import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
+import { bodyCaretTarget } from './editor/bodyCaret';
 import { EditorActions } from './editor/EditorActions';
 import { EditorHeader } from './editor/EditorHeader';
 import { EditorToolbar } from './editor/EditorToolbar';
@@ -31,6 +32,17 @@ interface EditorLineJumpRequest {
   requestId: number;
 }
 
+export interface EditorFocusRequest {
+  noteId: string;
+  // 'title': rename field, name selected (a fresh note).
+  // 'slot': the caret where the template's writing starts; a note this call
+  // created, so it may add the space an empty `- [ ]` is missing.
+  // 'open': an existing note, never edited: the slot if it is usable as is,
+  // else the end. 'keep': the note was already open; leave the caret.
+  target: 'title' | 'slot' | 'open' | 'keep';
+  requestId: number;
+}
+
 interface EditorProps {
   note?: Note;
   allNotes: Note[];
@@ -44,6 +56,7 @@ interface EditorProps {
   onRestoreSnapshot?: (snapshot: NoteSnapshot) => Promise<void>;
   viewMode: 'edit' | 'preview' | 'split';
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
+  allowSplit?: boolean;
   settings: AppSettings;
   tabs?: EditorTab[];
   enteringTabIds?: string[];
@@ -61,6 +74,8 @@ interface EditorProps {
   attachmentMutationsDisabled?: boolean;
   lineJumpRequest?: EditorLineJumpRequest | null;
   onLineJumpHandled?: (requestId: number) => void;
+  focusRequest?: EditorFocusRequest | null;
+  onFocusRequestHandled?: (requestId: number) => void;
 }
 
 export default function Editor({
@@ -93,6 +108,9 @@ export default function Editor({
   attachmentMutationsDisabled = false,
   lineJumpRequest,
   onLineJumpHandled,
+  focusRequest,
+  onFocusRequestHandled,
+  allowSplit = true,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -287,6 +305,33 @@ export default function Editor({
     }
   }, [isEditingTitle]);
 
+  // Declared after the note-switch reset above, and deferred a frame, so the
+  // reset's setIsEditingTitle(false) for the new note cannot land after this.
+  useEffect(() => {
+    if (!focusRequest || focusRequest.noteId !== note?.id) return;
+    const frame = window.requestAnimationFrame(() => {
+      onFocusRequestHandled?.(focusRequest.requestId);
+      if (readOnly) return;
+      if (focusRequest.target === 'title') {
+        setIsEditingTitle(true);
+        return;
+      }
+      const view = editorViewRef.current;
+      if (!view || viewMode === 'preview') return;
+      if (focusRequest.target !== 'keep') {
+        const caret = bodyCaretTarget(view.state.doc.toString());
+        const insert = focusRequest.target === 'slot' ? caret.insert : undefined;
+        view.dispatch({
+          changes: insert ? { from: caret.anchor - insert.length, insert } : undefined,
+          selection: { anchor: caret.insert && !insert ? view.state.doc.length : caret.anchor },
+          scrollIntoView: true,
+        });
+      }
+      view.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [editorViewRef, focusRequest, note?.id, onFocusRequestHandled, readOnly, viewMode]);
+
   // Paste/drop file support (images only → attachment system)
   useEffect(() => {
     const container = editorContainerRef.current;
@@ -390,12 +435,19 @@ export default function Editor({
   }, [onRename, note, titleInput]);
 
   const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleTitleSubmit();
-    else if (e.key === 'Escape') {
+    if (e.key === 'Enter') {
+      handleTitleSubmit();
+      // Naming a note is the step before writing it. Wait a frame so the
+      // input has unmounted: moving focus while it is still mounted would
+      // blur it and submit the rename a second time.
+      if (viewMode !== 'preview' && !readOnly) {
+        window.requestAnimationFrame(() => editorViewRef.current?.focus());
+      }
+    } else if (e.key === 'Escape') {
       setIsEditingTitle(false);
       setTitleInput(note?.title || 'Untitled');
     }
-  }, [handleTitleSubmit, note?.title]);
+  }, [editorViewRef, handleTitleSubmit, note?.title, readOnly, viewMode]);
 
   const editorStyle: React.CSSProperties = {
     fontSize: `${settings.editor.fontSize}px`,
@@ -506,6 +558,7 @@ export default function Editor({
       isDark={isDark}
       viewMode={viewMode}
       setViewMode={setViewMode}
+      allowSplit={allowSplit}
       onExportMd={() => exportNoteAsMd(note)}
       onExportHtml={() => exportNoteAsHtml(note)}
       onExportPdf={() => setPrintNote(note)}

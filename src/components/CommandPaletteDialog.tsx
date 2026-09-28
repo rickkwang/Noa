@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { useCommandPalette } from '../hooks/useCommandPalette';
 import { useDialogKeyboard } from '../hooks/useDialogKeyboard';
 
@@ -5,6 +6,17 @@ type CommandPalette = ReturnType<typeof useCommandPalette>;
 
 export default function CommandPaletteDialog({ palette }: { palette: CommandPalette }) {
   const { dialogRef, onKeyDown } = useDialogKeyboard(palette.close);
+  const selectedItem = palette.items[palette.selectedIndex];
+  const selectedOptionId = selectedItem ? `command-palette-option-${selectedItem.id}` : undefined;
+
+  // getElementById, not querySelector: the id embeds a note id, which comes
+  // from imports unvalidated. A `"` in it made the selector throw, and with no
+  // error boundary above the palette that blanked the whole app.
+  useEffect(() => {
+    if (!selectedOptionId) return;
+    document.getElementById(selectedOptionId)?.scrollIntoView({ block: 'nearest' });
+  }, [selectedOptionId]);
+
   return (
     <div className="fixed inset-0 z-[70] bg-black/30 flex items-start justify-center pt-24 px-4" onClick={palette.close}>
       <div
@@ -23,30 +35,49 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
             type="text"
             value={palette.query}
             onChange={(e) => palette.setQuery(e.target.value)}
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-palette-list"
+            aria-activedescendant={selectedOptionId}
+            aria-autocomplete="list"
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.preventDefault();
                 palette.close();
                 return;
               }
-              if (e.key === 'Enter' && palette.items[0]) {
+              // Focus never leaves the input: the arrows move the highlight,
+              // and Enter runs whatever is highlighted.
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                palette.run(palette.items[0].action);
+                palette.moveSelection(e.key === 'ArrowDown' ? 1 : -1);
+                return;
+              }
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && selectedItem) {
+                e.preventDefault();
+                palette.run(selectedItem.action);
               }
             }}
             placeholder="Type a command or note title..."
             className="w-full bg-transparent text-sm font-redaction outline-none placeholder:text-[#2D2D2B]/40"
           />
         </div>
-        <div className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
+        <div id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
           {palette.items.length === 0 ? (
             <div className="px-2 py-3 text-xs text-[#2D2D2B]/60">No matching commands.</div>
           ) : (
-            palette.items.map((item) => (
+            palette.items.map((item, index) => (
               <button
                 key={item.id}
+                id={`command-palette-option-${item.id}`}
+                role="option"
+                aria-selected={index === palette.selectedIndex}
                 onClick={() => palette.run(item.action)}
-                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-[#EFEAE3]/50 font-redaction"
+                // Pointer and keyboard share one highlight. onMouseMove rather
+                // than onMouseEnter: scrolling the list under a resting pointer
+                // must not steal the row the arrows just picked.
+                onMouseMove={() => { if (index !== palette.selectedIndex) palette.setSelectedIndex(index); }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md font-redaction ${index === palette.selectedIndex ? 'bg-[#EFEAE3]' : ''}`}
               >
                 {item.label}
               </button>

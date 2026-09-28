@@ -217,7 +217,8 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain("const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };");
     expect(editorHeader).toContain('style={noDragRegion}');
 
-    expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';");
+    // Phone widths drop split from the cycle (allowSplit={false}); desktop keeps all three.
+    expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? (allowSplit ? 'split' : 'preview') : viewMode === 'split' ? 'preview' : 'edit';");
     expect(editorActions).toContain('onClick={() => setViewMode(nextViewMode)}');
     expect(editorActions).toContain('aria-label={`Switch to ${nextViewModeLabel} view`}');
     expect(editorActions).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;");

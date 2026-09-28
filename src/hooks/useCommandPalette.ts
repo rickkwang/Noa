@@ -25,13 +25,21 @@ export function useCommandPalette({
   onOpenNoteById,
 }: UseCommandPaletteOptions) {
   const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQueryState] = useState('');
+  // Index into `items` of the row Enter runs. Reset whenever the list is
+  // rebuilt from a new query, so the highlight never points past the end.
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const setQuery = useCallback((next: string) => {
+    setQueryState(next);
+    setSelectedIndex(0);
+  }, []);
 
   const close = useCallback(() => {
     setIsOpen(false);
     setQuery('');
-  }, []);
+  }, [setQuery]);
 
   const run = useCallback((action: () => void) => {
     action();
@@ -64,6 +72,19 @@ export function useCommandPalette({
     return [...filteredBase, ...noteCommands];
   }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenNoteById, onOpenSettings, query]);
 
+  // Wraps at both ends, like every other palette the user already knows.
+  // Steps from the clamped index: the list can shrink while open (a note
+  // deleted elsewhere) without a query change resetting the stored one.
+  const moveSelection = useCallback((delta: number) => {
+    setSelectedIndex((current) => {
+      if (items.length === 0) return 0;
+      const from = Math.min(current, items.length - 1);
+      return (from + delta + items.length) % items.length;
+    });
+  }, [items.length]);
+
+  const activeIndex = Math.min(selectedIndex, Math.max(items.length - 1, 0));
+
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
@@ -80,6 +101,9 @@ export function useCommandPalette({
     setQuery,
     inputRef,
     items,
+    selectedIndex: activeIndex,
+    setSelectedIndex,
+    moveSelection,
     close,
     run,
   };

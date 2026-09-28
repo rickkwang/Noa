@@ -5,6 +5,8 @@ interface EditorActionsProps {
   isDark: boolean;
   viewMode: 'edit' | 'preview' | 'split';
   setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
+  /** False on phone widths, where two panes cannot both be readable. */
+  allowSplit?: boolean;
   onExportMd: () => void;
   onExportHtml: () => void;
   onExportPdf: () => void;
@@ -21,6 +23,7 @@ export function EditorActions({
   isDark,
   viewMode,
   setViewMode,
+  allowSplit = true,
   onExportMd,
   onExportHtml,
   onExportPdf,
@@ -46,7 +49,7 @@ export function EditorActions({
     };
   }, [menuOpen]);
 
-  const nextViewMode = viewMode === 'edit' ? 'split' : viewMode === 'split' ? 'preview' : 'edit';
+  const nextViewMode = viewMode === 'edit' ? (allowSplit ? 'split' : 'preview') : viewMode === 'split' ? 'preview' : 'edit';
   const nextViewModeLabel = nextViewMode === 'edit' ? 'edit' : nextViewMode === 'split' ? 'split' : 'preview';
   // Show the destination rather than the already-active mode: a lone icon then
   // visibly changes on every click, making the three-step cycle legible.

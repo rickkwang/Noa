@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dateFromCalendarKey } from '../../src/hooks/useDailyNotes';
-import { applyTemplate, formatDate, type Template } from '../../src/lib/templates';
+import { applyTemplate, builtinTemplates, formatDate, type Template } from '../../src/lib/templates';
 
 const dateTemplate: Template = {
   id: 'date-check',
@@ -15,5 +15,17 @@ describe('applyTemplate', () => {
     const result = applyTemplate(dateTemplate, title, 'DD/MM/YYYY', selectedDate);
 
     expect(result).toBe('25/08/2026 | 25/08/2026 | Tuesday | 35');
+  });
+});
+
+describe('builtinTemplates', () => {
+  // The editor renders the note title above the body, so a template that opens
+  // with a heading printed the same name twice.
+  it.each(builtinTemplates.filter(template => template.content))('$name does not open with a heading', template => {
+    expect(template.content.trimStart()).not.toMatch(/^#\s/);
+  });
+
+  it.each(builtinTemplates.filter(template => /^- \[ \]/m.test(template.content)))('$name leaves a space after each empty task marker', template => {
+    expect(template.content).not.toMatch(/^- \[ \]$/m);
   });
 });

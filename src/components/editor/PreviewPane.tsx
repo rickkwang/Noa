@@ -1,6 +1,6 @@
 import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
-import type { Root, Text, Parent, RootContent } from 'mdast';
+import type { ListItem, Root, Text, Parent, RootContent } from 'mdast';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
@@ -191,9 +191,34 @@ function remarkTag() {
   };
 }
 
+// GFM only counts `- [ ]` as a task when text follows the marker, so a bare
+// `- [ ]` — the slot a template leaves to be filled in, or the line list
+// continuation just created — rendered as a bullet reading "[ ]". Show it as
+// the empty checkbox the writer meant, as Obsidian does. Preview checkboxes are
+// display-only, so this cannot shift which source line a toggle writes to.
+function remarkEmptyTask() {
+  return (tree: Root) => {
+    visit(tree, 'listItem', (node: ListItem) => {
+      if (typeof node.checked === 'boolean' || node.children.length !== 1) return;
+      const paragraph = node.children[0];
+      if (paragraph.type !== 'paragraph' || paragraph.children.length !== 1) return;
+      const text = paragraph.children[0];
+      if (text.type !== 'text') return;
+      const marker = /^\[([ xX])\]$/.exec(text.value.trim());
+      if (!marker) return;
+      node.checked = marker[1] !== ' ';
+      // Empty the paragraph rather than dropping it: the checkbox is inserted
+      // into the item's first <p>, which a tight list then unwraps. With no <p>
+      // to hold it, the input ends up wrapped where the li renderer below
+      // cannot find it, and the item draws two boxes.
+      paragraph.children = [];
+    });
+  };
+}
+
 // Module-level so every <Markdown> render (and MarkdownChunk's memo) sees the
 // same plugin identities.
-const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
+const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkEmptyTask, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
 const REHYPE_PLUGINS: MarkdownOptions['rehypePlugins'] = [rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]];
 
 // One chunk of a large note's preview. Memoized so a render pass where the
@@ -778,14 +803,28 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       li: ({ children, className, ...props }) => {
         const isTask = className?.includes('task-list-item');
         if (!isTask) return <li className={className} {...props}>{children}</li>;
-        // Extract checked state from the first child input element
+        // Extract checked state from the GFM checkbox. A tight list puts it
+        // directly in the <li>; a loose one (items separated by blank lines)
+        // leaves it inside the item's first <p>. Missing the second case drew
+        // the native box beside this one, and ignored its checked state.
+        const isCheckbox = (c: React.ReactNode): c is React.ReactElement<{ checked?: boolean }> =>
+          React.isValidElement(c) && (c as React.ReactElement<{ type?: string }>).props?.type === 'checkbox';
         const childArray = React.Children.toArray(children);
-        const inputEl = childArray.find(
-          (c): c is React.ReactElement<{ checked?: boolean }> =>
-            React.isValidElement(c) && (c as React.ReactElement<{ type?: string }>).props?.type === 'checkbox'
-        );
+        let inputEl = childArray.find(isCheckbox);
+        let rest: React.ReactNode[] = childArray.filter(c => c !== inputEl);
+        if (!inputEl) {
+          const firstBlockIndex = childArray.findIndex(c => React.isValidElement(c));
+          const firstBlock = childArray[firstBlockIndex] as React.ReactElement<{ children?: React.ReactNode }> | undefined;
+          const blockChildren = React.Children.toArray(firstBlock?.props.children);
+          inputEl = blockChildren.find(isCheckbox);
+          if (firstBlock && inputEl) {
+            rest = [...childArray];
+            // Via props, not spread arguments: cloneElement with zero child
+            // arguments keeps the original children, checkbox included.
+            rest[firstBlockIndex] = React.cloneElement(firstBlock, { children: blockChildren.filter(c => c !== inputEl) });
+          }
+        }
         const isChecked = inputEl?.props?.checked ?? false;
-        const rest = childArray.filter(c => c !== inputEl);
         return (
           <li className={className} style={{ listStyle: 'none', display: 'flex', alignItems: 'flex-start', gap: '8px', marginLeft: '-1.25rem' }} {...props}>
             <span
@@ -807,7 +846,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
                 </svg>
               )}
             </span>
-            <span style={{ opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none' }}>{rest}</span>
+            <span className="noa-task-text" style={{ opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none' }}>{rest}</span>
           </li>
         );
       },
@@ -1006,7 +1045,9 @@ export const PreviewPane = React.memo(function PreviewPane({
           {/* Obsidian-style inline title: the file name heads the rendered
               document, mirroring the editor's CodeMirror title widget. Kept
               out of print output so PDF exports are unchanged. */}
-          {!printMode && <div className="noa-inline-title">{note.title || 'Untitled'}</div>}
+          {/* The note's own name is the page heading: templates no longer
+              repeat it as a `#` line in the body, so nothing else is. */}
+          {!printMode && <div className="noa-inline-title" role="heading" aria-level={1}>{note.title || 'Untitled'}</div>}
           <NoteMarkdownBody
             note={note}
             allNotes={allNotes}

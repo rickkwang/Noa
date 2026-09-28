@@ -1357,3 +1357,144 @@ test('closing audit: code examples are excluded while real tasks still toggle', 
   await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.startsWith(code))?.content)
     .toMatch(/```markdown\n- \[ \] same task\n```\n\n- \[x\] same task <!-- noa-task:/);
 });
+
+test.describe('keyboard flow into writing', () => {
+  test('a new note takes the keyboard: its name first, then the body', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.cm-content')).toBeVisible();
+    // Before, the keystrokes after Cmd+N went to <body> and were dropped.
+    await page.keyboard.press('ControlOrMeta+n');
+    await expect(page.locator('input:focus')).toHaveValue('New Note');
+    await page.keyboard.type('Project ideas');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.cm-content')).toBeFocused();
+    await page.keyboard.type('first line');
+    await expect(page.getByRole('button', { name: 'Close Project ideas tab' })).toBeVisible();
+    await expect(page.locator('.cm-content')).toContainText('first line');
+  });
+
+  test("today's daily note puts the caret on the empty task, after its space", async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.cm-content')).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+Shift+k');
+    await expect(page.locator('.cm-content')).toBeFocused();
+    await page.keyboard.type('write review');
+    await expect(page.locator('.cm-content')).toContainText('- [ ] write review');
+  });
+
+  test('the command palette runs the row the arrow keys pick', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.cm-content')).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(page.getByRole('combobox')).toBeFocused();
+    const selected = page.locator('[role="option"][aria-selected="true"]');
+    await expect(selected).toHaveText('New note');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(selected).toHaveText('Open settings');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
+    // Wraps from the top to the last row.
+    await expect(selected).toHaveText(/^Open note: /);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  });
+});
+
+test('phone width gives the editor the screen and keeps the right panel an overlay', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const editor = page.locator('.cm-editor').first();
+  await expect(editor).toBeVisible();
+  // Split is shown as edit here; before, split plus an in-flow right panel
+  // left the editor 78px wide.
+  await expect(page.locator('.noa-top-scroll-fade')).toHaveCount(0);
+  expect((await editor.boundingBox())!.width).toBeGreaterThan(300);
+  await expect(page.getByRole('button', { name: 'Switch to preview view' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Toggle right panel' }).click();
+  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
+  expect((await editor.boundingBox())!.width).toBeGreaterThan(300);
+});
+
+test('preview draws exactly one checkbox per task, empty or loose', async ({ page }) => {
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').first().click();
+  await page.keyboard.insertText('- [ ]\n- [x]\n\n- [ ] loose\n\n- [x] loose done\n\n- [link]');
+  await ensurePreviewMode(page);
+  const preview = page.locator('.prose').last();
+  const tasks = preview.locator('li.task-list-item');
+  await expect(tasks).toHaveCount(4);
+  // The custom renderer draws the box; a native <input> left behind is a
+  // second box, and the only place a loose item's checked state lived.
+  await expect(preview.locator('li.task-list-item input')).toHaveCount(0);
+  await expect(preview.getByText('[link]', { exact: true })).toBeVisible();
+});
+
+async function importBackup(page: import('@playwright/test').Page, folders: unknown[], notes: Array<Record<string, unknown>>) {
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Data', exact: true }).click();
+  await page.locator('input[type="file"][accept=".json"]').setInputFiles({
+    name: 'backup.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ workspaceName: 'Imported', folders, notes: notes.map(note => ({
+      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', folder: '', tags: [], links: [], ...note,
+    })) })),
+  });
+  await page.getByRole('radio', { name: /Overwrite/i }).check();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+}
+
+test('phone: creating a note from the sidebar closes it, so the focused name field is visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  const nameField = page.locator('input:focus');
+  await expect(nameField).toHaveValue('New Note');
+  await expect(page.locator('[data-sidebar-container]')).toHaveAttribute('inert', '');
+  // Hit-test the field once the slide-out settles: before, it was focused but
+  // under the sidebar overlay.
+  await expect.poll(() => nameField.evaluate((input) => {
+    const rect = input.getBoundingClientRect();
+    return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === input;
+  })).toBe(true);
+});
+
+test('command palette survives a note id containing a quote', async ({ page }) => {
+  await page.goto('/');
+  await importBackup(page, [], [{ id: 'quote"id', title: 'Quoted id note', content: 'body' }]);
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByRole('combobox')).toBeFocused();
+  // Selecting the row scrolls it into view by its element id, which embeds
+  // the note id; a selector built from it threw and unmounted the app.
+  await page.keyboard.type('Quoted');
+  await expect(page.locator('[role="option"][aria-selected="true"]')).toHaveText('Open note: Quoted id note');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.cm-noa-inline-title')).toHaveText('Quoted id note');
+});
+
+test("opening today's existing daily note focuses it without editing it", async ({ page }) => {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // An older template's empty task, saved with no space after `]`.
+  const content = "## Today's Focus\n- [ ]\n\n## Notes\n";
+  await page.goto('/');
+  await importBackup(page, [{ id: 'daily', name: 'Daily Notes' }], [
+    { id: 'other', title: 'Other note', content: 'other' },
+    { id: 'today', title: today, content, folder: 'daily', tags: ['daily'] },
+  ]);
+  await page.keyboard.press('ControlOrMeta+Shift+k');
+  await expect(page.locator('.cm-noa-inline-title')).toHaveText(today);
+  await expect(page.locator('.cm-content')).toBeFocused();
+  // Past the 500ms save debounce: nothing may have been written.
+  await page.waitForTimeout(900);
+  const stored = (await auditStoredNotes(page)).find(note => note.id === 'today') as { content: string; updatedAt?: string } | undefined;
+  expect(stored?.content).toBe(content);
+  expect(stored?.updatedAt).toBe('2026-01-01T00:00:00Z');
+});

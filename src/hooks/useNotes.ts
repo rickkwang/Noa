@@ -375,9 +375,7 @@ export function useNotes(settings?: AppSettings) {
           const welcomeNote: Note = {
           id: 'welcome',
           title: 'Welcome to Noa',
-          content: `# Welcome to Noa
-
-Your private, local-first writing space.
+          content: `Your private, local-first writing space.
 
 ## Quick Start
 
@@ -1250,7 +1248,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,
-    handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => void,
+    handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => { noteId: string; created: boolean } | undefined,
     handleToggleTask,
     handleImportData,
     getIsImporting,

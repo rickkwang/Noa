@@ -940,6 +940,9 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .prose blockquote.noa-blockquote,
 .prose blockquote.noa-blockquote p { color: rgba(45, 45, 43, 0.75); }
+/* A loose task list wraps each item's text in <p>; prose's paragraph margin
+   then drops the text a line below its checkbox. */
+.prose .noa-task-text > p:first-child { margin-top: 0; }
 [data-theme="dark"] .prose blockquote.noa-blockquote,
 [data-theme="dark"] .prose blockquote.noa-blockquote p { color: rgba(249, 249, 247, 0.72); }
 .prose blockquote.noa-blockquote p::before,

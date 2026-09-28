@@ -5,6 +5,11 @@ export interface Template {
   isBuiltin?: boolean;
 }
 
+// No template opens with a `# heading`: the editor already renders the note's
+// title above the body (inlineTitle.ts), so a leading H1 printed the same name
+// twice in both the editor and the preview. The `${' '}` after an empty
+// `- [ ]` is the space typing continues after; spelled out so a
+// trailing-whitespace trim can't take it.
 export const builtinTemplates: Template[] = [
   {
     id: 'blank',
@@ -15,10 +20,8 @@ export const builtinTemplates: Template[] = [
   {
     id: 'daily',
     name: 'Daily Note',
-    content: `# {{date}}
-
-## Today's Focus
-- [ ]
+    content: `## Today's Focus
+- [ ]${' '}
 
 ## Notes
 
@@ -31,9 +34,7 @@ export const builtinTemplates: Template[] = [
   {
     id: 'meeting',
     name: 'Meeting Notes',
-    content: `# Meeting: {{title}}
-
-**Date**: {{date}}
+    content: `**Date**: {{date}}
 **Attendees**:
 
 ## Agenda
@@ -43,7 +44,7 @@ export const builtinTemplates: Template[] = [
 
 
 ## Action Items
-- [ ]
+- [ ]${' '}
 
 `,
     isBuiltin: true,
@@ -51,9 +52,7 @@ export const builtinTemplates: Template[] = [
   {
     id: 'reading',
     name: 'Reading Notes',
-    content: `# {{title}}
-
-**Author**:
+    content: `**Author**:
 **Date Read**: {{date}}
 
 ## Summary
