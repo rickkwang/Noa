@@ -1,13 +1,14 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useCollapsePresence } from '../../hooks/useCollapsePresence';
 import { useResizeDrag } from '../../hooks/useResizeDrag';
 import { Note } from '../../types';
-import { ChevronDown, Tag } from '@/src/lib/icons';
 
 interface TagBrowserProps {
   notes: Note[];
   onSearchTag?: (tag: string) => void;
   searchQuery?: string;
+  /** Owned by Sidebar: the toggle lives in the footer row. */
+  isOpen: boolean;
 }
 
 // Curated warm/earthy hues that sit in the same family as the gold/coral accent,
@@ -23,14 +24,8 @@ function tagHue(name: string): number {
   return TAG_HUES[(((h % TAG_HUES.length) + TAG_HUES.length) % TAG_HUES.length)];
 }
 
-export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps) {
-  const [isTagsOpen, setIsTagsOpen] = useState(false);
+export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen }: TagBrowserProps) {
   const isBodyMounted = useCollapsePresence(isTagsOpen);
-  const headerRef = useRef<HTMLButtonElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-  useLayoutEffect(() => {
-    if (headerRef.current) setHeaderHeight(headerRef.current.offsetHeight);
-  }, []);
 
   // Mirror search.ts's tag-extraction regex so the active-state highlight stays
   // in sync with what the search engine actually filters on.
@@ -63,15 +58,18 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
       .map(([name, count]) => ({ name, count }));
   }, [notes]);
 
-  // tagsHeight is the whole section, border and header included. The body gets
-  // an explicit height rather than the section: a height swap between a number
-  // and auto cannot ease, while a fixed body inside a 0fr/1fr track can, and a
-  // resize drag still lands in one frame because the track is already 1fr.
-  const bodyHeight = Math.max(0, tagsHeight - headerHeight - 1);
+  // tagsHeight is the whole section — there is no header row (the toggle is
+  // in the footer); the 1px top border only exists while the body is mounted.
+  // The body gets an explicit height rather than the section: a height swap
+  // between a number and auto cannot ease, while a fixed body inside a 0fr/1fr
+  // track can, and a resize drag still lands in one frame because the track is
+  // already 1fr.
+  const bodyHeight = Math.max(0, tagsHeight - (isBodyMounted ? 1 : 0));
 
   return (
+    // Top divider only while the body is mounted — see CalendarPanel's rule.
     <div
-      className="noa-sidebar-section-surface flex shrink-0 border-t relative flex-col"
+      className={`noa-sidebar-section-surface flex shrink-0 relative flex-col ${isBodyMounted ? 'border-t' : ''}`}
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       {isTagsOpen && (
@@ -80,20 +78,10 @@ export function TagBrowser({ notes, onSearchTag, searchQuery }: TagBrowserProps)
           onMouseDown={() => setIsDragging(true)}
         />
       )}
-      <button
-        ref={headerRef}
-        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/70 hover:text-[#2D2D2B] font-redaction flex items-center shrink-0 transition-colors cursor-pointer"
-        onClick={() => setIsTagsOpen(v => !v)}
-        aria-expanded={isTagsOpen}
-      >
-        <Tag size={11} className="mr-1.5 shrink-0" />
-        Tags
-        <ChevronDown size={10} className={`ml-auto noa-sidebar-collapse-chevron ${isTagsOpen ? '' : '-rotate-90'}`} />
-      </button>
       <div className="noa-sidebar-collapse" data-open={isTagsOpen ? 'true' : undefined}>
         <div inert={!isTagsOpen ? true : undefined}>
           {isBodyMounted && (
-            <div className="overflow-y-auto px-2.5 pb-2.5 pt-0.5" style={{ height: bodyHeight, scrollbarGutter: 'stable' }}>
+            <div className="overflow-y-auto px-2.5 pb-2.5 pt-2.5" style={{ height: bodyHeight, scrollbarGutter: 'stable' }}>
               {tags.length === 0 ? (
                 <div className="text-xs text-[#2D2D2B]/50 p-1 font-redaction">No tags found in notes</div>
               ) : (

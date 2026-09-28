@@ -1284,9 +1284,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .noa-sidebar-collapse,
   .noa-sidebar-collapse[data-open="true"],
   .noa-sidebar-collapse > *,
-  .noa-sidebar-collapse[data-open="true"] > *,
-  .noa-sidebar-collapse-chevron,
-  [aria-expanded="true"] > .noa-sidebar-collapse-chevron {
+  .noa-sidebar-collapse[data-open="true"] > * {
     transition: none;
   }
   .noa-top-scroll-fade,
@@ -1339,14 +1337,6 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   transition:
     opacity 200ms cubic-bezier(0, 0, 0.2, 1) 60ms,
     transform 300ms cubic-bezier(0.2, 0, 0, 1);
-}
-/* rotate, not transform: Tailwind v4's -rotate-90 writes the individual
-   property. */
-.noa-sidebar-collapse-chevron {
-  transition: rotate 220ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-[aria-expanded="true"] > .noa-sidebar-collapse-chevron {
-  transition: rotate 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ── Slide-down reveal (delete confirm bar, banners) ── */

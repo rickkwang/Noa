@@ -11,8 +11,8 @@ import { GlobalTask, Note, Folder as FolderType } from '../types';
 import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
-import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, FoldVertical, UnfoldVertical, ArrowUpDown, Dices, X } from '@/src/lib/icons';
+import { footerIconButton, VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, FoldVertical, UnfoldVertical, ArrowUpDown, Dices, X, CalendarMonth, Tag } from '@/src/lib/icons';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -124,6 +124,8 @@ export default function Sidebar({
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [foldersExpandedByDefault, setFoldersExpandedByDefault] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isTagsOpen, setIsTagsOpen] = useState(false);
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
@@ -716,11 +718,40 @@ export default function Sidebar({
         onSearchRange={onSearchQuery}
         searchQuery={searchQuery}
         dateFormat={dateFormat}
+        isOpen={isCalendarOpen}
       />
 
-      <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} />
+      <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} isOpen={isTagsOpen} />
 
-      <VaultFooter {...vault} />
+      {/* Calendar and Tags open from the footer row rather than two header bars
+          stacked above it; an open panel's toggle takes the accent. */}
+      <VaultFooter
+        {...vault}
+        actions={(
+          <>
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen(v => !v)}
+              className={footerIconButton(isCalendarOpen)}
+              title="Calendar"
+              aria-label="Calendar"
+              aria-expanded={isCalendarOpen}
+            >
+              <CalendarMonth size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsTagsOpen(v => !v)}
+              className={footerIconButton(isTagsOpen)}
+              title="Tags"
+              aria-label="Tags"
+              aria-expanded={isTagsOpen}
+            >
+              <Tag size={14} />
+            </button>
+          </>
+        )}
+      />
     </div>
   );
 }

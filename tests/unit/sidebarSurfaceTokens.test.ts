@@ -154,7 +154,9 @@ describe('sidebar surface tokens', () => {
     expect(css).toContain('color: hsl(var(--tag-h) 16% 64%);');
     expect(css).toContain('border-color: var(--divider-subtle, rgba(249,249,247,0.15));');
     expect(tagBrowser).toContain("style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}");
-    expect(tagBrowser).toContain('tracking-[0.08em]');
+    // No header row any more (the toggle is in the footer), so no uppercase
+    // tracked label either.
+    expect(tagBrowser).not.toContain('uppercase tracking-');
   });
 
   it('applies the optional translucent material only to the expanded desktop sidebar', async () => {

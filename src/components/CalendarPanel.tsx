@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCollapsePresence } from '../hooks/useCollapsePresence';
 import { formatDate } from '../lib/templates';
 import { GlobalTask, Note } from '../types';
-import { ChevronLeft, ChevronRight, ChevronDown, Calendar } from '@/src/lib/icons';
+import { ChevronLeft, ChevronRight } from '@/src/lib/icons';
 
 interface CalendarPanelProps {
   notes: Note[];
@@ -14,6 +14,8 @@ interface CalendarPanelProps {
   /** Watched so a range detaches the moment the search box says something else. */
   searchQuery?: string;
   dateFormat?: string;
+  /** Owned by Sidebar: the toggle lives in the footer row, not a header here. */
+  isOpen: boolean;
 }
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
@@ -45,8 +47,8 @@ export default function CalendarPanel({
   onSearchRange,
   searchQuery = '',
   dateFormat = 'YYYY-MM-DD',
+  isOpen,
 }: CalendarPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const isBodyMounted = useCollapsePresence(isOpen);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
@@ -229,18 +231,15 @@ export default function CalendarPanel({
 
 
   return (
-    <div className="noa-sidebar-section-surface shrink-0 border-t" style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}>
-      {/* Section header */}
-      <button
-        className="w-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2D2D2B]/70 hover:text-[#2D2D2B] font-redaction flex items-center transition-colors cursor-pointer"
-        onClick={() => setIsOpen(v => !v)}
-        aria-expanded={isOpen}
-      >
-        <Calendar size={11} className="mr-1.5 shrink-0" />
-        Calendar
-        <ChevronDown size={10} className={`ml-auto noa-sidebar-collapse-chevron ${isOpen ? '' : '-rotate-90'}`} />
-      </button>
-
+    // No header row: Calendar and Tags open from icon buttons in the footer row,
+    // so the sidebar's bottom edge is one line instead of three stacked bars.
+    // Dividers follow one rule — the footer always has one, and each panel adds
+    // its own only while its body is mounted (open, or easing closed). A closed
+    // panel is zero-height, so its line would stack on the footer's.
+    <div
+      className={`noa-sidebar-section-surface shrink-0 ${isBodyMounted ? 'border-t' : ''}`}
+      style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
+    >
       <div className="noa-sidebar-collapse" data-open={isOpen ? 'true' : undefined}>
         <div inert={!isOpen ? true : undefined}>
           {isBodyMounted && (

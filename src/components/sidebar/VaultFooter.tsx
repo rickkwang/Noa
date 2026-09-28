@@ -20,6 +20,8 @@ export interface VaultFooterProps {
   onRetrySync?: () => void;
   onOpenWorkspaceSettings: () => void;
   onOpenSettings: () => void;
+  /** Icon buttons set before the settings gear (Sidebar's Calendar/Tags toggles). */
+  actions?: React.ReactNode;
 }
 
 function syncLabel(status: SyncStatus, lastSyncAt?: string | null): string {
@@ -35,6 +37,13 @@ function syncLabel(status: SyncStatus, lastSyncAt?: string | null): string {
   if (hours < 24) return `Synced ${hours}h ago`;
   return `Synced ${new Date(lastSyncAt).toLocaleDateString()}`;
 }
+
+/** Shared by the gear and the Calendar/Tags toggles Sidebar passes as `actions`.
+ *  The open state swaps the colour class rather than layering an inline colour:
+ *  ThemeInjector forces `text-[#2D2D2B]/70` with !important in both themes, so
+ *  a style={{ color }} on top of it never shows. */
+export const footerIconButton = (active = false) =>
+  `p-1.5 shrink-0 rounded-lg ${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70'} hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer`;
 
 const DOT_CLASS: Record<SyncStatus, string> = {
   idle: 'bg-[var(--text-primary,#2D2D2B)]/30',
@@ -56,6 +65,7 @@ export function VaultFooter({
   onRetrySync,
   onOpenWorkspaceSettings,
   onOpenSettings,
+  actions,
 }: VaultFooterProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Switching disconnects before it can open the picker, and a cancelled picker
@@ -207,7 +217,7 @@ export function VaultFooter({
       <button
         data-vault-btn
         onClick={() => setIsOpen(v => !v)}
-        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-1.5 pr-3.5 py-1 text-[11px] font-redaction font-bold text-[#2D2D2B]/70 hover:text-[#2D2D2B] transition-colors cursor-pointer"
+        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-1.5 pr-3.5 py-1 text-[11px] font-redaction text-[#2D2D2B]/60 hover:text-[#2D2D2B] transition-colors cursor-pointer"
         title={vaultName ? `${label} · vault: ${vaultName} (${syncError || status})` : `${label} · no vault connected`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
@@ -227,17 +237,17 @@ export function VaultFooter({
         )}
       </button>
 
-      {/* Centred on the same vertical rail as the collapse chevrons above:
-          those sit at px-3 with a 10px glyph, so their midline is 17px in from
-          the right edge — 4px (pr-1) + 6px (p-1.5) + half of 14px lands there. */}
-      <button
-        onClick={onOpenSettings}
-        className="p-1.5 ml-auto shrink-0 rounded-lg text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
-        title="Settings"
-        aria-label="Open settings"
-      >
-        <Settings size={14} />
-      </button>
+      <div className="ml-auto flex items-center shrink-0">
+        {actions}
+        <button
+          onClick={onOpenSettings}
+          className={footerIconButton()}
+          title="Settings"
+          aria-label="Open settings"
+        >
+          <Settings size={14} />
+        </button>
+      </div>
     </div>
   );
 }

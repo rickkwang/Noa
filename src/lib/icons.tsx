@@ -8,6 +8,7 @@ import {
   TextB,
   BookOpen as PhBookOpen,
   CalendarBlank,
+  CalendarDots,
   Check as PhCheck,
   CheckCircle,
   CheckSquare as PhCheckSquare,
@@ -85,6 +86,9 @@ export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
 export const BookOpen = icon(PhBookOpen);
 export const Calendar = icon(CalendarBlank);
+// The sidebar's month-view toggle. Distinct from Calendar, which the toolbar
+// uses for "open today's daily note".
+export const CalendarMonth = icon(CalendarDots);
 export const Check = icon(PhCheck);
 export const CheckCircle2 = icon(CheckCircle);
 export const CheckSquare = icon(PhCheckSquare);

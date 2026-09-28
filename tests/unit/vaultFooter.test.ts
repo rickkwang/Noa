@@ -92,18 +92,32 @@ describe('sidebar vault footer', () => {
     expect(app).toContain('onDisconnectVault: canPickVaultFolder');
   });
 
-  it('aligns its two icons with the section headers above it', async () => {
-    const [footer, tagBrowser] = await Promise.all([
+  it('carries the Calendar and Tags toggles in the one footer row', async () => {
+    const [footer, tagBrowser, calendar, sidebar] = await Promise.all([
       readFile(footerPath, 'utf8'),
       readFile(tagBrowserPath, 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/components/CalendarPanel.tsx', import.meta.url)), 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url)), 'utf8'),
     ]);
 
-    // Left rail: container pl-1.5 (6px) + button pl-1.5 (6px) = the headers' px-3.
-    expect(tagBrowser).toContain('w-full px-3 py-1');
-    expect(footer).toContain('border-t pl-1.5 pr-1 py-1');
-    expect(footer).toContain('rounded-lg pl-1.5 pr-3.5 py-1');
-    // Right rail: pr-1 (4px) + p-1.5 (6px) + half of 14px = the chevrons' 17px.
-    expect(footer).toContain('p-1.5 ml-auto shrink-0 rounded-lg');
+    // One row instead of three stacked bars: the panels have no header rows,
+    // Sidebar owns their open state and hands the toggles to the footer.
+    expect(tagBrowser).not.toContain('aria-expanded');
+    expect(calendar).not.toContain('aria-expanded');
+    expect(footer).toContain('{actions}');
+    expect(footer).toContain('className={footerIconButton()}');
+    expect(sidebar).toContain('aria-label="Calendar"');
+    expect(sidebar).toContain('aria-label="Tags"');
+    expect(sidebar).toContain('className={footerIconButton(isCalendarOpen)}');
+    expect(sidebar).toContain('className={footerIconButton(isTagsOpen)}');
+    // Open state swaps the colour class: ThemeInjector forces the /70 class
+    // with !important, so an inline colour on top of it never showed.
+    expect(footer).toContain("${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70'}");
+    // Dividers: the footer always carries one; each panel only while mounted,
+    // so closed (zero-height) panels never stack a second line on it.
+    expect(footer).toContain('shrink-0 border-t pl-1.5 pr-1 py-1');
+    expect(calendar).toContain("${isBodyMounted ? 'border-t' : ''}");
+    expect(tagBrowser).toContain("${isBodyMounted ? 'border-t' : ''}");
     expect(footer).toContain('<Settings size={14} />');
   });
 
