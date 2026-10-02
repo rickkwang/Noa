@@ -20,6 +20,8 @@ export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
 export const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
 const GRAPH_PANEL_MAX_VIEWPORT_RATIO = 0.7;
+// What the editor keeps when the graph is dragged as wide as it goes.
+const EDITOR_MIN_WIDTH_BESIDE_GRAPH = 380;
 
 // Every box that reads --noa-sidebar-width while a drag is running, paired with
 // the declaration it resolves into. A pointermove already lands one value per
@@ -171,9 +173,23 @@ export function useLayout() {
   }, []);
   // How wide the graph may be dragged when it has the column to itself: well
   // past the shared ceiling, but never so far that the editor disappears.
-  const getGraphPanelValue = useCallback((e: MouseEvent) => {
-    return Math.min(window.innerWidth - e.clientX, window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO);
+  // The ratio alone is not enough: with the sidebar open, 70% of the window
+  // leaves the editor a sliver in which its scrollbar gutter cuts into the
+  // text. So the editor is also guaranteed a readable minimum.
+  const getGraphPanelMax = useCallback(() => {
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]');
+    const sidebarWidth = sidebar?.getBoundingClientRect().width ?? 0;
+    return Math.max(
+      RIGHT_PANEL_MIN_WIDTH,
+      Math.min(
+        window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO,
+        window.innerWidth - sidebarWidth - EDITOR_MIN_WIDTH_BESIDE_GRAPH,
+      ),
+    );
   }, []);
+  const getGraphPanelValue = useCallback((e: MouseEvent) => {
+    return Math.min(window.innerWidth - e.clientX, getGraphPanelMax());
+  }, [getGraphPanelMax]);
 
   const {
     size: sidebarWidth,
@@ -286,12 +302,9 @@ export function useLayout() {
         return;
       }
       setHasGraphPanelWidth(true);
-      setGraphPanelWidth(w => Math.max(
-        RIGHT_PANEL_MIN_WIDTH,
-        Math.min(w + delta, window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO),
-      ));
+      setGraphPanelWidth(w => Math.max(RIGHT_PANEL_MIN_WIDTH, Math.min(w + delta, getGraphPanelMax())));
     },
-    [clampRightPanelWidth, setRightPanelWidth, setGraphPanelWidth, isRightPanelWide]
+    [clampRightPanelWidth, setRightPanelWidth, setGraphPanelWidth, isRightPanelWide, getGraphPanelMax]
   );
 
   // Layout effect: with the graph showing alone the column's width is not the

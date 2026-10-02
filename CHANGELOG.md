@@ -7,6 +7,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+- Dragging the graph to its widest keeps the editor at least 380px wide, so the scrollbar gutter no longer cuts into the text.
+
 ## [1.0.26] - 2026-10-02
 
 ### Added
