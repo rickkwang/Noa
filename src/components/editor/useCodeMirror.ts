@@ -1,7 +1,7 @@
-import { defaultKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { Annotation, Compartment, EditorState } from '@codemirror/state';
+import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
 import { EditorView, keymap, ViewUpdate, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { useEffect, useRef, useCallback } from 'react';
@@ -262,7 +262,8 @@ export function useCodeMirror({
       codeDecorations,
       updateListener,
       insertMentionKeymap,
-      keymap.of([...defaultKeymap]),
+      history(),
+      keymap.of([...historyKeymap, ...defaultKeymap]),
       cmPlaceholder('Start typing...'),
       readOnlyCompartmentRef.current.of(buildReadOnlyExtensions(readOnlyRef.current)),
       inlineTitle(note?.title || 'Untitled'),
@@ -345,7 +346,7 @@ export function useCodeMirror({
     if (minimalChange) {
       view.dispatch({
         changes: minimalChange,
-        annotations: remoteSyncAnnotation.of(true),
+        annotations: [remoteSyncAnnotation.of(true), Transaction.addToHistory.of(false)],
       });
     }
     // Depend on note?.content (string) rather than note (object) — the parent
