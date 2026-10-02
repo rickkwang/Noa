@@ -7,6 +7,31 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.26] - 2026-10-02
+
+### Added
+- The right column is a stack of up to two floating cards, opened from one panel menu in the titlebar; drag the gap between two cards to split their height.
+- Expand any card over the editor; the graph alone opens wide and can be dragged up to 70% of the window.
+
+### Changed
+- Editor tabs are pills on a taller titlebar, with the traffic lights and titlebar controls on one centre line.
+- The graph scales with its card frame by frame, keeps nodes small when zoomed, and its filters are a quiet search field and segmented controls; the on-canvas zoom buttons are gone.
+- Every popup menu shares one shape: export, templates, workspace, font picker, outline, slash commands and link suggestions.
+- The right column, its cards and the Calendar/Tags drawers open and close without animation.
+- Dragging the right column's width no longer restyles the whole document on every frame.
+- Calendar, Tags and Settings share one footer row with the workspace switcher; the sidebar tree is quieter and the calendar grid fills its panel.
+- Right-panel section headers line up across cards, and tasks render `[[links]]` and `#tags` instead of raw Markdown.
+- The graph stays stable and readable while filtering.
+- Floating surfaces drop the hard black border.
+
+### Fixed
+- Pressing a resize handle without moving no longer snaps the panel back to an earlier width.
+- The graph canvas is not reallocated when the reported screen width shrinks.
+- Vault images resolve by path, and attachments no longer lose data.
+- Bold text is visible, the line-height setting is honoured, and the web titlebar fits.
+- Keyboard focus lands where writing starts, and the phone layout is repaired.
+- The daily-notes toggle controls the sidebar toolbar button.
+
 ## [1.0.25] - 2026-09-18
 
 ### Added
