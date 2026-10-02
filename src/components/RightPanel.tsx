@@ -610,6 +610,24 @@ function GraphInfoPanel({
     { label: 'isolated', value: stats.isolated },
   ];
 
+  // Only the chevron is the control: a 20px block like the header's, in the
+  // same column as the close button above it.
+  const toggle = (
+    <button
+      onClick={toggleOpen}
+      aria-expanded={isOpen}
+      aria-controls="noa-graph-connections"
+      aria-label={isOpen ? 'Hide connections' : 'Show connections'}
+      title={isOpen ? 'Hide connections' : 'Show connections'}
+      className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors ${
+        isDark
+          ? 'hover:bg-[rgba(249,249,247,0.07)] hover:text-[#F9F9F7]'
+          : 'hover:bg-[#2D2D2B]/[0.06] hover:text-[#2D2D2B]'
+      }`}
+    >
+      {isOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+    </button>
+  );
   return (
     // A one-line summary under the canvas. The lists are a drawer that opens
     // upward over the canvas's bottom edge, so the graph keeps its size.
@@ -619,9 +637,15 @@ function GraphInfoPanel({
       {isOpen && (
         <div
           id="noa-graph-connections"
-          className={`tab-fade-in absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t border-[var(--divider-subtle)] ${isDark ? 'bg-[#313130]' : 'bg-white'}`}
+          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t border-[var(--divider-subtle)] ${isDark ? 'bg-[#313130]' : 'bg-white'}`}
         >
-          <div className="px-3 pt-3 pb-2 space-y-3">
+          {/* Open, the toggle rides the drawer's top edge — where the thing
+              it closes begins — and stays there while the lists scroll. The
+              first heading is kept clear of it. */}
+          <div className={`sticky top-0 z-10 flex h-0 justify-end pr-1.5 ${muted}`}>
+            <span className="mt-[9px]">{toggle}</span>
+          </div>
+          <div className="px-3 pt-3 pb-2 space-y-3 [&>div:first-child>div:first-child]:pr-6">
         {activeNoteId && (
               <div>
                 <div className={`text-[10px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>
@@ -683,23 +707,7 @@ function GraphInfoPanel({
             <span><span className={`tabular-nums font-medium ${strong}`}>{value}</span> {label}</span>
           </React.Fragment>
         ))}
-        {/* Only the chevron is the control: a 20px block like the header's,
-            in the same column as the close button above it. The wash is held
-            while the drawer is open. */}
-        <button
-          onClick={toggleOpen}
-          aria-expanded={isOpen}
-          aria-controls="noa-graph-connections"
-          aria-label={isOpen ? 'Hide connections' : 'Show connections'}
-          title={isOpen ? 'Hide connections' : 'Show connections'}
-          className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors ${
-            isDark
-              ? `hover:bg-[rgba(249,249,247,0.07)] hover:text-[#F9F9F7] ${isOpen ? 'bg-[rgba(249,249,247,0.10)] text-[#F9F9F7]' : ''}`
-              : `hover:bg-[#2D2D2B]/[0.06] hover:text-[#2D2D2B] ${isOpen ? 'bg-[#2D2D2B]/[0.07] text-[#2D2D2B]' : ''}`
-          }`}
-        >
-          {isOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-        </button>
+        {!isOpen && toggle}
       </div>
     </div>
   );

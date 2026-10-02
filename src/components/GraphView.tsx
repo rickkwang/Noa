@@ -230,6 +230,9 @@ const LATE_FIT_MIN_DELTA = 0.03;
 // structural anchors readable instead: the top-degree hubs always show their
 // names, which is what orients the user at overview zoom.
 const HUB_LABEL_COUNT = 8;
+// Zoom range over which hub and active-note labels fade out when zooming away.
+const ANCHOR_LABEL_FADE_START = 0.45;
+const ANCHOR_LABEL_FADE_END = 0.6;
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -828,13 +831,17 @@ export default function GraphView({
           }
 
           // Label: smooth fade in based on globalScale, with text shadow for legibility.
-          // Hubs, the open note, and the hovered node skip the fade — they are
-          // the graph's orientation anchors and stay readable at any zoom.
+          // Hubs and the open note are the graph's orientation anchors, so
+          // they outlast the other labels — but not forever: far enough out
+          // the nodes are a few pixels apart and even eight names pile into
+          // an unreadable heap, so the anchors fade too and the graph is
+          // shape only. The hovered node always answers with its name.
           const labelFadeStart = 0.5;
           const labelFadeEnd = 0.9;
           const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
-          const alwaysLabel = isActive || isHovered || hubLabelIds.has(String(node.id));
-          const labelAlpha = alwaysLabel ? 1 : zoomLabelAlpha;
+          const anchorLabelAlpha = Math.min(1, Math.max(0, (globalScale - ANCHOR_LABEL_FADE_START) / (ANCHOR_LABEL_FADE_END - ANCHOR_LABEL_FADE_START)));
+          const isAnchor = isActive || hubLabelIds.has(String(node.id));
+          const labelAlpha = isHovered ? 1 : isAnchor ? anchorLabelAlpha : zoomLabelAlpha;
 
           if (labelAlpha > 0) {
             // globalScale is the zoom factor and ctx is already scaled by it, so

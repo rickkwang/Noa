@@ -176,20 +176,26 @@ export function useLayout() {
   // The ratio alone is not enough: with the sidebar open, 70% of the window
   // leaves the editor a sliver in which its scrollbar gutter cuts into the
   // text. So the editor is also guaranteed a readable minimum.
+  // The width the graph opens at alone is also its floor: it can be dragged
+  // wider from there, never narrower.
+  const getGraphPanelMin = useCallback(
+    () => getResponsivePanelMaxWidth(window.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH),
+    []
+  );
   const getGraphPanelMax = useCallback(() => {
     const sidebar = document.querySelector<HTMLElement>('[data-sidebar-container]');
     const sidebarWidth = sidebar?.getBoundingClientRect().width ?? 0;
     return Math.max(
-      RIGHT_PANEL_MIN_WIDTH,
+      getGraphPanelMin(),
       Math.min(
         window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO,
         window.innerWidth - sidebarWidth - EDITOR_MIN_WIDTH_BESIDE_GRAPH,
       ),
     );
-  }, []);
+  }, [getGraphPanelMin]);
   const getGraphPanelValue = useCallback((e: MouseEvent) => {
-    return Math.min(window.innerWidth - e.clientX, getGraphPanelMax());
-  }, [getGraphPanelMax]);
+    return Math.max(getGraphPanelMin(), Math.min(window.innerWidth - e.clientX, getGraphPanelMax()));
+  }, [getGraphPanelMin, getGraphPanelMax]);
 
   const {
     size: sidebarWidth,
@@ -302,9 +308,9 @@ export function useLayout() {
         return;
       }
       setHasGraphPanelWidth(true);
-      setGraphPanelWidth(w => Math.max(RIGHT_PANEL_MIN_WIDTH, Math.min(w + delta, getGraphPanelMax())));
+      setGraphPanelWidth(w => Math.max(getGraphPanelMin(), Math.min(w + delta, getGraphPanelMax())));
     },
-    [clampRightPanelWidth, setRightPanelWidth, setGraphPanelWidth, isRightPanelWide, getGraphPanelMax]
+    [clampRightPanelWidth, setRightPanelWidth, setGraphPanelWidth, isRightPanelWide, getGraphPanelMin, getGraphPanelMax]
   );
 
   // Layout effect: with the graph showing alone the column's width is not the

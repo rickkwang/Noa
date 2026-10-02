@@ -100,8 +100,10 @@ describe('sidebar width fallbacks', () => {
     expect(getResponsivePanelMaxWidth(900, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(971, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(1600, expected)).toBe(480);
+    // The clamp, the drag, and the floor the graph keeps when it has the column
+    // to itself.
     expect(useLayout.match(/getResponsivePanelMaxWidth\(window\.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH\)/g))
-      .toHaveLength(2);
+      .toHaveLength(3);
   });
 
   it('reports the real drag bounds on both resize handles', async () => {

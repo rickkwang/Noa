@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+- The graph alone can no longer be dragged narrower than the width it opens at.
+- The Connections drawer opens without a fade, and its toggle sits at the drawer's top edge while open.
+- Zoomed far out, the graph hides hub and active-note labels too; hovering a node still shows its name.
+
 ### Fixed
 - Dragging the graph to its widest keeps the editor at least 380px wide, so the scrollbar gutter no longer cuts into the text.
 
