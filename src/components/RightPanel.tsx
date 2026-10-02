@@ -163,12 +163,22 @@ export default function RightPanel({
   const [hideIsolated, setHideIsolated] = useState(false);
   const [showUnresolved, setShowUnresolved] = useState(true);
   const [graphSearch, setGraphSearch] = useState('');
+  const [showGraphSearch, setShowGraphSearch] = useState(false);
+  const graphSearchRef = useRef<HTMLDivElement>(null);
   const deferredGraphSearch = useDeferredValue(graphSearch);
   const [showFilters, setShowFilters] = useState(false);
   const [localDepth, setLocalDepth] = useState(0);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<GraphColorMode>('tag');
   const [sizeByDegree, setSizeByDegree] = useState(true);
+  useEffect(() => {
+    if (!showGraphSearch) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!graphSearchRef.current?.contains(event.target as Node)) setShowGraphSearch(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [showGraphSearch]);
   // Drawer settings that drop nodes. Colour and size are display-only, and
   // search / hide-isolated already show their state in the header. Depth with
   // no active note has no anchor, so GraphView ignores it.
@@ -373,19 +383,45 @@ export default function RightPanel({
             {...card}
             actions={(
               <>
-                {/* Only the field carries a surface. The two toggles are the
-                    same quiet 20px squares as expand and close beside them, so
-                    the header reads as one row of controls, not a pill plus
-                    two buttons. */}
                 <div className="mr-0.5 flex items-center gap-0.5"
                   role="group"
                   aria-label="Graph filter controls">
-                  <div className="noa-graph-control-surface mr-1 flex h-5 items-center gap-1.5 rounded-md pl-1.5 pr-2 min-w-0">
-                    <Search size={11} style={{ color: isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.45)' }} className="shrink-0" />
-                    <input type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
-                      aria-label="Filter graph nodes"
-                      placeholder="filter..." className="bg-transparent outline-none text-[11px] leading-none font-redaction w-16 min-w-0"
-                      style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
+                  <div ref={graphSearchRef} className="relative"
+                    onBlur={event => {
+                      if (!event.currentTarget.contains(event.relatedTarget)) setShowGraphSearch(false);
+                    }}
+                    onKeyDown={event => {
+                      if (event.key !== 'Escape') return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setShowGraphSearch(false);
+                      graphSearchRef.current?.querySelector('button')?.focus();
+                    }}>
+                    <button onClick={() => setShowGraphSearch(v => !v)}
+                      title="Search graph" aria-label="Search graph" aria-expanded={showGraphSearch}
+                      className={graphToggleClass}
+                      style={showGraphSearch || graphSearch ? { color: '#CC7D5E' } : undefined}>
+                      <Search size={13} />
+                    </button>
+                    {showGraphSearch && (
+                      // The same floating surface as the app's popup menus (PaneMenu):
+                      // 10px corners, hairline, floating shadow, card colour. The
+                      // field is one compact 28px row.
+                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg border border-[var(--divider-subtle)] pl-2 pr-1 font-redaction ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+                        <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40'}`} />
+                        <input autoFocus type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
+                          aria-label="Filter graph nodes" placeholder="Filter nodes…"
+                          className={`min-w-0 flex-1 bg-transparent text-[12px] outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+                          style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
+                        {graphSearch && (
+                          <button type="button" onClick={() => setGraphSearch('')}
+                            title="Clear" aria-label="Clear filter"
+                            className={`${graphToggleClass} !h-4 !w-4`}>
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {/* Name stays fixed and aria-pressed carries the state. Letting the
                       name flip too (as `title` does) would have a screen reader
@@ -422,7 +458,7 @@ export default function RightPanel({
               {showGraphGuide && (
                 <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[#252523] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
                   <div className={`font-bold uppercase tracking-[0.14em] text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
-                  <div>Node size reflects connectivity. Use "filter..." to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
+                  <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
                   <button
                     onClick={() => {
                       setShowGraphGuide(false);

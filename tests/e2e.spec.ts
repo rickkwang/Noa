@@ -1533,7 +1533,8 @@ test('graph filter field stays quiet on focus', async ({ page }) => {
   // Text fields deliberately have no focus ring: index.css excludes inputs from
   // the global focus-visible rule because the caret already shows where typing
   // lands. The field's surface does not change either — no highlight on focus.
-  const input = page.getByPlaceholder('filter...');
+  await page.getByRole('button', { name: 'Search graph' }).click();
+  const input = page.getByPlaceholder('Filter nodes…');
   const surface = input.locator('..');
   await expect(input).toHaveCSS('outline-style', 'none');
 
