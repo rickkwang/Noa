@@ -82,20 +82,19 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-md noa-floating-panel font-redaction w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] p-1 noa-floating-panel font-redaction w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: slashQuery.y, left: slashQuery.x }}
     >
-      <div className="px-3 py-1 bg-[#EFEAE3] border-b border-[var(--divider-subtle)] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2B]/70">
+      <div className="flex h-6 items-center px-2 text-[11px] text-[#2D2D2B]/50">
         Insert block
       </div>
       {filtered.map((cmd, i) => (
-        // See MentionDropdown for why the active row uses tokens: a literal
-        // `bg-[#2D2D2B]` survives the dark-mode remap and lands on the panel's
-        // remapped `#2D2D2B` background, hiding the selection.
+        // The active row is the same quiet wash every popup menu uses, mixed
+        // from the token so it follows the theme (see MentionDropdown).
         <div
           key={cmd.id}
           ref={i === selectedIndex ? selectedRef : undefined}
-          className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2B]/10 last:border-0 flex items-center gap-2 ${i === selectedIndex ? 'bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)]' : 'hover:bg-[#EFEAE3]'}`}
+          className={`px-2 py-1.5 rounded-md cursor-pointer flex items-center gap-2 ${i === selectedIndex ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)]' : ''}`}
           onMouseDown={(e) => {
             e.preventDefault();
             onInsert(cmd, slashQuery.index);
@@ -103,8 +102,8 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
           onMouseEnter={() => setSelectedIndex(i)}
         >
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold truncate">{cmd.label}</div>
-            <div className={`text-[10px] truncate ${i === selectedIndex ? 'text-[var(--bg-primary,#FCFCFB)]/70' : 'text-[#2D2D2B]/50'}`}>{cmd.description}</div>
+            <div className="text-[13px] text-[#2D2D2B]/90 truncate">{cmd.label}</div>
+            <div className="text-[11px] truncate text-[#2D2D2B]/50">{cmd.description}</div>
           </div>
         </div>
       ))}

@@ -217,8 +217,8 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] noa-floating-panel overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2D2D2B]/15">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] noa-floating-panel overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--divider-subtle)]">
             <Search size={13} className="shrink-0 text-[var(--text-secondary)]" />
             <input
               ref={inputRef}
@@ -262,7 +262,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
                     // outside-click listener that closes the popup.
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => select(option.value)}
-                    className={`w-full flex items-center gap-2 rounded-[3px] px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[#CC7D5E]/10' : ''}`}
+                    className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[#CC7D5E]/10' : ''}`}
                     style={{ fontFamily: resolveFontFamily(option.value) }}
                   >
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>

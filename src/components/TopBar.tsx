@@ -1,7 +1,8 @@
 import React, { CSSProperties } from 'react';
-import { TITLEBAR_PANEL_TABS_SLOT_ID } from '../constants/rightTabs';
+import { TITLEBAR_PANEL_TABS_SLOT_ID, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
 import { AppSettings } from '../types';
+import { PaneMenu } from './rightPanel/PaneMenu';
 import { Search, PanelLeft, PanelRight, X } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
@@ -14,12 +15,17 @@ interface TopBarProps {
   onSidebarPreviewEnter: () => void;
   onSidebarPreviewLeave: () => void;
   onToggleRightPanel: () => void;
+  /** Cards currently showing in the right column; empty while it is collapsed. */
+  activePanes: readonly RightTab[];
+  onTogglePane: (id: RightTab) => void;
+  paneBadges: PaneBadges;
+  /** A card is expanded over the editor and this bar; the menu button goes
+   *  under it rather than floating on top of the card. */
+  isRightPanelCovering: boolean;
   isSidebarOpen: boolean;
   isSidebarMaterialActive: boolean;
-  isSidebarPreviewOpen: boolean;
   isRightPanelOpen: boolean;
   isMobile: boolean;
-  hasOpenNote: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   isSearchOpen: boolean;
@@ -29,19 +35,19 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, isSidebarOpen, isSidebarMaterialActive, isSidebarPreviewOpen, isRightPanelOpen, isMobile, hasOpenNote, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
-  const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen;
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
   // Accent coral is the active-state color everywhere else, but on the dark
   // charcoal titlebar it reads as too loud right next to the traffic lights —
   // use a bright neutral instead so "open" still reads as brighter-than-idle.
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
+  const actionClass = 'p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer';
   return (
     <div
       data-titlebar="true"
       data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
-      className={`h-8 grid items-center shrink-0 font-redaction relative after:absolute after:right-0 after:bottom-0 after:h-px after:bg-[var(--divider-subtle)] ${hasOpenNote ? (!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0') : 'after:hidden'} ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
+      className={`h-11 grid items-center shrink-0 font-redaction relative ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
       style={{
         ...dragRegion,
         backgroundColor: titlebarBaseColor,
@@ -133,43 +139,48 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
 
       {!isMobile && <div aria-hidden="true" className="min-w-0" />}
 
-      {/* Portal target for the right panel's tab strip — RightPanel fills this
-          while it is open on desktop, so the tabs share the titlebar row
-          instead of stacking a second band of chrome beneath it. Anchored to
-          the panel's own left edge (not the grid column) so the strip reads as
-          belonging to the panel it controls. */}
+      {/* Right Section: Actions. The right column's cards run to the top of the
+          window, over this bar, so the actions stop at the column's left edge
+          and travel with it — same distance and curve as the column's own
+          slide in App.tsx. On desktop they are positioned against the bar
+          itself, not laid out in the grid's third cell: the column can be
+          wider than that cell, and an offset larger than the cell pushed the
+          button under the column instead of clear of it. */}
       <div
-        id={TITLEBAR_PANEL_TABS_SLOT_ID}
-        className="absolute inset-y-0 z-20 flex items-center pl-1"
-        style={{
-          ...noDragRegion,
-          left: 'calc(100% - var(--noa-right-panel-width, 340px))',
-          // Travel with the panel on collapse instead of popping out: same
-          // distance, same curve. Opacity clears well before the strip reaches
-          // the actions on the right, so the two never visibly overlap.
-          transform: isRightPanelOpen ? 'translateX(0)' : 'translateX(var(--noa-right-panel-width, 340px))',
-          opacity: isRightPanelOpen ? 1 : 0,
-          // visibility (not just opacity) keeps the hidden tabs out of the tab
-          // order and the a11y tree; it flips only after the slide finishes.
-          visibility: isRightPanelOpen ? 'visible' : 'hidden',
-          transition: isRightPanelOpen
-            ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease-out 60ms, visibility 0s'
-            : 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease-out, visibility 0s linear 220ms',
+        className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30' : 'z-40'}`}
+        data-right-panel-anchor={isMobile ? undefined : 'true'}
+        style={isMobile ? undefined : {
+          // 15px, not a round rem: it puts the menu glyph on the same vertical
+          // line as the editor toolbar's last action directly beneath it.
+          right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 340px) + 15px)' : '15px',
         }}
-      />
-
-      {/* Right Section: Actions */}
-      <div className="flex items-center justify-end pr-4">
-        <div className="relative z-30 flex items-center gap-1" style={noDragRegion}>
-          <button
-            onClick={onToggleRightPanel}
-            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isRightPanelOpen ? activeToggleClass : ''}`}
-            title="Toggle Panel"
-            aria-label="Toggle right panel"
-            aria-pressed={isRightPanelOpen}
-          >
-            <PanelRight size={16} className="scale-x-[-1]" />
-          </button>
+      >
+        <div className="relative flex items-center gap-1" style={noDragRegion}>
+          {isMobile ? (
+            // The phone drawer picks its card from a strip inside the panel,
+            // so here the button only has the drawer to open.
+            <button
+              onClick={onToggleRightPanel}
+              className={`${actionClass} ${isRightPanelOpen ? activeToggleClass : ''}`}
+              title="Toggle Panel"
+              aria-label="Toggle right panel"
+              aria-pressed={isRightPanelOpen}
+            >
+              <PanelRight size={16} className="scale-x-[-1]" />
+            </button>
+          ) : (
+            <div id={TITLEBAR_PANEL_TABS_SLOT_ID} className="flex items-center">
+              <PaneMenu
+                activePanes={activePanes}
+                onSelect={onTogglePane}
+                badges={paneBadges}
+                isDark={isDark}
+                triggerClassName={`transition-colors cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}`}
+                isPanelOpen={isRightPanelOpen}
+                onTogglePanel={onToggleRightPanel}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

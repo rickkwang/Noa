@@ -13,6 +13,10 @@ export function useResizeDrag(
   const frameRef = useRef<number | null>(null);
   const pendingSizeRef = useRef<number | null>(null);
   const latestSizeRef = useRef(initial);
+  // The size can also be set from outside (keyboard nudges, a measured start
+  // width). Without this a press-and-release with no movement would commit
+  // whatever the last drag ended on.
+  useEffect(() => { latestSizeRef.current = size; }, [size]);
 
   // Use refs to avoid re-creating listeners on every state change
   const getValueRef = useRef(getValue);

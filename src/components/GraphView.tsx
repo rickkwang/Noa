@@ -6,7 +6,6 @@ import { resolveFontFamily } from '../lib/fontFamily';
 import { buildGraphModel } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
 import { Note, Folder, AppSettings } from '../types';
-import { ZoomIn, ZoomOut, Maximize2 } from '@/src/lib/icons';
 
 export type GraphColorMode = 'tag' | 'none';
 
@@ -30,9 +29,11 @@ interface GraphViewProps {
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
-// 480px right-panel max + 8px buffer.
+// Floor for the canvas width: the 480px right-panel max + 8px buffer.
 const GRAPH_CANVAS_MAX_WIDTH = 488;
 const GRAPH_CANVAS_MIN_HEIGHT = 400;
+
+let widestCanvasWidth = 0;
 
 function getStableCanvasSize() {
   if (typeof window === 'undefined') {
@@ -45,8 +46,18 @@ function getStableCanvasSize() {
     window.innerHeight ||
     GRAPH_CANVAS_MIN_HEIGHT;
 
+  // As wide as the screen, like the height: a card expanded over the editor
+  // can be nearly that wide. Sized once and never reallocated — the canvas is
+  // CSS-centred in its container, so a card growing or shrinking just reveals
+  // more or less of it and the graph glides with the card's own motion.
+  const screenWidth = window.screen?.availWidth || window.screen?.width || window.innerWidth || 0;
+  // Only ever grows. The reported screen can shrink — the window moved to a
+  // smaller display, or an emulated viewport — and following it down would
+  // reallocate the canvas mid-resize, which is exactly the flash this size
+  // exists to prevent. A canvas wider than it needs to be costs nothing seen.
+  widestCanvasWidth = Math.max(widestCanvasWidth, GRAPH_CANVAS_MAX_WIDTH, Math.ceil(screenWidth));
   return {
-    width: GRAPH_CANVAS_MAX_WIDTH,
+    width: widestCanvasWidth,
     height: Math.max(GRAPH_CANVAS_MIN_HEIGHT, Math.ceil(screenHeight)) + 2,
   };
 }
@@ -96,13 +107,6 @@ function hasStrength(force: unknown): force is { strength: (value: number) => vo
   return Boolean(force) && typeof (force as { strength?: unknown }).strength === 'function';
 }
 
-function hasAlphaTarget(forceGraph: ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined): forceGraph is ForceGraphMethods<GraphNodeData, GraphLinkData> & { d3AlphaTarget: (value?: number) => number | unknown } {
-  return Boolean(forceGraph) && typeof (forceGraph as { d3AlphaTarget?: unknown }).d3AlphaTarget === 'function';
-}
-
-function smoothStep(t: number): number {
-  return t * t * t * (t * (t * 6 - 15) + 10);
-}
 
 function graphChargeStrength(nodeCount: number): number {
   return nodeCount > 100 ? -65 : nodeCount > 30 ? -90 : -110;
@@ -157,18 +161,40 @@ function nodeRadius(degree: number, sizeByDegree: boolean): number {
   // log1p(degree) maps 0→0, 1→0.69, 5→1.79, 20→3.04, 50→3.93
   return Math.min(NODE_RADIUS_MAX, 3 + Math.log1p(degree) * 1.6);
 }
+// Past 1:1 the camera spreads the graph out much faster than it grows the
+// dots. A world-unit radius grows linearly with zoom, so a graph fitted to a
+// large area (an expanded card runs at 2-3x) turned into a field of 20px discs
+// with the same few pixels of label under each. Damped, the extra room goes
+// to the distances between notes — the Obsidian reading of zoom — and the
+// dots only pick up about a quarter of it.
+function zoomDamp(globalScale: number): number {
+  return globalScale > 1 ? globalScale ** -0.75 : 1;
+}
+// Labels are sized in screen px and take a little of the zoom too, so they do
+// not look stranded under a spread-out graph: 8px up to 1:1, 11px from ~3x.
+function labelScreenSize(globalScale: number): number {
+  return 8 * Math.min(1.4, Math.max(1, globalScale ** 0.3));
+}
 
 // --- Zoom-to-fit tuning. Raise either value to make the graph render larger. ---
 // Screen-px gutter kept clear around the fitted graph. Sized for a node label
 // (5px gap + 8px text) rather than the old blanket 24, which cost ~7% of scale.
 const FIT_PADDING = 12;
-// Scale applied *on top of* the exact fit, so the graph deliberately overflows
-// the panel rather than being fully contained. At 1.35 roughly the outer 13% of
-// the span on each side falls outside the viewport, which costs ~20% of nodes on
-// a mid-size graph — they are the sparse outer stragglers, one drag away.
-// The cost curve turns sharply past this: 1.5 puts a third of nodes outside and
-// 1.7 nearly half, so treat this as the practical ceiling.
-const FIT_FILL = 1.35;
+// Sideways the gutter has to hold half a label, not just a node: labels are
+// centred under their node and the ones on the rim reach well past it.
+const FIT_PADDING_X = 20;
+// Scale applied on top of the exact fit. 1 means the whole graph is on screen.
+// This was 1.35 while the graph lived in a 340px column at 55% of its height:
+// there a contained graph was too small to read, so the fit deliberately let
+// the outer ~20% of nodes fall off the edge. Alone, the graph card now takes
+// the column's full width and the card's whole height, which buys back about
+// the same scale without cropping anything.
+const FIT_FILL = 1;
+// The share of the area the graph takes once the card is expanded over the
+// editor, and the widths between which the fill eases down to it.
+const FIT_FILL_WIDE = 0.72;
+const FIT_WIDE_FROM = 520;
+const FIT_WIDE_TO = 1100;
 // Ceiling so a 2-3 node graph doesn't balloon to fill the panel. Applied after
 // FIT_FILL, and it is the binding constraint for small graphs (below ~15 nodes
 // the span is short enough that the cap, not the padding, decides the zoom).
@@ -176,6 +202,21 @@ const FIT_MAX_ZOOM = 3.5;
 // What getGraphBbox assumes each node's radius is: sqrt(nodeVal ?? 1) * nodeRelSize,
 // i.e. 1 * 4 with force-graph's defaults, neither of which GraphView overrides.
 const FG_ASSUMED_NODE_RADIUS = 4;
+// The zoom at which a graph of the given extent exactly fits a visible area,
+// scaled by FIT_FILL (1: the whole graph is visible). The cap stays the final
+// ceiling so tiny graphs still can't balloon.
+function fitZoomFor(bboxW: number, bboxH: number, width: number, height: number): number {
+  const exactFit = Math.min(
+    (width - FIT_PADDING_X * 2) / bboxW,
+    (height - FIT_PADDING * 2) / bboxH
+  );
+  // A wide area (the expanded card) gets a margin instead of edge-to-edge
+  // nodes: the fill eases from 1 at column width down to FIT_FILL_WIDE. It is
+  // continuous in width so a resize still scales the graph smoothly.
+  const wide = Math.min(1, Math.max(0, (width - FIT_WIDE_FROM) / (FIT_WIDE_TO - FIT_WIDE_FROM)));
+  const fill = FIT_FILL + (FIT_FILL_WIDE - FIT_FILL) * wide;
+  return Math.min(FIT_MAX_ZOOM, exactFit * fill);
+}
 // The post-rebuild fit eases rather than cuts, so a filter change reads as the
 // camera travelling to the new graph instead of teleporting (it was a 65% jump).
 const EARLY_FIT_DURATION = 240;
@@ -228,9 +269,6 @@ export default function GraphView({
   // being filtered OUT, so a filter round-trip (tag on → tag off) restores
   // the pre-filter layout instead of re-seeding the returning nodes.
   const positionsCacheRef = useRef(new Map<string, { x: number; y: number }>());
-  const initialPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
-  const initialView = useRef<{ x: number; y: number; zoom: number } | null>(null);
-  const resetAnimationRef = useRef<number | null>(null);
   // Set when a scheduled fit ran while the tab was hidden (rect 0 → fitView
   // bails). The next visible apply() performs the missed fit; without this the
   // graph can stay at the unfitted default camera forever.
@@ -239,12 +277,13 @@ export default function GraphView({
   // One-shot per graph rebuild, consumed by the first engine tick.
   const pendingEarlyFitRef = useRef(true);
   const lastFittedViewRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
-
-  useEffect(() => () => {
-    if (resetAnimationRef.current != null) {
-      cancelAnimationFrame(resetAnimationRef.current);
-    }
-  }, []);
+  // The graph's extent at the last fit, and the fit zoom the camera was last
+  // scaled against — what a container resize needs to rescale the view.
+  const fittedBoxRef = useRef<{ width: number; height: number } | null>(null);
+  const scaledFitZoomRef = useRef<number | null>(null);
+  const lastCenterYRef = useRef<number | null>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const maskOffsetRef = useRef(0);
 
   // Fit the graph into the *visible* area (the container) via the view transform
   // only — zoom + pan, never a canvas resize. Used on first layout, on reset, and
@@ -270,13 +309,7 @@ export default function GraphView({
     const bboxH = Math.max(1, bbox.y[1] - bbox.y[0]) + radiusShortfall * 2;
     const rect = container.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
-    // Exact fit first, then deliberately overshoot it by FIT_FILL. The cap stays
-    // the final ceiling so tiny graphs still can't balloon.
-    const exactFit = Math.min(
-      (rect.width - FIT_PADDING * 2) / bboxW,
-      (rect.height - FIT_PADDING * 2) / bboxH
-    );
-    const k = Math.min(FIT_MAX_ZOOM, exactFit * FIT_FILL);
+    const k = fitZoomFor(bboxW, bboxH, rect.width, rect.height);
     if (!Number.isFinite(k)) return false;
     const nextView = {
       x: (bbox.x[0] + bbox.x[1]) / 2,
@@ -284,6 +317,8 @@ export default function GraphView({
       zoom: Math.max(0.01, k),
     };
     lastFittedViewRef.current = nextView;
+    scaledFitZoomRef.current = nextView.zoom;
+    fittedBoxRef.current = { width: bboxW, height: bboxH };
     // Treat "already close enough" as a successful fit: the camera is recorded
     // (reset-view still targets it) but not moved, so a negligible correction
     // never surfaces as a late, unexplained drift.
@@ -323,22 +358,75 @@ export default function GraphView({
         setCanvasSize({ width: targetW, height: targetH });
       }
 
-      // Run a fit that was missed while the tab was hidden, then record the
-      // fitted camera so reset-view targets it instead of the unfitted one.
-      if (pendingFitRef.current) {
-        pendingFitRef.current = false;
-        if (fitView(0)) {
-          const center = fgRef.current?.centerAt();
-          const zoom = fgRef.current?.zoom();
-          if (center && zoom != null) {
-            initialView.current = { x: center.x, y: center.y, zoom };
-          }
+      // The view follows the container, frame for frame: when the card grows
+      // or shrinks — expanding over the editor, sharing the column with a
+      // second card, the column being dragged — the zoom is scaled by how much
+      // the fit for the new size differs from the fit for the old one. Scaled,
+      // not re-fitted: whatever the user had panned or zoomed to keeps its
+      // proportions instead of being thrown away, and an untouched view stays
+      // exactly fitted the whole way through the motion.
+      const box = fittedBoxRef.current;
+      const previousFitZoom = scaledFitZoomRef.current;
+      const fg = fgRef.current;
+      // The split between two cards being dragged is a mask sliding over the
+      // graph, not a new frame to fit: keep the scale, and counter however far
+      // the container's centre moved so every node stays where it was on
+      // screen. That is done with a CSS translate, not a camera pan: this
+      // callback runs before paint, while the canvas only redraws on its next
+      // animation frame — a pan would trail the card by a frame and shake.
+      // The fit for the new size is still recorded, so the next real resize
+      // scales from the right baseline.
+      const centerY = rect.top + rect.height / 2;
+      const previousCenterY = lastCenterYRef.current;
+      lastCenterYRef.current = centerY;
+      if (document.documentElement.hasAttribute('data-pane-split-drag')) {
+        if (box) scaledFitZoomRef.current = Math.max(0.01, fitZoomFor(box.width, box.height, rect.width, rect.height));
+        if (previousCenterY != null && canvasWrapRef.current) {
+          maskOffsetRef.current -= centerY - previousCenterY;
+          canvasWrapRef.current.style.transform = `translateY(${maskOffsetRef.current}px)`;
+        }
+        return;
+      }
+      if (box && previousFitZoom && fg) {
+        const nextFitZoom = Math.max(0.01, fitZoomFor(box.width, box.height, rect.width, rect.height));
+        const currentZoom = fg.zoom();
+        if (Number.isFinite(nextFitZoom) && currentZoom != null && Math.abs(nextFitZoom - previousFitZoom) > 1e-4) {
+          const ratio = nextFitZoom / previousFitZoom;
+          scaledFitZoomRef.current = nextFitZoom;
+          fg.resumeAnimation();
+          fg.zoom(currentZoom * ratio, 0);
+          if (lastFittedViewRef.current) lastFittedViewRef.current = { ...lastFittedViewRef.current, zoom: nextFitZoom };
         }
       }
-      // Note: no re-fit on container resize — the canvas is oversized and
-      // CSS-centred, so the camera stays stable on its own. Re-fitting here
-      // would discard the user's pan/zoom on every window/panel resize.
+
+      // Run a fit that was missed while the tab was hidden.
+      if (pendingFitRef.current) {
+        pendingFitRef.current = false;
+        fitView(0);
+      }
+      // Note: no canvas resize on container resize — the canvas is oversized
+      // and CSS-centred, so only the zoom has to follow.
     };
+
+    // When the drag ends the translate is folded into the camera. The pan
+    // lands on the canvas's next frame, so the translate is lifted in a frame
+    // callback queued after the graph's own — both in the same paint.
+    const flagObserver = new MutationObserver(() => {
+      if (document.documentElement.hasAttribute('data-pane-split-drag')) return;
+      const offset = maskOffsetRef.current;
+      const fg = fgRef.current;
+      const wrap = canvasWrapRef.current;
+      if (offset === 0 || !wrap) return;
+      maskOffsetRef.current = 0;
+      const zoom = fg?.zoom();
+      const center = fg?.centerAt();
+      if (fg && center && zoom) {
+        fg.resumeAnimation();
+        fg.centerAt(center.x, center.y - offset / zoom, 0);
+      }
+      requestAnimationFrame(() => { wrap.style.transform = ''; });
+    });
+    flagObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-pane-split-drag'] });
 
     apply();
     const observer = new ResizeObserver(() => apply());
@@ -346,6 +434,7 @@ export default function GraphView({
     window.addEventListener('resize', apply);
     return () => {
       observer.disconnect();
+      flagObserver.disconnect();
       window.removeEventListener('resize', apply);
     };
   }, [fitView]);
@@ -379,7 +468,8 @@ export default function GraphView({
     stableTopologyRef.current = { key: topologyKey, notes: topologyNotes, folders: folders ?? [] };
   }
 
-  const bgColor   = isDark ? '#2D2D2B' : '#FCFCFB';
+  // The card's own surface (RightPanel's PaneCard), not the page's.
+  const bgColor   = isDark ? '#313130' : '#FFFFFF';
   const linkColor = isDark ? '#8A8070' : '#9A9080';
   const textColor = isDark ? '#F9F9F7' : '#2D2D2B';
 
@@ -528,15 +618,6 @@ export default function GraphView({
     // rebuild reads it.
     prevNodesRef.current = graphData.nodes;
     if (!fgRef.current) return;
-    // A reset-view animation still running against the previous graph would
-    // keep writing stale positions and, on finish, restore force strengths
-    // computed for the old node count. Cancel it — the physics effect above
-    // has already reapplied the correct strengths for this graph.
-    if (resetAnimationRef.current != null) {
-      cancelAnimationFrame(resetAnimationRef.current);
-      resetAnimationRef.current = null;
-    }
-    initialPositions.current = new Map();
     // The hovered node may not exist in the rebuilt graph; a stale id would
     // dim every node and link with no way to recover until the next hover.
     setHoveredNodeId(null);
@@ -568,20 +649,11 @@ export default function GraphView({
     if (!pendingInitialCaptureRef.current) return;
     pendingInitialCaptureRef.current = false;
 
-    const snapshot = new Map<string, { x: number; y: number }>();
-    graphData.nodes.forEach((node) => {
-      if (node.x != null && node.y != null) snapshot.set(String(node.id), { x: node.x, y: node.y });
-    });
-    initialPositions.current = snapshot;
-
     // Fit only after the force engine has frozen the layout. Hidden graph tabs
     // defer the fit until their container has non-zero dimensions.
     const didFit = fitView(prefersReducedMotion() ? 0 : 300, LATE_FIT_MIN_DELTA);
     pendingFitRef.current = !didFit;
-    if (didFit && lastFittedViewRef.current) {
-      initialView.current = lastFittedViewRef.current;
-    }
-  }, [graphData, fitView]);
+  }, [fitView]);
 
   const fontFamily = resolveFontFamily(settings.appearance.fontFamily);
 
@@ -597,98 +669,6 @@ export default function GraphView({
     }
     return (node.degree ?? 0) > 0 ? nodeColor : (isDark ? '#5A5648' : '#B0AA9E');
   }, [tagColorMap, nodeColor, isDark, colorMode]);
-
-  const zoomBy = useCallback((scale: number) => {
-    const graph = fgRef.current;
-    const cur = graph?.zoom();
-    if (cur == null) return;
-    graph?.resumeAnimation();
-    graph?.zoom(cur * scale, prefersReducedMotion() ? 0 : 200);
-  }, []);
-
-  const zoomControls = [
-    { icon: <ZoomIn size={10} />, title: 'Zoom in', action: () => zoomBy(1.3) },
-    { icon: <ZoomOut size={10} />, title: 'Zoom out', action: () => zoomBy(0.77) },
-    { icon: <Maximize2 size={10} />, title: 'Reset view', action: () => {
-      if (resetAnimationRef.current != null) {
-        cancelAnimationFrame(resetAnimationRef.current);
-        resetAnimationRef.current = null;
-      }
-      const snapshot = initialPositions.current;
-      if (snapshot.size === 0) {
-        fgRef.current?.resumeAnimation();
-        fitView(300);
-        return;
-      }
-
-      const duration = prefersReducedMotion() ? 0 : 720;
-      const start = performance.now();
-      const from = new Map(graphData.nodes.map((node) => [String(node.id), { x: node.x ?? 0, y: node.y ?? 0 }]));
-      const chargeForce = fgRef.current?.d3Force('charge');
-      const linkForce = fgRef.current?.d3Force('link');
-      const previousAlphaTarget = hasAlphaTarget(fgRef.current) ? fgRef.current.d3AlphaTarget() as number : null;
-      const targetView = initialView.current;
-
-      if (hasStrength(chargeForce)) chargeForce.strength(0);
-      if (hasStrength(linkForce)) linkForce.strength(0);
-      if (hasAlphaTarget(fgRef.current)) fgRef.current.d3AlphaTarget(0);
-      graphData.nodes.forEach((node) => {
-        node.fx = node.x;
-        node.fy = node.y;
-      });
-      if (targetView) {
-        fgRef.current?.centerAt(targetView.x, targetView.y, duration);
-        fgRef.current?.zoom(targetView.zoom, duration);
-      }
-      fgRef.current?.resumeAnimation();
-      fgRef.current?.d3ReheatSimulation();
-
-      const tick = (now: number) => {
-        const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
-        const ease = smoothStep(t);
-        graphData.nodes.forEach((node) => {
-          const target = snapshot.get(String(node.id));
-          const origin = from.get(String(node.id));
-          if (!target || !origin) return;
-          const x = origin.x + (target.x - origin.x) * ease;
-          const y = origin.y + (target.y - origin.y) * ease;
-          node.x = x;
-          node.y = y;
-          node.fx = x;
-          node.fy = y;
-        });
-
-        if (t < 1) {
-          resetAnimationRef.current = requestAnimationFrame(tick);
-          return;
-        }
-
-        graphData.nodes.forEach((node) => {
-          const target = snapshot.get(String(node.id));
-          if (!target) return;
-          node.x = target.x;
-          node.y = target.y;
-          node.vx = 0;
-          node.vy = 0;
-          node.fx = target.x;
-          node.fy = target.y;
-        });
-        const n = graphData.nodes.length;
-        if (hasStrength(chargeForce)) chargeForce.strength(graphChargeStrength(n));
-        if (hasStrength(linkForce)) linkForce.strength(LINK_STRENGTH);
-        if (hasAlphaTarget(fgRef.current) && typeof previousAlphaTarget === 'number') {
-          fgRef.current.d3AlphaTarget(previousAlphaTarget);
-        }
-        graphData.nodes.forEach((node) => {
-          node.fx = undefined;
-          node.fy = undefined;
-        });
-        fgRef.current?.resumeAnimation();
-        resetAnimationRef.current = null;
-      };
-      resetAnimationRef.current = requestAnimationFrame(tick);
-    }},
-  ];
 
   // Re-arm the perf banner once the graph shrinks back below the threshold.
   const overPerfThreshold = graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD;
@@ -722,7 +702,7 @@ export default function GraphView({
           </span>
         </div>
       )}
-      <div style={{ width: canvasSize.width, height: canvasSize.height, flexShrink: 0 }}>
+      <div ref={canvasWrapRef} style={{ width: canvasSize.width, height: canvasSize.height, flexShrink: 0 }}>
       <ForceGraph2D
         ref={fgRef}
         width={canvasSize.width}
@@ -807,7 +787,7 @@ export default function GraphView({
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
           const degree = node.degree ?? 0;
-          const radius = nodeRadius(degree, sizeByDegree);
+          const radius = nodeRadius(degree, sizeByDegree) * zoomDamp(globalScale);
           const isActive = activeNoteId && String(node.id) === activeNoteId;
           const isHovered = hoveredNodeId === String(node.id);
           const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
@@ -858,11 +838,11 @@ export default function GraphView({
 
           if (labelAlpha > 0) {
             // globalScale is the zoom factor and ctx is already scaled by it, so
-            // dividing keeps labels at a constant 8 screen px. Do NOT clamp this
+            // dividing keeps labels at a set screen size. Do NOT clamp this
             // in world units — a `Math.max(6, …)` floor only bites past zoom 1.33
             // and then grows labels linearly with zoom (36px at 6×). The small
             // end is handled by labelAlpha fading them out, not by a size floor.
-            const fontSize = 8 / globalScale;
+            const fontSize = labelScreenSize(globalScale) / globalScale;
             ctx.font = `${fontSize}px ${fontFamily}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -884,7 +864,7 @@ export default function GraphView({
         }}
         nodePointerAreaPaint={(node: GraphNode, color, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
-          const radius = nodeRadius(node.degree ?? 0, sizeByDegree);
+          const radius = nodeRadius(node.degree ?? 0, sizeByDegree) * zoomDamp(globalScale);
           ctx.fillStyle = color;
           ctx.beginPath();
           // Slightly larger hit area makes node drags less likely to start a canvas
@@ -937,23 +917,6 @@ export default function GraphView({
           );
         })}
       </nav>
-      {/* right-2.5 matches the header's own px-2.5, so the filter pill above
-          and this pad share the same right inset instead of drifting by the
-          2px that right-2 used to leave on the table. */}
-      <div className="noa-graph-control-surface absolute bottom-2 right-2.5 flex flex-row rounded-md p-0.5 gap-0.5">
-        {zoomControls.map(({ icon, title, action }) => (
-          <button
-            key={title}
-            onClick={action}
-            title={title}
-            className={`noa-graph-control-button w-5 h-5 rounded active:opacity-70 flex items-center justify-center transition-colors hover:text-[#CC7D5E] ${
-              isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[rgba(45,45,43,0.6)]'
-            }`}
-          >
-            {icon}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

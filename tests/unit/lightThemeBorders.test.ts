@@ -35,9 +35,7 @@ describe('light theme border tokens', () => {
     expect(themeInjector.split(sharedDividerRecipe)).toHaveLength(3);
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', '#E6E2DA');");
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');");
-    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
     expect(editorHeader).toContain('editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)]');
-    expect(topBar).toContain('after:bg-[var(--divider-subtle)]');
     expect(previewPane).toContain("const borderColor = 'var(--divider-subtle, #E6E2DA)';");
   });
 
@@ -56,7 +54,9 @@ describe('light theme border tokens', () => {
     expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
     expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
-    expect(rightPanel).toContain("const borderCol = 'var(--divider-subtle, #E6E2DA)';");
+    // The graph filter drawer no longer draws boxed controls; its one rule is
+    // the shared divider.
+    expect(rightPanel).toContain('border-b border-[var(--divider-subtle)] pb-3 pt-1');
   });
 
   it('scopes all ordinary settings-panel borders to the divider token', async () => {
@@ -117,9 +117,10 @@ describe('light theme border tokens', () => {
   });
 
   it('keeps preview tables and graph cards at the default border weight', async () => {
-    const [previewPane, rightPanel, indexCss] = await Promise.all([
+    const [previewPane, rightPanel, paneTabs, indexCss] = await Promise.all([
       readFile(previewPanePath, 'utf8'),
       readFile(rightPanelPath, 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/components/rightPanel/PaneTabs.tsx', import.meta.url)), 'utf8'),
       readFile(indexCssPath, 'utf8'),
     ]);
 
@@ -135,19 +136,21 @@ describe('light theme border tokens', () => {
     expect(indexCss).toContain('calc(var(--noa-fade-top, 0) *');
     expect(rightPanel).not.toContain("border-[#2D2D2B]/90 bg-[#F9F9F7]");
     expect(rightPanel).not.toContain("border-[#2D2D2B]}`");
-    expect(rightPanel).toContain("'var(--divider-subtle, #E6E2DA)'");
     expect(rightPanel).not.toContain("'rgba(45,45,43,0.1)'");
     expect(rightPanel).toContain('h-10 shrink-0 flex items-center px-2');
-    expect(rightPanel).toContain("activeTab === 'graph' ? 'h-0' : 'h-2'");
-    expect(rightPanel).toContain('flex-1 flex-col overflow-hidden px-2 pb-2 pt-2 gap-2');
+    // The column is a stack of floating cards: their ring is a box-shadow in
+    // index.css, and the graph card no longer nests two bordered cards.
+    expect(rightPanel).toContain('flex-1 min-h-0 flex flex-col px-2 pb-2');
+    expect(rightPanel).not.toContain('noa-elevated-panel');
+    // The card shadow has to fit the 8px gutter, so it is not the 10px-blur ambient one.
+    expect(indexCss).toMatch(/\.noa-pane-card \{[^}]*0 0 0 1px rgba\(45, 45, 43, 0\.08\),[^}]*0 1px 8px -1px rgba\(45, 45, 43, 0\.17\);/);
+    expect(indexCss).not.toMatch(/\.noa-pane-card \{[^}]*var\(--shadow-ambient\)/);
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
     expect(rightPanel).toContain("background: isDark ? '#252523' : '#ECEAE6'");
     expect(rightPanel).toContain(": 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)'");
-    expect(rightPanel).toContain('relative flex items-center justify-center transition-colors');
-    expect(rightPanel).toContain("inTitlebar ? 'h-[26px] w-9 shrink-0 cursor-pointer rounded' : 'flex-1 h-6 rounded-md'");
-    // Titlebar tabs sit on the bare bar: a soft fill, no raised-pill shadow.
-    expect(rightPanel).toContain("'rgba(45,45,43,0.07)'");
-    expect(rightPanel).toContain(": '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)'");
+    expect(paneTabs).toContain('relative flex items-center justify-center transition-colors');
+    expect(paneTabs).toContain('transition-colors flex-1 h-6 rounded-md');
+    expect(paneTabs).toContain(": '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)'");
   });
 
   it('uses the shared divider for linked-mention separators and cards', async () => {
@@ -162,28 +165,25 @@ describe('light theme border tokens', () => {
     );
   });
 
-  it('uses a subtle baseline beneath the editor tab strip', async () => {
-    const editorHeader = await readFile(editorHeaderPath, 'utf8');
+  it('draws no baseline beneath the editor tab strip', async () => {
+    // Tabs are free-standing pills, not tabs hanging off a rule: the titlebar
+    // row and the editor below it are one surface.
+    const [editorHeader, topBar, indexCss] = await Promise.all([
+      readFile(editorHeaderPath, 'utf8'),
+      readFile(topBarPath, 'utf8'),
+      readFile(indexCssPath, 'utf8'),
+    ]);
 
-    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
-    expect(editorHeader).not.toContain("after:bg-[#2D2D2B]'}");
+    expect(editorHeader).not.toContain('after:h-px');
+    expect(topBar).not.toContain('after:h-px');
+    expect(indexCss).not.toMatch(/\.noa-editor-header-floor::before \{[^}]*border-bottom/);
+    expect(indexCss).toContain('.editor-tab[data-active-tab="true"] {');
   });
 
   it('keeps the tab strip on the editor canvas instead of a separate tinted surface', async () => {
     const editorHeader = await readFile(editorHeaderPath, 'utf8');
 
     expect(editorHeader).toContain("isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'");
-    expect(editorHeader).toContain('after:bg-[var(--divider-subtle)]');
-  });
-
-  it('starts the lifted tab-strip baseline after the visible desktop sidebar', async () => {
-    const topBar = await readFile(topBarPath, 'utf8');
-
-    expect(topBar).not.toContain('after:inset-x-0');
-    expect(topBar).toContain('const isSidebarVisible = isSidebarOpen || isSidebarPreviewOpen');
-    expect(topBar).toContain("!isMobile && isSidebarVisible ? 'after:left-[var(--noa-sidebar-width,325px)]' : 'after:left-0'");
-    expect(topBar).toContain('after:absolute after:right-0 after:bottom-0 after:h-px');
-    expect(topBar).toContain('after:bg-[var(--divider-subtle)]');
   });
 
   it('collapses export and version history into one overflow menu', async () => {
@@ -197,7 +197,8 @@ describe('light theme border tokens', () => {
     expect(editorHeader).not.toContain('onToggleHistory');
     expect(editorHeader).not.toContain('setViewMode');
 
-    expect(editorActions).toContain('<MoreHorizontal size={14} />');
+    // Not a second "more" glyph: the titlebar's panel menu sits right above it.
+    expect(editorActions).toContain('<Upload size={14} />');
     expect(editorActions).toContain('aria-haspopup="menu"');
     expect(editorActions).toContain('Version History');
     expect(editorActions).toContain('Export as Markdown');
@@ -267,7 +268,7 @@ describe('light theme border tokens', () => {
       readFile(indexCssPath, 'utf8'),
       readFile(fileURLToPath(new URL('../../src/main.tsx', import.meta.url)), 'utf8'),
     ]);
-    expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 82.5px; }');
+    expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }');
     expect(indexCss).toContain(':root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }');
     expect(main).toContain("if (window.noaDesktop) document.documentElement.dataset.desktop = 'true';");
   });
@@ -311,7 +312,8 @@ describe('light theme border tokens', () => {
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
     expect(app).not.toContain("left: 'var(--noa-sidebar-width, 325px)'");
-    expect(app).toContain("right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px'");
+    // The right column's cards carry their own edge; no rule divides it from the editor.
+    expect(app).not.toContain('data-right-panel-separator');
     expect(app).not.toContain('borderRightWidth: isFocusMode ? 0 : 1');
     expect(app).not.toContain('borderLeftWidth: isFocusMode ? 0 : 1');
   });
@@ -340,10 +342,10 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain("noa-editor-header-floor");
     // Scoped to the rule body on purpose: a bare toContain('pointer-events: none;')
     // matches a dozen unrelated rules in this file and proves nothing about this
-    // one. These two declarations are what make the floor paint at all and carry
-    // the divider; the e2e test measures the result, this pins the source.
+    // one. These two declarations are what make the floor paint at all and keep
+    // it from swallowing the buttons it crosses.
     expect(indexCss).toMatch(
-      /\.noa-editor-header-floor::before \{[^}]*\bright: 100%;[^}]*\bborder-bottom: 1px solid var\(--divider-subtle, #E6E2DA\);[^}]*\bpointer-events: none;[^}]*\}/,
+      /\.noa-editor-header-floor::before \{[^}]*\bright: 100%;[^}]*\bpointer-events: none;[^}]*\}/,
     );
     expect(indexCss).toMatch(/\.noa-editor-header-floor-reserved::before \{\s*left: calc\(-1 \* var\(--noa-titlebar-reserve\)\);\s*\}/);
     expect(editor).toContain('reserveTitlebarTraffic?: boolean;');
@@ -382,9 +384,10 @@ describe('light theme border tokens', () => {
     // together or the masking edge and its content come apart.
     expect(indexCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\[data-sidebar-container\],\s*\[data-sidebar-content-layer="true"\],\s*\[data-sidebar-separator="true"\],\s*\[data-sidebar-column-surface="true"\],\s*\[data-titlebar="true"\]::after \{\s*transition: none !important;/);
     expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 320ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
-    // The right panel still slides, so it must keep its fixed width throughout.
+    // The right panel keeps its fixed width while it is off screen. On desktop
+    // it snaps open and shut; only the phone drawer slides.
     expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px'");
-    expect(app).toContain("transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)')");
+    expect(app).toContain("transition: isMobile && !isDraggingRightPanel ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");
   });
 

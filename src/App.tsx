@@ -17,6 +17,7 @@ import TemplatePickerDialog from './components/TemplatePickerDialog';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
 import VaultOnboardingDialog from './components/VaultOnboardingDialog';
+import type { RightTab } from './constants/rightTabs';
 import { STORAGE_KEYS } from './constants/storageKeys';
 import { useAutoBackup } from './hooks/useAutoBackup';
 import { useCommandPalette } from './hooks/useCommandPalette';
@@ -25,6 +26,7 @@ import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useGlobalTasks } from './hooks/useGlobalTasks';
 import { PANEL_MAX_WIDTH, RIGHT_PANEL_MIN_WIDTH, SIDEBAR_MIN_WIDTH, useLayout } from './hooks/useLayout';
 import { useNotes } from './hooks/useNotes';
+import { usePaneBadges } from './hooks/usePaneBadges';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
 import { useSettings } from './hooks/useSettings';
 import { useSidebarPreview } from './hooks/useSidebarPreview';
@@ -39,6 +41,9 @@ const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 // The preview's elevation (index.css .noa-sidebar-preview-shell, the
 // rounded-r corner, the --bg-primary floor) drops on the same 320ms clock as
 // the promotion spacer, so the panel settles while the editor makes room.
+// Stable identity for "no card lit" so a collapsed column does not hand the
+// titlebar a fresh array on every render.
+const NO_PANES: readonly RightTab[] = [];
 const SIDEBAR_PROMOTION_EDGE_CLOCK = '320ms cubic-bezier(0.4, 0, 0.2, 1)';
 const SIDEBAR_PROMOTION_SURFACE_TRANSITION = [
   `box-shadow ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
@@ -435,8 +440,11 @@ export default function App() {
     setIsSidebarOpen,
     isRightPanelOpen,
     setIsRightPanelOpen,
-    activeRightTab,
-    setActiveRightTab,
+    openPanes,
+    togglePane,
+    showOnlyPane,
+    expandedPane,
+    toggleExpandedPane,
     isDraggingSidebar,
     isDraggingRightPanel,
     setIsDraggingSidebar,
@@ -520,6 +528,17 @@ export default function App() {
   // restored as open, mount it on the next frame so the app shell can paint
   // first. Once mounted, retain it across toggles to preserve panel state and
   // make subsequent opens instantaneous.
+  // An expanded card stretches the column over the editor, so the column
+  // leaves the flow for it. Nothing here is animated: the column opens,
+  // closes and expands in one frame.
+  const isPaneExpanded = expandedPane !== null && !isFocusMode;
+  const isRightPanelFloating = isPaneExpanded;
+  const rightPanelColumnWidth = isPaneExpanded
+    // 1px short of the sidebar: its divider sits on that pixel, and covering it
+    // leaves the sidebar with no edge.
+    ? (isSidebarOpen ? 'calc(100vw - var(--noa-sidebar-width, 325px) - 1px)' : '100vw')
+    : 'var(--noa-right-panel-width, 340px)';
+
   const [hasMountedRightPanel, setHasMountedRightPanel] = useState(false);
   useEffect(() => {
     if (!isLoaded || !isRightPanelOpen || hasMountedRightPanel) return;
@@ -605,6 +624,7 @@ export default function App() {
   }, [primaryNoaFolderId, handleCreateNote, openTabForNote]);
 
   const globalTasks = useGlobalTasks(notes);
+  const paneBadges = usePaneBadges(notes, folders, activeNoteId, globalTasks);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
 
   // Detect orphan activeNoteId: the note was deleted in another tab/window.
@@ -829,19 +849,6 @@ export default function App() {
       {!isMobile && !isFocusMode && (
         <div
           aria-hidden="true"
-          data-right-panel-separator="true"
-          className="pointer-events-none absolute top-0 bottom-0 z-20"
-          style={{
-            right: isRightPanelOpen ? 'var(--noa-right-panel-width, 340px)' : '-1px',
-            width: '1px',
-            backgroundColor: 'var(--panel-divider, #2D2D2B)',
-            transition: isDraggingRightPanel ? 'none' : 'right 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        />
-      )}
-      {!isMobile && !isFocusMode && (
-        <div
-          aria-hidden="true"
           data-sidebar-column-surface="true"
           data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}
           data-sidebar-preview-shell={isSidebarPreviewOpen ? 'true' : undefined}
@@ -886,10 +893,12 @@ export default function App() {
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isSidebarOpen={isSidebarOpen}
         isSidebarMaterialActive={isSidebarMaterialActive}
-        isSidebarPreviewOpen={isSidebarPreviewOpen}
         isRightPanelOpen={isRightPanelOpen}
+        activePanes={isRightPanelOpen ? openPanes : NO_PANES}
+        onTogglePane={togglePane}
+        paneBadges={paneBadges}
+        isRightPanelCovering={isRightPanelFloating}
         isMobile={isMobile}
-        hasOpenNote={Boolean(activeNoteId)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearchOpen={isSearchOpen}
@@ -917,7 +926,10 @@ export default function App() {
           />
         )}
 
-        {!isMobile && isPromotingSidebarPreview && (
+        {/* !isFocusMode in the condition itself: useSidebarPreview resets the
+            phase from a passive effect, which lands a tick after the commit
+            that enters focus mode. The spacer must be gone in that commit. */}
+        {!isMobile && !isFocusMode && isPromotingSidebarPreview && (
           <div
             aria-hidden="true"
             data-sidebar-promotion-spacer="true"
@@ -1109,7 +1121,7 @@ export default function App() {
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
                 liftTabStrip={!isMobile && !isFocusMode}
                 reserveTitlebarTraffic={!isMobile && !isFocusMode && !isSidebarOpen}
-                reserveTitlebarActions={!isMobile && !isFocusMode && !isRightPanelOpen}
+                reserveTitlebarActions={!isMobile && !isFocusMode}
                 onRestoreSnapshot={restoreSnapshotGuarded}
                 readOnly={(vaultCacheReadOnly || authoritativeSyncInProgress || hasPendingStructuralOperations) && activeNote?.origin === 'vault'}
                 attachmentMutationsDisabled={!isDataReady || activeNote?.origin === 'vault'}
@@ -1139,28 +1151,53 @@ export default function App() {
           // Exactly one position class: with both `relative` and `absolute`
           // on the element, Tailwind's source order let `relative` win, so the
           // mobile overlay stayed in flow and squeezed the editor to ~80px.
-          className={`flex shrink-0 min-h-0 overflow-hidden ${isMobile ? 'absolute inset-y-0 right-0 z-40 shadow-xl' : 'relative'}`}
+          // Desktop: lifted over the 44px titlebar so the cards run to the top
+          // of the window. Focus mode has no titlebar to lift over.
+          //
+          // Expanded: out of flow and stretched over the editor's area, up to
+          // the sidebar's edge. Out of flow so the editor underneath keeps its
+          // own width instead of being squeezed to nothing and laid out again
+          // on every frame of the stretch. With the sidebar closed the titlebar
+          // holds the traffic lights and the sidebar toggle, so the column
+          // stays below it rather than lifting over them.
+          className={`flex shrink-0 min-h-0 overflow-hidden ${
+            isMobile
+              ? 'absolute inset-y-0 right-0 z-40 shadow-xl'
+              : isRightPanelFloating
+                ? `absolute bottom-0 right-0 z-[35] ${isFocusMode || (isPaneExpanded && !isSidebarOpen) ? 'top-0' : '-top-11'}`
+                : `relative z-[35] ${isFocusMode ? '' : '-mt-11'}`
+          }`}
+          data-right-panel-column="true"
           style={{
-            width: isMobile ? '80%' : 'var(--noa-right-panel-width, 340px)',
+            width: isMobile ? '80%' : rightPanelColumnWidth,
             maxWidth: isMobile ? '320px' : undefined,
             marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px',
             transform: isMobile
               ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
               : undefined,
-            transition: isDraggingRightPanel ? 'none' : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'),
+            // Only the phone drawer slides. On desktop the column snaps.
+            transition: isMobile && !isDraggingRightPanel ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
             minWidth: 0,
-          }}
+            // The column is lifted over the titlebar, which is a window drag
+            // region. Electron resolves drag regions by geometry, not z-order:
+            // without this the titlebar underneath swallows every click on the
+            // top 44px of the cards.
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
         >
           <div
             style={{
-              width: isMobile ? '80vw' : 'var(--noa-right-panel-width, 340px)',
+              width: isMobile ? '80vw' : rightPanelColumnWidth,
               maxWidth: isMobile ? '320px' : undefined,
             }}
             className="flex h-full min-h-0 shrink-0"
           >
-            {!isMobile && (
+            {/* No handle while a card is expanded: the width is not the
+                user's to set there. */}
+            {!isMobile && !isRightPanelFloating && (
               <div
-                className="noa-resize-handle w-1.5 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20"
+                className="noa-resize-handle group w-2 bg-transparent cursor-col-resize absolute left-0 top-0 bottom-0 z-20 flex items-center"
+                title="Resize"
                 data-edge="left"
                 data-dragging={isDraggingRightPanel ? 'true' : undefined}
                 onMouseDown={() => setIsDraggingRightPanel(true)}
@@ -1175,7 +1212,17 @@ export default function App() {
                   if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeRightPanelWidth(16); }
                   if (e.key === 'ArrowRight') { e.preventDefault(); nudgeRightPanelWidth(-16); }
                 }}
-              />
+              >
+                {/* The same grip as the one between two cards (RightPanel): the
+                    column has no divider line any more, so this is the only
+                    sign that its edge can be dragged. It sits in the 8px gutter
+                    beside the cards, against the editor side: centred there it
+                    was 2px off the card and read as stuck to it. */}
+                <span
+                  aria-hidden="true"
+                  className={`ml-px h-9 w-[3px] rounded-full bg-[var(--text-primary,#2D2D2B)] transition-opacity duration-150 ${isDraggingRightPanel ? 'opacity-70' : 'opacity-0 group-hover:opacity-50 group-focus-visible:opacity-50'}`}
+                />
+              </div>
             )}
             {hasMountedRightPanel && <div className="flex-1 min-h-0 overflow-hidden" data-noa-right-panel-content>
               <ErrorBoundary>
@@ -1185,16 +1232,18 @@ export default function App() {
                   onToggleTask={handleToggleTaskGuarded}
                   onNavigateToNoteById={handleRightPanelNavigate}
                   activeNote={activeNote}
-                  activeTab={activeRightTab}
-                  onTabChange={setActiveRightTab}
+                  openPanes={openPanes}
+                  onTogglePane={togglePane}
+                  onShowOnlyPane={showOnlyPane}
+                  badges={paneBadges}
+                  single={isMobile}
+                  expandedPane={isPaneExpanded ? expandedPane : null}
+                  onToggleExpandPane={toggleExpandedPane}
                   notes={notes}
                   folders={folders}
                   settings={settings}
                   activeNoteId={activeNote?.id}
                   onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
-                  // Stays true while the panel is closed so the strip can play
-                  // its slide-out; TopBar drives the open/closed transform.
-                  tabsInTitlebar={!isMobile && !isFocusMode}
                 />
               </Suspense>
               </ErrorBoundary>

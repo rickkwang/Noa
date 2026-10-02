@@ -24,7 +24,7 @@ export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNot
   // gets its own message instead of folding into the same "0" the panel uses
   // for a real, linkless note.
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-2 pb-3 pt-2 font-redaction">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll px-1 pb-3 pt-2 font-redaction">
       {!activeNote ? (
         <LinkNoNoteState isDark={isDark} />
       ) : (

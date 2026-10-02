@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { DEFAULT_RIGHT_TAB, isRightTab, RightTab } from '../constants/rightTabs';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import type { RightTab } from '../constants/rightTabs';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { parseOpenPanes, togglePane as togglePaneState } from '../lib/paneState';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { useResizeDrag } from './useResizeDrag';
 
@@ -18,6 +19,7 @@ export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
 // screen reader announcing this range is the only place it is ever spoken.
 export const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
+const GRAPH_PANEL_MAX_VIEWPORT_RATIO = 0.7;
 
 // Every box that reads --noa-sidebar-width while a drag is running, paired with
 // the declaration it resolves into. A pointermove already lands one value per
@@ -43,6 +45,10 @@ const SIDEBAR_DRAG_TARGETS: ReadonlyArray<readonly [selector: string, property: 
   // this one stays a variable write, scoped to the titlebar's own small subtree
   // instead of the document.
   ['[data-titlebar="true"]', '--noa-sidebar-width'],
+  // A card expanded over the editor sizes the right column from the sidebar's
+  // edge, through calc(), so it needs the variable too — again scoped to its
+  // own subtree. Without it the expanded card only catches up when the drag ends.
+  ['[data-right-panel-column="true"]', '--noa-sidebar-width'],
 ];
 
 // `floor` is required: every caller must say which panel's default it is
@@ -62,10 +68,34 @@ export function useLayout() {
     const saved = lsGet(STORAGE_KEYS.RIGHT_PANEL_OPEN);
     return saved !== null ? saved === 'true' : true;
   });
-  const [activeRightTab, setActiveRightTab] = useState<RightTab>(() => {
-    const saved = lsGet(STORAGE_KEYS.RIGHT_TAB);
-    return isRightTab(saved) ? saved : DEFAULT_RIGHT_TAB;
-  });
+  const [openPanes, setOpenPanes] = useState<readonly RightTab[]>(() => (
+    parseOpenPanes(lsGet(STORAGE_KEYS.RIGHT_PANES), lsGet(STORAGE_KEYS.RIGHT_TAB))
+  ));
+  // One card can take over the editor's area. Not persisted: a restart should
+  // land on the note, not on a panel covering it.
+  const [expandedPaneRequest, setExpandedPane] = useState<RightTab | null>(null);
+  const expandedPane = !isMobile && isRightPanelOpen && expandedPaneRequest !== null && openPanes.includes(expandedPaneRequest)
+    ? expandedPaneRequest
+    : null;
+  const toggleExpandedPane = useCallback((id: RightTab) => {
+    setExpandedPane((current) => (current === id ? null : id));
+  }, []);
+  // The graph needs area the other cards do not. Showing alone, it takes the
+  // widest column the drag handle allows; the moment a second card joins, the
+  // column goes back to the width the user set.
+  const isRightPanelWide = !isMobile && openPanes.length === 1 && openPanes[0] === 'graph';
+  const togglePane = useCallback((id: RightTab) => {
+    const next = togglePaneState({ open: isRightPanelOpen, panes: openPanes }, id);
+    setIsRightPanelOpen(next.open);
+    setOpenPanes(next.panes);
+    // Any change to the card set drops the takeover, so a card reopened later
+    // does not come back still expanded.
+    setExpandedPane(null);
+  }, [isRightPanelOpen, openPanes]);
+
+  // The phone drawer has room for one card, so its tab strip replaces rather
+  // than toggles.
+  const showOnlyPane = useCallback((id: RightTab) => setOpenPanes([id]), []);
   const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
     const saved = lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE);
     const valid = ['edit', 'preview', 'split'] as const;
@@ -124,8 +154,25 @@ export function useLayout() {
       override.element.style.setProperty(override.property, `${size}px`);
     }
   }, []);
+  // Same reasoning as SIDEBAR_DRAG_TARGETS: during a drag the width goes onto
+  // the two boxes that read it — the column and the titlebar actions anchored
+  // to its edge — instead of onto documentElement, where every frame would
+  // invalidate style for the whole document.
+  const rightPanelDragTargetsRef = useRef<HTMLElement[] | null>(null);
+  const previewedRightPanelWidthRef = useRef(RIGHT_PANEL_DEFAULT_WIDTH);
   const previewRightPanelWidth = useCallback((size: number) => {
-    document.documentElement.style.setProperty('--noa-right-panel-width', `${size}px`);
+    previewedRightPanelWidthRef.current = size;
+    const targets = rightPanelDragTargetsRef.current;
+    if (!targets) {
+      document.documentElement.style.setProperty('--noa-right-panel-width', `${size}px`);
+      return;
+    }
+    for (const target of targets) target.style.setProperty('--noa-right-panel-width', `${size}px`);
+  }, []);
+  // How wide the graph may be dragged when it has the column to itself: well
+  // past the shared ceiling, but never so far that the editor disappears.
+  const getGraphPanelValue = useCallback((e: MouseEvent) => {
+    return Math.min(window.innerWidth - e.clientX, window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO);
   }, []);
 
   const {
@@ -137,8 +184,8 @@ export function useLayout() {
   const {
     size: rightPanelWidth,
     setSize: setRightPanelWidth,
-    isDragging: isDraggingRightPanel,
-    setIsDragging: setIsDraggingRightPanel,
+    isDragging: isDraggingSharedPanel,
+    setIsDragging: setIsDraggingSharedPanel,
   } = useResizeDrag(
     RIGHT_PANEL_DEFAULT_WIDTH,
     RIGHT_PANEL_MIN_WIDTH,
@@ -147,6 +194,56 @@ export function useLayout() {
     'col-resize',
     previewRightPanelWidth
   );
+  // The graph alone has a width of its own. It opens at the column's ceiling
+  // and, once dragged, keeps what it was dragged to — without touching the
+  // width the other cards share, which it would otherwise drag wide with it.
+  const {
+    size: graphPanelWidth,
+    setSize: setGraphPanelWidth,
+    isDragging: isDraggingGraphPanel,
+    setIsDragging: setIsDraggingGraphPanel,
+  } = useResizeDrag(
+    PANEL_MAX_WIDTH,
+    RIGHT_PANEL_MIN_WIDTH,
+    Number.MAX_SAFE_INTEGER,
+    getGraphPanelValue,
+    'col-resize',
+    previewRightPanelWidth
+  );
+  const [hasGraphPanelWidth, setHasGraphPanelWidth] = useState(false);
+  const isDraggingRightPanel = isDraggingSharedPanel || isDraggingGraphPanel;
+  const setIsDraggingRightPanel = useCallback((dragging: boolean) => {
+    if (!dragging) {
+      setIsDraggingSharedPanel(false);
+      setIsDraggingGraphPanel(false);
+    } else if (isRightPanelWide) {
+      // Start from the width on screen. Until the first drag that is the CSS
+      // ceiling, not this state's initial value, and adopting the state as it
+      // stands would jump the column before the pointer has moved.
+      const column = document.querySelector<HTMLElement>('[data-right-panel-column="true"]');
+      const current = column?.getBoundingClientRect().width;
+      if (current) setGraphPanelWidth(current);
+      setHasGraphPanelWidth(true);
+      setIsDraggingGraphPanel(true);
+    } else {
+      setIsDraggingSharedPanel(true);
+    }
+  }, [isRightPanelWide, setIsDraggingSharedPanel, setIsDraggingGraphPanel, setGraphPanelWidth]);
+  useEffect(() => {
+    if (!isDraggingRightPanel) return;
+    const targets = Array.from(document.querySelectorAll<HTMLElement>(
+      '[data-right-panel-column="true"], [data-right-panel-anchor="true"]',
+    ));
+    rightPanelDragTargetsRef.current = targets;
+    return () => {
+      rightPanelDragTargetsRef.current = null;
+      document.documentElement.style.setProperty(
+        '--noa-right-panel-width',
+        `${previewedRightPanelWidthRef.current}px`,
+      );
+      for (const target of targets) target.style.removeProperty('--noa-right-panel-width');
+    };
+  }, [isDraggingRightPanel]);
 
   // The translucent sidebar paints its veil from a pseudo-element on the app
   // shell, and a pseudo can only read an inherited property from the element it
@@ -183,14 +280,38 @@ export function useLayout() {
     [clampSidebarWidth, setSidebarWidth]
   );
   const nudgeRightPanelWidth = useCallback(
-    (delta: number) => setRightPanelWidth(w => clampRightPanelWidth(w + delta)),
-    [clampRightPanelWidth, setRightPanelWidth]
+    (delta: number) => {
+      if (!isRightPanelWide) {
+        setRightPanelWidth(w => clampRightPanelWidth(w + delta));
+        return;
+      }
+      setHasGraphPanelWidth(true);
+      setGraphPanelWidth(w => Math.max(
+        RIGHT_PANEL_MIN_WIDTH,
+        Math.min(w + delta, window.innerWidth * GRAPH_PANEL_MAX_VIEWPORT_RATIO),
+      ));
+    },
+    [clampRightPanelWidth, setRightPanelWidth, setGraphPanelWidth, isRightPanelWide]
   );
 
-  useEffect(() => {
+  // Layout effect: with the graph showing alone the column's width is not the
+  // 340px the CSS fallbacks carry, so the variable has to be in place before
+  // the first paint or the column opens narrow and jumps.
+  useLayoutEffect(() => {
     previewSidebarWidth(sidebarWidth);
-    previewRightPanelWidth(rightPanelWidth);
-  }, [previewSidebarWidth, previewRightPanelWidth, rightPanelWidth, sidebarWidth]);
+    if (isRightPanelWide && hasGraphPanelWidth) {
+      previewRightPanelWidth(graphPanelWidth);
+    } else if (isRightPanelWide) {
+      // The same ceiling the drag handle stops at, written as CSS so it follows
+      // the window without a resize listener.
+      document.documentElement.style.setProperty(
+        '--noa-right-panel-width',
+        `max(${rightPanelWidth}px, min(${PANEL_MAX_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`,
+      );
+    } else {
+      previewRightPanelWidth(rightPanelWidth);
+    }
+  }, [previewSidebarWidth, previewRightPanelWidth, rightPanelWidth, graphPanelWidth, hasGraphPanelWidth, sidebarWidth, isRightPanelWide]);
 
   const wasMobileRef = useRef(false);
   useEffect(() => {
@@ -218,9 +339,9 @@ export function useLayout() {
   useEffect(() => {
     lsSet(STORAGE_KEYS.SIDEBAR_OPEN, String(isSidebarOpen));
     lsSet(STORAGE_KEYS.RIGHT_PANEL_OPEN, String(isRightPanelOpen));
-    lsSet(STORAGE_KEYS.RIGHT_TAB, activeRightTab);
+    lsSet(STORAGE_KEYS.RIGHT_PANES, JSON.stringify(openPanes));
     lsSet(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
-  }, [isSidebarOpen, isRightPanelOpen, activeRightTab, editorViewMode]);
+  }, [isSidebarOpen, isRightPanelOpen, openPanes, editorViewMode]);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
   const toggleFocusMode = useCallback(() => setIsFocusMode(v => !v), []);
@@ -232,10 +353,14 @@ export function useLayout() {
     setIsSidebarOpen,
     isRightPanelOpen,
     setIsRightPanelOpen,
-    activeRightTab,
-    setActiveRightTab,
+    openPanes,
+    togglePane,
+    showOnlyPane,
+    expandedPane,
+    toggleExpandedPane,
+    isRightPanelWide,
     sidebarWidth,
-    rightPanelWidth,
+    rightPanelWidth: isRightPanelWide && hasGraphPanelWidth ? graphPanelWidth : rightPanelWidth,
     isDraggingSidebar,
     isDraggingRightPanel,
     setIsDraggingSidebar,

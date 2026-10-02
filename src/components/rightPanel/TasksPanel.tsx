@@ -182,7 +182,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   }
 
   return (
-    <div className={`flex-1 overflow-y-auto noa-panel-scroll px-4 pb-4 pt-2 font-redaction ${txt}`}>
+    <div className={`flex-1 overflow-y-auto noa-panel-scroll px-3 pb-4 pt-2 font-redaction ${txt}`}>
       {tasks.length === 0 && (
         <div className={`text-center mt-10 text-sm ${dim}`}>
           No tasks found.<br />Add &quot;- [ ] task&quot; in any note!
@@ -194,7 +194,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           {/* ─── Stat header ─────────────────────────────────────────── */}
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className={`text-[10px] uppercase tracking-[0.14em] font-bold ${dimmer}`}>Tasks</span>
+              <span className={`text-[10px] uppercase tracking-[0.14em] font-bold ${dimmer}`}>Progress</span>
               <div
                 className="flex items-baseline gap-1 tabular-nums text-[10px]"
                 aria-label={`${completedTasks.length} completed of ${total} tasks`}

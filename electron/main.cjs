@@ -188,7 +188,9 @@ function createWindow() {
     // the page background shows as bright ghosting along the frame.
     backgroundColor: '#FCFCFB',
     titleBarStyle: 'hidden',
-    trafficLightPosition: isMac ? { x: 12, y: 9 } : undefined,
+    // Equal insets from the top and the left, so the lights sit evenly inside
+    // the window's corner; y centres the 14px buttons in the 44px titlebar.
+    trafficLightPosition: isMac ? { x: 15, y: 15 } : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

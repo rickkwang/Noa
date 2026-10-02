@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Eye, Edit2, Columns, MoreHorizontal } from '@/src/lib/icons';
+import { Eye, Edit2, Columns, Upload } from '@/src/lib/icons';
 
 interface EditorActionsProps {
   isDark: boolean;
@@ -55,8 +55,10 @@ export function EditorActions({
   // visibly changes on every click, making the three-step cycle legible.
   const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;
 
-  const itemClass = `px-3 py-1.5 text-xs text-left transition-colors whitespace-nowrap ${
-    isDark ? 'hover:bg-[#F9F9F7]/[0.08] text-[#F9F9F7]' : 'hover:bg-[#2D2D2B]/[0.06] text-[#2D2D2B]'
+  // Same row as the titlebar's panel menu (PaneMenu): every popup menu in the
+  // app shares one shape — 10px panel, 4px inset, 28px rounded rows.
+  const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-[13px] text-left transition-colors whitespace-nowrap ${
+    isDark ? 'hover:bg-[rgba(249,249,247,0.07)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[#2D2D2B]/[0.05] text-[#2D2D2B]/90'
   }`;
 
   return (
@@ -86,12 +88,14 @@ export function EditorActions({
           aria-expanded={menuOpen}
           aria-haspopup="menu"
         >
-          <MoreHorizontal size={14} />
+          {/* Not a second "more" glyph: the titlebar's panel menu sits right
+              above this one. Everything in here but history is an export. */}
+          <Upload size={14} />
         </button>
         {menuOpen && (
           <div
             role="menu"
-            className={`absolute right-0 top-full mt-1 z-50 flex flex-col py-1 min-w-[150px] noa-floating-panel border border-[var(--divider-subtle)] ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
+            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-[10px] font-redaction noa-floating-panel border border-[var(--divider-subtle)] ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
           >
             {onToggleHistory && (
               <>
@@ -102,7 +106,7 @@ export function EditorActions({
                 >
                   Version History
                 </button>
-                <div className="my-1 h-px bg-[var(--divider-subtle)]" />
+                <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />
               </>
             )}
             <button role="menuitem" onClick={() => { onExportMd(); setMenuOpen(false); }} className={itemClass}>

@@ -42,9 +42,8 @@ import {
   TextItalic,
   List as PhList,
   CircleNotch,
-  ArrowsOut,
-  ArrowsInLineVertical,
-  ArrowsOutLineVertical,
+  ArrowsOutSimple,
+  ArrowsInSimple,
   Graph,
   Palette as PhPalette,
   SidebarSimple,
@@ -66,8 +65,6 @@ import {
   UploadSimple,
   Users as PhUsers,
   X as PhX,
-  MagnifyingGlassPlus,
-  MagnifyingGlassMinus,
 } from '@phosphor-icons/react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
 
@@ -96,6 +93,31 @@ export const ChevronDown = icon(CaretDown);
 export const ChevronLeft = icon(CaretLeft);
 export const ChevronRight = icon(CaretRight);
 export const ChevronsUpDown = icon(CaretUpDown);
+// The inward twin of ChevronsUpDown, for "collapse all folders". Phosphor has
+// no such glyph, so it is drawn here on Phosphor's own 256 grid with the
+// regular weight's 16-unit round stroke: the same two carets, each flipped to
+// point at the other, over the same 32–224 extent.
+export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={16}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <polyline points="80 32 128 80 176 32" />
+      <polyline points="80 224 128 176 176 224" />
+    </svg>
+  );
+}
 export const ChevronUp = icon(CaretUp);
 export const Circle = icon(PhCircle);
 export const Clock = icon(PhClock);
@@ -108,10 +130,6 @@ export const Download = icon(DownloadSimple);
 export const Edit2 = icon(PencilSimple);
 export const ExternalLink = icon(ArrowSquareOut);
 export const Eye = icon(PhEye);
-// Collapse / expand all folders. Distinct from ChevronsUpDown (CaretUpDown),
-// which the workspace switcher uses as its disclosure glyph.
-export const FoldVertical = icon(ArrowsInLineVertical);
-export const UnfoldVertical = icon(ArrowsOutLineVertical);
 export const FileArchive = icon(FileZip);
 export const FileText = icon(PhFileText);
 export const Filter = icon(Funnel);
@@ -124,7 +142,9 @@ export const Info = icon(PhInfo);
 export const Italic = icon(TextItalic);
 export const List = icon(PhList);
 export const Loader2 = icon(CircleNotch);
-export const Maximize2 = icon(ArrowsOut);
+// Two plain arrows, no frame.
+export const Maximize2 = icon(ArrowsOutSimple);
+export const Minimize2 = icon(ArrowsInSimple);
 export const Monitor = icon(PhMonitor);
 export const Moon = icon(PhMoon);
 export const MoreHorizontal = icon(DotsThree);
@@ -148,5 +168,3 @@ export const Unlink = icon(LinkBreak);
 export const Upload = icon(UploadSimple);
 export const Users = icon(PhUsers);
 export const X = icon(PhX);
-export const ZoomIn = icon(MagnifyingGlassPlus);
-export const ZoomOut = icon(MagnifyingGlassMinus);

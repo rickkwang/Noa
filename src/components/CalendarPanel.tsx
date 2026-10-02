@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useCollapsePresence } from '../hooks/useCollapsePresence';
 import { formatDate } from '../lib/templates';
 import { GlobalTask, Note } from '../types';
 import { ChevronLeft, ChevronRight } from '@/src/lib/icons';
@@ -49,7 +48,7 @@ export default function CalendarPanel({
   dateFormat = 'YYYY-MM-DD',
   isOpen,
 }: CalendarPanelProps) {
-  const isBodyMounted = useCollapsePresence(isOpen);
+  const isBodyMounted = isOpen;
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);

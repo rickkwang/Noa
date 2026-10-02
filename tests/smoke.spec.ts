@@ -629,20 +629,43 @@ test('successful recovery import clears corrupt legacy data across reloads', asy
   await expect(page.getByTestId('sidebar-file-tree').getByText('Recovered Note', { exact: true })).toBeVisible();
 });
 
-test('right panel tabs render by default and hide when the panel is toggled shut', async ({ page }) => {
+test('the title-bar panel menu switches right-column cards on and off', async ({ page }) => {
   await page.goto('/');
-  // The right panel defaults to open (useLayout), and its tabs render into the
-  // title bar. Clicking Toggle Panel here used to be the "open" step; it now
-  // closes the panel instead, which drops the tab strip to visibility:hidden
-  // and makes every assertion below fail. Assert the default state directly.
-  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Backlinks', exact: true })).toBeVisible();
+  const menuButton = page.getByRole('button', { name: 'Panels' });
+  const item = (name: string) => page.getByRole('menuitemcheckbox', { name, exact: true });
+  const openCards = page.locator('[data-pane][data-state="open"]');
 
-  // …and that toggling really does hide them, so the assertion above is not
-  // just passing on a strip that is always present.
-  await page.getByTitle('Toggle Panel').click();
-  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeHidden();
+  // The right panel defaults to open on the Tasks card.
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
+  await expect(openCards).toHaveCount(1);
+  await menuButton.click();
+  await expect(item('Tasks')).toHaveAttribute('aria-checked', 'true');
+  await expect(item('Graph')).toHaveAttribute('aria-checked', 'false');
+
+  // A second card opens beside the first rather than replacing it.
+  await item('Graph').click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(openCards).toHaveCount(2);
+
+  // The last row collapses the whole column; nothing stays checked.
+  await menuButton.click();
+  await page.getByRole('menuitem', { name: 'Toggle right panel' }).click();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'false');
+  await menuButton.click();
+  await expect(item('Tasks')).toHaveAttribute('aria-checked', 'false');
+
+  // An item picked while collapsed opens the column on that card alone.
+  await item('Graph').click();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
+  await expect(openCards).toHaveCount(1);
+  await expect(page.locator('[data-pane="graph"]')).toHaveAttribute('data-state', 'open');
+
+  // Closing the last card collapses the column, and the same row restores it.
+  await page.locator('[data-pane="graph"]').getByRole('button', { name: 'Close panel' }).click();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'false');
+  await menuButton.click();
+  await page.getByRole('menuitem', { name: 'Toggle right panel' }).click();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
 });
 
 test('vault import entry is labeled as migration', async ({ page }) => {
@@ -1196,7 +1219,6 @@ test('audit: task markers stay in source but not preview or search snippets', as
   await page.goto('/');
   await createNewNote(page);
   await page.locator('.cm-content').fill('- [ ] audit milk\n\nAfter task');
-  await page.getByRole('button', { name: 'Tasks', exact: true }).click();
   await page.getByRole('button', { name: 'Complete task', exact: true }).click();
   await waitForMarkerPersisted(page, 'noa-task:');
   await ensurePreviewMode(page);
@@ -1352,7 +1374,6 @@ test('closing audit: code examples are excluded while real tasks still toggle', 
   await createNewNote(page);
   const code = '```markdown\n- [ ] same task\n```';
   await page.locator('.cm-content').fill(`${code}\n\n- [ ] same task`);
-  await page.getByRole('button', { name: 'Tasks', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Complete task', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Complete task', exact: true }).click();
   await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.startsWith(code))?.content)

@@ -100,7 +100,7 @@ export function VaultFooter({
 
   const label = workspaceName.trim() || 'Workspace';
   const status = syncLabel(syncStatus, lastSyncAt);
-  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2 w-full rounded px-2 py-1.5 text-left text-xs font-redaction text-[#2D2D2B] transition-colors disabled:opacity-40 disabled:pointer-events-none';
+  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2.5 w-full rounded-md px-2 h-7 shrink-0 text-left text-[13px] font-redaction text-[#2D2D2B]/90 transition-colors disabled:opacity-40 disabled:pointer-events-none';
 
   const run = (action?: () => void) => {
     setIsOpen(false);
@@ -116,7 +116,7 @@ export function VaultFooter({
         <div
           data-vault-menu
           role="menu"
-          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-md border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
         >
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">
@@ -128,14 +128,14 @@ export function VaultFooter({
               <div className="flex items-center gap-1.5">
                 <button
                   role="menuitem"
-                  className="flex-1 rounded px-2 py-1 text-xs font-redaction font-bold bg-[#CC7D5E] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
+                  className="flex-1 rounded-md px-2 py-1 text-xs font-redaction font-bold bg-[#CC7D5E] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
                   onClick={() => run(onSwitchVault)}
                 >
                   Continue
                 </button>
                 <button
                   role="menuitem"
-                  className="noa-sidebar-hover-surface flex-1 rounded px-2 py-1 text-xs font-redaction text-[#2D2D2B] transition-colors"
+                  className="noa-sidebar-hover-surface flex-1 rounded-md px-2 py-1 text-xs font-redaction text-[#2D2D2B] transition-colors"
                   onClick={() => setConfirmSwitch(false)}
                 >
                   Cancel
@@ -147,7 +147,7 @@ export function VaultFooter({
               {/* Workspace and vault are separate things that coexist: the
                   workspace is always here, the vault is an optional folder
                   mirrored into it. The menu states both rather than picking one. */}
-              <div className="flex items-center gap-2 rounded px-2 py-1.5 text-xs font-redaction text-[#2D2D2B]">
+              <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-[13px] font-redaction text-[#2D2D2B]/90">
                 <Check size={13} className="shrink-0 text-[#2D2D2B]/50" />
                 <span className="truncate">{label}</span>
                 <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-[#2D2D2B]/50">Workspace</span>

@@ -12,7 +12,7 @@ import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { TagBrowser } from './sidebar/TagBrowser';
 import { footerIconButton, VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, FoldVertical, UnfoldVertical, ArrowUpDown, Dices, X, CalendarMonth, Tag } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, ArrowUpDown, Dices, X, CalendarMonth, Tag } from '@/src/lib/icons';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -256,14 +256,14 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 min-w-[160px] rounded-md border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+            className="absolute right-0 top-7 z-50 min-w-[168px] rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
           >
             {builtinTemplates.map(t => {
               const TemplateIcon = templateMenuIcons[t.id] ?? FileText;
               return (
                 <button
                   key={t.id}
-                  className="noa-sidebar-hover-surface flex items-center gap-2 w-full rounded px-2 py-1.5 text-left text-xs font-redaction text-[#2D2D2B] transition-colors"
+                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-[13px] font-redaction text-[#2D2D2B]/90 transition-colors"
                   onClick={() => {
                     onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                     setTemplateMenuFolderId(null);
@@ -427,7 +427,11 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pt-1.5 pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
+      {/* Vertical rhythm, by centre line: titlebar 22px, this row 60px, first
+          tree row ~98px — two equal 38px steps, then the tree's own 31px
+          pitch. The row used to carry 6px of top padding, which made the
+          first step 41px and the second 36px. */}
+      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
           className="p-1 text-[#2D2D2B]/85 hover:text-[#CC7D5E] transition-colors active:opacity-70"
@@ -453,7 +457,7 @@ export default function Sidebar({
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
-          {foldersExpandedByDefault ? <FoldVertical size={13.5} /> : <UnfoldVertical size={13.5} />}
+          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
         </button>
         {dailyNotesEnabled && (
         <button
@@ -644,7 +648,7 @@ export default function Sidebar({
               </div>
             ) : (
               <>
-              <div data-testid="sidebar-file-tree" className="pt-1">
+              <div data-testid="sidebar-file-tree" className="pt-0.5">
                 {/* Noa-native notes — flat root, no wrapper node */}
                 <div
                   onDragEnter={markNoaRootTarget}

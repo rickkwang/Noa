@@ -60,14 +60,14 @@ export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: Pr
 
   if (!activeNote) {
     return (
-      <div className="flex-1 overflow-y-auto noa-panel-scroll px-4 pb-3 pt-2">
+      <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
         <div className={`text-xs font-redaction text-center py-8 ${txtMuted}`}>No note selected</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-4 pb-3 pt-2">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
       <div className="space-y-1">
 
         {/* Editable frontmatter from note content (raw --- block) */}

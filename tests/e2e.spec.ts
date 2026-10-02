@@ -349,7 +349,7 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
     page.getByTitle('Search notes').locator('..').boundingBox(),
     page.getByTitle('Toggle Sidebar').boundingBox(),
     page.getByTitle('New note').boundingBox(),
-    page.getByRole('button', { name: 'Tasks' }).boundingBox(),
+    page.getByRole('button', { name: 'Panels' }).boundingBox(),
   ]);
 
   expect(tabBox).not.toBeNull();
@@ -358,25 +358,25 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
   expect(sidebarToggleBox).not.toBeNull();
   expect(sidebarActionBox).not.toBeNull();
   expect(rightPanelTabBox).not.toBeNull();
-  // The frame grows evenly around the fixed-position icon, giving the glyph
-  // matching top and bottom breathing room without moving its centre line.
-  expect(tabBox!.height - searchShellBox!.height).toBe(6);
-  expect(Math.abs(searchShellBox!.y - tabBox!.y - 1)).toBeLessThanOrEqual(1);
-  expect(Math.abs((tabBox!.y + tabBox!.height) - (searchShellBox!.y + searchShellBox!.height) - 5)).toBeLessThanOrEqual(1);
+  // The tab is a 26px pill centred in the row, on the same centre line as the
+  // 22px search shell beside it.
+  expect(tabBox!.height - searchShellBox!.height).toBe(4);
+  expect(Math.abs((tabBox!.y + tabBox!.height / 2) - (searchShellBox!.y + searchShellBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs((searchButtonBox!.y + searchButtonBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(tabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
   expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchShellBox!.y + 24);
-  // The panel tabs moved up into the title bar too, so they now share the row
-  // with search rather than sitting a header row below it.
+  // The panel menu lives in the title bar too, sharing the row with search
+  // rather than sitting a header row below it.
   expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
 });
 
 test('right panel keeps Tasks as the penultimate tab', async ({ page }) => {
   await page.goto('/');
 
-  const tabs = page.locator('#noa-titlebar-panel-tabs button');
-  await expect(tabs).toHaveCount(5);
-  const labels = await tabs.evaluateAll((buttons) => (
+  await page.getByRole('button', { name: 'Panels' }).click();
+  const items = page.locator('#noa-titlebar-panel-tabs [role="menuitemcheckbox"]');
+  await expect(items).toHaveCount(5);
+  const labels = await items.evaluateAll((buttons) => (
     buttons.map((button) => button.getAttribute('aria-label'))
   ));
 
@@ -743,18 +743,16 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
       marginLeft: getComputedStyle(element).marginLeft,
       left: before.left,
       width: before.width,
-      border: `${before.borderBottomWidth} ${before.borderBottomColor}`,
+      border: before.borderBottomWidth,
     };
   });
-  const titlebarHairline = await page.locator('[data-titlebar="true"]').evaluate((element) => (
-    getComputedStyle(element, '::after').backgroundColor
-  ));
   // Web build: 0.5rem gutter + 61.5px toggle/search group. The desktop shell
-  // adds traffic-light clearance and resolves this to 144px (9rem).
+  // adds traffic-light clearance and resolves this to 147px.
   expect(floor.marginLeft).toBe('69.5px');
   expect(floor.left).toBe('-69.5px');
   expect(floor.width).toBe('69.5px');
-  expect(floor.border).toBe(`1px ${titlebarHairline}`);
+  // The titlebar row has no baseline, so the floor carries none either.
+  expect(floor.border).toBe('0px');
 
   // Direct hit-test at the toggle's center: the topmost element must be the
   // button itself, not the lifted header crossing it.
@@ -769,13 +767,14 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
   await expect(sidebar).toHaveCSS('width', '325px');
 });
 
-test('the hover preview leaves the titlebar hairline and column surface where it puts them', async ({ page }) => {
+test('the hover preview leaves the column surface where it puts it', async ({ page }) => {
   // The preview arrives at full width in one frame and leaves on a 180ms fade.
   // Nothing on that edge has a 320ms dock motion to ride, so anything that runs
   // one is a line crawling out from under a panel that is already gone. Both
-  // regressed at once here: the hairline because its transition was a default
-  // with exclusions rather than an opt-in, and the column surface because it
-  // was the one box on the masking edge that never got the settle suppression.
+  // regressed at once here: the titlebar hairline (since removed along with
+  // the tab baseline) because its transition was a default with exclusions
+  // rather than an opt-in, and the column surface because it was the one box
+  // on the masking edge that never got the settle suppression.
   //
   // Asserting on the transitions themselves — the resting values are identical
   // either way, which is exactly why this was invisible to every existing test.
@@ -796,8 +795,6 @@ test('the hover preview leaves the titlebar hairline and column surface where it
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
 
-  // The hairline only exists with a note open, and only then does it start at
-  // the sidebar's edge rather than the window's.
   await page.getByTitle('New note').click();
   await expect(page.locator('[data-titlebar="true"]')).toBeVisible();
 
@@ -806,18 +803,13 @@ test('the hover preview leaves the titlebar hairline and column surface where it
     return entries.splice(0, entries.length);
   });
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
-  const hairlineLeft = () => page.locator('[data-titlebar="true"]').evaluate((element) => (
-    getComputedStyle(element, '::after').left
-  ));
 
-  // Positive control first: the dock toggle is the one motion this edge has, and
-  // the hairline has to ride it or the line jumps across a sidebar still on
-  // screen. Both directions, because the settle suppression only guards one.
+  // Positive control first: the dock toggle is the one motion this edge has,
+  // so the listener must see it.
   await toggle.click();
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
-  expect(await motion()).toContain('titlebar::after:left');
+  expect(await motion()).toContain('container:width');
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
-  expect(await hairlineLeft()).toBe('0px');
 
   // Closing by click leaves the pointer on the toggle; the preview needs a
   // genuine leave-and-reenter.
@@ -827,13 +819,11 @@ test('the hover preview leaves the titlebar hairline and column surface where it
   await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
   await page.waitForTimeout(420);
   expect(await motion()).toEqual([]);
-  expect(await hairlineLeft()).toBe('325px');
 
   await page.mouse.move(900, 500);
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
   await page.waitForTimeout(420);
   expect(await motion()).toEqual([]);
-  expect(await hairlineLeft()).toBe('0px');
   await expect(page.locator('[data-sidebar-column-surface="true"]')).toHaveCSS('width', '0px');
 });
 
@@ -1269,17 +1259,19 @@ test('cyclic view control exposes the current editor mode', async ({ page }) => 
   await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
 });
 
-test('closing the last note hides the otherwise-empty tab baseline', async ({ page }) => {
+test('the title bar draws no baseline, with or without a note open', async ({ page }) => {
   await page.goto('/');
 
-  const topbar = page.locator('div.h-8.grid').filter({ has: page.getByRole('button', { name: 'Toggle sidebar' }) });
+  const topbar = page.locator('div.h-11.grid').filter({ has: page.getByRole('button', { name: 'Toggle sidebar' }) });
+  const baseline = () => topbar.evaluate((element) => getComputedStyle(element, '::after').content);
   const closeTab = page.locator('[data-tab-id] button[aria-label^="Close "]').first();
   await expect(closeTab).toBeAttached();
+  expect(await baseline()).toBe('none');
   await closeTab.click({ force: true });
 
   await expect(page.locator('[data-tab-id]')).toHaveCount(0);
   await expect(page.locator('[data-tab-id][data-closing-tab="true"]')).toHaveCount(0);
-  await expect.poll(() => topbar.evaluate((element) => getComputedStyle(element, '::after').display)).toBe('none');
+  expect(await baseline()).toBe('none');
 });
 
 test('opening and closing a tab never resizes the tabs that stay put', async ({ page }) => {
@@ -1452,28 +1444,32 @@ test('scrollbar thumbs keep a balanced inset on every edge', async ({ page }) =>
   });
 });
 
-test('right panel toggle remains clickable after the panel is collapsed', async ({ page }) => {
+test('right panel menu remains clickable after the panel is collapsed', async ({ page }) => {
   await page.goto('/');
 
-  const toggle = page.getByRole('button', { name: 'Toggle right panel' });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await page.waitForTimeout(300);
+  const menuButton = page.getByRole('button', { name: 'Panels' });
+  const togglePanel = async () => {
+    await menuButton.click();
+    await page.getByRole('menuitem', { name: 'Toggle right panel' }).click();
+  };
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
+  await togglePanel();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'false');
+  await page.waitForTimeout(400);
 
-  const toggleBox = await toggle.boundingBox();
-  expect(toggleBox).not.toBeNull();
+  const buttonBox = await menuButton.boundingBox();
+  expect(buttonBox).not.toBeNull();
   const topmostControl = await page.evaluate(({ x, y }) => {
     const element = document.elementFromPoint(x, y);
     return element?.closest('button')?.getAttribute('aria-label') ?? null;
   }, {
-    x: toggleBox!.x + toggleBox!.width / 2,
-    y: toggleBox!.y + toggleBox!.height / 2,
+    x: buttonBox!.x + buttonBox!.width / 2,
+    y: buttonBox!.y + buttonBox!.height / 2,
   });
-  expect(topmostControl).toBe('Toggle right panel');
+  expect(topmostControl).toBe('Panels');
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await togglePanel();
+  await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
 });
 
 test('app chrome prevents accidental text selection while content remains selectable', async ({ page }) => {
@@ -1524,7 +1520,7 @@ test('version history content remains selectable', async ({ page }) => {
   expect(await historyText.last().evaluate((element) => getComputedStyle(element).userSelect)).toBe('text');
 });
 
-test('graph controls keep visible keyboard focus and hover feedback', async ({ page }) => {
+test('graph filter field stays quiet on focus', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('app-settings', JSON.stringify({ appearance: { theme: 'light' } }));
     localStorage.setItem('app-right-panel-open', 'true');
@@ -1536,20 +1532,14 @@ test('graph controls keep visible keyboard focus and hover feedback', async ({ p
 
   // Text fields deliberately have no focus ring: index.css excludes inputs from
   // the global focus-visible rule because the caret already shows where typing
-  // lands, and this one also sets outline-none. The keyboard affordance is the
-  // wrapper's :focus-within wash, so assert the surface actually changes rather
-  // than an outline the input explicitly turns off.
+  // lands. The field's surface does not change either — no highlight on focus.
   const input = page.getByPlaceholder('filter...');
-  const surface = page.getByRole('group', { name: 'Graph filter controls' });
+  const surface = input.locator('..');
   await expect(input).toHaveCSS('outline-style', 'none');
 
   const idle = await surface.evaluate((el) => getComputedStyle(el).backgroundColor);
   await input.focus();
-  await expect(surface).not.toHaveCSS('background-color', idle);
-
-  const zoomIn = page.getByTitle('Zoom in');
-  await zoomIn.hover();
-  await expect(zoomIn).toHaveCSS('color', 'rgb(204, 125, 94)');
+  await expect(surface).toHaveCSS('background-color', idle);
 });
 
 test('legacy Graph View preference cannot hide the graph tab', async ({ page }) => {
@@ -1561,7 +1551,7 @@ test('legacy Graph View preference cannot hide the graph tab', async ({ page }) 
   });
   await page.goto('/');
 
-  await expect(page.getByRole('button', { name: 'Graph', exact: true })).toBeVisible();
+  await expect(page.locator('[data-pane="graph"]')).toBeVisible();
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'General' }).click();
   await expect(page.getByRole('switch', { name: 'Graph View' })).toHaveCount(0);
@@ -1594,9 +1584,13 @@ test('closed right panel defers its lazy content until first open', async ({ pag
   await page.goto('/');
 
   await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(0);
-  await page.getByTitle('Toggle Panel').click();
+  const togglePanel = async () => {
+    await page.getByRole('button', { name: 'Panels' }).click();
+    await page.getByRole('menuitem', { name: 'Toggle right panel' }).click();
+  };
+  await togglePanel();
   await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(1);
-  await page.getByTitle('Toggle Panel').click();
+  await togglePanel();
   await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(1);
 });
 

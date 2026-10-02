@@ -31,11 +31,13 @@
 
 /* Titlebar clearance for the macOS traffic lights. Only the desktop shell has
    them — main.tsx sets data-desktop when the Electron preload bridge exists —
-   so the web build keeps a plain gutter instead of an empty 82.5px band.
+   so the web build keeps a plain gutter instead of an empty 85.5px band.
    The reserve is that inset plus the sidebar-toggle/search group (61.5px);
-   on desktop it resolves to exactly the 9rem the tab strip always cleared. */
+   on desktop it resolves to 147px. The inset tracks trafficLightPosition.x in
+   electron/main.cjs: the lights end 60px after it, and the first icon's glyph
+   starts 14.5px after that. */
 :root { --noa-titlebar-inset: 0.5rem; }
-:root[data-desktop="true"] { --noa-titlebar-inset: 82.5px; }
+:root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }
 :root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }
 
 /* Inherited, and cheap to inherit because nothing transitions it: the shell
@@ -129,8 +131,7 @@ body {
    the handle sits one pixel off the divider and the two lines read as a double
    image. Neutral text colour, not the accent, so it lights up as the divider
    getting stronger instead of a coloured beam next to it. */
-[data-sidebar-separator]::after,
-[data-right-panel-separator]::after {
+[data-sidebar-separator]::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -141,10 +142,8 @@ body {
   opacity: 0;
   transition: opacity 140ms ease-out;
 }
-.noa-app-shell:has(.noa-resize-handle[data-edge="right"]:is(:hover, :focus-visible)) [data-sidebar-separator]::after,
-.noa-app-shell:has(.noa-resize-handle[data-edge="left"]:is(:hover, :focus-visible)) [data-right-panel-separator]::after { opacity: 0.7; }
-.noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after,
-.noa-app-shell:has(.noa-resize-handle[data-edge="left"][data-dragging="true"]) [data-right-panel-separator]::after { opacity: 1; }
+.noa-app-shell:has(.noa-resize-handle[data-edge="right"]:is(:hover, :focus-visible)) [data-sidebar-separator]::after { opacity: 0.7; }
+.noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after { opacity: 1; }
 
 /* The titlebar's hairline starts where the sidebar ends, so it is part of the
    dock motion whether it likes it or not: the class swap alone lands its new
@@ -181,14 +180,7 @@ body {
    gives the box any width at all: with only `left` set, width resolves
    shrink-to-fit over empty content and the whole rule paints nothing. Pinned,
    the single animated `left` is both the position and the width — 0 when there
-   is no reservation, one margin's worth when there is.
-   It covers the titlebar's own hairline while it is there, so it has to carry
-   that line too, or the divider ends at the tab strip and the band reads as a
-   notch. Redrawing beats uncovering: the titlebar hairline is 8% alpha, so a
-   1px gap in this surface would let the native material ghost straight through
-   it. The seam stays invisible because both segments are on one clock — this
-   edge sits at `left: 325px * progress` throughout the motion, which is exactly
-   where the titlebar hairline's own animated left edge is. */
+   is no reservation, one margin's worth when there is. */
 .noa-editor-header-floor::before {
   content: '';
   position: absolute;
@@ -197,7 +189,6 @@ body {
   left: 0;
   right: 100%;
   background-color: inherit;
-  border-bottom: 1px solid var(--divider-subtle, #E6E2DA);
   pointer-events: none;
   transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -217,16 +208,16 @@ body {
    Mixing --text-primary into --bg-primary gets both: it's the same "how far a
    surface sits from the page" recipe --divider-subtle already uses elsewhere,
    it's fully opaque, and because --text-primary itself flips with the theme,
-   one rule adapts to light and dark without separate tuning. Accent stays
-   reserved for interaction, same as everywhere else in the app — it only
-   mixes in on hover/focus, and pressed icons still turn solid accent. */
+   one rule adapts to light and dark without separate tuning. The surface
+   itself never changes on hover or focus; accent is reserved for the buttons
+   on it. */
 .noa-graph-control-surface {
-  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #FCFCFB));
-  transition: background-color 120ms ease;
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, var(--bg-primary, #FCFCFB));
 }
-.noa-graph-control-surface:hover,
-.noa-graph-control-surface:focus-within {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 16%, color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, var(--bg-primary, #FCFCFB)));
+/* On the dark card (#313130) the mix above lands within a shade of the card
+   itself, so the field gets its own step up. */
+[data-theme="dark"] .noa-graph-control-surface {
+  background-color: #3D3D3B;
 }
 .noa-graph-control-button:hover {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
@@ -661,6 +652,42 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: var(--shadow-floating);
 }
 
+/* A card in the right column. It floats on the page rather than docking to
+   the window edge: the ring and the ambient shadow are both box-shadow, not
+   border, so a card that has shrunk to nothing really is zero pixels tall and
+   the card beside it lands exactly where a lone card would.
+
+   Cards share the column by flex-grow and nothing animates: a card opens,
+   closes and maximises in one frame. The 8px gap is the card's own margin so
+   it goes with the card. */
+.noa-pane-card {
+  flex: 1 1 0%;
+  min-height: 0;
+  margin-top: 8px;
+  /* Not --shadow-ambient: its 10px blur overruns the 8px gutter and the
+     column's overflow cuts it off in a straight line. This one is a halo on
+     all four sides, barely offset: 7px sideways, 6px up, 8px down — inside
+     the 8px gutter every way. */
+  box-shadow:
+    0 0 0 1px rgba(45, 45, 43, 0.08),
+    0 1px 2px 0 rgba(45, 45, 43, 0.08),
+    0 1px 8px -1px rgba(45, 45, 43, 0.17);
+}
+[data-theme="dark"] .noa-pane-card {
+  box-shadow:
+    0 0 0 1px rgba(249, 249, 247, 0.12),
+    0 1px 2px 0 rgba(0, 0, 0, 0.32),
+    0 1px 8px -1px rgba(0, 0, 0, 0.5);
+}
+.noa-pane-card[data-state="minimized"] {
+  flex-grow: 0;
+  margin-top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.noa-pane-card[data-state="hidden"] {
+  display: none;
+}
 /* DARK MODE — triggered by data-theme="dark" on <html>
    Uses [data-theme="dark"] for higher specificity than Tailwind */
 
@@ -1211,6 +1238,22 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .editor-tab-divider {
   transition: opacity 140ms ease-out;
 }
+/* The active tab is a raised pill, drawn the same way as the right column's
+   cards: a hairline ring and a soft shadow, both box-shadow so they add
+   nothing to the tab's box. Its fill is one step lighter than the bar — pure
+   white in light, a wash of the text colour in dark — and is set here rather
+   than with a colour utility so the dark-mode remap cannot flatten it. */
+.editor-tab[data-active-tab="true"] {
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 1px var(--divider-subtle, #E6E2DA), 0 1px 2px 0 rgba(45, 45, 43, 0.06);
+}
+[data-theme="dark"] .editor-tab[data-active-tab="true"] {
+  background-color: color-mix(in srgb, var(--text-primary, #F9F9F7) 7%, var(--bg-primary, #2D2D2B));
+  box-shadow: 0 0 0 1px var(--divider-subtle, rgba(249, 249, 247, 0.15)), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+.editor-tab[data-active-tab="false"]:hover {
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
+}
 
 /* Both animations drive `width` against --noa-tab-w and take the tab out of flex
    sizing (`flex: 0 0 auto`) for the duration, so the growing/collapsing tab is
@@ -1281,12 +1324,6 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .slide-down {
     animation: none;
   }
-  .noa-sidebar-collapse,
-  .noa-sidebar-collapse[data-open="true"],
-  .noa-sidebar-collapse > *,
-  .noa-sidebar-collapse[data-open="true"] > * {
-    transition: none;
-  }
   .noa-top-scroll-fade,
   .noa-split-editor-mask .cm-editor {
     transition: none;
@@ -1300,43 +1337,19 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   }
 }
 
-/* Collapsible sidebar sections (Calendar, Tags). The track animates
-   grid rows 0fr ↔ 1fr, like a folder in the file tree, but on two curves: the
-   sections are bottom-anchored drawers up to ~300px tall, and one symmetric
-   ease across that distance read as flat. Opening starts fast and settles long;
-   closing is shorter and standard-eased so the header does not slam into the
-   footer.
-   The body rides the drawer rather than being wiped by it — a few pixels of
-   rise in the direction of travel — and its fade is staggered against the
-   track: in after the track has started (a half-transparent, half-clipped
-   calendar mid-motion read as a ghost), out before the track has gone far. The
-   wrapper clips, not the body, so that rise never spills onto the section
-   below. The body stays mounted through the collapse (useCollapsePresence,
-   whose timer mirrors the closing duration). */
+/* Collapsible sidebar sections (Calendar, Tags). Not animated: the drawer
+   opens and closes in one frame. The track is still a grid row so a closed
+   section takes no height while its wrapper stays in place. */
 .noa-sidebar-collapse {
   display: grid;
   grid-template-rows: 0fr;
   overflow: hidden;
-  transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .noa-sidebar-collapse[data-open="true"] {
   grid-template-rows: 1fr;
-  transition: grid-template-rows 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 .noa-sidebar-collapse > * {
   min-height: 0;
-  opacity: 0;
-  transform: translateY(8px);
-  transition:
-    opacity 120ms cubic-bezier(0.4, 0, 1, 1),
-    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-.noa-sidebar-collapse[data-open="true"] > * {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity 200ms cubic-bezier(0, 0, 0.2, 1) 60ms,
-    transform 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ── Slide-down reveal (delete confirm bar, banners) ── */

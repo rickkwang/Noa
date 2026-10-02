@@ -178,10 +178,10 @@ export function MentionDropdown({
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-md noa-floating-panel font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] p-1 noa-floating-panel font-redaction w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
-      <div className="px-3 py-1 bg-[#EFEAE3] border-b border-[var(--divider-subtle)] text-[10px] font-bold uppercase tracking-wider text-[#2D2D2B]/70">
+      <div className="flex h-6 items-center px-2 text-[11px] text-[#2D2D2B]/50">
         Link to note
       </div>
       {items.map((item, i) => {
@@ -190,11 +190,10 @@ export function MentionDropdown({
           <div
             key={item.kind === 'existing' ? item.id : `create:${item.title}`}
             ref={active ? selectedRef : undefined}
-            // Active row reads the tokens, not the literal pair: the panel's
-            // `bg-[#F9F9F7]` is globally remapped to the dark surface colour,
-            // while a literal `bg-[#2D2D2B]` is not remapped at all — so in dark
-            // mode the two would collide and the selection would be invisible.
-            className={`px-3 py-2 cursor-pointer border-b border-[#2D2D2B]/10 last:border-0 truncate ${active ? 'bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)]' : 'hover:bg-[#EFEAE3]'}`}
+            // The active row is a wash mixed from the token, not a literal
+            // hex: the panel's `bg-[#F9F9F7]` is globally remapped in dark
+            // mode, and a literal ink colour would not follow it.
+            className={`flex h-7 items-center px-2 rounded-md cursor-pointer truncate text-[#2D2D2B]/90 ${active ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)]' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault();
               onInsert(item.title, mentionQuery.index);
@@ -203,11 +202,11 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className={`text-[10px] uppercase tracking-wider mr-2 ${active ? 'text-[var(--bg-primary,#FCFCFB)]/70' : 'text-[#CC7D5E]'}`}>New</span>
-                <span className="text-xs">{item.title}</span>
+                <span className="text-[10px] uppercase tracking-wider mr-2 text-[#CC7D5E]">New</span>
+                <span className="truncate text-[13px]">{item.title}</span>
               </>
             ) : (
-              <span className="text-xs">{renderHighlighted(item.title, item.matchIndices)}</span>
+              <span className="truncate text-[13px]">{renderHighlighted(item.title, item.matchIndices)}</span>
             )}
           </div>
         );

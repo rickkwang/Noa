@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { useCollapsePresence } from '../../hooks/useCollapsePresence';
 import { useResizeDrag } from '../../hooks/useResizeDrag';
 import { Note } from '../../types';
 
@@ -25,7 +24,7 @@ function tagHue(name: string): number {
 }
 
 export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen }: TagBrowserProps) {
-  const isBodyMounted = useCollapsePresence(isTagsOpen);
+  const isBodyMounted = isTagsOpen;
 
   // Mirror search.ts's tag-extraction regex so the active-state highlight stays
   // in sync with what the search engine actually filters on.

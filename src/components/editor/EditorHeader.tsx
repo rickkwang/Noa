@@ -176,10 +176,12 @@ export function EditorHeader({
 
   return (
     <div
-      className={`h-8 flex items-end justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:z-0 after:bg-[var(--divider-subtle)] ${liftTabStrip ? '-mt-8 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
+      className={`h-11 flex items-center justify-between shrink-0 z-10 font-redaction overflow-visible gap-3 relative ${liftTabStrip ? '-mt-11 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
       style={{
         ...dragRegion,
-        paddingLeft: '0.75rem',
+        // 4px here plus the strip's own 4px puts the first pill 8px from the
+        // sidebar edge, the same gutter the right column's cards keep.
+        paddingLeft: '0.25rem',
         paddingRight: '0.5rem',
         marginLeft: liftTabStrip && reserveTitlebarTraffic ? 'var(--noa-titlebar-reserve)' : undefined,
         marginRight: reserveTitlebarActions ? '7.25rem' : undefined,
@@ -203,7 +205,7 @@ export function EditorHeader({
       {/* Tab strip */}
       <div
         ref={tabStripFrameRef}
-        className="min-w-0 flex-1 flex items-end overflow-visible"
+        className="min-w-0 flex-1 flex items-center overflow-visible"
         style={{
           marginLeft: liftTabStrip && reserveTitlebarTraffic
             ? 'var(--noa-titlebar-search-extra, 0px)'
@@ -213,13 +215,19 @@ export function EditorHeader({
       >
         {/* z-[1] keeps the strip above the header's bottom line even when the
             mask-image below forces this subtree into its own stacking context */}
-        <div className="relative z-[1] min-w-0 flex items-end overflow-visible">
+        <div className="relative z-[1] min-w-0 flex items-center overflow-visible">
           <div
             ref={tabStripRef}
-            className="noa-edge-fade-x min-w-0 flex-1 flex items-end overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="noa-edge-fade-x min-w-0 flex-1 flex items-center overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ scrollPaddingInline: '10px' }}
           >
-            <div className="flex items-end pt-1 w-full">
+            {/* py-1 and px-1 are room for the active pill's ring and shadow,
+                which this scroller would otherwise cut off at its edge.
+                w-max, not w-full: at the scroller's width the tabs overflow
+                this row once the strip scrolls, and overflowing children do
+                not carry their parent's padding — the last pill then ends
+                flush against the clip edge and loses its right side. */}
+            <div className="flex items-center py-1 px-1 w-max min-w-full shrink-0">
             {tabs && tabs.length > 0 ? (
               tabs.map((tab, idx) => {
                 const isActiveTab = tab.id === note.id;
@@ -233,18 +241,11 @@ export function EditorHeader({
                 const isClosingTab = closingTabIdSet.has(tab.id);
                 const prevIsClosing = Boolean(prevTab && closingTabIdSet.has(prevTab.id));
                 const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab && !isClosingTab && !prevIsClosing;
-                const tabStyle = {
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: isActiveTab ? 'var(--border-primary)' : 'transparent',
-                  borderBottomColor: isActiveTab ? 'transparent' : undefined,
-                  paddingBottom: '6px',
-                } as React.CSSProperties;
                 return (
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)] ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)] mx-0.5 ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
                       />
                     )}
@@ -258,12 +259,16 @@ export function EditorHeader({
                         if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
                         if (isEnteringTab) onTabEnterComplete?.(tab.id);
                       }}
-                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 px-3 cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
+                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 h-[26px] px-3 rounded-lg cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
+                        // The active pill's surface and ring come from
+                        // .editor-tab[data-active-tab] in index.css — a literal
+                        // bg-[#F9F9F7] here would be remapped to the page colour
+                        // and the pill would vanish into the bar.
                         isActiveTab
-                          ? `z-[1] pt-1 rounded-t-lg ${isDark ? 'bg-[#2D2D2B] text-[#F9F9F7]' : 'bg-[#F9F9F7] text-[#2D2D2B]'}`
-                          : `bg-transparent border-transparent pt-1 ${isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'}`
+                          ? `z-[1] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`
+                          : isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'
                       }`}
-                      style={{ ...tabStyle, ...noDragRegion }}
+                      style={noDragRegion}
                     >
                       {isActiveTab && isEditingTitle ? (
                         <input
@@ -293,7 +298,7 @@ export function EditorHeader({
                           e.stopPropagation();
                           onTabClose?.(tab.id);
                         }}
-                        className={`shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
+                        className={`shrink-0 ${isActiveTab ? '' : 'opacity-0 pointer-events-none'} group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -306,15 +311,9 @@ export function EditorHeader({
             ) : (
               /* Fallback: single tab (legacy mode) */
               <div
-                className={`flex items-center gap-1.5 px-3 pt-1 rounded-t-lg relative z-[1] shrink-0 ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}
-                style={{
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: 'var(--border-primary)',
-                  borderBottomColor: 'transparent',
-                  paddingBottom: '6px',
-                  ...noDragRegion,
-                }}
+                data-active-tab="true"
+                className="editor-tab flex items-center gap-1.5 h-[26px] px-3 rounded-lg relative z-[1] shrink-0"
+                style={noDragRegion}
               >
                 {isEditingTitle ? (
                   <input
@@ -351,7 +350,7 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 ml-0.5 mb-[3px] rounded-md shrink-0 self-end transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[#F9F9F7]/[0.07]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[#2D2D2B]/[0.05]'}`}
+            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[#F9F9F7]/[0.07]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[#2D2D2B]/[0.05]'}`}
             style={noDragRegion}
             title="New tab"
             aria-label="New tab"
