@@ -64,6 +64,7 @@ interface EditorProps {
   closingTabIds?: string[];
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
+  onTabReorder?: (sourceId: string, targetId: string, after: boolean) => void;
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
@@ -97,6 +98,7 @@ export default function Editor({
   closingTabIds,
   onTabChange,
   onTabClose,
+  onTabReorder,
   onNewTab,
   onTabEnterComplete,
   onTabCloseAnimationComplete,
@@ -583,6 +585,7 @@ export default function Editor({
         onSetEditingTitle={setIsEditingTitle}
         onTabChange={onTabChange}
         onTabClose={onTabClose}
+        onTabReorder={onTabReorder}
         onNewTab={onNewTab}
         onClose={onClose}
         titleInputRef={titleInputRef}

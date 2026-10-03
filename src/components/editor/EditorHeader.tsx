@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { attachEdgeFade, type EdgeFadeHandle } from '../../lib/edgeFade';
 import { Note } from '../../types';
 import { X, Plus } from '@/src/lib/icons';
@@ -33,6 +33,7 @@ interface EditorHeaderProps {
   onSetEditingTitle: (v: boolean) => void;
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
+  onTabReorder?: (sourceId: string, targetId: string, after: boolean) => void;
   onNewTab?: () => void;
   onTabEnterComplete?: (id: string) => void;
   onTabCloseAnimationComplete?: (id: string) => void;
@@ -59,6 +60,7 @@ export function EditorHeader({
   onSetEditingTitle,
   onTabChange,
   onTabClose,
+  onTabReorder,
   onNewTab,
   onTabEnterComplete,
   onTabCloseAnimationComplete,
@@ -98,6 +100,58 @@ export function EditorHeader({
   // CSS variables on the strip itself: a fade that re-rendered the header on
   // every scroll frame would be paying a render to draw a gradient.
   const edgeFadeRef = useRef<EdgeFadeHandle | null>(null);
+  const tabPointerRef = useRef<{
+    id: string;
+    pointerId: number;
+    startX: number;
+    sourceIndex: number;
+    targetIndex: number;
+    positions: { left: number; width: number }[];
+    element: HTMLDivElement;
+    dragging: boolean;
+  } | null>(null);
+  const [tabDrag, setTabDrag] = useState<{ id: string; sourceIndex: number; targetIndex: number; positions: { left: number; width: number }[] } | null>(null);
+  const suppressTabClickRef = useRef(false);
+  const settleTimerRef = useRef<number | null>(null);
+  const finishTabDrag = (commit: boolean) => {
+    const drag = tabPointerRef.current;
+    if (!drag) return;
+    tabPointerRef.current = null;
+    if (drag.dragging) {
+      suppressTabClickRef.current = true;
+      window.setTimeout(() => { suppressTabClickRef.current = false; }, 0);
+    }
+    if (commit && drag.dragging && drag.targetIndex !== drag.sourceIndex && tabs) {
+      drag.element.style.transition = 'transform 150ms ease-out';
+      void drag.element.getBoundingClientRect();
+      drag.element.style.setProperty('--noa-tab-drag-x', `${drag.positions[drag.targetIndex].left - drag.positions[drag.sourceIndex].left}px`);
+      settleTimerRef.current = window.setTimeout(() => {
+        settleTimerRef.current = null;
+        onTabReorder?.(drag.id, tabs[drag.targetIndex].id, drag.targetIndex > drag.sourceIndex);
+        drag.element.style.removeProperty('--noa-tab-drag-x');
+        drag.element.style.removeProperty('transition');
+        setTabDrag(null);
+      }, 150);
+      return;
+    }
+    drag.element.style.removeProperty('--noa-tab-drag-x');
+    setTabDrag(null);
+  };
+
+  useEffect(() => () => {
+    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+  }, []);
+  useEffect(() => {
+    const clearPending = (event: PointerEvent) => {
+      if (tabPointerRef.current?.pointerId === event.pointerId && !tabPointerRef.current.dragging) tabPointerRef.current = null;
+    };
+    window.addEventListener('pointerup', clearPending);
+    window.addEventListener('pointercancel', clearPending);
+    return () => {
+      window.removeEventListener('pointerup', clearPending);
+      window.removeEventListener('pointercancel', clearPending);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const scrollEl = tabStripRef.current;
@@ -241,19 +295,63 @@ export function EditorHeader({
                 const isClosingTab = closingTabIdSet.has(tab.id);
                 const prevIsClosing = Boolean(prevTab && closingTabIdSet.has(prevTab.id));
                 const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab && !isClosingTab && !prevIsClosing;
+                const sourceIndex = tabDrag?.sourceIndex ?? -1;
+                const targetIndex = tabDrag?.targetIndex ?? -1;
+                const positions = tabDrag?.positions;
+                const shift = positions && idx !== sourceIndex
+                  ? sourceIndex < targetIndex && idx > sourceIndex && idx <= targetIndex
+                    ? positions[idx - 1].left - positions[idx].left
+                    : sourceIndex > targetIndex && idx >= targetIndex && idx < sourceIndex
+                      ? positions[idx + 1].left - positions[idx].left
+                      : 0
+                  : 0;
                 return (
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
                         className={`editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)] mx-0.5 ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
+                        style={tabDrag && idx !== sourceIndex ? { transform: `translateX(${shift}px)`, transition: 'transform 150ms ease-out' } : undefined}
                       />
                     )}
                     <div
                       data-tab-id={tab.id}
                       data-active-tab={isActiveTab}
                       data-closing-tab={isClosingTab || undefined}
-                      onClick={() => { if (!isClosingTab) onTabChange?.(tab.id); }}
+                      onPointerDown={(event) => {
+                        if (event.button !== 0 || tabDrag || !onTabReorder || tabs.length < 2 || anyTabAnimating || isEditingTitle || (event.target as HTMLElement).closest('button, input')) return;
+                        const positions = Array.from(tabStripRef.current?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? [], (element) => {
+                          const rect = element.getBoundingClientRect();
+                          return { left: rect.left, width: rect.width };
+                        });
+                        if (positions.length !== tabs.length) return;
+                        tabPointerRef.current = { id: tab.id, pointerId: event.pointerId, startX: event.clientX, sourceIndex: idx, targetIndex: idx, positions, element: event.currentTarget, dragging: false };
+                      }}
+                      onPointerMove={(event) => {
+                        const drag = tabPointerRef.current;
+                        if (!drag || drag.pointerId !== event.pointerId) return;
+                        const delta = event.clientX - drag.startX;
+                        if (!drag.dragging && Math.abs(delta) < 5) return;
+                        event.preventDefault();
+                        if (!drag.dragging) {
+                          drag.dragging = true;
+                          drag.element.setPointerCapture(event.pointerId);
+                        }
+                        drag.element.style.setProperty('--noa-tab-drag-x', `${delta}px`);
+                        const targetIndex = drag.positions.reduce((index, position, positionIndex) => (
+                          positionIndex !== drag.sourceIndex && event.clientX > position.left + position.width / 2 ? index + 1 : index
+                        ), 0);
+                        if (!tabDrag || targetIndex !== drag.targetIndex) {
+                          drag.targetIndex = targetIndex;
+                          setTabDrag({ id: drag.id, sourceIndex: drag.sourceIndex, targetIndex, positions: drag.positions });
+                        }
+                      }}
+                      onPointerUp={(event) => { if (tabPointerRef.current?.pointerId === event.pointerId) finishTabDrag(true); }}
+                      onPointerCancel={(event) => { if (tabPointerRef.current?.pointerId === event.pointerId) finishTabDrag(false); }}
+                      onClick={() => {
+                        if (suppressTabClickRef.current) { suppressTabClickRef.current = false; return; }
+                        if (!isClosingTab) onTabChange?.(tab.id);
+                      }}
                       onAnimationEnd={(event) => {
                         if (event.currentTarget !== event.target) return;
                         if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
@@ -268,7 +366,12 @@ export function EditorHeader({
                           ? `z-[1] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`
                           : isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'
                       }`}
-                      style={noDragRegion}
+                      style={tabDrag ? {
+                        ...noDragRegion,
+                        transform: tabDrag.id === tab.id ? 'translateX(var(--noa-tab-drag-x, 0px))' : `translateX(${shift}px)`,
+                        transition: tabDrag.id === tab.id ? 'none' : 'transform 150ms ease-out',
+                        zIndex: tabDrag.id === tab.id ? 2 : undefined,
+                      } : noDragRegion}
                     >
                       {isActiveTab && isEditingTitle ? (
                         <input

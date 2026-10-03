@@ -283,6 +283,7 @@ export default function Sidebar({
           icon={Folder}
           onAdd={canCreateInsideFolder ? () => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id) : undefined}
           onAddFolder={canCreateInsideFolder ? () => onCreateFolder(node.folder.id) : undefined}
+          onNewNote={canCreateInsideFolder ? () => onCreateNote(node.folder.id) : undefined}
           draggable
           onDragStart={handleDragStartItem('folder', node.folder.id, node.folder.name)}
           onDragEnter={markFolderTarget}

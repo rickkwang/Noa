@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getFolderParentPath } from '../../lib/pathUtils';
 import { Folder as FolderType } from '../../types';
 import { ChevronRight, FileText, Plus, Trash2, Folder, FolderOpen, FolderPlus } from '@/src/lib/icons';
@@ -17,6 +18,7 @@ export interface FileNodeProps {
   icon?: React.ElementType;
   onAdd?: () => void;
   onAddFolder?: () => void;
+  onNewNote?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnter?: (e: React.DragEvent) => void;
@@ -73,25 +75,54 @@ export function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
 export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText,
-  onAdd, onAddFolder, draggable, onDragStart, onDragEnter, onDragOver,
+  onAdd, onAddFolder, onNewNote, draggable, onDragStart, onDragEnter, onDragOver,
   onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0,
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name);
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuItemClass = 'noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]';
 
   useEffect(() => {
     setIsOpen(defaultOpen);
   }, [defaultOpen]);
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onRename) {
-      setIsEditing(true);
-      setEditName(name);
-      setRenameError(null);
-    }
+  useEffect(() => {
+    if (!menuPosition) return;
+    menuRef.current?.querySelector('button')?.focus();
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuPosition(null);
+    };
+    const closeOnScroll = (event: Event) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuPosition(null);
+    };
+    document.addEventListener('pointerdown', closeOnPointerDown);
+    document.addEventListener('scroll', closeOnScroll, true);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnPointerDown);
+      document.removeEventListener('scroll', closeOnScroll, true);
+    };
+  }, [menuPosition]);
+
+  const openContextMenu = (x: number, y: number) => {
+    if (!onRename && !onDelete && !onNewNote && !onAddFolder) return;
+    const itemCount = Number(!!onNewNote) + Number(!!onAddFolder) + Number(!!onRename) + Number(!!onDelete);
+    const menuHeight = 8 + itemCount * 28 + (onNewNote || onAddFolder ? 9 : 0);
+    setMenuPosition({
+      x: Math.max(8, Math.min(x, window.innerWidth - 184)),
+      y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
+    });
+  };
+
+  const startRename = () => {
+    setMenuPosition(null);
+    setIsEditing(true);
+    setEditName(name);
+    setRenameError(null);
   };
 
   const handleRenameSubmit = () => {
@@ -134,6 +165,7 @@ export const FileNode = React.memo(({
       onDrop={onDrop}
     >
       <div
+        ref={rowRef}
         /* While dragging, the row carries ONLY the dragging fill: emitting the
            hover class too would hand the background to the hover wash, whose
            `!important` out-specifies the fill (and Chromium freezes :hover at
@@ -151,13 +183,27 @@ export const FileNode = React.memo(({
           paddingLeft: `${depth === 0 ? 7 : 2}px`,
         }}
         draggable={draggable}
+        tabIndex={0}
+        aria-haspopup="menu"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={(e) => {
           if (isFolder) setIsOpen(!isOpen);
           if (onClick) onClick(e);
         }}
-        onDoubleClick={handleDoubleClick}
+        onDoubleClick={onRename ? (e) => { e.stopPropagation(); startRename(); } : undefined}
+        onContextMenu={(e) => {
+          if (isEditing) return;
+          e.preventDefault();
+          e.stopPropagation();
+          openContextMenu(e.clientX, e.clientY);
+        }}
+        onKeyDown={(e) => {
+          if (isEditing || (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10'))) return;
+          e.preventDefault();
+          const rect = e.currentTarget.getBoundingClientRect();
+          openContextMenu(rect.left + 16, rect.bottom);
+        }}
       >
         <div className="flex items-center overflow-hidden flex-1">
           {isFolder && showFolderChevron && (
@@ -223,6 +269,38 @@ export const FileNode = React.memo(({
           )}
         </div>
       </div>
+      {menuPosition && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label={`${name} actions`}
+          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-redaction noa-floating-panel"
+          style={{ left: menuPosition.x, top: menuPosition.y }}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setMenuPosition(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuPosition(null);
+              rowRef.current?.focus();
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+              const index = items.indexOf(document.activeElement as HTMLButtonElement);
+              items[(index + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+            }
+          }}
+        >
+          {onNewNote && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onNewNote(); }}>New note</button>}
+          {onAddFolder && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onAddFolder(); }}>New folder</button>}
+          {(onNewNote || onAddFolder) && <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />}
+          {onRename && <button role="menuitem" className={menuItemClass} onClick={startRename}>Rename…</button>}
+          {onDelete && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onDelete(); }}>Delete</button>}
+        </div>,
+        document.body,
+      )}
       {isEditing && renameError && (
         <div className="px-2 pt-1 text-[10px] text-[#C24444] font-redaction leading-snug">
           {renameError}

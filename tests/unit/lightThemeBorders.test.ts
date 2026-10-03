@@ -300,7 +300,7 @@ describe('light theme border tokens', () => {
     );
     expect(app).toContain('data-sidebar-separator="true"');
     expect(app).toContain("${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}");
-    expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px'");
+    expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '0px'");
     expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
     expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview\s*\n\s*\? `opacity \$\{SIDEBAR_PROMOTION_EDGE_CLOCK\}`\s*\n\s*: isDraggingSidebar/);
     // Promotion fades the elevation away on the spacer's clock rather than

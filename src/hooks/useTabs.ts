@@ -240,6 +240,17 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     clearEnteringTab(id);
   }, [clearEnteringTab]);
 
+  const handleTabReorder = useCallback((sourceId: string, targetId: string, after: boolean) => {
+    const current = openTabIdsRef.current;
+    if (sourceId === targetId || closingTabIds.has(sourceId) || closingTabIds.has(targetId)) return;
+    if (!current.includes(sourceId) || !current.includes(targetId)) return;
+    const next = current.filter((id) => id !== sourceId);
+    next.splice(next.indexOf(targetId) + Number(after), 0, sourceId);
+    if (next.every((id, index) => id === current[index])) return;
+    openTabIdsRef.current = next;
+    setOpenTabIds(next);
+  }, [closingTabIds]);
+
   // Only ids and titles are rendered, but `notes` changes on every keystroke.
   // Handing EditorHeader a fresh array each time would re-run its layout
   // effects mid-typing — a smooth scrollIntoView restart plus a forced
@@ -273,6 +284,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     openTabForNote,
     closeTabById,
     handleTabClose,
+    handleTabReorder,
     handleTabEnterComplete,
     handleTabCloseAnimationComplete,
   };

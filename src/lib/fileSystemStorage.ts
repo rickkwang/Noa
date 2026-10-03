@@ -758,6 +758,16 @@ async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): P
       // Directory still has content — keep it.
     }
   }
+  const remaining: string[] = [];
+  for await (const [name] of dirHandle.entries()) remaining.push(name);
+  if (remaining.length === 1 && remaining[0] === '.DS_Store') {
+    // Finder metadata should not keep an otherwise empty folder alive.
+    try {
+      await dirHandle.removeEntry('.DS_Store');
+    } catch {
+      // Finder may have removed or rewritten it meanwhile — leave as is.
+    }
+  }
 }
 
 /**

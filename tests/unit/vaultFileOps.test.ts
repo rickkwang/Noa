@@ -958,6 +958,19 @@ describe('mergeScannedNotes with pending debounced writes', () => {
 });
 
 describe('folder lifecycle on disk', () => {
+  it('removes a renamed folder left empty except for Finder metadata', async () => {
+    const root = createMemRoot();
+    const folderId = 'folder-1';
+    const note = makeNote({ folder: folderId, title: 'IT-Learning' });
+    await writeNote(asFsHandle(root), note, [{ id: folderId, name: 'Old', origin: 'vault' }]);
+    await writeRawFile(root, 'Old/.DS_Store', 'Finder metadata');
+
+    await syncFolderRename(asFsHandle(root), folderId, 'Old', [{ id: folderId, name: 'New', origin: 'vault' }], [note]);
+
+    expect(resolvePath(root, 'New/IT-Learning.md')?.kind).toBe('file');
+    expect(resolvePath(root, 'Old')).toBeNull();
+  });
+
   it('syncFolderRename creates the new directory for an empty folder', async () => {
     const root = createMemRoot();
     await root.getDirectoryHandle('Old Name', { create: true });

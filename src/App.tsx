@@ -143,6 +143,7 @@ export default function App() {
     openTabForNote,
     closeTabById,
     handleTabClose,
+    handleTabReorder,
     handleTabEnterComplete,
     handleTabCloseAnimationComplete,
   } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId });
@@ -826,11 +827,10 @@ export default function App() {
           className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview ? 'noa-sidebar-promotion-divider' : ''}`}
           style={{
             // Keep the separator in the same animated track as the sidebar,
-            // then finish one pixel outside the viewport instead of leaving a
-            // dark endpoint at the app's left edge.
+            // so both edges travel the same distance on the same curve.
             left: isPromotingSidebarPreview
               ? undefined
-              : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '-1px',
+              : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '0px',
             width: '1px',
             backgroundColor: 'var(--divider-subtle, #E6E2DA)',
             opacity: isSidebarOpen ? 1 : 0,
@@ -1116,6 +1116,7 @@ export default function App() {
                 closingTabIds={closingTabIds}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}
+                onTabReorder={handleTabReorder}
                 onNewTab={handleNewTab}
                 onTabEnterComplete={handleTabEnterComplete}
                 onTabCloseAnimationComplete={handleTabCloseAnimationComplete}
