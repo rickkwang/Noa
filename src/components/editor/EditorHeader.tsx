@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { attachEdgeFade, type EdgeFadeHandle } from '../../lib/edgeFade';
 import { Note } from '../../types';
 import { X, Plus } from '@/src/lib/icons';
@@ -100,23 +101,66 @@ export function EditorHeader({
   // CSS variables on the strip itself: a fade that re-rendered the header on
   // every scroll frame would be paying a render to draw a gradient.
   const edgeFadeRef = useRef<EdgeFadeHandle | null>(null);
+  // Tab positions are kept in strip-content coordinates (scrollLeft included),
+  // so auto-scrolling the strip mid-drag doesn't invalidate them.
   const tabPointerRef = useRef<{
     id: string;
     pointerId: number;
     startX: number;
+    clientX: number;
     sourceIndex: number;
     targetIndex: number;
     positions: { left: number; width: number }[];
     element: HTMLDivElement;
     dragging: boolean;
+    frame: number | null;
   } | null>(null);
   const [tabDrag, setTabDrag] = useState<{ id: string; sourceIndex: number; targetIndex: number; positions: { left: number; width: number }[] } | null>(null);
   const suppressTabClickRef = useRef(false);
   const settleTimerRef = useRef<number | null>(null);
+  const updateTabDrag = () => {
+    const drag = tabPointerRef.current;
+    const strip = tabStripRef.current;
+    if (!drag || !strip) return;
+    const stripRect = strip.getBoundingClientRect();
+    const x = drag.clientX - stripRect.left + strip.scrollLeft;
+    const { positions, sourceIndex } = drag;
+    const delta = Math.max(
+      positions[0].left - positions[sourceIndex].left,
+      Math.min(positions[positions.length - 1].left - positions[sourceIndex].left, x - drag.startX),
+    );
+    drag.element.style.setProperty('--noa-tab-drag-x', `${delta}px`);
+    const targetIndex = positions.reduce((index, position, positionIndex) => (
+      positionIndex !== sourceIndex && x > position.left + position.width / 2 ? index + 1 : index
+    ), 0);
+    if (targetIndex !== drag.targetIndex || !drag.frame) {
+      drag.targetIndex = targetIndex;
+      setTabDrag({ id: drag.id, sourceIndex, targetIndex, positions });
+    }
+  };
+  // Runs every frame while dragging: scrolls the strip when the pointer sits
+  // near either edge, and re-resolves the target since scrolling moves it.
+  const tickTabDrag = () => {
+    const drag = tabPointerRef.current;
+    const strip = tabStripRef.current;
+    if (!drag?.dragging || !strip) return;
+    const rect = strip.getBoundingClientRect();
+    const edge = 32;
+    const step = drag.clientX < rect.left + edge
+      ? -Math.ceil((rect.left + edge - drag.clientX) / 4)
+      : drag.clientX > rect.right - edge
+        ? Math.ceil((drag.clientX - rect.right + edge) / 4)
+        : 0;
+    if (step) strip.scrollLeft += step;
+    updateTabDrag();
+    drag.frame = window.requestAnimationFrame(tickTabDrag);
+  };
   const finishTabDrag = (commit: boolean) => {
     const drag = tabPointerRef.current;
     if (!drag) return;
+    if (commit && drag.dragging) updateTabDrag();
     tabPointerRef.current = null;
+    if (drag.frame !== null) window.cancelAnimationFrame(drag.frame);
     if (drag.dragging) {
       suppressTabClickRef.current = true;
       window.setTimeout(() => { suppressTabClickRef.current = false; }, 0);
@@ -127,10 +171,14 @@ export function EditorHeader({
       drag.element.style.setProperty('--noa-tab-drag-x', `${drag.positions[drag.targetIndex].left - drag.positions[drag.sourceIndex].left}px`);
       settleTimerRef.current = window.setTimeout(() => {
         settleTimerRef.current = null;
-        onTabReorder?.(drag.id, tabs[drag.targetIndex].id, drag.targetIndex > drag.sourceIndex);
+        // Commit the new order before dropping the offset, so no frame paints
+        // the tab back in its old slot.
+        flushSync(() => {
+          onTabReorder?.(drag.id, tabs[drag.targetIndex].id, drag.targetIndex > drag.sourceIndex);
+          setTabDrag(null);
+        });
         drag.element.style.removeProperty('--noa-tab-drag-x');
         drag.element.style.removeProperty('transition');
-        setTabDrag(null);
       }, 150);
       return;
     }
@@ -140,6 +188,8 @@ export function EditorHeader({
 
   useEffect(() => () => {
     if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+    const frame = tabPointerRef.current?.frame;
+    if (frame) window.cancelAnimationFrame(frame);
   }, []);
   useEffect(() => {
     const clearPending = (event: PointerEvent) => {
@@ -320,33 +370,35 @@ export function EditorHeader({
                       data-closing-tab={isClosingTab || undefined}
                       onPointerDown={(event) => {
                         if (event.button !== 0 || tabDrag || !onTabReorder || tabs.length < 2 || anyTabAnimating || isEditingTitle || (event.target as HTMLElement).closest('button, input')) return;
-                        const positions = Array.from(tabStripRef.current?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? [], (element) => {
+                        const strip = tabStripRef.current;
+                        if (!strip) return;
+                        const stripLeft = strip.getBoundingClientRect().left - strip.scrollLeft;
+                        const positions = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab-id]'), (element) => {
                           const rect = element.getBoundingClientRect();
-                          return { left: rect.left, width: rect.width };
+                          return { left: rect.left - stripLeft, width: rect.width };
                         });
                         if (positions.length !== tabs.length) return;
-                        tabPointerRef.current = { id: tab.id, pointerId: event.pointerId, startX: event.clientX, sourceIndex: idx, targetIndex: idx, positions, element: event.currentTarget, dragging: false };
+                        tabPointerRef.current = { id: tab.id, pointerId: event.pointerId, startX: event.clientX - stripLeft, clientX: event.clientX, sourceIndex: idx, targetIndex: idx, positions, element: event.currentTarget, dragging: false, frame: null };
                       }}
                       onPointerMove={(event) => {
                         const drag = tabPointerRef.current;
                         if (!drag || drag.pointerId !== event.pointerId) return;
-                        const delta = event.clientX - drag.startX;
-                        if (!drag.dragging && Math.abs(delta) < 5) return;
-                        event.preventDefault();
+                        drag.clientX = event.clientX;
                         if (!drag.dragging) {
+                          const strip = tabStripRef.current;
+                          if (!strip || Math.abs(event.clientX - (drag.startX + strip.getBoundingClientRect().left - strip.scrollLeft)) < 5) return;
                           drag.dragging = true;
                           drag.element.setPointerCapture(event.pointerId);
+                          tickTabDrag();
                         }
-                        drag.element.style.setProperty('--noa-tab-drag-x', `${delta}px`);
-                        const targetIndex = drag.positions.reduce((index, position, positionIndex) => (
-                          positionIndex !== drag.sourceIndex && event.clientX > position.left + position.width / 2 ? index + 1 : index
-                        ), 0);
-                        if (!tabDrag || targetIndex !== drag.targetIndex) {
-                          drag.targetIndex = targetIndex;
-                          setTabDrag({ id: drag.id, sourceIndex: drag.sourceIndex, targetIndex, positions: drag.positions });
-                        }
+                        event.preventDefault();
                       }}
-                      onPointerUp={(event) => { if (tabPointerRef.current?.pointerId === event.pointerId) finishTabDrag(true); }}
+                      onPointerUp={(event) => {
+                        const drag = tabPointerRef.current;
+                        if (!drag || drag.pointerId !== event.pointerId) return;
+                        drag.clientX = event.clientX;
+                        finishTabDrag(true);
+                      }}
                       onPointerCancel={(event) => { if (tabPointerRef.current?.pointerId === event.pointerId) finishTabDrag(false); }}
                       onClick={() => {
                         if (suppressTabClickRef.current) { suppressTabClickRef.current = false; return; }

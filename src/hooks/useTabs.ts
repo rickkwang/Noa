@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { addTabId, MAX_OPEN_TABS, removeTabAndPickNext } from '../lib/tabUtils';
+import { addTabId, MAX_OPEN_TABS, moveTabId, removeTabAndPickNext } from '../lib/tabUtils';
 import type { Note } from '../types';
 
 const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
@@ -241,12 +241,9 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
   }, [clearEnteringTab]);
 
   const handleTabReorder = useCallback((sourceId: string, targetId: string, after: boolean) => {
-    const current = openTabIdsRef.current;
-    if (sourceId === targetId || closingTabIds.has(sourceId) || closingTabIds.has(targetId)) return;
-    if (!current.includes(sourceId) || !current.includes(targetId)) return;
-    const next = current.filter((id) => id !== sourceId);
-    next.splice(next.indexOf(targetId) + Number(after), 0, sourceId);
-    if (next.every((id, index) => id === current[index])) return;
+    if (closingTabIds.has(sourceId) || closingTabIds.has(targetId)) return;
+    const next = moveTabId(openTabIdsRef.current, sourceId, targetId, after);
+    if (next === openTabIdsRef.current) return;
     openTabIdsRef.current = next;
     setOpenTabIds(next);
   }, [closingTabIds]);

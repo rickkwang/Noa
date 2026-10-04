@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addTabId, MAX_OPEN_TABS, removeTabAndPickNext } from '../../src/lib/tabUtils';
+import { addTabId, MAX_OPEN_TABS, moveTabId, removeTabAndPickNext } from '../../src/lib/tabUtils';
 
 describe('addTabId', () => {
   it('appends a new tab', () => {
@@ -44,5 +44,32 @@ describe('removeTabAndPickNext', () => {
 
   it('clears the selection when the last tab closes', () => {
     expect(removeTabAndPickNext(['a'], 'a', 'a')).toEqual({ next: [], nextActive: '' });
+  });
+});
+
+describe('moveTabId', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+
+  it('moves a tab forward after the target', () => {
+    expect(moveTabId(ids, 'a', 'c', true)).toEqual(['b', 'c', 'a', 'd']);
+  });
+
+  it('moves a tab backward before the target', () => {
+    expect(moveTabId(ids, 'd', 'b', false)).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it('moves to either end', () => {
+    expect(moveTabId(ids, 'b', 'd', true)).toEqual(['a', 'c', 'd', 'b']);
+    expect(moveTabId(ids, 'c', 'a', false)).toEqual(['c', 'a', 'b', 'd']);
+  });
+
+  it('returns the same array when the order would not change', () => {
+    expect(moveTabId(ids, 'b', 'c', false)).toBe(ids);
+    expect(moveTabId(ids, 'b', 'b', true)).toBe(ids);
+  });
+
+  it('ignores unknown ids', () => {
+    expect(moveTabId(ids, 'x', 'a', false)).toBe(ids);
+    expect(moveTabId(ids, 'a', 'x', true)).toBe(ids);
   });
 });

@@ -30,3 +30,11 @@ export function removeTabAndPickNext(
   if (next.length === 0) return { next, nextActive: '' };
   return { next, nextActive: next[idx] ?? next[idx - 1] };
 }
+
+/** Move `sourceId` next to `targetId`; returns the original array when nothing changes. */
+export function moveTabId(openTabIds: string[], sourceId: string, targetId: string, after: boolean): string[] {
+  if (sourceId === targetId || !openTabIds.includes(sourceId) || !openTabIds.includes(targetId)) return openTabIds;
+  const next = openTabIds.filter((id) => id !== sourceId);
+  next.splice(next.indexOf(targetId) + Number(after), 0, sourceId);
+  return next.every((id, index) => id === openTabIds[index]) ? openTabIds : next;
+}
