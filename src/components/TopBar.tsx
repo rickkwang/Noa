@@ -25,6 +25,8 @@ interface TopBarProps {
   isSidebarOpen: boolean;
   isSidebarMaterialActive: boolean;
   isRightPanelOpen: boolean;
+  /** Set while the right column opens or closes, so the actions ride its edge. */
+  rightPanelEdgeTransition?: string;
   isMobile: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -35,7 +37,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
   // Accent coral is the active-state color everywhere else, but on the dark
@@ -147,12 +149,13 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
           wider than that cell, and an offset larger than the cell pushed the
           button under the column instead of clear of it. */}
       <div
-        className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30' : 'z-40'}`}
+        className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30 has-[[role=menu]]:z-40' : 'z-40'}`}
         data-right-panel-anchor={isMobile ? undefined : 'true'}
         style={isMobile ? undefined : {
           // 15px, not a round rem: it puts the menu glyph on the same vertical
           // line as the editor toolbar's last action directly beneath it.
           right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 340px) + 15px)' : '15px',
+          transition: rightPanelEdgeTransition,
         }}
       >
         <div className="relative flex items-center gap-1" style={noDragRegion}>
@@ -175,7 +178,11 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 onSelect={onTogglePane}
                 badges={paneBadges}
                 isDark={isDark}
-                triggerClassName={`transition-colors cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}`}
+                // Colour only, not the wash: choosing a card closes the menu
+                // and moves this button to the column's new edge in the same
+                // frame, and a fading background would trail behind as a
+                // ghost block at the spot it jumped to.
+                triggerClassName={`transition-[color] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}`}
                 isPanelOpen={isRightPanelOpen}
                 onTogglePanel={onToggleRightPanel}
               />

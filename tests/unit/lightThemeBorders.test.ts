@@ -292,7 +292,7 @@ describe('light theme border tokens', () => {
     // already in place, and back out from under one that had already left.
     expect(topBar).toContain('data-titlebar="true"');
     expect(indexCss).toContain('[data-titlebar="true"]::after {\n  transition: none;\n}');
-    expect(indexCss).toContain('.noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {\n  transition: left 320ms cubic-bezier(0.4, 0, 0.2, 1);\n}');
+    expect(indexCss).toContain('.noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {\n  transition: left 400ms ease-in-out;\n}');
     expect(indexCss).not.toContain('.noa-app-shell[data-sidebar-dragging="true"] [data-titlebar="true"]::after');
     expect(app).toContain('data-sidebar-dock-motion={isSidebarDockMotionLive ? \'true\' : undefined}');
     expect(app).toMatch(
@@ -306,8 +306,8 @@ describe('light theme border tokens', () => {
     // Promotion fades the elevation away on the spacer's clock rather than
     // dropping shadow, corner and floor colour on the first frame.
     expect(app).toMatch(/: isPromotingSidebarPreview\s*\n\s*\? SIDEBAR_PROMOTION_SURFACE_TRANSITION/);
-    expect(app).toContain("const SIDEBAR_PROMOTION_EDGE_CLOCK = '320ms cubic-bezier(0.4, 0, 0.2, 1)';");
-    expect(app).toContain('`left 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'320ms\'}`');
+    expect(app).toContain("const SIDEBAR_PROMOTION_EDGE_CLOCK = '400ms ease-in-out';");
+    expect(app).toContain('`left 400ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'400ms\'}`');
     expect(indexCss).toContain('.noa-sidebar-promotion-divider {\n  left: var(--noa-sidebar-width, 325px);\n}');
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
@@ -335,7 +335,7 @@ describe('light theme border tokens', () => {
     // two edges onto one clock and nothing else catches it — EditorHeader.tsx
     // carries the reasoning.
     expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? 'var(--noa-titlebar-reserve)' : undefined");
-    expect(editorHeader).toContain("'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'");
+    expect(editorHeader).toContain("'margin-left 400ms ease-in-out, margin-right 400ms ease-in-out'");
     expect(editorHeader).not.toContain("transition: liftTabStrip ? 'margin 220ms");
     expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
     expect(editorHeader).not.toContain("paddingRight: reserveTitlebarActions");
@@ -367,11 +367,11 @@ describe('light theme border tokens', () => {
     expect(app).toContain("width: isMobile\n              ? '80%'\n              : isSidebarContentMasked ? '0px' : 'var(--noa-sidebar-width, 325px)',");
     expect(app).toContain('opacity: isSidebarContentMasked ? 0 : 1,');
     expect(app).not.toMatch(/marginLeft:[\s\S]{0,120}?calc\(-1 \* var\(--noa-sidebar-width/);
-    expect(app).toContain(": 'opacity 260ms cubic-bezier(0.4, 0, 0.2, 1), width 320ms cubic-bezier(0.4, 0, 0.2, 1)',");
-    // 320ms is one motion in five places. The JS fallback is the one that can
+    expect(app).toContain(": 'opacity 400ms ease-in-out, width 400ms ease-in-out',");
+    // 400ms is one motion in five places. The JS fallback is the one that can
     // drift unnoticed: shorter than the motion, it drops the translucent
     // material mid-collapse.
-    expect(sidebarPreview).toContain('const SIDEBAR_DOCK_MOTION_MS = 320;');
+    expect(sidebarPreview).toContain('const SIDEBAR_DOCK_MOTION_MS = 400;');
     // All three boxes on the masking edge need the one-frame suppression, not
     // just the two the mask is written on: leaving the preview drops the column
     // surface from a full column to 0 in the same commit, and the surface alone
@@ -379,15 +379,16 @@ describe('light theme border tokens', () => {
     expect(app).toMatch(
       /isSettlingSidebarPromotionClose \|\| isDraggingSidebar \|\| isSidebarPreviewSettling\s*\n\s*\? 'none'/,
     );
-    expect(indexCss).toContain('transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);');
+    expect(indexCss).toContain('transition: transform 400ms ease-in-out;');
     // Only !important outranks an inline transition, and all five have to drop
     // together or the masking edge and its content come apart.
     expect(indexCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\[data-sidebar-container\],\s*\[data-sidebar-content-layer="true"\],\s*\[data-sidebar-separator="true"\],\s*\[data-sidebar-column-surface="true"\],\s*\[data-titlebar="true"\]::after \{\s*transition: none !important;/);
-    expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 320ms cubic-bezier\(0\.4, 0, 0\.2, 1\)'\)/);
-    // The right panel keeps its fixed width while it is off screen. On desktop
-    // it snaps open and shut; only the phone drawer slides.
-    expect(app).toContain("marginRight: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'calc(-1 * var(--noa-right-panel-width, 340px))' : '0px'");
-    expect(app).toContain("transition: isMobile && !isDraggingRightPanel ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'");
+    expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 400ms ease-in-out'\)/);
+    // On desktop the right column's width is its mask: closed is zero width,
+    // and only the open/close toggle eases it — the content stays put inside.
+    expect(app).toContain(": !isRightPanelFloating && (isFocusMode || !isRightPanelOpen) ? '0px' : rightPanelColumnWidth");
+    expect(app).toContain('`width ${RIGHT_PANEL_TOGGLE_CLOCK}, opacity ${RIGHT_PANEL_TOGGLE_CLOCK}`');
+    expect(app).toContain("transition: isMobile && !isDraggingRightPanel\n              ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)'");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");
   });
 

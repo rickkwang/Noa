@@ -244,13 +244,19 @@ export function useLayout() {
       // stands would jump the column before the pointer has moved.
       const column = document.querySelector<HTMLElement>('[data-right-panel-column="true"]');
       const current = column?.getBoundingClientRect().width;
-      if (current) setGraphPanelWidth(current);
+      if (current) {
+        setGraphPanelWidth(current);
+        // The variable may hold a clamped CSS expression rather than a px
+        // value; seed the drag's own record so a press without movement
+        // restores this width instead of an older one.
+        previewRightPanelWidth(current);
+      }
       setHasGraphPanelWidth(true);
       setIsDraggingGraphPanel(true);
     } else {
       setIsDraggingSharedPanel(true);
     }
-  }, [isRightPanelWide, setIsDraggingSharedPanel, setIsDraggingGraphPanel, setGraphPanelWidth]);
+  }, [isRightPanelWide, setIsDraggingSharedPanel, setIsDraggingGraphPanel, setGraphPanelWidth, previewRightPanelWidth]);
   useEffect(() => {
     if (!isDraggingRightPanel) return;
     const targets = Array.from(document.querySelectorAll<HTMLElement>(
@@ -319,7 +325,17 @@ export function useLayout() {
   useLayoutEffect(() => {
     previewSidebarWidth(sidebarWidth);
     if (isRightPanelWide && hasGraphPanelWidth) {
-      previewRightPanelWidth(graphPanelWidth);
+      // The dragged width is a preference, clamped here against the sidebar
+      // as it is now — the same ceiling the drag handle applies. A width
+      // dragged with the sidebar closed would otherwise survive opening it
+      // and crush the editor to a sliver it can't be dragged back out of.
+      const sidebarSpace = isSidebarOpen ? `${sidebarWidth}px` : '0px';
+      const floor = `max(${RIGHT_PANEL_DEFAULT_WIDTH}px, min(${PANEL_MAX_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`;
+      const ceiling = `min(${GRAPH_PANEL_MAX_VIEWPORT_RATIO * 100}vw, 100vw - ${sidebarSpace} - ${EDITOR_MIN_WIDTH_BESIDE_GRAPH}px)`;
+      document.documentElement.style.setProperty(
+        '--noa-right-panel-width',
+        `max(${floor}, min(${graphPanelWidth}px, ${ceiling}))`,
+      );
     } else if (isRightPanelWide) {
       // The same ceiling the drag handle stops at, written as CSS so it follows
       // the window without a resize listener.
@@ -330,7 +346,7 @@ export function useLayout() {
     } else {
       previewRightPanelWidth(rightPanelWidth);
     }
-  }, [previewSidebarWidth, previewRightPanelWidth, rightPanelWidth, graphPanelWidth, hasGraphPanelWidth, sidebarWidth, isRightPanelWide]);
+  }, [previewSidebarWidth, previewRightPanelWidth, rightPanelWidth, graphPanelWidth, hasGraphPanelWidth, sidebarWidth, isRightPanelWide, isSidebarOpen]);
 
   const wasMobileRef = useRef(false);
   useEffect(() => {

@@ -113,7 +113,9 @@ function PaneCard({
             title={isExpanded ? 'Collapse' : 'Expand'}
             aria-label={isExpanded ? 'Collapse panel' : 'Expand panel'}
             aria-pressed={isExpanded}
-            className={`${controlClass} ${isExpanded ? (isDark ? 'bg-[rgba(249,249,247,0.10)] text-[#F9F9F7]' : 'bg-[#2D2D2B]/[0.07] text-[#2D2D2B]') : ''}`}
+            // No pressed wash: the glyph already flips to collapse, and a
+            // resting fill read as a stuck hover highlight.
+            className={controlClass}
           >
             {isExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { attachEdgeFade, type EdgeFadeHandle } from '../../lib/edgeFade';
 import { Note } from '../../types';
@@ -10,6 +10,19 @@ const dragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAp
 // Keep in sync with the editor-tab-slot-enter/exit keyframes in index.css, and
 // with TAB_ENTER_FALLBACK_MS / TAB_EXIT_FALLBACK_MS in useTabs.
 const TAB_ANIM_MS = 170;
+
+// Compressed tabs (see .editor-tab in index.css): widest is the old fixed 9rem,
+// narrowest still fits a padded initial or the active tab's close glyph.
+const TAB_MAX_W = 144;
+const TAB_MIN_W = 44;
+// The active tab stops compressing here, as in Obsidian: it holds the close
+// glyph and, right after a new note, the rename field.
+const TAB_ACTIVE_MIN_W = 96;
+// Fixed chrome sharing the strip's frame with the tabs: the strip's px-1, each
+// divider (w-px + mx-0.5), and the new-tab button (w-6 + ml-1).
+const TAB_STRIP_PADDING = 8;
+const TAB_DIVIDER_W = 5;
+const NEW_TAB_BUTTON_W = 28;
 
 // Stable identity for the optional id lists, so the memos below don't rebuild on
 // every render when the caller omits them.
@@ -45,6 +58,38 @@ interface EditorHeaderProps {
   reserveTitlebarActions?: boolean;
   isDark: boolean;
   readOnly?: boolean;
+}
+
+type TabSlot = { left: number; width: number };
+
+// Where the dragged tab sits when it settles into `slot`. Tabs are not all one
+// width (the active tab keeps TAB_ACTIVE_MIN_W while the rest compress), so the
+// slot is measured from its own edges rather than assumed to be one step over.
+function tabSlotOffset(positions: TabSlot[], source: number, slot: number) {
+  if (slot === source) return 0;
+  const from = positions[source];
+  return slot > source
+    ? positions[slot].left + positions[slot].width - from.width - from.left
+    : positions[slot].left - from.left;
+}
+
+// How far a tab between the drag's source and target moves to make room: the
+// dragged tab's own width plus one divider gap, whatever its own width is.
+function tabMakeRoomShift(positions: TabSlot[], source: number, target: number, index: number) {
+  if (index === source) return 0;
+  const gap = positions.length > 1 ? positions[1].left - positions[0].left - positions[0].width : 0;
+  const step = positions[source].width + gap;
+  if (source < target && index > source && index <= target) return -step;
+  if (source > target && index >= target && index < source) return step;
+  return 0;
+}
+
+function isActiveTabInView(strip: HTMLElement) {
+  const active = strip.querySelector<HTMLElement>('[data-active-tab="true"]');
+  if (!active) return false;
+  const tab = active.getBoundingClientRect();
+  const bounds = strip.getBoundingClientRect();
+  return tab.left >= bounds.left - 1 && tab.right <= bounds.right + 1;
 }
 
 export function EditorHeader({
@@ -101,6 +146,52 @@ export function EditorHeader({
   // CSS variables on the strip itself: a fade that re-rendered the header on
   // every scroll frame would be paying a render to draw a gradient.
   const edgeFadeRef = useRef<EdgeFadeHandle | null>(null);
+  const activeTabInViewRef = useRef(true);
+  // Tabs that will still be there once closing ones finish: the width they
+  // share is what the entering/exiting tab animates toward.
+  const settledTabCount = tabs ? tabs.filter((tab) => !closingTabIdSet.has(tab.id)).length : 0;
+  const settledTabCountRef = useRef(settledTabCount);
+  settledTabCountRef.current = settledTabCount;
+  const hasNewTabButton = Boolean(onNewTab);
+  // A count change re-divides the space, and so does switching tabs while
+  // compressed (the wider active slot moves). The tabs ease onto the new widths
+  // for the length of the enter/exit animation, then go back to snapping so
+  // resizes track the pointer. Decided during render, not in an effect: the
+  // flag has to reach the DOM in the same commit as the width change. Set from
+  // a layout effect it landed after an earlier effect had already read layout,
+  // so the new widths were computed without it and snapped (measured: 44→96px
+  // in one frame on a tab switch).
+  //
+  // closingActiveId: the tab that was active when it started closing. Its
+  // successor takes over the active width at once, and the exit keyframes start
+  // from --noa-tab-w, so without this the closing tab first dropped to the
+  // compressed width (96→53px in a frame) and only then collapsed.
+  const tabLayoutKey = `${settledTabCount}:${note.id}`;
+  const [tabLayout, setTabLayout] = useState({ key: tabLayoutKey, activeId: note.id, resizing: false, closingActiveId: null as string | null });
+  if (tabLayout.key !== tabLayoutKey) {
+    const closingActiveId = tabLayout.activeId !== note.id && closingTabIdSet.has(tabLayout.activeId)
+      ? tabLayout.activeId
+      : tabLayout.closingActiveId !== null && closingTabIdSet.has(tabLayout.closingActiveId) ? tabLayout.closingActiveId : null;
+    setTabLayout({ key: tabLayoutKey, activeId: note.id, resizing: true, closingActiveId });
+  }
+  useEffect(() => {
+    if (!tabLayout.resizing) return;
+    const timer = window.setTimeout(() => setTabLayout((prev) => ({ ...prev, resizing: false })), TAB_ANIM_MS + 20);
+    return () => window.clearTimeout(timer);
+  }, [tabLayout.key, tabLayout.resizing]);
+  const applyTabFitWidth = useCallback(() => {
+    const scrollEl = tabStripRef.current;
+    const frameEl = tabStripFrameRef.current;
+    const count = settledTabCountRef.current;
+    if (!scrollEl || !frameEl || count === 0) return;
+    const space = frameEl.clientWidth - TAB_STRIP_PADDING - (hasNewTabButton ? NEW_TAB_BUTTON_W : 0) - TAB_DIVIDER_W * (count - 1);
+    const even = space / count;
+    const activeWidth = count > 1 && even < TAB_ACTIVE_MIN_W ? TAB_ACTIVE_MIN_W : even;
+    const restWidth = count > 1 && even < TAB_ACTIVE_MIN_W ? (space - activeWidth) / (count - 1) : even;
+    const clampWidth = (width: number) => Math.floor(Math.min(TAB_MAX_W, Math.max(TAB_MIN_W, width)));
+    scrollEl.style.setProperty('--noa-tab-fit-w', `${clampWidth(restWidth)}px`);
+    scrollEl.style.setProperty('--noa-tab-active-fit-w', `${clampWidth(activeWidth)}px`);
+  }, [hasNewTabButton]);
   // Tab positions are kept in strip-content coordinates (scrollLeft included),
   // so auto-scrolling the strip mid-drag doesn't invalidate them.
   const tabPointerRef = useRef<{
@@ -126,12 +217,21 @@ export function EditorHeader({
     const x = drag.clientX - stripRect.left + strip.scrollLeft;
     const { positions, sourceIndex } = drag;
     const delta = Math.max(
-      positions[0].left - positions[sourceIndex].left,
-      Math.min(positions[positions.length - 1].left - positions[sourceIndex].left, x - drag.startX),
+      tabSlotOffset(positions, sourceIndex, 0),
+      Math.min(tabSlotOffset(positions, sourceIndex, positions.length - 1), x - drag.startX),
     );
     drag.element.style.setProperty('--noa-tab-drag-x', `${delta}px`);
+    // Resolve against the dragged tab's leading edge, not the pointer: from the
+    // pointer, where the tab was grabbed decided the swap — near its right
+    // edge it swapped after a few px, near its left only after a full width.
+    // A neighbour gives way once that edge crosses its midline.
+    const draggedLeft = positions[sourceIndex].left + delta;
+    const draggedRight = draggedLeft + positions[sourceIndex].width;
     const targetIndex = positions.reduce((index, position, positionIndex) => (
-      positionIndex !== sourceIndex && x > position.left + position.width / 2 ? index + 1 : index
+      positionIndex !== sourceIndex
+        && (positionIndex < sourceIndex ? draggedLeft : draggedRight) > position.left + position.width / 2
+        ? index + 1
+        : index
     ), 0);
     if (targetIndex !== drag.targetIndex || !drag.frame) {
       drag.targetIndex = targetIndex;
@@ -165,16 +265,24 @@ export function EditorHeader({
       suppressTabClickRef.current = true;
       window.setTimeout(() => { suppressTabClickRef.current = false; }, 0);
     }
-    if (commit && drag.dragging && drag.targetIndex !== drag.sourceIndex && tabs) {
+    // Every drag settles, including one dropped back home or cancelled: those
+    // used to snap the tab up to half a width in a single frame.
+    if (drag.dragging && tabs) {
+      const settledIndex = commit ? drag.targetIndex : drag.sourceIndex;
+      if (settledIndex !== drag.targetIndex) {
+        setTabDrag({ id: drag.id, sourceIndex: drag.sourceIndex, targetIndex: settledIndex, positions: drag.positions });
+      }
       drag.element.style.transition = 'transform 150ms ease-out';
       void drag.element.getBoundingClientRect();
-      drag.element.style.setProperty('--noa-tab-drag-x', `${drag.positions[drag.targetIndex].left - drag.positions[drag.sourceIndex].left}px`);
+      drag.element.style.setProperty('--noa-tab-drag-x', `${tabSlotOffset(drag.positions, drag.sourceIndex, settledIndex)}px`);
       settleTimerRef.current = window.setTimeout(() => {
         settleTimerRef.current = null;
         // Commit the new order before dropping the offset, so no frame paints
         // the tab back in its old slot.
         flushSync(() => {
-          onTabReorder?.(drag.id, tabs[drag.targetIndex].id, drag.targetIndex > drag.sourceIndex);
+          if (settledIndex !== drag.sourceIndex) {
+            onTabReorder?.(drag.id, tabs[settledIndex].id, settledIndex > drag.sourceIndex);
+          }
           setTabDrag(null);
         });
         drag.element.style.removeProperty('--noa-tab-drag-x');
@@ -259,24 +367,54 @@ export function EditorHeader({
     // writing scrollLeft. The frame is the flex-1 wrapper, so it only changes
     // with the window, sidebar, or right panel: exactly the cases that need a
     // re-snap, and none of the cases the animations already handle.
+    //
+    // Only a tab the resize itself pushed out is put back. If the user had
+    // scrolled the active tab away, every sidebar drag or toggle yanked the
+    // strip back to it; their scroll position is theirs to keep.
     const fade = attachEdgeFade(scrollEl, { axis: 'x', end: true });
     edgeFadeRef.current = fade;
+    activeTabInViewRef.current = isActiveTabInView(scrollEl);
+    // Scroll events arrive a frame late. The one our own correction raises
+    // lands after the strip has shrunk again, reads the tab as out of view,
+    // and would pass for the user scrolling away — so it is skipped by the
+    // position it wrote.
+    let correctedScrollLeft: number | null = null;
+    const handleScroll = () => {
+      if (scrollEl.scrollLeft === correctedScrollLeft) return;
+      correctedScrollLeft = null;
+      activeTabInViewRef.current = isActiveTabInView(scrollEl);
+    };
+    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
     const observer = new ResizeObserver(() => {
-      const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
-      active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      applyTabFitWidth();
+      if (activeTabInViewRef.current && !isActiveTabInView(scrollEl)) {
+        const active = scrollEl.querySelector<HTMLElement>('[data-active-tab="true"]');
+        active?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+        correctedScrollLeft = scrollEl.scrollLeft;
+      }
+      activeTabInViewRef.current = isActiveTabInView(scrollEl);
       fade.refresh();
     });
     observer.observe(frameEl);
     return () => {
+      scrollEl.removeEventListener('scroll', handleScroll);
       observer.disconnect();
       fade.dispose();
       edgeFadeRef.current = null;
     };
-  }, []);
+  }, [applyTabFitWidth]);
+
+  useLayoutEffect(() => { applyTabFitWidth(); }, [settledTabCount, applyTabFitWidth]);
 
   // Tabs entering or leaving change how much the strip overflows without
   // scrolling it, and no scroll event reports that.
   useLayoutEffect(() => { edgeFadeRef.current?.refresh(); }, [tabs, anyTabAnimating]);
+  // Switching to a tab that is already in view scrolls nothing, so no scroll
+  // event would refresh the record the resize observer reads.
+  useLayoutEffect(() => {
+    const scrollEl = tabStripRef.current;
+    if (scrollEl) activeTabInViewRef.current = isActiveTabInView(scrollEl);
+  }, [tabs, note.id]);
 
   return (
     <div
@@ -299,10 +437,10 @@ export function EditorHeader({
         // — otherwise the translucent window's compositor leaves the native
         // material showing in that band until the strip arrives (a gray ghost
         // riding the tab strip). The right reservation belongs to the right
-        // panel, which slides on the same 320ms clock as the sidebar. A
+        // panel, which slides on the same 400ms clock as the sidebar. A
         // `margin` shorthand cannot hold both.
         transition: liftTabStrip
-          ? 'margin-left 320ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 320ms cubic-bezier(0.4, 0, 0.2, 1)'
+          ? 'margin-left 400ms ease-in-out, margin-right 400ms ease-in-out'
           : undefined,
       }}
     >
@@ -322,6 +460,7 @@ export function EditorHeader({
         <div className="relative z-[1] min-w-0 flex items-center overflow-visible">
           <div
             ref={tabStripRef}
+            data-tab-resizing={tabLayout.resizing || undefined}
             className="noa-edge-fade-x min-w-0 flex-1 flex items-center overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ scrollPaddingInline: '10px' }}
           >
@@ -348,13 +487,7 @@ export function EditorHeader({
                 const sourceIndex = tabDrag?.sourceIndex ?? -1;
                 const targetIndex = tabDrag?.targetIndex ?? -1;
                 const positions = tabDrag?.positions;
-                const shift = positions && idx !== sourceIndex
-                  ? sourceIndex < targetIndex && idx > sourceIndex && idx <= targetIndex
-                    ? positions[idx - 1].left - positions[idx].left
-                    : sourceIndex > targetIndex && idx >= targetIndex && idx < sourceIndex
-                      ? positions[idx + 1].left - positions[idx].left
-                      : 0
-                  : 0;
+                const shift = positions ? tabMakeRoomShift(positions, sourceIndex, targetIndex, idx) : 0;
                 return (
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
@@ -368,6 +501,8 @@ export function EditorHeader({
                       data-tab-id={tab.id}
                       data-active-tab={isActiveTab}
                       data-closing-tab={isClosingTab || undefined}
+                      data-dragging-tab={tabDrag?.id === tab.id || undefined}
+                      data-closing-active-tab={isClosingTab && tab.id === tabLayout.closingActiveId ? true : undefined}
                       onPointerDown={(event) => {
                         if (event.button !== 0 || tabDrag || !onTabReorder || tabs.length < 2 || anyTabAnimating || isEditingTitle || (event.target as HTMLElement).closest('button, input')) return;
                         const strip = tabStripRef.current;
@@ -404,12 +539,20 @@ export function EditorHeader({
                         if (suppressTabClickRef.current) { suppressTabClickRef.current = false; return; }
                         if (!isClosingTab) onTabChange?.(tab.id);
                       }}
+                      // Middle-click closes, as in a browser. mousedown is
+                      // where autoscroll starts, so it is cancelled there.
+                      onMouseDown={(event) => { if (event.button === 1) event.preventDefault(); }}
+                      onAuxClick={(event) => {
+                        if (event.button !== 1 || tabDrag || isClosingTab) return;
+                        event.preventDefault();
+                        onTabClose?.(tab.id);
+                      }}
                       onAnimationEnd={(event) => {
                         if (event.currentTarget !== event.target) return;
                         if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
                         if (isEnteringTab) onTabEnterComplete?.(tab.id);
                       }}
-                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 h-[26px] px-3 rounded-lg cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
+                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 h-[26px] rounded-lg cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
                         // The active pill's surface and ring come from
                         // .editor-tab[data-active-tab] in index.css — a literal
                         // bg-[#F9F9F7] here would be remapped to the page colour
