@@ -247,7 +247,7 @@ describe('sidebar surface tokens', () => {
     // preview is exactly that case, and it is also a first render, so
     // @starting-style fires on it.
     expect(css).toMatch(
-      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\) \.noa-app-shell\[data-sidebar-dock-motion="true"\]\[data-sidebar-material-painted="true"\]:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{\s*transition:\s*transform 400ms/,
+      /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\) \.noa-app-shell\[data-sidebar-dock-motion="true"\]\[data-sidebar-material-painted="true"\]:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{\s*transition:\s*transform 500ms/,
     );
     // The titlebar only goes transparent so that veil shows through. Giving it
     // a veil — and so a stacking context — of its own re-rasterized the

@@ -20,6 +20,9 @@ export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
 export const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
 const GRAPH_PANEL_MAX_VIEWPORT_RATIO = 0.7;
+// What the graph alone opens at (and its drag floor), a little under the
+// shared 480px ceiling.
+const GRAPH_PANEL_DEFAULT_WIDTH = 460;
 // What the editor keeps when the graph is dragged as wide as it goes.
 const EDITOR_MIN_WIDTH_BESIDE_GRAPH = 380;
 
@@ -179,7 +182,7 @@ export function useLayout() {
   // The width the graph opens at alone is also its floor: it can be dragged
   // wider from there, never narrower.
   const getGraphPanelMin = useCallback(
-    () => getResponsivePanelMaxWidth(window.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH),
+    () => Math.max(RIGHT_PANEL_DEFAULT_WIDTH, Math.min(GRAPH_PANEL_DEFAULT_WIDTH, window.innerWidth * PANEL_MAX_VIEWPORT_RATIO)),
     []
   );
   const getGraphPanelMax = useCallback(() => {
@@ -225,7 +228,7 @@ export function useLayout() {
     isDragging: isDraggingGraphPanel,
     setIsDragging: setIsDraggingGraphPanel,
   } = useResizeDrag(
-    PANEL_MAX_WIDTH,
+    GRAPH_PANEL_DEFAULT_WIDTH,
     RIGHT_PANEL_MIN_WIDTH,
     Number.MAX_SAFE_INTEGER,
     getGraphPanelValue,
@@ -330,7 +333,7 @@ export function useLayout() {
       // dragged with the sidebar closed would otherwise survive opening it
       // and crush the editor to a sliver it can't be dragged back out of.
       const sidebarSpace = isSidebarOpen ? `${sidebarWidth}px` : '0px';
-      const floor = `max(${RIGHT_PANEL_DEFAULT_WIDTH}px, min(${PANEL_MAX_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`;
+      const floor = `max(${RIGHT_PANEL_DEFAULT_WIDTH}px, min(${GRAPH_PANEL_DEFAULT_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`;
       const ceiling = `min(${GRAPH_PANEL_MAX_VIEWPORT_RATIO * 100}vw, 100vw - ${sidebarSpace} - ${EDITOR_MIN_WIDTH_BESIDE_GRAPH}px)`;
       document.documentElement.style.setProperty(
         '--noa-right-panel-width',
@@ -341,7 +344,7 @@ export function useLayout() {
       // the window without a resize listener.
       document.documentElement.style.setProperty(
         '--noa-right-panel-width',
-        `max(${rightPanelWidth}px, min(${PANEL_MAX_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`,
+        `max(${rightPanelWidth}px, min(${GRAPH_PANEL_DEFAULT_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`,
       );
     } else {
       previewRightPanelWidth(rightPanelWidth);

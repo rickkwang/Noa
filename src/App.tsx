@@ -39,25 +39,23 @@ const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 
 // The preview's elevation (index.css .noa-sidebar-preview-shell, the
-// rounded-r corner, the --bg-primary floor) drops on the same 400ms clock as
+// rounded-r corner, the --bg-primary floor) drops on the same 500ms clock as
 // the promotion spacer, so the panel settles while the editor makes room.
 // Stable identity for "no card lit" so a collapsed column does not hand the
 // titlebar a fresh array on every render.
 const NO_PANES: readonly RightTab[] = [];
-const SIDEBAR_PROMOTION_EDGE_CLOCK = '400ms ease-in-out';
+const SIDEBAR_PROMOTION_EDGE_CLOCK = '500ms ease-in-out';
 const SIDEBAR_PROMOTION_SURFACE_TRANSITION = [
   `box-shadow ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
   `border-radius ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
   `background-color ${SIDEBAR_PROMOTION_EDGE_CLOCK}`,
 ].join(', ');
 
-// Shared with the sidebar's dock motion: symmetric ease-in-out, so opening and
-// closing read as one motion played forwards and back.
-const RIGHT_PANEL_TOGGLE_MS = 400;
+// The sidebar's dock motion, which the right column rides when a sidebar toggle
+// changes its width: symmetric ease-in-out, so opening and closing read as one
+// motion played forwards and back.
+const RIGHT_PANEL_TOGGLE_MS = 500;
 const RIGHT_PANEL_TOGGLE_CLOCK = `${RIGHT_PANEL_TOGGLE_MS}ms ease-in-out`;
-// Both fades finish inside the toggle clock.
-const RIGHT_PANEL_FADE_OUT = 'opacity 180ms ease-out';
-const RIGHT_PANEL_FADE_IN = 'opacity 240ms ease-out 120ms';
 
 export default function App() {
   useGlobalScrollingClass();
@@ -538,8 +536,8 @@ export default function App() {
   // first; if closed, mount it while idle. Once mounted, retain it across
   // toggles to preserve panel state and make every open instantaneous.
   // An expanded card stretches the column over the editor, so the column
-  // leaves the flow for it. Expanding and collapsing a card snap; only a
-  // plain open/close eases (see isRightPanelMasking below).
+  // leaves the flow for it. Opening, closing, expanding and collapsing all
+  // snap.
   const isPaneExpanded = expandedPane !== null && !isFocusMode;
   const isRightPanelFloating = isPaneExpanded;
   const rightPanelColumnWidth = isPaneExpanded
@@ -549,7 +547,7 @@ export default function App() {
     : 'var(--noa-right-panel-width, 340px)';
   // The column otherwise snaps, but a sidebar toggle can change its width
   // (an expanded card runs to the sidebar's edge; a wide graph is capped
-  // against it), and that change has to ride the sidebar's own 400ms clock or
+  // against it), and that change has to ride the sidebar's own 500ms clock or
   // the two edges part mid-motion. Set during render so the very commit that
   // flips the sidebar already carries the transition.
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);
@@ -563,32 +561,6 @@ export default function App() {
     const timer = window.setTimeout(() => setIsSidebarMoving(false), RIGHT_PANEL_TOGGLE_MS + 20);
     return () => window.clearTimeout(timer);
   }, [isSidebarMoving, isSidebarOpen]);
-  // Opening and closing the right column mirror the docked sidebar (and
-  // Alma's): the column's width is the mask, its cards stay put against the
-  // window's right edge and are uncovered by the moving left edge while they
-  // fade. The editor and the titlebar actions ride the same clock. Armed
-  // during render so the toggling commit already carries the transition;
-  // otherwise the column snaps, so drags and card switches stay instant.
-  // Closing an expanded card is the exception: that commit also drops the
-  // column from absolute back into the flow, so easing its width down from
-  // the expanded span would first crush the editor and then let it regrow.
-  // It snaps shut, as the column did before the mask.
-  const [prevRightPanelOpen, setPrevRightPanelOpen] = useState(isRightPanelOpen);
-  const [prevRightPanelFloating, setPrevRightPanelFloating] = useState(isRightPanelFloating);
-  const [isRightPanelToggling, setIsRightPanelToggling] = useState(false);
-  if (prevRightPanelOpen !== isRightPanelOpen) {
-    setPrevRightPanelOpen(isRightPanelOpen);
-    setIsRightPanelToggling(!prevRightPanelFloating);
-  }
-  if (prevRightPanelFloating !== isRightPanelFloating) {
-    setPrevRightPanelFloating(isRightPanelFloating);
-  }
-  useEffect(() => {
-    if (!isRightPanelToggling) return;
-    const timer = window.setTimeout(() => setIsRightPanelToggling(false), RIGHT_PANEL_TOGGLE_MS + 20);
-    return () => window.clearTimeout(timer);
-  }, [isRightPanelToggling, isRightPanelOpen]);
-  const isRightPanelMasking = isRightPanelToggling && !isMobile && !isFocusMode && !isRightPanelFloating && !isDraggingRightPanel;
   const rightPanelFollowsSidebar = isSidebarMoving && !isMobile && !isDraggingSidebar && !isDraggingRightPanel;
 
   const [hasMountedRightPanel, setHasMountedRightPanel] = useState(false);
@@ -600,8 +572,8 @@ export default function App() {
     }
     // Restored closed: mount behind the zero-width mask while idle. Warming
     // the module alone is not enough — lazy() still suspends once on mount,
-    // and React holds a shown fallback for ~300ms, so the first open slid in
-    // "Loading panel…" for most of its 400ms.
+    // and React holds a shown fallback for ~300ms, so the first open showed
+    // "Loading panel…" instead of the cards.
     if (typeof window.requestIdleCallback !== 'function') {
       const timer = window.setTimeout(() => setHasMountedRightPanel(true), 2000);
       return () => window.clearTimeout(timer);
@@ -866,7 +838,7 @@ export default function App() {
       aria-hidden={loadError ? true : undefined}
       className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
       data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}
-      data-layout-motion={!isMobile && (isSidebarMoving || isRightPanelToggling) ? 'true' : undefined}
+      data-layout-motion={!isMobile && isSidebarMoving ? 'true' : undefined}
       data-sidebar-moving={!isMobile && isSidebarMoving ? 'true' : undefined}
       data-sidebar-material-painted={hasPaintedSidebarMaterial ? 'true' : undefined}
       style={{
@@ -904,7 +876,7 @@ export default function App() {
               ? `opacity ${SIDEBAR_PROMOTION_EDGE_CLOCK}`
               : isDraggingSidebar
               ? 'none'
-              : `left 400ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? '0ms' : '400ms'}`,
+              : `left 500ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? '0ms' : '500ms'}`,
           }}
         />
       )}
@@ -934,7 +906,7 @@ export default function App() {
             // isSidebarPreviewSettling for the same reason the container and its
             // content layer carry it: leaving the preview drops this surface
             // from the preview's full column to 0 in one commit, and without a
-            // frame of suppression it plays a 400ms collapse of a column the
+            // frame of suppression it plays a 500ms collapse of a column the
             // user already dismissed — behind the preview that is fading out.
             transition: isSidebarPreviewOpen
               ? undefined
@@ -942,7 +914,7 @@ export default function App() {
                 ? SIDEBAR_PROMOTION_SURFACE_TRANSITION
               : isSettlingSidebarPromotionClose || isDraggingSidebar || isSidebarPreviewSettling
                 ? 'none'
-                : `width 400ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? '0ms' : '400ms'}`,
+                : `width 500ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? '0ms' : '500ms'}`,
           }}
         />
       )}
@@ -958,7 +930,7 @@ export default function App() {
         isRightPanelOpen={isRightPanelOpen}
         // Also while the column follows a sidebar toggle: a wide graph's width
         // is capped against the sidebar, so its edge moves on that clock too.
-        rightPanelEdgeTransition={isRightPanelMasking || rightPanelFollowsSidebar ? `right ${RIGHT_PANEL_TOGGLE_CLOCK}` : undefined}
+        rightPanelEdgeTransition={rightPanelFollowsSidebar ? `right ${RIGHT_PANEL_TOGGLE_CLOCK}` : undefined}
         activePanes={isRightPanelOpen ? openPanes : NO_PANES}
         onTogglePane={togglePane}
         paneBadges={paneBadges}
@@ -1040,7 +1012,7 @@ export default function App() {
                 ? `border-radius ${SIDEBAR_PROMOTION_EDGE_CLOCK}`
               : isDraggingSidebar || isPromotingSidebarPreview || isSettlingSidebarPromotionClose || isSidebarPreviewSettling
                 ? 'none'
-                : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'width 400ms ease-in-out'),
+                : (isMobile ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)' : 'width 500ms ease-in-out'),
             minWidth: 0,
           }}
         >
@@ -1066,7 +1038,7 @@ export default function App() {
                 || isSettlingSidebarPromotionClose
                 || isSidebarPreviewSettling
                 ? 'none'
-                : 'opacity 400ms ease-in-out, width 400ms ease-in-out',
+                : 'opacity 500ms ease-in-out, width 500ms ease-in-out',
             }}
             className="flex h-full shrink-0"
           >
@@ -1235,8 +1207,7 @@ export default function App() {
           }`}
           data-right-panel-column="true"
           style={{
-            // Desktop: closed is a zero-width mask, not an off-screen shift,
-            // so opening and closing can ease the one edge that moves.
+            // Desktop: closed is a zero-width column, shown and hidden at once.
             width: isMobile
               ? '80%'
               : !isRightPanelFloating && (isFocusMode || !isRightPanelOpen) ? '0px' : rightPanelColumnWidth,
@@ -1245,18 +1216,13 @@ export default function App() {
             transform: isMobile
               ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
               : undefined,
-            // Only the phone drawer slides. On desktop the column's width eases
-            // while it opens or closes (isRightPanelMasking), else snaps.
+            // Only the phone drawer slides; on desktop the column snaps except
+            // while it follows a sidebar toggle.
             transition: isMobile && !isDraggingRightPanel
               ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)'
               : rightPanelFollowsSidebar
                 ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, top ${RIGHT_PANEL_TOGGLE_CLOCK}`
-                : isRightPanelMasking
-                  // The fade runs on its own, shorter clock: sharing the mask's
-                  // 400ms left a dimmed slab sliding shut. Closing fades out
-                  // first; opening lets the mask lead and the cards catch up.
-                  ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, ${isRightPanelOpen ? RIGHT_PANEL_FADE_IN : RIGHT_PANEL_FADE_OUT}`
-                  : 'none',
+                : 'none',
             minWidth: 0,
             // The column is lifted over the titlebar, which is a window drag
             // region. Electron resolves drag regions by geometry, not z-order:

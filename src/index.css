@@ -163,7 +163,7 @@ body {
   transition: none;
 }
 .noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {
-  transition: left 400ms ease-in-out;
+  transition: left 500ms ease-in-out;
 }
 
 /* The lifted editor header's left traffic-light reservation is margin, so the
@@ -175,7 +175,7 @@ body {
    showing as a gray ghost), pointer-events none (it must not swallow the
    buttons it crosses), and background-color inherit so the dark remap that
    rewrites the header's own class follows automatically. It rides the same
-   400ms clock as the margin it shadows.
+   500ms clock as the margin it shadows.
    `right: 100%` pins its right edge to the header's own left edge and is what
    gives the box any width at all: with only `left` set, width resolves
    shrink-to-fit over empty content and the whole rule paints nothing. Pinned,
@@ -190,7 +190,7 @@ body {
   right: 100%;
   background-color: inherit;
   pointer-events: none;
-  transition: left 400ms ease-in-out;
+  transition: left 500ms ease-in-out;
 }
 .noa-editor-header-floor-reserved::before {
   left: calc(-1 * var(--noa-titlebar-reserve));
@@ -510,7 +510,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    @starting-style makes the gate's mechanism visible. A gate in the selector
    works by destroying the element, and @starting-style fires on whatever brings
    the element back — it cannot tell "the sidebar just opened" from "the dialog
-   just closed". Gated here, leaving settings replayed the whole 400ms expansion
+   just closed". Gated here, leaving settings replayed the whole 500ms expansion
    over a sidebar that had not moved. So existence tracks the sidebar alone, and
    the dialog hides the layer it already has, below. */
 html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expanded="true"])::before {
@@ -553,7 +553,7 @@ html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expand
    :where() for the dialog gate so this contributes no specificity there and the
    hide-for-settings rule above keeps its `transition: none`. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell[data-sidebar-dock-motion="true"][data-sidebar-material-painted="true"]:has([data-sidebar-expanded="true"])::before {
-  transition: transform 400ms ease-in-out;
+  transition: transform 500ms ease-in-out;
 }
 
 /* The dialog's share of the gate: hide the veil instead of destroying it, so
@@ -1456,13 +1456,13 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* The spacer is what opens the docked gap under a promoted preview, so it moves
    the editor's left edge — the same edge the lifted tab strip's traffic-light
    reservation is measured back from. Those two have to share a clock or the
-   strip is not monotonic: the reservation used to shrink over 400ms while this
+   strip is not monotonic: the reservation used to shrink over 500ms while this
    finished in 220ms, so the strip ran right with the edge, arrived, and then
    crept ~16px back left over the last 100ms with nothing else moving. One
    clock for the whole left edge. */
 .noa-sidebar-promotion-spacer {
   width: var(--noa-sidebar-width, 325px);
-  transition: width 400ms ease-in-out;
+  transition: width 500ms ease-in-out;
 
   @starting-style {
     width: 0;

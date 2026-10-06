@@ -5,8 +5,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 // transitionend is not a guaranteed event, and every phase here has exactly one
 // way out.
 const SIDEBAR_PREVIEW_EXIT_MS = 180;
-const SIDEBAR_DOCK_MOTION_MS = 400;
-const SIDEBAR_PROMOTION_MS = 400;
+const SIDEBAR_DOCK_MOTION_MS = 500;
+const SIDEBAR_PROMOTION_MS = 500;
 const SIDEBAR_MOTION_FALLBACK_SLACK_MS = 80;
 
 export type SidebarPreviewPhase = 'idle' | 'open' | 'closing' | 'promoting-open' | 'promoting-close' | 'settling-close';

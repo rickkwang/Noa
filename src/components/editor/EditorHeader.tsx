@@ -437,10 +437,9 @@ export function EditorHeader({
         // — otherwise the translucent window's compositor leaves the native
         // material showing in that band until the strip arrives (a gray ghost
         // riding the tab strip). The right reservation belongs to the right
-        // panel, which slides on the same 400ms clock as the sidebar. A
-        // `margin` shorthand cannot hold both.
+        // panel, which snaps, so only the left one eases, on the sidebar's clock.
         transition: liftTabStrip
-          ? 'margin-left 400ms ease-in-out, margin-right 400ms ease-in-out'
+          ? 'margin-left 500ms ease-in-out'
           : undefined,
       }}
     >

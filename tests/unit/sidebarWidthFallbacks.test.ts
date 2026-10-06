@@ -100,10 +100,12 @@ describe('sidebar width fallbacks', () => {
     expect(getResponsivePanelMaxWidth(900, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(971, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(1600, expected)).toBe(480);
-    // The clamp, the drag, and the floor the graph keeps when it has the column
-    // to itself.
+    // The clamp and the drag.
     expect(useLayout.match(/getResponsivePanelMaxWidth\(window\.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH\)/g))
-      .toHaveLength(3);
+      .toHaveLength(2);
+    // The graph alone opens narrower than the shared ceiling, but never under
+    // the column's own default.
+    expect(useLayout).toContain('Math.max(RIGHT_PANEL_DEFAULT_WIDTH, Math.min(GRAPH_PANEL_DEFAULT_WIDTH, window.innerWidth * PANEL_MAX_VIEWPORT_RATIO))');
   });
 
   it('reports the real drag bounds on both resize handles', async () => {
