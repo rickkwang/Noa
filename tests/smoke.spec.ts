@@ -381,13 +381,16 @@ test.describe('first launch', () => {
   test('offers vault setup, then local-storage guidance', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByText('Folder connection')).toBeVisible();
-    await expect(page.getByText('Connect a Markdown folder')).toBeVisible();
+    // 9ed4f65 dropped the "Folder connection" eyebrow; the dialog's own
+    // accessible name is the stable handle for it.
+    const onboarding = page.getByRole('dialog', { name: 'Connect a Markdown folder' });
+    await expect(onboarding).toBeVisible();
+    await expect(onboarding.getByRole('heading', { name: 'Connect a Markdown folder' })).toBeVisible();
     // Suppressed while the dialog is up — the notices must not stack.
     await expect(page.getByText('Local storage only')).toBeHidden();
 
     await page.getByRole('button', { name: 'Continue without a folder' }).click();
-    await expect(page.getByText('Folder connection')).toBeHidden();
+    await expect(onboarding).toBeHidden();
 
     await expect(page.getByText('Local storage only')).toBeVisible();
     await expect(page.getByText(/Local notes and settings are separate in the browser and desktop app/)).toBeVisible();
@@ -398,10 +401,10 @@ test.describe('first launch', () => {
   test('vault choice is remembered across reloads', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Continue without a folder' }).click();
-    await expect(page.getByText('Folder connection')).toBeHidden();
+    await expect(page.getByRole('dialog', { name: 'Connect a Markdown folder' })).toBeHidden();
 
     await page.reload();
-    await expect(page.getByText('Folder connection')).toBeHidden();
+    await expect(page.getByRole('dialog', { name: 'Connect a Markdown folder' })).toBeHidden();
   });
 });
 
