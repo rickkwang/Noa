@@ -593,9 +593,21 @@ export default function App() {
 
   const [hasMountedRightPanel, setHasMountedRightPanel] = useState(false);
   useEffect(() => {
-    if (!isLoaded || !isRightPanelOpen || hasMountedRightPanel) return;
-    const frame = window.requestAnimationFrame(() => setHasMountedRightPanel(true));
-    return () => window.cancelAnimationFrame(frame);
+    if (!isLoaded || hasMountedRightPanel) return;
+    if (isRightPanelOpen) {
+      const frame = window.requestAnimationFrame(() => setHasMountedRightPanel(true));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    // Restored closed: mount behind the zero-width mask while idle. Warming
+    // the module alone is not enough — lazy() still suspends once on mount,
+    // and React holds a shown fallback for ~300ms, so the first open slid in
+    // "Loading panel…" for most of its 400ms.
+    if (typeof window.requestIdleCallback !== 'function') {
+      const timer = window.setTimeout(() => setHasMountedRightPanel(true), 2000);
+      return () => window.clearTimeout(timer);
+    }
+    const id = window.requestIdleCallback(() => setHasMountedRightPanel(true), { timeout: 5000 });
+    return () => window.cancelIdleCallback(id);
   }, [hasMountedRightPanel, isLoaded, isRightPanelOpen]);
 
   // The translucent veil earns its entry animation only after the app has
@@ -627,11 +639,8 @@ export default function App() {
 
   // Warm the lazy settings chunk while idle so the first open doesn't spend a
   // beat fetching it before anything renders (its Suspense fallback is null).
-  // The right panel rides along: if it was restored closed, hasMountedRightPanel
-  // stays false until the first toggle, which would otherwise fetch the
-  // graph/tasks chunk in the middle of the panel's 400ms slide. Warming only
-  // the module keeps the mount itself deferred, so the bundle still stays out
-  // of the first render.
+  // The right panel rides along, so the idle mount below (when it was
+  // restored closed) finds its chunk already fetched.
   useEffect(() => {
     if (typeof window.requestIdleCallback !== 'function') return;
     const id = window.requestIdleCallback(
