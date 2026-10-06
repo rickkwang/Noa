@@ -387,7 +387,9 @@ describe('light theme border tokens', () => {
     // On desktop the right column's width is its mask: closed is zero width,
     // and only the open/close toggle eases it — the content stays put inside.
     expect(app).toContain(": !isRightPanelFloating && (isFocusMode || !isRightPanelOpen) ? '0px' : rightPanelColumnWidth");
-    expect(app).toContain('`width ${RIGHT_PANEL_TOGGLE_CLOCK}, opacity ${RIGHT_PANEL_TOGGLE_CLOCK}`');
+    // The fade runs on a shorter clock of its own, so the column never slides
+    // shut as a dimmed slab.
+    expect(app).toContain('`width ${RIGHT_PANEL_TOGGLE_CLOCK}, ${isRightPanelOpen ? RIGHT_PANEL_FADE_IN : RIGHT_PANEL_FADE_OUT}`');
     expect(app).toContain("transition: isMobile && !isDraggingRightPanel\n              ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)'");
     expect(app).not.toContain("transition: isDraggingRightPanel ? 'none' : 'width 220ms");
   });

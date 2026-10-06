@@ -55,6 +55,9 @@ const SIDEBAR_PROMOTION_SURFACE_TRANSITION = [
 // closing read as one motion played forwards and back.
 const RIGHT_PANEL_TOGGLE_MS = 400;
 const RIGHT_PANEL_TOGGLE_CLOCK = `${RIGHT_PANEL_TOGGLE_MS}ms ease-in-out`;
+// Both fades finish inside the toggle clock.
+const RIGHT_PANEL_FADE_OUT = 'opacity 180ms ease-out';
+const RIGHT_PANEL_FADE_IN = 'opacity 240ms ease-out 120ms';
 
 export default function App() {
   useGlobalScrollingClass();
@@ -532,11 +535,11 @@ export default function App() {
 
   // Keep the graph/tasks bundle out of the first render. If the panel was
   // restored as open, mount it on the next frame so the app shell can paint
-  // first. Once mounted, retain it across toggles to preserve panel state and
-  // make subsequent opens instantaneous.
+  // first; if closed, mount it while idle. Once mounted, retain it across
+  // toggles to preserve panel state and make every open instantaneous.
   // An expanded card stretches the column over the editor, so the column
-  // leaves the flow for it. Nothing here is animated: the column opens,
-  // closes and expands in one frame.
+  // leaves the flow for it. Expanding and collapsing a card snap; only a
+  // plain open/close eases (see isRightPanelMasking below).
   const isPaneExpanded = expandedPane !== null && !isFocusMode;
   const isRightPanelFloating = isPaneExpanded;
   const rightPanelColumnWidth = isPaneExpanded
@@ -1238,9 +1241,12 @@ export default function App() {
             transition: isMobile && !isDraggingRightPanel
               ? 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)'
               : rightPanelFollowsSidebar
-                ? 'width 400ms ease-in-out, top 400ms ease-in-out'
+                ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, top ${RIGHT_PANEL_TOGGLE_CLOCK}`
                 : isRightPanelMasking
-                  ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, opacity ${RIGHT_PANEL_TOGGLE_CLOCK}`
+                  // The fade runs on its own, shorter clock: sharing the mask's
+                  // 400ms left a dimmed slab sliding shut. Closing fades out
+                  // first; opening lets the mask lead and the cards catch up.
+                  ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, ${isRightPanelOpen ? RIGHT_PANEL_FADE_IN : RIGHT_PANEL_FADE_OUT}`
                   : 'none',
             minWidth: 0,
             // The column is lifted over the titlebar, which is a window drag
@@ -1255,7 +1261,7 @@ export default function App() {
               width: isMobile ? '80vw' : rightPanelColumnWidth,
               maxWidth: isMobile ? '320px' : undefined,
               transition: rightPanelFollowsSidebar
-                ? 'width 400ms ease-in-out'
+                ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}`
                 : undefined,
             }}
             className="flex h-full min-h-0 shrink-0"
