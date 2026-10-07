@@ -7,8 +7,6 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import CommandPaletteDialog from './components/CommandPaletteDialog';
 import type { EditorFocusRequest } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { EmptyStatePrompt } from './components/icons/EmptyStatePrompt';
-import { NoaWordmark } from './components/icons/NoaWordmark';
 import NavigationConflictDialog from './components/NavigationConflictDialog';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
@@ -37,6 +35,7 @@ import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
+const EmptyState = lazy(() => import('./components/emptyState/EmptyState'));
 
 // The preview's elevation (index.css .noa-sidebar-preview-shell, the
 // rounded-r corner, the --bg-primary floor) drops on the same 500ms clock as
@@ -1169,10 +1168,21 @@ export default function App() {
                 onFocusRequestHandled={handleEditorFocusRequestHandled}
               />
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-7 select-none">
-                <NoaWordmark className="w-20 sm:w-24 h-auto noa-empty-state-mark" />
-                <EmptyStatePrompt className="w-44 sm:w-48 h-auto noa-empty-state-caption" />
-              </div>
+              // Its own boundary: the editor's "Loading editor…" fallback
+              // would flash for a pane that has no editor in it.
+              <Suspense fallback={<div className="flex-1" />}>
+                {isDataReady ? (
+                  <EmptyState
+                    scene={settings.appearance.emptyStateScene}
+                    theme={settings.appearance.theme}
+                    noteCount={notes.length}
+                    dailyNotesEnabled={settings.corePlugins.dailyNotes}
+                    onNewNote={() => handleCreateNote(primaryNoaFolderId)}
+                    onTodayNote={() => handleOpenDailyNoteGuarded()}
+                    onGoTo={() => commandPalette.setIsOpen(true)}
+                  />
+                ) : <div className="flex-1" />}
+              </Suspense>
             )}
           </Suspense>
         </ErrorBoundary>

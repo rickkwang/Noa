@@ -18,6 +18,11 @@ const THEME_OPTIONS = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ] as const;
 
+const SCENE_OPTIONS = [
+  { value: 'island', label: 'Island' },
+  { value: 'desk', label: 'Desk' },
+] as const;
+
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   return (
     <div className="space-y-8">
@@ -37,6 +42,17 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             onChange={(checked) => updateSettings(s => ({
               ...s,
               appearance: { ...s.appearance, translucentSidebar: checked },
+            }))}
+          />
+        </SettingItem>
+        <SettingItem label="Empty Page Scene" description="Shown when no note is open. It grows as you write.">
+          <SegmentedControl
+            ariaLabel="Empty page scene"
+            value={settings.appearance.emptyStateScene}
+            options={SCENE_OPTIONS}
+            onChange={(emptyStateScene) => updateSettings(s => ({
+              ...s,
+              appearance: { ...s.appearance, emptyStateScene },
             }))}
           />
         </SettingItem>

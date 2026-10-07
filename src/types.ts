@@ -134,6 +134,8 @@ export interface UserTemplate {
   createdAt: string;
 }
 
+export type EmptyStateScene = 'island' | 'desk';
+
 export interface AppSettings {
   editor: {
     fontSize: number;
@@ -145,6 +147,7 @@ export interface AppSettings {
     maxWidth: number;
     usePointerCursors: boolean;
     translucentSidebar: boolean;
+    emptyStateScene: EmptyStateScene;
   };
   dailyNotes: {
     template: string;

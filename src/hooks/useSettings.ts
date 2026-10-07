@@ -26,6 +26,7 @@ export const defaultSettings: AppSettings = {
     maxWidth: 680,
     usePointerCursors: true,
     translucentSidebar: false,
+    emptyStateScene: 'island',
   },
   dailyNotes: {
     template: '',
@@ -118,6 +119,9 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
     const isTheme = (value: unknown): value is AppSettings['appearance']['theme'] => (
       value === 'light' || value === 'dark' || value === 'system'
     );
+    const isEmptyStateScene = (value: unknown): value is AppSettings['appearance']['emptyStateScene'] => (
+      value === 'island' || value === 'desk'
+    );
     const isFontSize = (value: unknown): value is number => (
       typeof value === 'number' && Number.isFinite(value) && value >= 10 && value <= 24
     );
@@ -156,6 +160,7 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
           maxWidth: setting(appearance, 'maxWidth', defaultSettings.appearance.maxWidth, isMaxWidth),
           usePointerCursors: setting(appearance, 'usePointerCursors', defaultSettings.appearance.usePointerCursors, isBoolean),
           translucentSidebar: setting(appearance, 'translucentSidebar', defaultSettings.appearance.translucentSidebar, isBoolean),
+          emptyStateScene: setting(appearance, 'emptyStateScene', defaultSettings.appearance.emptyStateScene, isEmptyStateScene),
         },
         dailyNotes: {
           template: setting(dailyNotes, 'template', defaultSettings.dailyNotes.template, isString),

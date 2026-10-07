@@ -1,0 +1,216 @@
+/* Empty-state scenes (EmptyState.tsx).
+ *
+ * Every pixel is filled from a --px-* token, never a literal class colour, so
+ * the global [data-theme="dark"] hex remapping in index.css / ThemeInjector
+ * cannot reach it. Dark theme is not an inversion: the scene is drawn at night
+ * with its own darker palette and the lamps lit. */
+
+.noa-empty-state {
+  gap: 20px;
+  /* Sit at the optical centre, a little above the geometric one. */
+  padding: 24px 20px calc(24px + 7vh);
+  min-width: 0;
+}
+
+.noa-empty-scene {
+  --px-grass: #a7b48e; --px-grass-2: #8a9a72; --px-earth: #ddd2c0; --px-earth-2: #c9bba4; --px-earth-3: #b3a48c;
+  --px-rock: #bfb4a3; --px-vine: #9db383; --px-leaf: #9db383; --px-leaf-2: #7f9466;
+  --px-canopy: #a3b18c; --px-canopy-2: #879874; --px-canopy-hi: #bac5a3; --px-trunk: #a08a74; --px-trunk-2: #86705c;
+  --px-stone: #cfc8bc; --px-stone-2: #b5ac9d; --px-lamp: #e6dfd2; --px-lamp-lit: #f2c879;
+  --px-roof: #cf7a5f; --px-roof-2: #b0674f; --px-wall: #ece3d3; --px-wall-2: #d3c6b0; --px-door: #a08a74;
+  --px-pane: #d9d1c3; --px-chimney: #b5ac9d; --px-smoke: #d8d2c7; --px-steam: #d8d2c7;
+  --px-iris: #a99cc4; --px-buttercup: #e8c068; --px-lotus: #e8a9a0; --px-fall: #c9a35e;
+  --px-rabbit: #e4d9c8; --px-rabbit-2: #c9b9a2; --px-rabbit-ear: #e6b8a8; --px-rabbit-tail: #f5f1ea; --px-rabbit-shut: #a8977f; --px-nose: #dc9a7b;
+  --px-cat: #e6cfad; --px-cat-2: #cdae87; --px-cat-shut: #a88a68; --px-mouth: #b86a5c; --px-eye: #5b4b3d; --px-heart: #dc8f7b; --px-zz: #b5ac9d;
+  --px-sun: #f0cf86; --px-sun-hi: #f8e6bd; --px-sun-rim: #e6b866; --px-moon: #d9cfb6; --px-moon-2: #c2b699; --px-moon-dark: #f1eee8; --px-star: #b6ae9e;
+  --px-cloud: #ece8e0; --px-bird: #9b9385; --px-fly: #e9c25f;
+  --px-frame: #ddd4c5; --px-frame-2: #c8bca8; --px-desk: #cdb092; --px-desk-2: #b29374;
+  --px-paper: #f4efe5; --px-paper-2: #ddd3c1; --px-ink-line: #c4baa8; --px-cover: #cf8a6c; --px-gutter: #c7bba6; --px-ribbon: #c4674f;
+  --px-mug: #93a8b3; --px-mug-2: #7b909b; --px-shade: #cf7a5f; --px-shade-2: #b0674f; --px-metal: #a59d90;
+  --px-book-1: #a99cc4; --px-book-2: #9fae8a; --px-book-3: #dc9a7b; --px-book-4: #e3c88f;
+  --px-pot: #cf8a6c; --px-pot-2: #b47258; --px-hill: #e6e2d8; --px-hill-2: #d9d2c3;
+  --px-sky: #eaf0ec;
+  --nsc-glow: transparent;
+  --nsc-cone-top: 0.34;
+  --nsc-glow-y: 56%;
+
+  width: min(375px, 100%); /* 2.5px per cell: whole device pixels at 2x */
+  aspect-ratio: 150 / 96;
+  background: radial-gradient(ellipse 58% 62% at 50% var(--nsc-glow-y), var(--nsc-glow) 0%, transparent 72%);
+  transition: background 0.8s ease;
+}
+.noa-empty-scene svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+[data-theme="dark"] .noa-empty-scene {
+  --nsc-cone-top: 0.16;
+  --px-grass: #6f7d5c; --px-grass-2: #5b6a4b; --px-earth: #4b4540; --px-earth-2: #423d38; --px-earth-3: #38342f;
+  --px-rock: #57514a; --px-vine: #5e7050; --px-leaf: #6f8259; --px-leaf-2: #58694a;
+  --px-canopy: #62715a; --px-canopy-2: #505e48; --px-canopy-hi: #72826a; --px-trunk: #6e5f50; --px-trunk-2: #5c4f43;
+  --px-stone: #6a645c; --px-stone-2: #57514a; --px-lamp: #4f4a43;
+  --px-roof: #8f5745; --px-roof-2: #7b4a3b; --px-wall: #6b6257; --px-wall-2: #5a5249; --px-door: #4a4038;
+  --px-pane: #45403a; --px-chimney: #57514a; --px-smoke: #55524c; --px-steam: #6a665f;
+  --px-iris: #7d7398; --px-buttercup: #b89a55; --px-lotus: #a8706a; --px-fall: #a08350;
+  --px-rabbit: #a89f92; --px-rabbit-2: #877e71; --px-rabbit-ear: #a5786c; --px-rabbit-tail: #c6bfb3; --px-rabbit-shut: #625a50; --px-nose: #a46d5a;
+  --px-cat: #a8967e; --px-cat-2: #8a7961; --px-cat-shut: #5e5243; --px-mouth: #7a4338; --px-eye: #2a2522; --px-heart: #c9806c; --px-zz: #8a847a;
+  --px-moon: #ece3c8; --px-moon-2: #cfc4a6; --px-moon-dark: #34363b; --px-star: #d8d2c0; --px-cloud: #3a3a37; --px-bird: #8a847a; --px-fly: #f2d36b;
+  --px-frame: #4c4842; --px-frame-2: #3f3c37; --px-desk: #5e4f41; --px-desk-2: #4d4136;
+  --px-paper: #bdb6aa; --px-paper-2: #8f887d; --px-ink-line: #847d72; --px-cover: #8b5a46; --px-gutter: #6e675d; --px-ribbon: #94503e;
+  --px-mug: #5e6f78; --px-mug-2: #4e5d65; --px-shade: #8f5745; --px-shade-2: #7b4a3b; --px-metal: #66605a;
+  --px-book-1: #6e6688; --px-book-2: #62705a; --px-book-3: #94604f; --px-book-4: #8f7d58;
+  --px-pot: #8b5a46; --px-pot-2: #734a3a; --px-hill: #2a2c31; --px-hill-2: #33343a;
+}
+
+/* ---------- time of day ---------- */
+.nsc-ph-dawn  { --nsc-glow: rgba(242, 184, 150, 0.22); --px-sky: #f5ebe3; --px-sun: #f2c094; --px-sun-hi: #f9dcc0; --px-sun-rim: #e6a479; }
+.nsc-ph-day   { --nsc-glow: rgba(214, 226, 206, 0.28); --px-sky: #eaf0ec; }
+.nsc-ph-dusk  { --nsc-glow: rgba(232, 158, 116, 0.2);  --px-sky: #f3e4d8; --px-sun: #eeb27f; --px-sun-hi: #f6d0a8; --px-sun-rim: #de9061; }
+.nsc-ph-night { --nsc-glow: rgba(176, 186, 214, 0.22); --px-sky: #dde0e9; --px-star: #a9a291; --px-moon: #c9ba95; --px-moon-2: #b3a37e; }
+[data-theme="dark"] .nsc-ph-night { --nsc-glow: rgba(132, 150, 200, 0.1); --px-sky: #23262d; --px-star: #d8d2c0; --px-moon: #ece3c8; --px-moon-2: #cfc4a6; }
+.nsc-desk { --nsc-glow-y: 30%; }
+/* The desk legs run off the bottom of the scene; let them fade rather than stop. */
+.nsc-desk svg { -webkit-mask-image: linear-gradient(#000 84%, transparent); mask-image: linear-gradient(#000 84%, transparent); }
+
+.noa-empty-scene .nsc-glass { fill: var(--px-sky); transition: fill 0.8s ease; }
+
+.nsc-sun, .nsc-moon, .nsc-stars, .nsc-clouds, .nsc-flies { transition: opacity 0.8s ease; }
+.nsc-sun { transition: transform 1.2s ease, opacity 0.8s ease; }
+.nsc-ph-night .nsc-sun, .nsc-ph-night .nsc-clouds { opacity: 0; pointer-events: none; }
+.nsc-moon, .nsc-stars, .nsc-flies { opacity: 0; pointer-events: none; }
+.nsc-ph-night .nsc-moon, .nsc-ph-night .nsc-stars, .nsc-ph-night .nsc-flies { opacity: 1; pointer-events: auto; }
+
+.nsc-island.nsc-ph-dawn .nsc-sun { transform: translate(14px, 36px); }
+.nsc-island.nsc-ph-day  .nsc-sun { transform: translate(104px, 5px); }
+.nsc-island.nsc-ph-dusk .nsc-sun { transform: translate(124px, 26px); }
+.nsc-desk.nsc-ph-dawn .nsc-sun { transform: translate(55px, 33px); }
+.nsc-desk.nsc-ph-day  .nsc-sun { transform: translate(84px, 11px); }
+.nsc-desk.nsc-ph-dusk .nsc-sun { transform: translate(64px, 34px); }
+
+/* ---------- lamps ---------- */
+.is-lit { --px-lamp: var(--px-lamp-lit); --px-pane: var(--px-lamp-lit); }
+.nsc-halo, .nsc-cone { opacity: 0; transition: opacity 0.5s ease; }
+.nsc-halo { fill: var(--px-lamp-lit); }
+.nsc-cone { fill: url(#nsc-lamp-light); }
+.is-lit .nsc-halo { opacity: 0.1; }
+/* Lighting up: a couple of sputters before the flame steadies and breathes. */
+.nsc-lamp.is-lit .nsc-halo { animation: nsc-ignite 0.5s steps(1, end), nsc-glow 3.2s ease-in-out 0.5s infinite; }
+.nsc-lamp.is-lit .nsc-cone { animation: nsc-ignite 0.5s steps(1, end); }
+@keyframes nsc-ignite { 0% { opacity: 0; } 20% { opacity: 1; } 40% { opacity: 0.2; } 60% { opacity: 0.85; } 80% { opacity: 0.4; } }
+@keyframes nsc-glow { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.06; } }
+.is-lit .nsc-cone { opacity: 1; }
+.nsc-smoke { display: none; }
+.is-lit .nsc-smoke { display: inline; }
+.nsc-bulbs rect { fill: var(--px-paper-2); }
+.nsc-lights.is-lit .nsc-bulbs rect:nth-child(4n + 1) { fill: var(--px-lamp-lit); }
+.nsc-lights.is-lit .nsc-bulbs rect:nth-child(4n + 2) { fill: var(--px-heart); }
+.nsc-lights.is-lit .nsc-bulbs rect:nth-child(4n + 3) { fill: var(--px-iris); }
+.nsc-lights.is-lit .nsc-bulbs rect:nth-child(4n)     { fill: var(--px-leaf); }
+/* Switching on runs along the string, one bulb after another. */
+.nsc-lights.is-lit .nsc-bulbs rect {
+  animation: nsc-bulb-on 0.3s steps(1, end) both, nsc-twinkle 4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 90ms), calc(var(--i, 0) * 90ms + 0.3s);
+}
+@keyframes nsc-bulb-on { from { fill: var(--px-paper-2); } }
+
+/* ---------- ambient motion ---------- */
+.nsc-hit { cursor: pointer; }
+.nsc-bob { animation: nsc-bob 7s steps(1, end) infinite; }
+.nsc-bob-slow { animation: nsc-bob 5.5s steps(1, end) infinite -2s; }
+@keyframes nsc-bob { 0% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+
+.nsc-cloud-a { animation: nsc-drift 90s linear infinite; }
+.nsc-cloud-b { animation: nsc-drift 130s linear infinite -60s; }
+@keyframes nsc-drift {
+  0% { transform: translateX(-10px); opacity: 0; }
+  8%, 85% { opacity: 1; }
+  100% { transform: translateX(130px); opacity: 0; }
+}
+.nsc-desk .nsc-cloud-a { animation: nsc-drift-window 50s linear infinite; }
+.nsc-desk .nsc-cloud-b { animation: nsc-drift-window 75s linear infinite -40s; }
+@keyframes nsc-drift-window {
+  0% { transform: translateX(0); opacity: 0; }
+  10%, 85% { opacity: 1; }
+  100% { transform: translateX(70px); opacity: 0; }
+}
+
+.nsc-stars rect { animation: nsc-twinkle 4s ease-in-out infinite; }
+/* The sun's light swells and eases. */
+.nsc-sun-glow { transform-box: fill-box; transform-origin: center; animation: nsc-swell 6s ease-in-out infinite; }
+@keyframes nsc-swell { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: 0.75; } }
+.nsc-stars rect:nth-child(3n) { animation-delay: -1.3s; }
+.nsc-stars rect:nth-child(3n + 1) { animation-delay: -2.7s; animation-duration: 5.5s; }
+@keyframes nsc-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.nsc-fly { fill: var(--px-fly); animation: nsc-fly 6s ease-in-out infinite, nsc-blink 2.4s ease-in-out infinite; }
+@keyframes nsc-fly { 0%, 100% { transform: translate(0, 0); } 33% { transform: translate(3px, -2px); } 66% { transform: translate(-2px, -4px); } }
+@keyframes nsc-blink { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+
+.nsc-zz g { opacity: 0; animation: nsc-zz 3.6s steps(14, end) infinite; }
+.nsc-zz g:nth-child(2) { animation-delay: -1.8s; }
+@keyframes nsc-zz { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 80% { opacity: 0.8; } 100% { opacity: 0; transform: translate(3px, -6px); } }
+
+.nsc-smoke rect, .nsc-steam rect { opacity: 0; animation: nsc-rise 4.2s steps(16, end) infinite; }
+.nsc-smoke rect:nth-child(2), .nsc-steam rect:nth-child(2) { animation-delay: -1.4s; }
+.nsc-smoke rect:nth-child(3), .nsc-steam rect:nth-child(3) { animation-delay: -2.8s; }
+@keyframes nsc-rise {
+  0% { opacity: 0; transform: translate(0, 0); }
+  20% { opacity: 0.9; }
+  45% { transform: translate(1px, -3px); }
+  70% { transform: translate(0, -5px); }
+  100% { opacity: 0; transform: translate(1px, -8px); }
+}
+
+.nsc-swing { transform-box: view-box; transform-origin: 57.5px 48px; animation: nsc-sway 4.5s ease-in-out infinite; }
+@keyframes nsc-sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+
+/* Sleeping animals: the back rises one cell on the in-breath. */
+.nsc-breathe { animation: nsc-breathe 3.6s steps(1, end) infinite; }
+@keyframes nsc-breathe { 0% { opacity: 1; } 45% { opacity: 0; } }
+
+/* An awake cat's tail: three positions, one at a time, in a lazy swish. */
+.nsc-tail > g { opacity: 0; animation: nsc-tail 1.5s steps(1, end) infinite; }
+.nsc-tail > g:nth-child(2) { animation-delay: -1s; }
+.nsc-tail > g:nth-child(3) { animation-delay: -0.5s; }
+@keyframes nsc-tail { 0% { opacity: 1; } 33.34% { opacity: 0; } }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .noa-empty-scene *, .noa-empty-scene { animation: none !important; transition: none !important; }
+  .nsc-zz g, .nsc-smoke rect, .nsc-steam rect { opacity: 0.8; }
+  .nsc-tail > g:first-child { opacity: 1; }
+}
+
+/* ---------- copy and actions ---------- */
+.noa-empty-copy { display: grid; gap: 3px; justify-items: center; text-align: center; max-width: 36ch; }
+.noa-empty-copy p { margin: 0; }
+.noa-empty-greeting { font-size: 15px; font-weight: 500; color: var(--text-primary, #2D2D2B); }
+.noa-empty-meta, .noa-empty-caption {
+  font-size: 12.5px;
+  color: var(--text-secondary, rgba(45, 45, 43, 0.55));
+  font-variant-numeric: tabular-nums;
+  text-wrap: balance;
+}
+.noa-empty-caption { margin-top: 2px; }
+
+.noa-empty-actions { list-style: none; margin: 0; padding: 0; width: 228px; display: grid; gap: 1px; }
+.noa-empty-actions button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #2D2D2B);
+  transition: background-color 0.15s ease;
+}
+.noa-empty-actions button:hover { background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent); }
+.noa-empty-actions button:focus-visible {
+  outline: none;
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 7%, transparent);
+}
+.noa-empty-actions kbd {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary, rgba(45, 45, 43, 0.55));
+}

@@ -40,6 +40,15 @@ describe('loadSettings', () => {
     expect(loaded.settings.appearance.translucentSidebar).toBe(true);
   });
 
+  it('defaults the empty page scene to the island and restores a saved choice', () => {
+    const fresh = loadSettings({ getItem: () => JSON.stringify({ appearance: { theme: 'dark' } }) });
+    expect(fresh.settings.appearance.emptyStateScene).toBe('island');
+
+    const saved = loadSettings({ getItem: () => JSON.stringify({ appearance: { emptyStateScene: 'desk' } }) });
+    expect(saved.canPersist).toBe(true);
+    expect(saved.settings.appearance.emptyStateScene).toBe('desk');
+  });
+
   it('migrates every retired bundled font to the system default', () => {
     for (const retired of ['font-iosevka', 'font-redaction', 'font-pixelify', 'font-work-sans']) {
       const loaded = loadSettings({
@@ -106,6 +115,7 @@ describe('loadSettings', () => {
     { editor: [] },
     { appearance: { theme: 'midnight' } },
     { appearance: { translucentSidebar: 'yes' } },
+    { appearance: { emptyStateScene: 'lake' } },
     { editor: { fontSize: -100 } },
   ])('preserves syntactically valid but unsafe settings: %j', (saved) => {
     const loaded = loadSettings({ getItem: () => JSON.stringify(saved) });

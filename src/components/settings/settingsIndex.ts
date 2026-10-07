@@ -44,6 +44,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   // Appearance
   { tab: 'appearance', section: 'Theme', label: 'Base Theme', keywords: 'dark light system appearance colour color' },
   { tab: 'appearance', section: 'Theme', label: 'Translucent Sidebar', keywords: 'frosted glass blur material vibrancy' },
+  { tab: 'appearance', section: 'Theme', label: 'Empty Page Scene', keywords: 'blank start illustration pixel island desk rabbit cat easter egg' },
   { tab: 'appearance', section: 'Typography', label: 'Font Family', keywords: 'typeface serif mono' },
   { tab: 'appearance', section: 'Typography', label: 'Font Size', keywords: 'text bigger smaller zoom' },
   { tab: 'appearance', section: 'Reading', label: 'Line Height', keywords: 'leading spacing' },
