@@ -24,7 +24,7 @@ export default defineConfig(() => {
       includes: ['/node_modules/highlight.js/', '/node_modules/katex/'],
     },
     { name: 'vendor-graph', includes: ['/node_modules/react-force-graph-2d/', '/node_modules/d3-force/'] },
-    { name: 'vendor-misc', includes: ['/node_modules/fuse.js/', '/node_modules/localforage/', '/node_modules/dompurify/', '/node_modules/jszip/'] },
+    { name: 'vendor-misc', includes: ['/node_modules/fuse.js/', '/node_modules/localforage/', '/node_modules/dompurify/'] },
   ];
 
   const manualChunks = (id: string): string | undefined => {

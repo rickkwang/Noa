@@ -1,4 +1,4 @@
-import JSZip from 'jszip';
+import type JSZip from 'jszip';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fromImportError, fromStorageError, fromSyncError } from '../lib/appErrors';
 import {
@@ -490,6 +490,7 @@ export function useDataTransfer({
     setExportingZip(true);
 
     try {
+      const { default: JSZip } = await import('jszip');
       const zip = new JSZip();
       const manifest: BackupPayload = {
         version: 2,
@@ -583,6 +584,7 @@ export function useDataTransfer({
     setExportingHtml(true);
 
     try {
+      const { default: JSZip } = await import('jszip');
       const zip = new JSZip();
       const htmlFolder = zip.folder('html-export');
 
