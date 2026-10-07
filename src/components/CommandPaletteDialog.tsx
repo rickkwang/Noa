@@ -9,6 +9,13 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
   const selectedItem = palette.items[palette.selectedIndex];
   const selectedOptionId = selectedItem ? `command-palette-option-${selectedItem.id}` : undefined;
 
+  // Focus on mount, not from the hook on `isOpen`: the dialog is lazy, so on
+  // the first open the input does not exist yet when that flag flips.
+  useEffect(() => {
+    palette.inputRef.current?.focus();
+    palette.inputRef.current?.select();
+  }, [palette.inputRef]);
+
   // getElementById, not querySelector: the id embeds a note id, which comes
   // from imports unvalidated. A `"` in it made the selector throw, and with no
   // error boundary above the palette that blanked the whole app.

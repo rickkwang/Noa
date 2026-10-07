@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Note } from '../types';
 
 type CommandItem = {
@@ -84,15 +84,6 @@ export function useCommandPalette({
   }, [items.length]);
 
   const activeIndex = Math.min(selectedIndex, Math.max(items.length - 1, 0));
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [isOpen]);
 
   return {
     isOpen,
