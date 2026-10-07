@@ -7,12 +7,25 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.27] - 2026-10-07
+
+### Added
+- With no note open, the editor shows a small pixel scene that grows with your notes. Pick an island (with a rabbit) or a desk by a window (with a cat) in Settings → Appearance → Empty Page Scene. The sky follows the time of day and tonight's moon phase, dark theme draws it at night, and most things in it react to a click.
+- The empty page greets you by the time of day and offers New note, Today's note and Go to.
+- Drag editor tabs to reorder them; right-click the sidebar for a context menu.
+
 ### Changed
 - The graph alone can no longer be dragged narrower than the width it opens at.
 - The Connections drawer opens without a fade, and its toggle sits at the drawer's top edge while open.
 - Zoomed far out, the graph hides hub and active-note labels too; hovering a node still shows its name.
 
+- The right panel snaps open and shut, and the graph opens at 460px; graph search is an on-demand popup.
+- The vault onboarding dialog is simpler.
+
 ### Fixed
+- Undo and redo in the editor work again.
+- Tab dragging no longer jumps, and a tab lands where you drop it.
+- Opening the right panel for the first time no longer shows a loading placeholder, and the old splash skeleton no longer lingers.
 - Dragging the graph to its widest keeps the editor at least 380px wide, so the scrollbar gutter no longer cuts into the text.
 
 ## [1.0.26] - 2026-10-02
