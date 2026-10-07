@@ -775,37 +775,12 @@ export default function App() {
   });
 
   if (!isLoaded) {
+    // Theme background only: a placeholder layout here goes stale whenever the
+    // real one changes, and the load window is short enough not to need one.
     return (
       <>
       <ThemeInjector settings={settings} />
-      <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary, #FCFCFB)' }}>
-        <div className="h-12 border-b shrink-0 px-3 flex items-center" style={{ backgroundColor: 'var(--bg-secondary, #EFEAE3)', borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
-          <div className="h-3 w-44 bg-[#2D2D2B]/10 animate-pulse" />
-        </div>
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-[280px] border-r border-[#2D2D2B]/20 shrink-0 px-3 py-3 space-y-2">
-            <div className="h-4 w-28 bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-7 w-full bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-7 w-[90%] bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-7 w-[82%] bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-7 w-[88%] bg-[#2D2D2B]/10 animate-pulse" />
-          </div>
-          <div className="flex-1 px-6 py-5 space-y-3">
-            <div className="h-7 w-48 bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-4 w-full bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-4 w-[97%] bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-4 w-[92%] bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-4 w-[95%] bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-4 w-[85%] bg-[#2D2D2B]/10 animate-pulse" />
-          </div>
-          <div className="w-[320px] border-l border-[#2D2D2B]/20 shrink-0 px-3 py-3 space-y-2">
-            <div className="h-6 w-full bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
-            <div className="h-10 w-full bg-[#2D2D2B]/10 animate-pulse" />
-          </div>
-        </div>
-      </div>
+      <div className="h-screen w-screen" style={{ backgroundColor: 'var(--bg-primary, #FCFCFB)' }} />
       </>
     );
   }
