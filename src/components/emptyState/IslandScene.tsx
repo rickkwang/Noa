@@ -15,7 +15,7 @@ const TREE_X = 48;
 const RABBIT_X = 64;
 
 const L: Legend = {
-  g: 'grass', G: 'grass-2', l: 'leaf', L: 'leaf-2', N: 'canopy', n: 'canopy-2', H: 'canopy-hi', k: 'trunk', K: 'trunk-2',
+  g: 'grass', G: 'grass-2', l: 'leaf', L: 'leaf-2', N: 'canopy', n: 'canopy-2', k: 'trunk',
   o: 'stone', O: 'stone-2', y: 'lamp', f: 'roof', F: 'roof-2', w: 'wall', W: 'wall-2', d: 'door', x: 'pane', s: 'chimney',
   v: 'iris', Y: 'buttercup',
 };

@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Pixel art for the empty-state scenes. Every cell is one viewBox unit; the
- * scene SVG is scaled so a unit lands on whole device pixels.
+ * scene is sized so a unit lands on whole device pixels on a 2x display.
  *
  * A tone names a CSS custom property (`--px-<tone>`, defined in
  * emptyState.css for light and dark) rather than a colour. Cells are batched

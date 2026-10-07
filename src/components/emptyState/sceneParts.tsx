@@ -122,7 +122,7 @@ export function Moon({ x, y, onClick }: { x: number; y: number; onClick: () => v
           <stop offset="1" style={{ stopColor: 'var(--px-moon)', stopOpacity: 0 }} />
         </radialGradient>
       </defs>
-      <circle className="nsc-moon-glow" cx={x + R} cy={y + R} r={10} fill={`url(#${id}-moon)`} style={{ opacity: 0.35 + lit * 0.65 }} />
+      <circle cx={x + R} cy={y + R} r={10} fill={`url(#${id}-moon)`} style={{ opacity: 0.35 + lit * 0.65 }} />
       <g transform={`translate(${x} ${y})`}><Pixels layer={layer} /></g>
     </g>
   );
@@ -172,8 +172,6 @@ export function useAmbientShootingStars(
     return () => window.clearInterval(timer);
   }, [fxRef, phase, pick]);
 }
-
-// ---------- characters ----------
 
 /**
  * A pose names a frame and where to draw it relative to the character's

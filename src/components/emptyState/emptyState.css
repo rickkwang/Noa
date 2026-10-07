@@ -60,7 +60,6 @@
   --px-pot: #8b5a46; --px-pot-2: #734a3a; --px-hill: #2a2c31; --px-hill-2: #33343a;
 }
 
-/* ---------- time of day ---------- */
 .nsc-ph-dawn  { --nsc-glow: rgba(242, 184, 150, 0.22); --px-sky: #f5ebe3; --px-sun: #f2c094; --px-sun-hi: #f9dcc0; --px-sun-rim: #e6a479; }
 .nsc-ph-day   { --nsc-glow: rgba(214, 226, 206, 0.28); --px-sky: #eaf0ec; }
 .nsc-ph-dusk  { --nsc-glow: rgba(232, 158, 116, 0.2);  --px-sky: #f3e4d8; --px-sun: #eeb27f; --px-sun-hi: #f6d0a8; --px-sun-rim: #de9061; }
@@ -85,7 +84,6 @@
 .nsc-desk.nsc-ph-day  .nsc-sun { transform: translate(84px, 11px); }
 .nsc-desk.nsc-ph-dusk .nsc-sun { transform: translate(64px, 34px); }
 
-/* ---------- lamps ---------- */
 .is-lit { --px-lamp: var(--px-lamp-lit); --px-pane: var(--px-lamp-lit); }
 .nsc-halo, .nsc-cone { opacity: 0; transition: opacity 0.5s ease; }
 .nsc-halo { fill: var(--px-lamp-lit); }
@@ -111,7 +109,6 @@
 }
 @keyframes nsc-bulb-on { from { fill: var(--px-paper-2); } }
 
-/* ---------- ambient motion ---------- */
 .nsc-hit { cursor: pointer; }
 .nsc-bob { animation: nsc-bob 7s steps(1, end) infinite; }
 .nsc-bob-slow { animation: nsc-bob 5.5s steps(1, end) infinite -2s; }
@@ -179,7 +176,6 @@
   .nsc-tail > g:first-child { opacity: 1; }
 }
 
-/* ---------- copy and actions ---------- */
 .noa-empty-copy { display: grid; gap: 3px; justify-items: center; text-align: center; max-width: 36ch; }
 .noa-empty-copy p { margin: 0; }
 .noa-empty-greeting { font-size: 15px; font-weight: 500; color: var(--text-primary, #2D2D2B); }

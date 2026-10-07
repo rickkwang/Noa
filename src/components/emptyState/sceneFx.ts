@@ -64,15 +64,13 @@ export function runActor(fx: Element, draw: Draw, onDone?: () => void): void {
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-export function cellsOfMap(map: readonly string[], ox: number, oy: number, tone: string, opacity?: number): FxCell[] {
+function cellsOfMap(map: readonly string[], ox: number, oy: number, tone: string, opacity?: number): FxCell[] {
   const out: FxCell[] = [];
   map.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) if (row[x] !== '.') out.push([ox + x, oy + y, tone, opacity]);
   });
   return out;
 }
-
-// ---------- birds ----------
 
 // Wingbeat cycle, body on the middle row: wings raised, the gull "m" of the
 // mid-stroke, wings pressed down, and back. Frame 1 doubles as the glide.
@@ -115,8 +113,6 @@ export function flock(fx: Element, x0: number, x1: number, y: number): void {
   });
 }
 
-// ---------- shooting star ----------
-
 /** A bright head that accelerates along a shallow diagonal, its tail growing, then burning out. */
 export function shootingStar(fx: Element, x: number, y: number): void {
   const duration = 0.85;
@@ -141,8 +137,6 @@ export function shootingStar(fx: Element, x: number, y: number): void {
     return cells;
   });
 }
-
-// ---------- leaves ----------
 
 /**
  * A leaf that flutters down: it swings side to side on a slowing pendulum,
@@ -172,8 +166,6 @@ export function fallingLeaf(fx: Element, x: number, y: number, ground: number, t
   });
 }
 
-// ---------- steam, smoke ----------
-
 /** A few wisps that curl upward and thin out. */
 export function wisps(fx: Element, x: number, y: number, tone: string, count = 4): void {
   const parts = Array.from({ length: count }, (_, i) => ({
@@ -202,8 +194,6 @@ export function wisps(fx: Element, x: number, y: number, tone: string, count = 4
   });
 }
 
-// ---------- heart ----------
-
 const HEART = ['h.h', 'hhh', '.h.'];
 
 /** Pops from a single pixel to a heart, then floats up on a slight sway and fades. */
@@ -217,8 +207,6 @@ export function heart(fx: Element, x: number, y: number): void {
     return cellsOfMap(HEART, hx, hy, 'heart', t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45);
   });
 }
-
-// ---------- swing ----------
 
 /** A pushed swing: a damped pendulum, rotated about its rope tops. */
 export function swingPush(el: SVGGElement): void {

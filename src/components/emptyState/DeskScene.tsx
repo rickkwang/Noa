@@ -19,7 +19,7 @@ const CAT_X = 103;
 const L: Legend = {
   P: 'paper', p: 'paper-2', i: 'ink-line', c: 'cover', u: 'gutter', r: 'ribbon',
   m: 'mug-2', M: 'mug', S: 'shade', s: 'shade-2', y: 'lamp', a: 'metal',
-  '1': 'book-1', '2': 'book-2', '3': 'book-3', '4': 'book-4',
+  '1': 'book-1', '2': 'book-2', '3': 'book-3',
   l: 'leaf', L: 'leaf-2', t: 'pot', T: 'pot-2', F: 'frame-2', N: 'canopy', k: 'trunk', g: 'grass', e: 'earth',
   f: 'lotus', Y: 'buttercup',
 };
@@ -79,7 +79,6 @@ function drawDesk(layer: PixelLayer) {
   for (let x = 14; x <= 136; x++) layer.add(x, TOP, 'desk').add(x, TOP + 1, 'desk-2');
   for (let x = 17; x <= 133; x++) for (let y = TOP + 2; y <= TOP + 4; y++) layer.add(x, y, y === TOP + 4 ? 'desk-2' : 'desk');
   for (let y = TOP + 5; y <= 95; y++) for (const x of [19, 20, 21, 129, 130, 131]) layer.add(x, y, x === 21 || x === 131 ? 'desk-2' : 'desk');
-  // drawer pulls
   layer.add(70, TOP + 3, 'desk-2').add(71, TOP + 3, 'desk-2').add(80, TOP + 3, 'desk-2').add(81, TOP + 3, 'desk-2');
 }
 
