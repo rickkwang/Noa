@@ -176,16 +176,34 @@
   .nsc-tail > g:first-child { opacity: 1; }
 }
 
-.noa-empty-copy { display: grid; gap: 3px; justify-items: center; text-align: center; max-width: 36ch; }
+.noa-empty-copy { display: grid; gap: 0; justify-items: center; text-align: center; max-width: 36ch; }
 .noa-empty-copy p { margin: 0; }
-.noa-empty-greeting { font-size: 15px; font-weight: 500; color: var(--text-primary, #2D2D2B); }
-.noa-empty-meta, .noa-empty-caption {
-  font-size: 12.5px;
-  color: var(--text-secondary, rgba(45, 45, 43, 0.55));
-  font-variant-numeric: tabular-nums;
+/* Three registers: a serif italic voice, a small-caps dateline, a quiet note. */
+.noa-empty-greeting {
+  font-family: ui-serif, "New York", "Iowan Old Style", Georgia, "Songti SC", serif;
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.3;
+  letter-spacing: 0.005em;
+  color: var(--text-primary, #2D2D2B);
   text-wrap: balance;
 }
-.noa-empty-caption { margin-top: 2px; }
+.noa-empty-meta {
+  padding-top: 10px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary, rgba(45, 45, 43, 0.55));
+}
+.noa-empty-caption {
+  padding-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary, rgba(45, 45, 43, 0.55));
+  text-wrap: balance;
+}
 
 .noa-empty-actions { list-style: none; margin: 0; padding: 0; width: 228px; display: grid; gap: 1px; }
 .noa-empty-actions button {

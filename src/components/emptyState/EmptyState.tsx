@@ -42,11 +42,23 @@ function phaseForHour(hour: number): Phase {
   return 'night';
 }
 
-function greetingForHour(hour: number): string {
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 18) return 'Good afternoon';
-  if (hour >= 18) return 'Good evening';
-  return 'Still up?';
+// A few lines per stretch of the day; the day of the year picks one, so the
+// greeting holds still for the day and changes tomorrow.
+const GREETINGS: { from: number; lines: readonly string[] }[] = [
+  { from: 0, lines: ['Still up?', 'The quiet hours.', 'The world’s asleep. You aren’t.'] },
+  { from: 5, lines: ['Up with the birds.', 'Early light, empty page.', 'Before the day gets loud.'] },
+  { from: 8, lines: ['Good morning.', 'Morning. Coffee first?', 'A fresh page for the day.'] },
+  { from: 12, lines: ['Good afternoon.', 'The afternoon is yours.', 'Halfway through the day.'] },
+  { from: 17, lines: ['Good evening.', 'The light’s going gold.', 'Evening. Set something down.'] },
+  { from: 21, lines: ['Late, but not too late.', 'Night owl hours.', 'One more thought before bed?'] },
+];
+const WEEKEND: Record<number, string> = { 0: 'Sunday, unhurried.', 6: 'A slow Saturday.' };
+
+function greetingFor(now: Date, hour: number): string {
+  const day = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000);
+  const slot = [...GREETINGS].reverse().find((g) => hour >= g.from) ?? GREETINGS[0];
+  const pool = WEEKEND[now.getDay()] && hour >= 8 && hour < 17 ? [...slot.lines, WEEKEND[now.getDay()]] : slot.lines;
+  return pool[day % pool.length];
 }
 
 /** Local wall-clock hour as a fraction, refreshed each minute so the sky turns while the page sits open. */
@@ -68,7 +80,8 @@ export default function EmptyState({
   // Dark theme is always night: the scene re-lights rather than inverting.
   const phase: Phase = isDark ? 'night' : phaseForHour(hour);
   const tier: Tier = tierForCount(noteCount);
-  const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const now = new Date();
+  const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const Scene = scene === 'desk' ? DeskScene : IslandScene;
 
   return (
@@ -80,9 +93,10 @@ export default function EmptyState({
       </div>
 
       <div className="noa-empty-copy">
-        <p className="noa-empty-greeting">{greetingForHour(hour)}</p>
+        <p className="noa-empty-greeting">{greetingFor(now, hour)}</p>
         <p className="noa-empty-meta">
-          {noteCount === 0 ? date : `${date} · ${noteCount.toLocaleString('en-US')} ${noteCount === 1 ? 'note' : 'notes'}`}
+          {date}
+          {noteCount > 0 && <> <span aria-hidden="true">·</span> {noteCount.toLocaleString('en-US')} {noteCount === 1 ? 'note' : 'notes'}</>}
         </p>
         <p className="noa-empty-caption">{CAPTIONS[scene][tier]}</p>
       </div>
