@@ -92,7 +92,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
     // --bg-sidebar, one notch under the content pane's --bg-primary, so the
     // two columns read as different surfaces without a heavier divider.
     <div className="w-full border-b border-[var(--divider-subtle)] bg-[var(--bg-sidebar,#F4F4F2)] shrink-0 md:w-48 md:border-b-0 md:border-r md:overflow-y-auto">
-      <div className="px-2 pt-2 pb-1">
+      <div className="px-2 pt-3 pb-1">
         <div className="relative">
           <Search
             size={16}
@@ -106,7 +106,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
             onKeyDown={handleSearchKeyDown}
             placeholder="Search"
             aria-label="Search settings"
-            className="w-full rounded-[3px] border border-[var(--divider-subtle)] bg-[var(--bg-primary,#FCFCFB)] py-1.5 pl-9 pr-2.5 text-sm outline-none transition-colors placeholder:text-[var(--text-secondary)] focus:border-[var(--border-strong)] [&::-webkit-search-cancel-button]:appearance-none"
+            className="w-full rounded-[3px] border border-[var(--divider-subtle)] bg-[var(--bg-primary,#FCFCFB)] py-4 pl-9 pr-2.5 text-sm outline-none transition-colors placeholder:text-[var(--text-secondary)] focus:border-[var(--border-strong)] [&::-webkit-search-cancel-button]:appearance-none"
           />
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               className="rounded-[3px] px-2.5 py-1.5 text-left transition-colors hover:bg-[#EFEAE3]"
             >
               <span className="block text-sm font-medium leading-snug">{entry.label}</span>
-              <span className="block text-[11px] text-[var(--text-secondary)] leading-snug">{entry.section}</span>
+              <span className="block text-[11px] text-[var(--text-secondary)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
             </button>
           ))}
           {results.length === 0 && (

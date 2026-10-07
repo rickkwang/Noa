@@ -399,6 +399,13 @@ body {
   border-radius: 10px;
 }
 
+/* The settings pane scrolls its full height under the 64px top fade, but its
+   scrollbar track starts at the fade's lower edge, so the thumb never runs
+   up into the gradient. */
+.noa-settings-scroll::-webkit-scrollbar-track {
+  margin-top: 64px;
+}
+
 /* Flash for a setting reached from the search. Colour, not motion: the row is
    already scrolling into place, and a second moving thing there competes with
    it. Fades out on its own so nothing has to clear a class. */

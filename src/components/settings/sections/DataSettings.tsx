@@ -8,11 +8,13 @@ import { isFileSystemSupported } from '../../../lib/fileSystemStorage';
 import { LOCAL_DATA_BOUNDARY_COPY, LOCAL_DATA_RECOMMENDED_FLOW_COPY } from '../../../lib/userFacingCopy';
 import { Folder, Note, SyncStatus } from '../../../types';
 import SettingsButton from '../SettingsButton';
+import { settingsFieldClass } from '../settingsField';
 import AutoBackupSection from './data/AutoBackupSection';
 import BackupSection from './data/BackupSection';
 import ImportSection from './data/ImportSection';
 import { ConfirmState } from './data/types';
 import WorkspaceSection from './data/WorkspaceSection';
+import { X } from '@/src/lib/icons';
 
 interface DataSettingsProps {
   group: 'workspace' | 'backup';
@@ -207,7 +209,7 @@ export default function DataSettings({
                 onChange={(e) =>
                   setConfirmState((prev) => (prev ? { ...prev, inputValue: e.target.value } : null))
                 }
-                className="flex-1 bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-2 py-1 text-sm font-redaction outline-none focus:border-[#CC7D5E]"
+                className={settingsFieldClass('flex-1 px-2 py-1 font-redaction')}
                 autoFocus
               />
             </div>
@@ -231,9 +233,10 @@ export default function DataSettings({
           </span>
           <button
             onClick={() => setMessage(null)}
-            className="ml-2 opacity-60 hover:opacity-100 text-xs"
+            aria-label="Dismiss message"
+            className="ml-2 opacity-60 hover:opacity-100"
           >
-            ✕
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}

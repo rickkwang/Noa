@@ -35,6 +35,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   { tab: 'general', section: 'Editor', label: 'View Mode', keywords: 'edit split preview pane layout' },
   { tab: 'general', section: 'Search', label: 'Fuzzy Search', keywords: 'approximate typo partial matching' },
   { tab: 'general', section: 'Search', label: 'Case Sensitive', keywords: 'uppercase lowercase matching' },
+  { tab: 'general', section: 'Keyboard Shortcuts', label: 'Keyboard Shortcuts', keywords: 'hotkey hotkeys key bindings keyboard cmd ctrl' },
 
   // Notes
   { tab: 'notes', section: 'Daily Notes', label: 'Enable Daily Notes', keywords: 'journal today toolbar' },

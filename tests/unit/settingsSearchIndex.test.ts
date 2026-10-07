@@ -30,7 +30,9 @@ describe('settings search index', () => {
     // A hand-written index goes stale silently; this is the guard. Only the
     // active tab is ever mounted, so the index cannot be built from the DOM —
     // it has to be checked against the sources instead.
-    const rendered = await renderedSettingLabels();
+    // The shortcut table is indexed but is not a SettingItem.
+    const anchoredSections = ['Keyboard Shortcuts'];
+    const rendered = [...(await renderedSettingLabels()), ...anchoredSections].sort();
     const indexed = [...new Set(SETTINGS_INDEX.map((entry) => entry.label))].sort();
 
     expect(indexed).toEqual(rendered);

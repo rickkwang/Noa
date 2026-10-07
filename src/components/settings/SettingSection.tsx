@@ -5,11 +5,12 @@ interface SettingSectionProps {
   description?: string;
   children: React.ReactNode;
   bare?: boolean;
+  id?: string;
 }
 
-export default function SettingSection({ title, description, children, bare = false }: SettingSectionProps) {
+export default function SettingSection({ title, description, children, bare = false, id }: SettingSectionProps) {
   return (
-    <div>
+    <div id={id}>
       <div className="mb-4">
         <h2 className="font-bold text-lg text-[#2D2D2B]">{title}</h2>
         {description && (

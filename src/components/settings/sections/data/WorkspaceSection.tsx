@@ -2,6 +2,7 @@ import React, { RefObject, useEffect, useState } from 'react';
 import SettingItem from '../../SettingItem';
 import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
+import { settingsFieldClass } from '../../settingsField';
 import { FolderOpen, HardDrive, Loader2, PlusSquare, Unlink } from '@/src/lib/icons';
 
 interface WorkspaceSectionProps {
@@ -69,7 +70,7 @@ export default function WorkspaceSection({
           }}
           maxLength={60}
           aria-label="Workspace name"
-          className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-56 font-redaction outline-none focus:border-[#CC7D5E]"
+          className={settingsFieldClass('px-3 py-1.5 w-56 font-redaction')}
         />
       </SettingItem>
 

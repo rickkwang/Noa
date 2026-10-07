@@ -5,6 +5,7 @@ import SegmentedControl from '../SegmentedControl';
 import SettingItem from '../SettingItem';
 import SettingsButton from '../SettingsButton';
 import SettingSection from '../SettingSection';
+import { settingsFieldClass } from '../settingsField';
 import SettingsToggle from '../SettingsToggle';
 
 interface WritingSettingsProps {
@@ -41,6 +42,12 @@ export default function WritingSettings({ group, settings, updateSettings, edito
   useEffect(() => {
     if (editingId !== null) editFormRef.current?.scrollIntoView({ block: 'nearest' });
   }, [editingId]);
+
+  useEffect(() => {
+    if (confirmDeleteId === null) return;
+    const timer = window.setTimeout(() => setConfirmDeleteId(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmDeleteId]);
 
   const openNew = () => {
     setEditingId('new');
@@ -125,12 +132,12 @@ export default function WritingSettings({ group, settings, updateSettings, edito
                 onChange={(e) => updateSettings(s => ({ ...s, dailyNotes: { ...s.dailyNotes, dateFormat: e.target.value } }))}
                 placeholder="YYYY-MM-DD"
                 aria-label="Daily note date format"
-                className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-40 outline-none focus:border-[#CC7D5E]"
+                className={settingsFieldClass('px-3 py-1.5 w-40')}
               />
               {settings.dailyNotes.dateFormat.trim() && (
                 <p className="text-xs text-[#2D2D2B]/60">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
-            )}
-          </div>
+              )}
+            </div>
         </SettingItem>
         <SettingItem label="Template" description="Content pre-filled in each new daily note. Supports {{date}}, {{title}}, {{time}}, {{week}}, {{weeknum}}.">
           <textarea
@@ -139,7 +146,7 @@ export default function WritingSettings({ group, settings, updateSettings, edito
             placeholder={"## Focus\n\n## Notes\n\n"}
             rows={5}
             aria-label="Daily note template"
-            className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
+            className={settingsFieldClass('px-3 py-2 w-full font-redaction resize-none')}
           />
         </SettingItem>
       </SettingSection>
@@ -174,6 +181,7 @@ export default function WritingSettings({ group, settings, updateSettings, edito
           {editingId !== null && (
             <div
               ref={editFormRef}
+              data-inline-edit="true"
               className={`space-y-3 ${userTemplates.length > 0 ? 'border-t border-[var(--divider-subtle)] pt-4 mt-4' : ''}`}
               onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
             >
@@ -186,7 +194,7 @@ export default function WritingSettings({ group, settings, updateSettings, edito
                   maxLength={60}
                   placeholder="Template name"
                   aria-label="Template name"
-                  className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-1.5 text-sm w-full outline-none focus:border-[#CC7D5E]"
+                  className={settingsFieldClass('px-3 py-1.5 w-full')}
                   autoFocus
                 />
               </div>
@@ -198,10 +206,13 @@ export default function WritingSettings({ group, settings, updateSettings, edito
                   rows={7}
                   placeholder={"# {{title}}\n\n{{date}}\n\n"}
                   aria-label="Template content"
-                  className="bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] px-3 py-2 text-sm w-full font-redaction outline-none focus:border-[#CC7D5E] resize-none"
+                  className={settingsFieldClass('px-3 py-2 w-full font-redaction resize-none')}
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex items-center justify-end gap-2">
+                {!editName.trim() && (
+                  <span className="mr-auto text-xs text-[#2D2D2B]/60">Name is required</span>
+                )}
                 <SettingsButton variant="ghost" size="compact" onClick={cancelEdit}>
                   Cancel
                 </SettingsButton>

@@ -81,6 +81,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               max="24"
               value={settings.editor.fontSize}
               aria-label="Font size"
+              aria-valuetext={`${settings.editor.fontSize}px`}
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: parseInt(e.target.value, 10) } }))}
               className="w-32 accent-[#CC7D5E]"
             />
@@ -96,6 +97,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               step="0.1"
               value={settings.editor.lineHeight}
               aria-label="Line height"
+              aria-valuetext={String(settings.editor.lineHeight)}
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, lineHeight: parseFloat(e.target.value) } }))}
               className="w-32 accent-[#CC7D5E]"
             />
@@ -114,6 +116,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               step="50"
               value={settings.appearance.maxWidth}
               aria-label="Maximum editor width"
+              aria-valuetext={`${settings.appearance.maxWidth}px`}
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, maxWidth: parseInt(e.target.value, 10) } }))}
               className="w-32 accent-[#CC7D5E]"
             />

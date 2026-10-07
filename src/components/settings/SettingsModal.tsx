@@ -174,6 +174,8 @@ export default function SettingsModal({
       // holds nothing worth keeping.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
+      // Inline edit drafts handle Escape themselves, even from their buttons.
+      if (el?.closest('[data-inline-edit]')) return;
       if (tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (tag === 'INPUT') {
         const type = (el as HTMLInputElement).type;
@@ -241,12 +243,18 @@ export default function SettingsModal({
     }
   };
 
+  // A drag-select released over the scrim clicks the scrim, so the press must start there too.
+  const pressStartedOnBackdrop = useRef(false);
+
   return (
     <div
       data-settings-backdrop="true"
       className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
       style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0)' }}
-      onClick={onClose}
+      onMouseDown={(e) => { pressStartedOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (pressStartedOnBackdrop.current && e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         ref={dialogRef}
@@ -286,7 +294,7 @@ export default function SettingsModal({
             id={`settings-panel-${activeTab}`}
             role="tabpanel"
             aria-labelledby={`settings-tab-${activeTab}`}
-            className="flex-1 p-4 pr-12 pt-14 bg-[#F9F9F7] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 sm:pr-12 sm:pt-14 md:p-8 md:pr-14 md:pt-14"
+            className="noa-settings-scroll flex-1 p-4 pr-12 pt-14 bg-[#F9F9F7] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 sm:pr-12 sm:pt-14 md:p-8 md:pr-14 md:pt-14"
           >
             {activeTab === 'appearance' && (
               <AppearanceSettings settings={settings} updateSettings={updateSettings} />
@@ -302,8 +310,9 @@ export default function SettingsModal({
                   setEditorViewMode={setEditorViewMode}
                 />
                 {activeTab === 'general' && (
-                <SettingSection title="Keyboard Shortcuts" description="Shortcuts work anywhere in the app, including while typing.">
+                <SettingSection id={settingAnchorId('Keyboard Shortcuts')} title="Keyboard Shortcuts" description="Shortcuts work anywhere in the app, including while typing.">
                   <table className="w-full text-xs font-redaction">
+                    <caption className="sr-only">Keyboard shortcuts</caption>
                     <tbody>
                       {[
                         ['Cmd/Ctrl + N', 'New note'],
@@ -417,7 +426,8 @@ export default function SettingsModal({
               // the 40px cap means at rest it covers the panel's own padding
               // and is invisible anyway. The tail used to be 6px, a quarter of
               // a line-height, which cut text mid-glyph on its way under.
-              className="pointer-events-none absolute inset-x-0 top-0 h-[64px]"
+              // Stops at the scrollbar strip (6px = ::-webkit-scrollbar width), as the other fades do.
+              className="pointer-events-none absolute left-0 right-[6px] top-0 h-[64px]"
               style={{
                 background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #FCFCFB) 100%, transparent) 40px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 96%, transparent) 43px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 84%, transparent) 46px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 68%, transparent) 49px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 50%, transparent) 52px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 32%, transparent) 55px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 16%, transparent) 58px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 4%, transparent) 61px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 0%, transparent) 64px)',
               }}
