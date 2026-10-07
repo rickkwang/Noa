@@ -4,17 +4,13 @@
  */
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import CommandPaletteDialog from './components/CommandPaletteDialog';
 import type { EditorFocusRequest } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import NavigationConflictDialog from './components/NavigationConflictDialog';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
 import Sidebar from './components/Sidebar';
-import TemplatePickerDialog from './components/TemplatePickerDialog';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
-import VaultOnboardingDialog from './components/VaultOnboardingDialog';
 import type { RightTab } from './constants/rightTabs';
 import { STORAGE_KEYS } from './constants/storageKeys';
 import { useAutoBackup } from './hooks/useAutoBackup';
@@ -36,6 +32,10 @@ const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 const EmptyState = lazy(() => import('./components/emptyState/EmptyState'));
+const CommandPaletteDialog = lazy(() => import('./components/CommandPaletteDialog'));
+const NavigationConflictDialog = lazy(() => import('./components/NavigationConflictDialog'));
+const TemplatePickerDialog = lazy(() => import('./components/TemplatePickerDialog'));
+const VaultOnboardingDialog = lazy(() => import('./components/VaultOnboardingDialog'));
 
 // The preview's elevation (index.css .noa-sidebar-preview-shell, the
 // rounded-r corner, the --bg-primary floor) drops on the same 500ms clock as
@@ -1377,7 +1377,11 @@ export default function App() {
           </div>
         )}
       </div>
-      {commandPalette.isOpen && <CommandPaletteDialog palette={commandPalette} />}
+      {commandPalette.isOpen && (
+        <Suspense fallback={null}>
+          <CommandPaletteDialog palette={commandPalette} />
+        </Suspense>
+      )}
       {isSettingsOpen && (
         <Suspense fallback={null}>
           <SettingsModal
@@ -1404,34 +1408,40 @@ export default function App() {
         </Suspense>
       )}
       {showVaultOnboarding && (
-        <VaultOnboardingDialog
-          connecting={vaultOnboardingBusy}
-          error={vaultOnboardingError}
-          onConnect={connectVaultFromOnboarding}
-          onDismiss={dismissVaultOnboarding}
-        />
+        <Suspense fallback={null}>
+          <VaultOnboardingDialog
+            connecting={vaultOnboardingBusy}
+            error={vaultOnboardingError}
+            onConnect={connectVaultFromOnboarding}
+            onDismiss={dismissVaultOnboarding}
+          />
+        </Suspense>
       )}
       {navigationConflict && (
-        <NavigationConflictDialog
-          title={navigationConflict.title}
-          noteIds={navigationConflict.noteIds}
-          notes={notes}
-          folderNameById={folderNameById}
-          onSelect={(id) => {
-            navigateById(id);
-            setNavigationConflict(null);
-          }}
-          onClose={() => setNavigationConflict(null)}
-        />
+        <Suspense fallback={null}>
+          <NavigationConflictDialog
+            title={navigationConflict.title}
+            noteIds={navigationConflict.noteIds}
+            notes={notes}
+            folderNameById={folderNameById}
+            onSelect={(id) => {
+              navigateById(id);
+              setNavigationConflict(null);
+            }}
+            onClose={() => setNavigationConflict(null)}
+          />
+        </Suspense>
       )}
       {pendingTemplateNoteId && (
-        <TemplatePickerDialog
-          noteTitle={notes.find(n => n.id === pendingTemplateNoteId)?.title ?? 'New Note'}
-          dateFormat={settings.dailyNotes.dateFormat}
-          userTemplates={settings.templates?.userTemplates ?? []}
-          onApply={(content) => handleUpdateNote(pendingTemplateNoteId, content)}
-          onClose={() => setPendingTemplateNoteId(null)}
-        />
+        <Suspense fallback={null}>
+          <TemplatePickerDialog
+            noteTitle={notes.find(n => n.id === pendingTemplateNoteId)?.title ?? 'New Note'}
+            dateFormat={settings.dailyNotes.dateFormat}
+            userTemplates={settings.templates?.userTemplates ?? []}
+            onApply={(content) => handleUpdateNote(pendingTemplateNoteId, content)}
+            onClose={() => setPendingTemplateNoteId(null)}
+          />
+        </Suspense>
       )}
       {isFocusMode && (
         <button
