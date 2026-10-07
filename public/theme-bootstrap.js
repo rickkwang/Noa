@@ -9,9 +9,11 @@
       root.setAttribute('data-theme', 'dark');
       root.style.setProperty('--bg-primary', '#2D2D2B');
       root.style.setProperty('--bg-secondary', '#252523');
+      root.style.backgroundColor = '#2D2D2B';
     } else {
       root.style.setProperty('--bg-primary', '#FCFCFB');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
+      root.style.backgroundColor = '#FCFCFB';
     }
   } catch {
     // ThemeInjector will apply the validated setting once React starts.
