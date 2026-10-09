@@ -46,7 +46,7 @@ const DISC_CELLS = Array.from({ length: DISC * DISC }, (_, i) => {
 function sunLayer(): PixelLayer {
   const layer = new PixelLayer();
   for (const { x, y, px, py, d } of DISC_CELLS) {
-    // Lit from the upper left: a bright core off-centre, a deeper rim lower right.
+    // Lit from the upper left: bright off-centre core, deeper rim lower right.
     let tone = 'sun';
     if (d > R - 1.1 && px + py > 1) tone = 'sun-rim';
     else if (Math.hypot(px + 1.2, py + 1.2) < 1.6) tone = 'sun-hi';
@@ -69,8 +69,7 @@ function moonAge(date: Date): number {
  * way earthshine leaves a thin moon's full disc just visible.
  */
 function moonLayer(age: number): PixelLayer {
-  // Around new moon the real sky has nothing to show; keep at least a slim
-  // crescent so there is still a moon to look at (and click).
+  // Keep at least a slim crescent near new moon so there's still a moon to click.
   const shown = Math.min(Math.max(age, 2.6), 29.530588853 - 2.6);
   const theta = (shown / 29.530588853) * Math.PI * 2;
   const waxing = theta < Math.PI;
@@ -112,7 +111,7 @@ export function Moon({ x, y, onClick }: { x: number; y: number; onClick: () => v
   // eslint-disable-next-line react-hooks/exhaustive-deps -- recomputed once per calendar day
   const age = useMemo(() => moonAge(new Date()), [day]);
   const layer = useMemo(() => moonLayer(age), [age]);
-  // A full moon throws more light than a crescent.
+  // Full moon glows brighter than a crescent.
   const lit = (1 - Math.cos((age / 29.530588853) * Math.PI * 2)) / 2;
   return (
     <g className="nsc-moon nsc-hit" onClick={onClick}>

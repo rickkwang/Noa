@@ -33,19 +33,13 @@ describe('sidebar search result layout', () => {
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
     expect(styles).toContain('.noa-sidebar-toolbar-mask::after {');
-    // The fade stops short of the scrollbar gutter — drawn across it, it washes
-    // out the top of the thumb. The inset must match ::-webkit-scrollbar's width.
+    // Fade must stop short of the scrollbar gutter, and that inset must match ::-webkit-scrollbar.
     const toolbarFade = styles.slice(
       styles.indexOf('.noa-sidebar-toolbar-mask::after {'),
       styles.indexOf('}', styles.indexOf('.noa-sidebar-toolbar-mask::after {')),
     );
     expect(toolbarFade).toContain('right: 6px;');
-    // The seam runs on the app's shared edge-fade curve: strength comes from
-    // --noa-fade-top (lib/edgeFade, written on the sidebar root because the
-    // overlay is the scroller's sibling), so an unscrolled tree keeps its first
-    // row at full strength. The band is a fixed 32px and spends that strength
-    // as opacity — three times the old always-on 10px linear wash, which cut a
-    // row in a third of its height.
+    // Strength comes from the shared --noa-fade-top edge-fade curve, so an unscrolled tree keeps full strength.
     expect(toolbarFade).toContain('height: 32px;');
     expect(toolbarFade).toContain('bottom: -32px;');
     expect(toolbarFade).toContain('opacity: var(--noa-fade-top, 0);');
@@ -82,10 +76,7 @@ describe('sidebar search result layout', () => {
       readFile(fileNodePath, 'utf8'),
     ]);
 
-    // The three have to agree: the gutter reserves 6px, the pull-back hands the
-    // same 6px to the content, and rows sit 6px in on both sides. Pull back more
-    // than the row margin and the row's right edge lands outside the scrollport,
-    // clipping the corner radius on that side only.
+    // Gutter, pull-back, and row margin must all be 6px; a larger pull-back clips the right corner radius.
     expect(styles).toContain('.noa-sidebar-scroll {\n  scrollbar-gutter: stable;\n}');
     expect(styles).toContain('.noa-sidebar-scroll > * {\n  margin-right: -6px;\n}');
     expect(styles).toContain('::-webkit-scrollbar {\n  width: 6px;');
@@ -104,8 +95,7 @@ describe('sidebar search result layout', () => {
 
     expect(fileNode).toContain('border-l border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
-    // 425 against 400 never rendered as a visible difference; the folder icon
-    // is what tells folders from notes, and only the active row steps up.
+    // 425 vs 400 is not visibly different; only the active row steps up in weight.
     expect(fileNode).toContain("isActive ? 'font-bold' : ''");
     expect(fileNode).not.toContain("font-[425]");
     expect(fileNode).not.toContain("isFolder ? 'font-medium' : ''");
@@ -151,10 +141,7 @@ describe('sidebar search result layout', () => {
 
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
     expect(app).toContain('className="flex-1 min-h-0 overflow-hidden"');
-    // Matched unanchored from the quote: what this guards is the height chain
-    // (h-full + min-h-0 + flex-col) that keeps the bottom sections on screen,
-    // not the class list's leading position. Surface classes like
-    // noa-sidebar-surface legitimately sit in front of it.
+    // Guards the height chain (h-full + min-h-0 + flex-col), not the class list's leading position.
     expect(sidebar).toMatch(/className="[^"]*\bw-full h-full min-h-0 flex flex-col/);
     expect(sidebar).toContain('className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
     expect(rightPanel).toContain('className={`w-full h-full min-h-0 flex flex-col');

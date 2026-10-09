@@ -9,8 +9,7 @@ interface ShadowLayer {
   spread: number;
 }
 
-// Computed box-shadow is comma-separated, but so is the rgba() inside each
-// layer, so split only at depth zero.
+// Split only at depth-zero commas: rgba() inside each layer has commas too.
 function parseShadowLayers(value: string): ShadowLayer[] {
   const chunks: string[] = [];
   let depth = 0;
@@ -39,13 +38,9 @@ function parseShadowLayers(value: string): ShadowLayer[] {
   });
 }
 
-// The preview shadow has been retuned twice (735df9f reshaped one hard layer
-// into a falloff, 1a583ed pulled the whole ramp back), and each time the pinned
-// literals sent tests red for a change that was correct. What must not regress
-// is the shape, so assert that: a rightward-only cast, because the preview runs
-// the full window height and any vertical component prints a seam where it meets
-// the titlebar; an edge hairline separate from the falloff; and a ramp that gets
-// wider and softer layer by layer instead of stepping.
+// Asserts the shape rather than literal values, which get retuned: a rightward-only
+// cast (any vertical offset seams against the titlebar), an edge hairline separate
+// from the falloff, and a ramp that widens and softens layer by layer.
 function expectPreviewShadowShape(value: string) {
   const layers = parseShadowLayers(value);
   expect(layers.length).toBeGreaterThanOrEqual(3);
@@ -56,8 +51,7 @@ function expectPreviewShadowShape(value: string) {
   falloff.forEach((layer, index) => {
     expect(layer.offsetX).toBeGreaterThan(index === 0 ? 0 : falloff[index - 1].offsetX);
     expect(layer.blur).toBeGreaterThan(index === 0 ? 0 : falloff[index - 1].blur);
-    // Negative spread is what keeps each wider layer from bleeding above and
-    // below the sidebar edge it is meant to trail.
+    // Negative spread keeps each layer from bleeding above and below the sidebar edge.
     expect(layer.spread).toBeLessThan(0);
   });
 }
@@ -106,10 +100,8 @@ async function openDataSettings(page: import('@playwright/test').Page) {
   await page.getByRole('tab', { name: 'Data' }).click();
 }
 
-// Freezes matching transitions the moment they are created (mid-flight for
-// timed ones, at the from-value for zero-duration ones still in their delay).
-// Sampling via rAF after a click races the 220ms sidebar transitions on slow
-// CI frames — the frame can land after the transition already finished.
+// Freezes matching transitions as they start, so sampling can't race a fast
+// transition on a slow CI frame.
 async function armTransitionHold(page: import('@playwright/test').Page, selectors: string[]) {
   await page.evaluate((sels) => {
     const win = window as unknown as {
@@ -240,21 +232,16 @@ test('search result cards keep visible scroll chrome without changing horizontal
     return {
       left: row.left - column.left,
       right: column.right - row.right,
-      // How far the card's right edge sits past the scrollport. Content beyond
-      // it is painted-clipped even though its box says otherwise, which shaves
-      // the right corner radius flat while the left stays round.
+      // Anything past the scrollport is clipped, which flattens the right corner radius.
       overflowPastScrollport: row.right - (container.left + scrollContainer.clientWidth),
       scrollbarGutter: getComputedStyle(scrollContainer).scrollbarGutter,
       scrollbarWidth: getComputedStyle(scrollContainer).scrollbarWidth,
     };
   });
 
-  // The gutter is reserved permanently so rows don't shift 6px sideways the
-  // moment the list grows past one screen. That is not the old per-row
-  // compensation this test was written against: the pull-back, the gutter, and
-  // the row margin are all 6px, so the rhythm below stays symmetric.
+  // Gutter is reserved permanently so rows don't shift when the list overflows.
   expect(layout.scrollbarGutter).toBe('stable');
-  // Still a real, visible scrollbar — 'none' would hide the thumb entirely.
+  // A visible scrollbar; 'none' would hide the thumb.
   expect(layout.scrollbarWidth).toBe('auto');
   expect(layout.left).toBe(6);
   expect(layout.right).toBe(6);
@@ -266,7 +253,7 @@ test('clicking a search result opens that note', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
 
-  // Move off the Welcome note so navigating back to it is observable.
+  // Leave the Welcome note so navigating back to it is observable.
   await page.getByTitle('New note').click();
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}`);
@@ -276,10 +263,7 @@ test('clicking a search result opens that note', async ({ page }) => {
   await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
 
-  // Target the result row itself, not the file tree — the tree also lists this
-  // note, and clicking it there would pass while proving nothing. Blur fires on
-  // mousedown, ahead of click: if it tore the results down, this row would
-  // unmount mid-click and the note would never open.
+  // Click the result row, not the file tree (which also lists the note and would pass vacuously).
   const resultRow = page.getByTestId('search-result').first();
   await expect(resultRow).toBeVisible();
   await resultRow.click();
@@ -303,9 +287,7 @@ test('expanding search never scrolls its own icon sideways', async ({ page }) =>
   await page.goto('/');
   await expect(page.getByTitle('Search notes')).toBeVisible();
 
-  // The icon button is wider than the collapsed shell's content box, so any
-  // focus the browser decides to reveal scrolls that clipped shell and jerks
-  // the icon mid-expand. Peak scrollLeft is the exact, non-flaky signal.
+  // Browser focus-reveal would scroll the clipped shell mid-expand; peak scrollLeft detects it.
   const peakScroll = page.evaluate(() => {
     const shell = document.querySelector('button[title="Search notes"]')!.parentElement!;
     let peak = 0;
@@ -322,7 +304,7 @@ test('expanding search never scrolls its own icon sideways', async ({ page }) =>
   await page.getByTitle('Search notes').click();
   expect(await peakScroll).toBe(0);
 
-  // Suppressing focus scroll must not cost the field its focus.
+  // Suppressing the scroll must not drop the field's focus.
   await expect(page.getByPlaceholder('Search notes, tags...')).toBeFocused();
 });
 
@@ -358,15 +340,13 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
   expect(sidebarToggleBox).not.toBeNull();
   expect(sidebarActionBox).not.toBeNull();
   expect(rightPanelTabBox).not.toBeNull();
-  // The tab is a 26px pill centred in the row, on the same centre line as the
-  // 22px search shell beside it.
+  // 26px tab pill centred on the same line as the 22px search shell.
   expect(tabBox!.height - searchShellBox!.height).toBe(4);
   expect(Math.abs((tabBox!.y + tabBox!.height / 2) - (searchShellBox!.y + searchShellBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs((searchButtonBox!.y + searchButtonBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(tabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
   expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchShellBox!.y + 24);
-  // The panel menu lives in the title bar too, sharing the row with search
-  // rather than sitting a header row below it.
+  // Panel menu shares the title-bar row with search.
   expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
 });
 
@@ -463,8 +443,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
   const collapsedEditorBox = await editor.boundingBox();
   expect(collapsedEditorBox).not.toBeNull();
 
-  // Closing by click leaves the pointer over the toggle; preview begins only
-  // after a genuine leave-and-reenter hover gesture.
+  // Preview needs a genuine leave-and-reenter; closing by click leaves the pointer on the toggle.
   await page.mouse.move(700, 400);
   await toggle.hover();
   await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
@@ -561,9 +540,7 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
     previewBounds: { x: 0, y: 0, height: 720 },
   });
   expectPreviewShadowShape(palette.previewShadow);
-  // Dark is where this has teeth: index.css carries the light value as its
-  // fallback, so only here does painting the fallback instead of the token show
-  // up as a difference.
+  // Only dark exposes a fallback-vs-token mismatch, since index.css's fallback is the light value.
   expect(parseShadowLayers(palette.previewShadow)).toEqual(parseShadowLayers(palette.previewShadowToken));
 });
 
@@ -698,8 +675,7 @@ test('direct sidebar toggle wipes the separator across stationary content', asyn
   expect(closing.edge).toBeLessThan(expandedSidebarBox!.x + expandedSidebarBox!.width);
   expect(Math.abs(closing.edge - closing.separator)).toBeLessThan(1.5);
   expect(Math.abs(closing.edge - closing.surfaceEdge)).toBeLessThan(1.5);
-  // The content is masked, not moved: it stays full width at the app edge while
-  // the separator sweeps left over it.
+  // Content is masked, not moved: it stays full width at the app edge.
   expect(closing.contentX).toBe(expandedSidebarBox!.x);
   expect(closing.contentWidth).toBe(expandedSidebarBox!.width);
   expect(closing.opacity).toBe(1);
@@ -721,11 +697,7 @@ test('direct sidebar toggle wipes the separator across stationary content', asyn
 test('sidebar toggle stays clickable while a note lifts the tab strip over the titlebar', async ({ page }) => {
   await page.goto('/');
 
-  // With a note open the editor header lifts its tab strip into the titlebar
-  // band, and when the sidebar is closed its traffic-light reservation reaches
-  // left across the band. A padding-based reservation once put the header's
-  // box over the toggle and swallowed its clicks; the margin-based one must
-  // not (the floor extension is pointer-events none).
+  // A padding-based reservation once swallowed toggle clicks; the margin-based one must not.
   await page.getByTitle('New note').click();
   await expect(page.locator('.noa-editor-header-floor')).toBeAttached();
 
@@ -734,9 +706,7 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
   await toggle.click();
   await expect(sidebar).toHaveCSS('width', '0px');
 
-  // Measured rather than matched: the floor can lose its width entirely and
-  // every selector-level assertion in the unit tests still passes, because the
-  // failure is a resolved value, not a missing declaration.
+  // Measures resolved values; selector-level unit tests can't catch a zero-width floor.
   const floor = await page.locator('.noa-editor-header-floor').evaluate((element) => {
     const before = getComputedStyle(element, '::before');
     return {
@@ -746,12 +716,10 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
       border: before.borderBottomWidth,
     };
   });
-  // Web build: 0.5rem gutter + 61.5px toggle/search group. The desktop shell
-  // adds traffic-light clearance and resolves this to 147px.
+  // Web build value; the desktop shell adds traffic-light clearance (147px).
   expect(floor.marginLeft).toBe('69.5px');
   expect(floor.left).toBe('-69.5px');
   expect(floor.width).toBe('69.5px');
-  // The titlebar row has no baseline, so the floor carries none either.
   expect(floor.border).toBe('0px');
 
   // Direct hit-test at the toggle's center: the topmost element must be the
@@ -768,16 +736,9 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
 });
 
 test('the hover preview leaves the column surface where it puts it', async ({ page }) => {
-  // The preview arrives at full width in one frame and leaves on a 180ms fade.
-  // Nothing on that edge has a 320ms dock motion to ride, so anything that runs
-  // one is a line crawling out from under a panel that is already gone. Both
-  // regressed at once here: the titlebar hairline (since removed along with
-  // the tab baseline) because its transition was a default with exclusions
-  // rather than an opt-in, and the column surface because it was the one box
-  // on the masking edge that never got the settle suppression.
-  //
-  // Asserting on the transitions themselves — the resting values are identical
-  // either way, which is exactly why this was invisible to every existing test.
+  // The preview must not start any edge transition: it arrives in one frame, so a
+  // transition would crawl a line out from under a panel that is already gone.
+  // Assert on transitions directly; resting values match either way.
   await page.addInitScript(() => {
     const entries: string[] = [];
     (window as unknown as { __edgeMotion: string[] }).__edgeMotion = entries;
@@ -804,15 +765,13 @@ test('the hover preview leaves the column surface where it puts it', async ({ pa
   });
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
 
-  // Positive control first: the dock toggle is the one motion this edge has,
-  // so the listener must see it.
+  // Positive control: the dock toggle is the one motion this edge has.
   await toggle.click();
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
   expect(await motion()).toContain('container:width');
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
 
-  // Closing by click leaves the pointer on the toggle; the preview needs a
-  // genuine leave-and-reenter.
+  // Preview needs a genuine leave-and-reenter (closing by click leaves the pointer on the toggle).
   await page.mouse.move(900, 500);
   await motion();
   await toggle.hover();
@@ -828,16 +787,8 @@ test('the hover preview leaves the column surface where it puts it', async ({ pa
 });
 
 test('promoting the preview opens the dock gap without sweeping the veil or walking the tab strip back', async ({ page }) => {
-  // Promotion takes a column the preview is already filling and hands it to the
-  // docked sidebar. Nothing about that column's width changes, so anything that
-  // animates across it is animating over a gap that was never there:
-  //  - the translucent veil, whose @starting-style cannot tell "the sidebar
-  //    opened" from "the element that paints it was just created", swept 325px
-  //    of opaque plane across the editor;
-  //  - the lifted tab strip, whose traffic-light reservation shrank on the dock
-  //    motion's clock while the spacer that moves the editor's left edge ran a
-  //    shorter one, so the strip arrived and then crept back left with nothing
-  //    else on screen moving.
+  // Promotion keeps the column width unchanged, so nothing may animate across it:
+  // the veil must not sweep, and the tab strip must not creep back left.
   await page.addInitScript(() => {
     localStorage.setItem('app-settings', JSON.stringify({ appearance: { translucentSidebar: true } }));
     const entries: string[] = [];
@@ -872,18 +823,14 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
   await page.waitForTimeout(240);
   await veilMotion();
 
-  // Sample every frame of the promotion: the veil must hold one value and the
-  // tab strip must never move left.
+  // Sample every frame of the promotion.
   await toggle.click();
   const promotion = await page.evaluate(async () => {
     const shell = document.querySelector<HTMLElement>('.noa-app-shell')!;
     const veils = new Set<string>();
     const tabs: number[] = [];
-    // Cover the whole promotion, then keep sampling until there are enough
-    // points to say anything about the path. A starved runner can fit only a
-    // handful of frames into the 520ms, and that says nothing about the motion;
-    // the extra samples land on the settled value and cost the assertions
-    // nothing. The second deadline only stops a runaway loop.
+    // Keep sampling past the 520ms window until there are enough points (a starved runner
+    // fits few frames); extra samples land on the settled value. hardStop bounds the loop.
     const deadline = performance.now() + 520;
     const hardStop = performance.now() + 5000;
     while ((performance.now() < deadline || tabs.length <= 8) && performance.now() < hardStop) {
@@ -897,8 +844,7 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
 
   expect(promotion.veils).toEqual([settled]);
   expect(await veilMotion()).toEqual([]);
-  // Monotonic to within a sub-pixel of rounding noise. The regression walked it
-  // back 16px, so this has room to spare without going slack.
+  // Monotonic within sub-pixel noise; a regression walked it back 16px.
   const retreat = promotion.tabs.reduce(
     (worst, x, index) => (index === 0 ? worst : Math.max(worst, promotion.tabs[index - 1] - x)),
     0,
@@ -907,8 +853,7 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
   expect(retreat).toBeLessThan(1);
   expect(promotion.tabs[promotion.tabs.length - 1]).toBeGreaterThan(promotion.tabs[0]);
 
-  // The dock motion is the one thing the veil does ride, and promotion must not
-  // have cost it that. Positive control for both assertions above.
+  // Positive control: the veil must still ride the dock motion.
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '325px');
   await expect.poll(veil).toBe(settled);
   await toggle.click();
@@ -934,13 +879,9 @@ test('Escape closes the sidebar preview and returns focus to its toggle', async 
 
 test('the sidebar preview closes even when its exit transition never fires', async ({ page }) => {
   await page.goto('/');
-  // The exit used to be reachable only through transitionend, which CSS is
-  // allowed not to dispatch: a hover-then-Escape whose two style changes land in
-  // one flush leaves opacity at the @starting-style 0, so no transition is
-  // generated and no event arrives. Removing the transition reproduces that end
-  // state directly. Before the phase gained a fallback this hung forever, and
-  // what stayed behind was an invisible preview still reachable by keyboard over
-  // a sidebar that never went back to inert.
+  // Exit must not depend on transitionend, which CSS may never dispatch (e.g. hover then Escape
+  // in one flush). Removing the transition reproduces that state; without a fallback the
+  // preview stayed keyboard-reachable and the sidebar never went inert.
   await page.addStyleTag({ content: '.noa-sidebar-preview-motion { transition: none !important; }' });
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
@@ -988,14 +929,9 @@ test('expanded sidebar surface follows the resize edge without a trailing transi
 test('a resize drag moves the sidebar without rewriting the width variable on the root', async ({ page }) => {
   await page.goto('/');
 
-  // Custom properties inherit, and Blink invalidates style for everything that
-  // could inherit a write — the whole document, whether or not anything reads
-  // the property. At a thousand notes (the sidebar list is not virtualised)
-  // that was ~8ms of style recalc on every dragged frame against a 16ms budget.
-  // So the drag writes resolved pixels onto the handful of boxes that consume
-  // the width instead, and hands the variable back on release. Asserting on the
-  // mechanism rather than the geometry: every visible edge lands in the same
-  // place either way, which is exactly why this regressed silently.
+  // Writing the width variable on the root invalidates style document-wide (~8ms per dragged
+  // frame at a thousand notes). The drag must write resolved pixels to the consuming boxes
+  // and restore the variable on release. Asserts the mechanism, since geometry can't see it.
   const readDragState = () => page.evaluate(() => ({
     root: document.documentElement.style.getPropertyValue('--noa-sidebar-width'),
     sidebarInline: document.querySelector<HTMLElement>('[data-sidebar-container]')!.style.width,
@@ -1022,13 +958,10 @@ test('a resize drag moves the sidebar without rewriting the width variable on th
   expect(during.sidebarInline).toBe('420px');
   expect(during.contentInline).toBe('420px');
   expect(during.separatorInline).toBe('420px');
-  // The titlebar's hairline hangs off a pseudo-element, which can only read the
-  // variable from its own element — so this one stays a variable write, scoped
-  // to a subtree that does not grow with the vault.
+  // Titlebar hairline reads the variable from its own pseudo-element, so it stays a variable write.
   expect(during.titlebarVar).toBe('420px');
 
-  // Release hands every declaration back to React, with the variable already
-  // holding the width the drag ended on so nothing resolves to a stale value.
+  // On release the variable already holds the final width, so nothing resolves stale.
   await page.mouse.up();
   const after = await readDragState();
   expect(after.root).toBe('420px');
@@ -1083,8 +1016,7 @@ test('a second toggle during preview promotion reverses without moving the edito
       poll();
     });
     animation.pause();
-    // The reverse transition's first frame is the interrupted promotion
-    // position, so a discontinuous handoff shows up as a jump here.
+    // Reverse starts at the interrupted position, so a discontinuous handoff shows as a jump.
     animation.currentTime = 0;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const x = document.querySelector<HTMLElement>('.cm-editor')!.getBoundingClientRect().x;
@@ -1160,9 +1092,7 @@ test('reversing a preview exit continues from its current visual progress', asyn
 
   await toggle.hover();
   await expect(shell).not.toHaveAttribute('data-sidebar-preview-closing', 'true');
-  // Sample the reverse transition's start frame, not one rAF later: on a slow
-  // runner that frame can cover 50ms+ of the steep ease-out, which reads as a
-  // discontinuous jump even when the handoff was smooth.
+  // Sample the start frame itself: a later frame can span 50ms+ of the ease-out and read as a jump.
   const opacityAfterReverse = await shell.evaluate(async (element) => {
     const animation = element.getAnimations()[0];
     if (!animation) throw new Error('Sidebar reverse animation did not start.');
@@ -1185,10 +1115,7 @@ test('enabling reduced motion settles active sidebar preview transitions', async
   await page.mouse.move(700, 400);
   await toggle.hover();
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(1);
-  // 'closing' is a transient — its own fallback retires it 260ms in. Escape
-  // enters the phase synchronously, where leaving by pointer first burns 140ms
-  // of that budget on hover intent and leaves a window narrow enough for a
-  // loaded runner to step over entirely.
+  // 'closing' is transient (retired after 260ms); Escape enters it synchronously so a loaded runner can't miss it.
   await page.keyboard.press('Escape');
   await page.waitForFunction(
     () => document.querySelector('[data-sidebar-preview-shell="true"]')
@@ -1200,8 +1127,7 @@ test('enabling reduced motion settles active sidebar preview transitions', async
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  // Escape leaves the pointer on the toggle, and hovering where it already is
-  // fires no mouseenter — step off first so the next hover reopens the preview.
+  // Hovering where the pointer already sits fires no mouseenter, so step off first.
   await page.mouse.move(700, 400);
   await toggle.hover();
   await toggle.click();
@@ -1279,28 +1205,23 @@ test('opening and closing a tab never resizes the tabs that stay put', async ({ 
   await page.goto('/');
   await page.locator('[data-tab-id]').first().waitFor();
 
-  // Tabs used to be `flex-1` with a 0 basis, which made each tab's width the
-  // average of the whole set. The enter/exit keyframes take the animating tab
-  // out of flex, so that re-average landed as a single-frame jump on every
-  // other tab (measured: 13.5px on open, 24px with mixed-length titles).
-  // The jump only shows up when the averaging actually has something to average,
-  // so give the open tab a title long enough to sit at the far end of the range
-  // before a default-titled "New Note" joins it.
+  // Regression: a flex-1 (0 basis) tab width re-averages across the set, so an animating
+  // tab leaving flex jumped every other tab. The open tab needs a long title so the
+  // averaging has something to average against.
   await page.locator('[data-tab-id] span').first().dblclick();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('Quarterly planning notes 2026');
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-tab-id]').first()).toContainText('Quarterly planning notes 2026');
 
-  // Sample per tab id, not positionally: a tab joins the settled set on the very
-  // frame its animation class drops, which is exactly the frame the jump lands on.
+  // Keyed by tab id, not position: a tab joins the settled set on the frame its animation drops.
   const recordSettledWidths = () => page.evaluate(() => new Promise<Record<string, number>[]>((resolve) => {
     const samples: Record<string, number>[] = [];
     const start = performance.now();
     const tick = () => {
       const frame: Record<string, number> = {};
       for (const tab of document.querySelectorAll<HTMLElement>('[data-tab-id]')) {
-        // Only tabs that are not themselves animating are expected to hold still.
+        // Only non-animating tabs are expected to hold still.
         if (tab.className.includes('editor-tab-enter') || tab.className.includes('editor-tab-exit')) continue;
         frame[tab.dataset.tabId as string] = tab.getBoundingClientRect().width;
       }
@@ -1338,12 +1259,8 @@ test('a second tab opened mid-entrance does not cut the first tab\'s animation',
   await page.goto('/');
   await page.locator('[data-tab-id]').first().waitFor();
 
-  // The entering tab used to be tracked in a single slot, so a second open
-  // stripped the first tab's animation class mid-flight and it jumped straight
-  // to full width. Assert the class overlap directly rather than sampling
-  // widths per frame: on a starved runner a whole 170ms entrance can play
-  // between two rAF ticks, so a per-frame width delta cannot tell a cut from
-  // a legitimately fast ease-out step.
+  // Regression: a second open must not strip the first tab's enter animation. Asserts the
+  // class overlap, since per-frame widths can't tell a cut from a fast ease-out on a starved runner.
   const concurrent = await page.evaluate(() => new Promise<number>((resolve) => {
     const plus = () => [...document.querySelectorAll('button')]
       .find((button) => button.getAttribute('aria-label') === 'New tab') as HTMLButtonElement;
@@ -1392,13 +1309,12 @@ test('split panes share the same top fade while standalone edit remains unmasked
     };
   });
 
-  // At rest both panes meet the tab strip with no fade — the mask is solid.
+  // At rest the mask is solid in both panes.
   const restMasks = await readMasks();
   expect(restMasks.edit).toBe(restMasks.preview);
   expect(restMasks.edit).not.toContain('48px');
 
-  // Once content scrolls beneath the strip, both panes pick up the same 48px
-  // fade (180ms mask transition, so poll past it).
+  // Once content scrolls under the strip, both panes get the same 48px fade (poll past the 180ms transition).
   await page.evaluate(() => {
     const scroller = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-scroller')!;
     scroller.scrollTop = 100;
@@ -1408,8 +1324,7 @@ test('split panes share the same top fade while standalone edit remains unmasked
   await expect.poll(async () => (await readMasks()).edit).toContain('48px');
   const scrolledMasks = await readMasks();
   expect(scrolledMasks.edit).toBe(scrolledMasks.preview);
-  // A second, solid mask layer pinned to the right edge keeps the scrollbar
-  // out of the fade — mask-image would otherwise cover the pane's own thumb.
+  // A solid right-edge mask layer keeps the scrollbar thumb out of the fade.
   for (const mask of Object.values(scrolledMasks)) {
     expect(mask.match(/linear-gradient/g)).toHaveLength(2);
   }
@@ -1500,8 +1415,7 @@ test('version history content remains selectable', async ({ page }) => {
   const marker = `history-selection-${Date.now()}`;
   await page.goto('/');
 
-  // Version History moved out of the toolbar into the editor overflow menu, so
-  // it is a menuitem now and no longer carries a title attribute of its own.
+  // Version History is an overflow-menu item, not a titled toolbar button.
   const toggleHistory = async () => {
     await page.getByTitle('More actions').click();
     await page.getByRole('menuitem', { name: 'Version History' }).click();
@@ -1530,9 +1444,7 @@ test('graph filter field stays quiet on focus', async ({ page }) => {
   });
   await page.goto('/');
 
-  // Text fields deliberately have no focus ring: index.css excludes inputs from
-  // the global focus-visible rule because the caret already shows where typing
-  // lands. The field's surface does not change either — no highlight on focus.
+  // Text inputs have no focus ring or surface change; the caret marks focus.
   await page.getByRole('button', { name: 'Search graph' }).click();
   const input = page.getByPlaceholder('Filter nodes…');
   const surface = input.locator('..');
@@ -1734,8 +1646,7 @@ test('settings tabs support keyboard navigation', async ({ page }) => {
   await page.getByRole('tab', { name: 'Appearance' }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: 'Workspace' })).toHaveAttribute('aria-selected', 'true');
-  // Focus moves in a rAF callback after selection — wait for it or the next
-  // ArrowRight can land while focus is still on Appearance.
+  // Focus moves in a rAF after selection; wait for it so the next ArrowRight lands correctly.
   await expect(page.getByRole('tab', { name: 'Workspace' })).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
@@ -1756,8 +1667,7 @@ test('settings remembers the last active tab when reopened', async ({ page }) =>
 });
 
 test('appearance settings persist after a full reload', async ({ page }) => {
-  // Local Font Access is unavailable in the test browser, so stand in for it
-  // and let the picker walk the same path it takes on a real device.
+  // Stub Local Font Access, which the test browser lacks, so the picker takes its device path.
   await page.addInitScript(() => {
     Object.defineProperty(window, 'queryLocalFonts', {
       configurable: true,
@@ -1773,7 +1683,7 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
 
-  // Base theme is a segmented radiogroup, not a <select>.
+  // Base theme is a radiogroup, not a <select>.
   const theme = page.getByRole('radiogroup', { name: 'Base theme' });
   await theme.getByRole('radio', { name: 'Dark' }).click();
   await expect(theme.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
@@ -1783,7 +1693,7 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await fontTrigger.click();
 
   const fontOptions = page.getByRole('listbox', { name: 'Fonts' }).getByRole('option');
-  // Duplicate faces of one family collapse to a single row.
+  // Duplicate faces of one family collapse to one row.
   await expect(fontOptions).toHaveCount(3);
   await expect(fontOptions.filter({ hasText: 'Georgia' })).toHaveCount(1);
 
@@ -1809,8 +1719,7 @@ test('the font picker falls back to the system default when local fonts are unav
   });
   await page.goto('/');
 
-  // The bundled typefaces no longer ship, so a stored key naming one must not
-  // strand the user on a font that cannot load.
+  // A stored key for a retired bundled font must fall back, not strand the user on an unloadable face.
   const fontFamily = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
   expect(fontFamily).not.toContain('Iosevka');
   expect(fontFamily.toLowerCase()).toContain('system-ui');
@@ -1821,8 +1730,7 @@ test('the font picker falls back to the system default when local fonts are unav
   const fontTrigger = page.getByRole('button', { name: 'Font family' });
   await expect(fontTrigger).toHaveText('System Default');
 
-  // Without queryLocalFonts() the picker still offers the system default
-  // instead of rendering an empty list.
+  // Without queryLocalFonts() the picker still offers the system default, not an empty list.
   await fontTrigger.click();
   const fontOptions = page.getByRole('listbox', { name: 'Fonts' }).getByRole('option');
   await expect(fontOptions).toHaveCount(1);
@@ -1836,9 +1744,6 @@ test('translucent sidebar persists and keeps its material through the closing mo
   const separator = page.locator('[data-sidebar-separator="true"]');
   await expect(root).toHaveAttribute('data-translucent-sidebar', 'disabled');
   await expect(separator).toHaveCSS('z-index', '30');
-  // bb1d256 dropped the separator's shadow and its two bespoke tokens: it now
-  // paints --divider-subtle as a plain hairline like every other divider.
-  // Pinned so the bespoke elevation cannot quietly come back.
   await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
     .toBe('none');
 
@@ -1857,9 +1762,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
   await expect.poll(() => column.evaluate((element) => getComputedStyle(element).backdropFilter))
     .toBe('none');
-  // bb1d256 dropped the separator's shadow and its two bespoke tokens: it now
-  // paints --divider-subtle as a plain hairline like every other divider.
-  // Pinned so the bespoke elevation cannot quietly come back.
+  // Separator is a plain hairline with no filter; keeps the bespoke elevation from returning.
   await expect.poll(() => separator.evaluate((element) => getComputedStyle(element).filter))
     .toBe('none');
   await expect(sidebarToolbar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
@@ -1875,9 +1778,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
 
   await page.getByTitle('Toggle Sidebar').click();
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
-  // The material width itself never transitions — it lands on its target at
-  // once and the shell's veil animates transform from it, which the compositor
-  // can run without restyling this element's subtree every frame.
+  // Material width never transitions; the veil animates transform from it instead.
   await expect(shell).toHaveCSS('transition-property', 'none');
   await expect
     .poll(() => shell.evaluate((element) => getComputedStyle(element, '::before').transitionProperty))
@@ -1973,14 +1874,12 @@ test('leaving settings does not replay the translucent sidebar expansion', async
 
   await page.getByTitle('Settings').click();
   await expect(page.locator('html')).toHaveAttribute('data-settings-open', 'true');
-  // Collected, not asserted yet: the frame sampler below is the assertion this
-  // bug actually trips, and it has to be the one that gates the test.
+  // Collected here; the frame sampler below is what gates the test.
   const whileOpen = { opacity: await veil('opacity'), transform: await veil('transform') };
 
   await page.getByRole('button', { name: 'Close settings' }).click();
 
-  // Sample every frame across the window the replay would have occupied. The
-  // sidebar never moves here, so the veil must hold one value throughout.
+  // Sample every frame of the window a replay would occupy; the veil must hold one value.
   const transforms = await shell.evaluate(async (element) => {
     const seen = new Set<string>();
     const deadline = performance.now() + 420;
@@ -1991,7 +1890,7 @@ test('leaving settings does not replay the translucent sidebar expansion', async
     return [...seen];
   });
   expect(transforms).toEqual([settled]);
-  // And the mechanism that keeps it that way: hidden for the dialog, not destroyed.
+  // The veil is hidden (not destroyed) while the dialog is open.
   expect(whileOpen).toEqual({ opacity: '0', transform: settled });
   expect(await veil('opacity')).toBe('1');
 });
@@ -2022,15 +1921,11 @@ test('a restart with the sidebar already open does not sweep the translucent vei
     getComputedStyle(element, '::before').transform
   ))).toBe(settled);
 
-  // @starting-style fires on any first render, and a restart is one — so the
-  // veil used to sweep the full column open behind a sidebar that was never
-  // closed. Asserting on the entry transition itself, because the end state is
-  // identical either way.
+  // Regression: @starting-style fires on a restart, which swept the veil open behind a sidebar
+  // that never closed. Assert on the entry transition, since the end state is identical.
   expect(await entries()).toEqual([]);
 
-  // Positive control for that assertion: the listener must be able to see an
-  // entry at all, or the check above would hold no matter what the veil did.
-  // A real toggle is also the animation @starting-style is there to produce.
+  // Positive control: a real toggle must produce an entry, or the check above is vacuous.
   const toggle = page.getByTitle('Toggle Sidebar');
   await toggle.click();
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
@@ -2068,7 +1963,7 @@ test('a recovered settings read merges and persists a queued change', async ({ p
 
   await page.getByTitle('Settings').click();
   await page.getByRole('tab', { name: 'Appearance' }).click();
-  // a8e3e3f replaced the theme <select> with a SegmentedControl.
+  // Base theme is a radiogroup (not a select).
   await page.getByRole('radiogroup', { name: 'Base theme' })
     .getByRole('radio', { name: 'Dark' }).click();
   await page.evaluate(() => {
@@ -2112,13 +2007,10 @@ test('settings keeps primary controls inside the dialog at narrower widths', asy
 });
 
 test('split preview remounts with the current note after every sidebar switch', async ({ page }) => {
-  // Regression: mounting the preview was gated on React's deferred value
-  // catching up with the freshly selected note. On a note switch that lane
-  // sometimes never committed, leaving the preview permanently blank until a
-  // full reload. The preview must reappear — showing the note just switched
-  // to — after every switch.
+  // Regression: the preview once stayed blank after a switch when React's deferred value
+  // never committed. It must reappear showing the switched-to note.
   await page.goto('/');
-  // The first-launch storage notice overlays lower content until dismissed.
+  // Dismiss the storage notice that overlays content.
   await page.getByRole('button', { name: 'Got it' }).click();
   const preview = page.locator('.prose').last();
   await expect(preview).toBeVisible();
@@ -2129,7 +2021,7 @@ test('split preview remounts with the current note after every sidebar switch', 
   await page.keyboard.type(marker);
   await expect(preview).toContainText(marker);
 
-  // Switch via the tab strip (same active-note transition the sidebar drives).
+  // Switch via the tab strip (same transition the sidebar drives).
   const tabs = page.locator('[data-tab-id]');
   await tabs.filter({ hasText: 'Welcome to Noa' }).first().click();
   await expect(preview).toContainText('Welcome to Noa');

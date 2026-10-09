@@ -63,10 +63,7 @@ export default function SettingsModal({
     // remembered tab; the modal remounts per open, so this only steers that one.
     if (initialTab) return initialTab;
     const saved = lsGet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB);
-    // Tabs have been reorganized twice: Data first split into Workspace +
-    // Backup & Import with App Update folded into About, then Editor split into
-    // General + Notes and Backup & Import renamed to Data. A saved tab from
-    // either era still lands somewhere sensible.
+    // Maps tab ids saved by earlier layouts to their current equivalents.
     const legacyMap: Record<string, SettingsTab> = {
       data: 'workspace',
       updates: 'about',
@@ -82,10 +79,7 @@ export default function SettingsModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setMounted(true); }, []);
 
-  // The scrim's backdrop-filter samples the composited frame behind it. With
-  // the translucent sidebar that frame is transparent over the sidebar column,
-  // so flag the open dialog and let index.css lay an opaque floor back down
-  // for as long as it is up — blurring alpha there haloes every glyph.
+  // Flags the open dialog so index.css lays an opaque floor under the translucent sidebar; blurring alpha haloes glyphs.
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.settingsOpen = 'true';
@@ -133,20 +127,14 @@ export default function SettingsModal({
     lsSet(STORAGE_KEYS.SETTINGS_ACTIVE_TAB, activeTab);
   }, [activeTab]);
 
-  // A search result names a setting on some tab; switching tabs unmounts the
-  // current panel, so the scroll has to wait for the target to exist. The flash
-  // is what tells the eye which row answered the search — landing silently in
-  // the middle of a long tab leaves the person hunting again.
+  // Search reveal: switching tabs unmounts the panel, so the scroll waits for the target; the flash marks the matched row.
   const [pendingReveal, setPendingReveal] = useState<string | null>(null);
   const revealSetting = (entry: SettingsIndexEntry) => {
     setActiveTab(entry.tab);
     setPendingReveal(settingAnchorId(entry.label));
   };
 
-  // The timer is held in a ref, not returned as this effect's cleanup: clearing
-  // pendingReveal re-runs the effect, and a cleanup would cancel the timer that
-  // the same pass just started — leaving data-setting-revealed stuck on the row,
-  // so the animation never replayed on a second visit.
+  // Timer lives in a ref, not the effect cleanup: clearing pendingReveal re-runs the effect and would cancel it, leaving the reveal stuck.
   const revealTimerRef = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!pendingReveal) return;
@@ -164,17 +152,10 @@ export default function SettingsModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      // Escape inside a text field or select belongs to the control, not the
-      // dialog: editable fields (template form, workspace name) cancel their
-      // own draft and a select closes its dropdown — closing the dialog here
-      // would drop unsaved edits. Radio/checkbox/range inputs hold no draft,
-      // so Escape there still closes. type="search" is in that group too: the
-      // sidebar's filter swallows Escape itself while it has a query and stops
-      // the event there, so anything reaching us came from an empty field and
-      // holds nothing worth keeping.
+      // Escape in a text field or select belongs to the control (would drop unsaved drafts); radio/checkbox/range/search hold no draft, so Escape still closes there.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
-      // Inline edit drafts handle Escape themselves, even from their buttons.
+      // Inline edit drafts handle Escape themselves.
       if (el?.closest('[data-inline-edit]')) return;
       if (tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (tag === 'INPUT') {
@@ -268,10 +249,7 @@ export default function SettingsModal({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
       >
-        {/* No title bar: the dialog is unmistakable on its own, and a strip
-            that only repeated the word "Settings" cost a row of height on the
-            side that has the least of it. Close floats over the content pane
-            instead, out of the sidebar's column. */}
+        {/* No title bar; close floats over the content pane. */}
         <button
           type="button"
           onClick={onClose}
@@ -284,11 +262,7 @@ export default function SettingsModal({
         <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
           <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} onRevealSetting={revealSetting} />
 
-          {/* Content. The pane is wrapped so a fade can sit above it: without
-              one, content scrolls right up under the floating close button and
-              cuts off against the dialog's top edge. The gradient is the pane's
-              own background, so it reads as the content dissolving rather than
-              as a bar. */}
+          {/* Wrapper lets a top fade sit over the content so it dissolves under the close button rather than cutting off. */}
           <div className="relative flex-1 min-h-0 flex">
           <div
             id={`settings-panel-${activeTab}`}
@@ -415,18 +389,8 @@ export default function SettingsModal({
           </div>
             <div
               aria-hidden="true"
-              // Opaque down to 40px — just past the close button's lower edge
-              // (top-3 + p-1 + 18px icon = 38px) — then the app's shared fade
-              // curve (see index.css) over 24px. Content scrolling up is fully
-              // hidden by the time it reaches the button and dissolves below
-              // it, instead of sliding past it to the top.
-              //
-              // The only always-on fade in the app: the other three engage with
-              // scroll, but this one's job is to shield the close button, and
-              // the 40px cap means at rest it covers the panel's own padding
-              // and is invisible anyway. The tail used to be 6px, a quarter of
-              // a line-height, which cut text mid-glyph on its way under.
-              // Stops at the scrollbar strip (6px = ::-webkit-scrollbar width), as the other fades do.
+              // Opaque to 40px (past the close button), then fades out over 24px. The only always-on fade in the app; it shields the close button.
+              // Stops at the 6px scrollbar strip.
               className="pointer-events-none absolute left-0 right-[6px] top-0 h-[64px]"
               style={{
                 background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #FCFCFB) 100%, transparent) 40px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 96%, transparent) 43px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 84%, transparent) 46px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 68%, transparent) 49px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 50%, transparent) 52px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 32%, transparent) 55px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 16%, transparent) 58px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 4%, transparent) 61px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 0%, transparent) 64px)',

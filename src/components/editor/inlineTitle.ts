@@ -1,13 +1,8 @@
 import { Extension, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 
-// Obsidian-style inline title: the note's file name rendered as a block widget
-// ahead of the document's first line. It must live inside CodeMirror because
-// .cm-scroller is the real scroll viewport — a header rendered by React above
-// the editor would stay fixed instead of scrolling away with the content, and
-// couldn't share the max-width content column the widget inherits for free.
-// Title changes ride a StateEffect so renaming the open note refreshes the
-// widget without rebuilding the editor (a rebuild drops cursor + undo history).
+// Obsidian-style inline title as a block widget before line 1. Lives inside CodeMirror so it scrolls with the
+// content (.cm-scroller is the real viewport) and shares the content column. Renames use a StateEffect, not a rebuild.
 export const setInlineTitle = StateEffect.define<string>();
 
 class InlineTitleWidget extends WidgetType {
@@ -45,9 +40,7 @@ const inlineTitleField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-// Bundles the field with its initial value for a fresh EditorState. The init
-// matters on editor rebuilds (note switch, theme toggle), where the rename
-// effect in useCodeMirror doesn't re-fire and a bare field would render nothing.
+// The init value matters on rebuilds (note switch, theme toggle): the rename effect doesn't re-fire there.
 export const inlineTitle = (title: string): Extension => [
   inlineTitleField,
   inlineTitleField.init(() => titleDecorations(title)),

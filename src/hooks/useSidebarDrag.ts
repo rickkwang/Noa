@@ -51,10 +51,7 @@ export function useSidebarDrag({
     e: React.DragEvent,
     rootIsVault = false,
   ) => {
-    // Claim the event only once we know it carries a tree item. These handlers
-    // blanket the whole tree, so swallowing first would leave files dragged in
-    // from the OS with nowhere to land: Sidebar's import `onDrop` sits on the
-    // sidebar root and only ever sees what bubbles past here.
+    // Claim the event only when it carries a tree item; otherwise OS file drops can't reach Sidebar's import onDrop.
     const item = parseDraggedItem(e);
     if (!item) return;
     e.preventDefault();
@@ -92,10 +89,7 @@ export function useSidebarDrag({
     rootIsVault: boolean,
     e: React.DragEvent,
   ) => {
-    // Same reason as the drop handler: with no tree drag in flight this is an
-    // OS file drag passing through, and it has to reach the sidebar's own
-    // dragover to raise the import overlay. Claiming it here would blank the
-    // overlay across the entire tree.
+    // Same as the drop handler: an OS file drag must reach Sidebar's dragover to raise the import overlay.
     if (!draggedItem) return;
     e.preventDefault();
     e.stopPropagation();
@@ -107,21 +101,15 @@ export function useSidebarDrag({
     setDropTargetId(highlightId);
   }, [draggedItem, resolveDrop]);
 
-  // One handler for both dragenter and dragover: enter only makes the first
-  // frame land without waiting for pointer movement, and dragover re-asserts
-  // the target on every tick against the reset below.
+  // One handler for dragenter and dragover: enter lands the first frame without waiting for movement.
   const handleDragTarget = useCallback((
     highlightId: string,
     targetFolderId: string | null,
     rootIsVault = false,
   ) => (e: React.DragEvent) => markTarget(highlightId, targetFolderId, rootIsVault, e), [markTarget]);
 
-  // Obsidian never listens for dragleave on rows: it clears the hover in a
-  // capture-phase dragover on the *window* and lets the real target re-assert
-  // itself as that same event bubbles. Both updates are batched into one
-  // render, so nothing repaints in between and the highlight cannot strobe as
-  // the cursor crosses rows — and dragging out of the tree entirely leaves
-  // nothing lit, with no enter/leave pairs to reason about.
+  // No dragleave on rows (avoids strobing): a capture-phase dragover on window clears hover, and the real
+  // target re-asserts it as the event bubbles; both updates batch into one render.
   useEffect(() => {
     if (!draggedItem) return;
     const clear = () => setDropTargetId(null);

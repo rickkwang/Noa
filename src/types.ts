@@ -33,11 +33,9 @@ export interface Note {
    * keep it only when the disk bytes cannot be reconstructed canonically. */
   vaultBaseText?: string;
   frontmatter?: Record<string, unknown>;
-  /** Raw YAML lines from the original file's frontmatter block (excluding --- delimiters).
-   *  Preserved verbatim during vault sync so Obsidian-specific fields are never rewritten. */
+  /** Raw YAML lines of the original frontmatter (without --- delimiters), kept verbatim so vault sync never rewrites them. */
   rawFrontmatter?: string;
-  /** Delimiter line ending used by the original frontmatter block. Required
-   *  for byte-exact round trips when the block contains only one line. */
+  /** Original frontmatter line ending; needed for byte-exact round trips of single-line blocks. */
   frontmatterEol?: '\n' | '\r\n';
 }
 

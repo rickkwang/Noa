@@ -26,8 +26,7 @@ export function useCommandPalette({
 }: UseCommandPaletteOptions) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQueryState] = useState('');
-  // Index into `items` of the row Enter runs. Reset whenever the list is
-  // rebuilt from a new query, so the highlight never points past the end.
+  // Index of the row Enter runs; reset on query change so it never points past the end.
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,9 +71,7 @@ export function useCommandPalette({
     return [...filteredBase, ...noteCommands];
   }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenNoteById, onOpenSettings, query]);
 
-  // Wraps at both ends, like every other palette the user already knows.
-  // Steps from the clamped index: the list can shrink while open (a note
-  // deleted elsewhere) without a query change resetting the stored one.
+  // Wraps at both ends. Steps from the clamped index: the list can shrink while open.
   const moveSelection = useCallback((delta: number) => {
     setSelectedIndex((current) => {
       if (items.length === 0) return 0;

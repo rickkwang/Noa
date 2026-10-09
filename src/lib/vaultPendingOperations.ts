@@ -9,9 +9,9 @@ export function selectVaultPendingOperations(
 }
 
 /**
- * A prepared journal row proves intent, but not that the local mutation landed.
- * On recovery, use the persisted local workspace as the commit record: replay
- * only when it already reflects the requested destructive change.
+ * A prepared row proves intent, not that the local mutation landed. On recovery
+ * the persisted workspace is the commit record: replay only if it already
+ * reflects the destructive change.
  */
 export function shouldReplayVaultPendingOperation(
   operation: VaultPendingOperation,

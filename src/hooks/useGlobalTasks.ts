@@ -2,10 +2,7 @@ import { useMemo, useRef } from 'react';
 import { parseTasksFromNotes } from '../lib/taskParser';
 import { GlobalTask, Note } from '../types';
 
-// Global task list derived from notes. parseTasksFromNotes caches per-note
-// results by object identity, so only edited notes re-parse; on top of that,
-// keep the previous array when every task is unchanged so memoized consumers
-// (TasksPanel) can skip re-rendering entirely.
+// Per-note parse cache (by object identity) plus reuse of the previous array when unchanged, so TasksPanel can skip renders.
 export function useGlobalTasks(notes: Note[]): GlobalTask[] {
   const prevRef = useRef<GlobalTask[]>([]);
   return useMemo(() => {

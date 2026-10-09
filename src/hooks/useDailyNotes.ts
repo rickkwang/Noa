@@ -35,9 +35,7 @@ export function useDailyNotes({
   setNotes,
   setActiveNoteIdWithRecent,
 }: UseDailyNotesOptions) {
-  // Synchronous mutex: rapid double-invocations (e.g. double-click or Strict
-  // Mode) would otherwise each mint a fresh folder UUID before setFolders runs,
-  // creating duplicate "Daily Notes" folders.
+  // Synchronous mutex: double-invocations would each mint a folder UUID before setFolders, duplicating "Daily Notes".
   const creatingRef = useRef(false);
   // Returns the note it opened and whether this call created it, or undefined
   // when a concurrent call already holds the mutex.
@@ -46,9 +44,7 @@ export function useDailyNotes({
     creatingRef.current = true;
     try {
     const dateFormat = settings?.dailyNotes?.dateFormat ?? 'YYYY-MM-DD';
-    // Calendar callers pass a YYYY-MM-DD key. Convert it once here so title,
-    // duplicate detection, and template placeholders all follow the user's
-    // configured date format for the selected local day.
+    // Calendar passes a YYYY-MM-DD key; convert once so title, dedupe, and template placeholders share the user's date format.
     const noteDate = dateFromCalendarKey(targetDate);
     const today = formatDate(dateFormat, noteDate);
     const customTemplate = settings?.dailyNotes?.template?.trim();
@@ -99,8 +95,7 @@ export function useDailyNotes({
       return [...prev, dailyFolder];
     });
     setNotes((prev) => {
-      // The updater is the authoritative duplicate guard — if the note already
-      // exists (e.g. Strict Mode double-invoke), we skip both state and IO.
+      // The updater is the authoritative duplicate guard (StrictMode double-invoke skips state and IO).
       if (prev.some((n) => n.title === today && n.folder === dailyFolder.id)) return prev;
       void storage.saveNote(newNote).catch((err) => {
         console.error('[Noa] Failed to save daily note:', err);

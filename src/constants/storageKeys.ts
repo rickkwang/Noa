@@ -21,8 +21,6 @@ export const STORAGE_KEYS = {
   TASKS_COMPLETED_EXPANDED: 'app-tasks-completed-expanded',
   LAST_AUTO_BACKUP_AT: 'noa:last-auto-backup-at',
   AUTO_BACKUP_LAST_ERROR: 'noa:auto-backup-last-error',
-  // Edits that could not be written to IndexedDB during an import. Parked in
-  // localStorage — a separate, synchronous store — precisely because the
-  // failure mode being covered is IndexedDB itself being unavailable.
+  // Import edits IndexedDB couldn't store; parked in localStorage since that store is independent of IndexedDB.
   RESCUED_IMPORT_EDITS: 'noa:rescued-import-edits',
 } as const;

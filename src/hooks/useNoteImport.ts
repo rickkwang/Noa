@@ -82,10 +82,7 @@ export function useNoteImport({
           }))
       );
 
-      // Pre-flight total-size check. base64 adds ~33% overhead, decode into
-      // Blob briefly doubles footprint, so the practical peak memory is
-      // roughly 2× the raw byte size. We reject imports whose decoded size
-      // would exceed this threshold to prevent OOM on low-RAM devices.
+      // Pre-flight size check: base64 plus the Blob decode peaks near 2× the raw size; reject to avoid OOM on low-RAM devices.
       const IMPORT_TOTAL_RAW_LIMIT = 500 * 1024 * 1024; // 500 MB decoded
       const approxRawBytes = importAttachments.reduce(
         (sum, a) => sum + Math.floor(a.dataBase64.length * 0.75),
@@ -120,17 +117,10 @@ export function useNoteImport({
         if (failure?.status === 'rejected') throw failure.reason;
       }
 
-      // Preserve the vault origin marker: vault-sync merge results reach here
-      // already marked, and untrusted external imports (JSON/zip/folder) have
-      // stripped origin upstream before calling in — so trusting it here is safe.
+      // Trust the origin marker: untrusted imports have it stripped upstream.
       const { notes: normalizedNotes } = normalizeAndValidateNotes(importedNotes, { preserveVaultMetadata: true });
-      // When vault-sync prunes, rescue any local Noa-native notes that were
-      // created between mergeScannedNotes() capturing its snapshot and this
-      // import landing. Without this, a note created during bootstrap
-      // (Cmd+N while the vault is still scanning) would be prune-deleted.
-      // A scan can finish after a new local edit. Dirty vault rows are the
-      // explicit conflict boundary and must be rebased over that stale scan;
-      // clean rows still take the authoritative disk version.
+      // On vault prune, rescue Noa-native notes created after mergeScannedNotes' snapshot, or they get deleted.
+      // Dirty vault rows rebase over the stale scan; clean rows take the disk version.
       const mergedBase = replacing ? normalizedNotes : reconcileConcurrentImportEdits(
         normalizedNotes,
         notesRef.current,
@@ -191,11 +181,8 @@ export function useNoteImport({
       ]);
       throw error;
     } finally {
-      // Flush queued edits BEFORE releasing the lock. If we released first,
-      // a concurrent debounceSave between release and flush would schedule
-      // a fresh timer reading stale state and overwrite newer queued content.
-      // Writing directly to storage bypasses the 500ms debounce because these
-      // edits are already several seconds old and at risk on quit.
+      // Flush queued edits BEFORE releasing the lock, or a concurrent debounceSave could overwrite them.
+      // Write directly to storage, bypassing the 500ms debounce, since the edits are already seconds old.
       const queued: Note[] = [];
       const unsavedById = new Map<string, Note>();
       while (deferredSavesRef.current.size > 0) {
@@ -223,9 +210,7 @@ export function useNoteImport({
             : `Could not save ${unsaved.length} edit${plural} made during import, and they could not be set aside either. Copy your text out of the editor before closing Noa.`,
         );
       }
-      // The batch's setNotes(withRefs) ran before these edits were queued, so
-      // state currently shows the import-delivered body while storage holds
-      // the newer edit. Re-apply the queue or the two diverge until reload.
+      // setNotes(withRefs) ran before these edits were queued; re-apply them or state and storage diverge until reload.
       if (queued.length > 0) {
         const queuedById = new Map(queued.map((note) => [note.id, note]));
         setNotes((prev) => prev.map((note) => queuedById.get(note.id) ?? note));

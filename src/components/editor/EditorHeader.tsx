@@ -153,19 +153,9 @@ export function EditorHeader({
   const settledTabCountRef = useRef(settledTabCount);
   settledTabCountRef.current = settledTabCount;
   const hasNewTabButton = Boolean(onNewTab);
-  // A count change re-divides the space, and so does switching tabs while
-  // compressed (the wider active slot moves). The tabs ease onto the new widths
-  // for the length of the enter/exit animation, then go back to snapping so
-  // resizes track the pointer. Decided during render, not in an effect: the
-  // flag has to reach the DOM in the same commit as the width change. Set from
-  // a layout effect it landed after an earlier effect had already read layout,
-  // so the new widths were computed without it and snapped (measured: 44→96px
-  // in one frame on a tab switch).
-  //
-  // closingActiveId: the tab that was active when it started closing. Its
-  // successor takes over the active width at once, and the exit keyframes start
-  // from --noa-tab-w, so without this the closing tab first dropped to the
-  // compressed width (96→53px in a frame) and only then collapsed.
+  // Tabs ease onto new widths during the enter/exit animation, then snap again so resizes track the pointer.
+  // Computed during render (not an effect) so the flag lands in the same commit as the width change.
+  // closingActiveId: the closing tab's exit starts from its active width, so it doesn't jump to compressed first.
   const tabLayoutKey = `${settledTabCount}:${note.id}`;
   const [tabLayout, setTabLayout] = useState({ key: tabLayoutKey, activeId: note.id, resizing: false, closingActiveId: null as string | null });
   if (tabLayout.key !== tabLayoutKey) {
@@ -265,8 +255,7 @@ export function EditorHeader({
       suppressTabClickRef.current = true;
       window.setTimeout(() => { suppressTabClickRef.current = false; }, 0);
     }
-    // Every drag settles, including one dropped back home or cancelled: those
-    // used to snap the tab up to half a width in a single frame.
+    // Every drag settles, including one dropped back home or cancelled, so the tab never snaps.
     if (drag.dragging && tabs) {
       const settledIndex = commit ? drag.targetIndex : drag.sourceIndex;
       if (settledIndex !== drag.targetIndex) {
@@ -606,7 +595,7 @@ export function EditorHeader({
                 );
               })
             ) : (
-              /* Fallback: single tab (legacy mode) */
+              /* Fallback when no tab list is provided */
               <div
                 data-active-tab="true"
                 className="editor-tab flex items-center gap-1.5 h-[26px] px-3 rounded-lg relative z-[1] shrink-0"

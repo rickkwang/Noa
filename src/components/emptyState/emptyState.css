@@ -1,13 +1,9 @@
-/* Empty-state scenes (EmptyState.tsx).
- *
- * Every pixel is filled from a --px-* token, never a literal class colour, so
- * the global [data-theme="dark"] hex remapping in index.css / ThemeInjector
- * cannot reach it. Dark theme is not an inversion: the scene is drawn at night
- * with its own darker palette and the lamps lit. */
+/* Empty-state scenes. Every pixel uses a --px-* token so the global dark-mode hex remap can't reach it;
+ * dark theme is a separate night palette, not an inversion. */
 
 .noa-empty-state {
   gap: 20px;
-  /* Sit at the optical centre, a little above the geometric one. */
+  /* Optical centre, a little above the geometric one. */
   padding: 24px 20px calc(24px + 7vh);
   min-width: 0;
 }

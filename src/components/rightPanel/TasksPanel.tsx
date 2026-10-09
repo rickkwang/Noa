@@ -35,14 +35,9 @@ const TASKS_PAGE_SIZE = 100;
 const PRIORITY_OPTIONS = ['all', 'high', 'medium', 'low'] as const;
 const DUE_OPTIONS = ['all', 'today', 'next7', 'overdue'] as const;
 
-// Memoized: `tasks` keeps its identity across keystrokes that don't change any
-// task (useGlobalTasks) and the callbacks are stabilized in App, so typing in
-// a task-free note skips this panel entirely.
-// Task lines are raw Markdown. Showing `[[Note]]` and `#tag` verbatim reads as
-// source, not a list — so links drop their brackets and keep the body colour
-// with a soft accent underline, and tags take the accent ink. Tokens only style;
-// the row's own open-note button stays the single navigation target. Struck
-// (completed) rows drop the underline: two rules through one line read as noise.
+// Memoized: `tasks` keeps identity across keystrokes that don't change a task, so typing elsewhere skips this panel.
+// Task text is raw Markdown: links drop their brackets (soft accent underline) and tags take accent ink.
+// Tokens only style; the row's own open-note button stays the single navigation target. Struck rows drop the underline.
 const LINK_UNDERLINE = 'color-mix(in srgb, var(--accent-color, #CC7D5E) 45%, transparent)';
 function TaskText({ content, struck = false }: { content: string; struck?: boolean }) {
   return (
@@ -94,9 +89,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
     return { activeTasks, completedTasks, overdueCount, todayCount, hasPriorities, hasDueDates };
   }, [tasks]);
 
-  // A filter whose row is hidden (no task carries that metadata) must not keep
-  // filtering — e.g. filter set to 'high', then the last prioritized task is
-  // edited away: the row disappears with no visible way to clear it.
+  // A filter whose row is hidden must not keep filtering, or it would strand the user with no visible way to clear it.
   const priorityFilterEff = hasPriorities ? priorityFilter : 'all';
   const dueDateFilterEff = hasDueDates ? dueDateFilter : 'all';
 
@@ -128,12 +121,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
   const rowHover = 'hover:bg-transparent';
   const progressTrack = isDark ? 'bg-[rgba(249,249,247,0.2)]' : 'bg-[#2D2D2B]/12';
-  // Reads the theme token rather than a literal hex: `bg-[#F9F9F7]` is one of
-  // the classes index.css remaps globally with `!important` (see the comment
-  // above its dark-mode block), so as a foreground fill it silently inverted to
-  // the dark surface colour. The class generated for the token matches no remap
-  // selector. Fallback is the light value; RightPanel is lazy-loaded, so
-  // ThemeInjector has always set the token before this paints.
+  // Theme token, not a literal hex: `bg-[#F9F9F7]` is globally remapped by !important and would invert as a foreground fill.
   const progressFill = 'bg-[var(--text-primary,#2D2D2B)]';
   const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.48)]' : 'border-[#2D2D2B]/50';
   const checkboxBorderDone = isDark ? 'border-[rgba(249,249,247,0.4)]' : 'border-[#2D2D2B]/50';

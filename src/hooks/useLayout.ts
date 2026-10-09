@@ -7,16 +7,10 @@ import { useResizeDrag } from './useResizeDrag';
 
 const SIDEBAR_DEFAULT_WIDTH = 325;
 const RIGHT_PANEL_DEFAULT_WIDTH = 340;
-// Neither panel narrows below the width it opens at. A minimum under the
-// default is a width the user can reach once and never get back to by dragging,
-// and it puts the drag floor somewhere nothing in the UI explains. Both sides
-// grow only, from the same width they start at.
+// Neither panel narrows below the width it opens at: a lower minimum is reachable once and never returned to.
 export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
-// Exported so the resize handles report their real bounds through
-// aria-valuemin/max instead of hand-copied literals. Both handles carried a
-// number that had already gone stale against the width it described, and a
-// screen reader announcing this range is the only place it is ever spoken.
+// Exported so resize handles report real bounds via aria-valuemin/max rather than hand-copied literals.
 export const PANEL_MAX_WIDTH = 480;
 const PANEL_MAX_VIEWPORT_RATIO = 0.35;
 const GRAPH_PANEL_MAX_VIEWPORT_RATIO = 0.7;
@@ -26,20 +20,10 @@ const GRAPH_PANEL_DEFAULT_WIDTH = 460;
 // What the editor keeps when the graph is dragged as wide as it goes.
 const EDITOR_MIN_WIDTH_BESIDE_GRAPH = 380;
 
-// Every box that reads --noa-sidebar-width while a drag is running, paired with
-// the declaration it resolves into. A pointermove already lands one value per
-// frame; that value used to reach these boxes as a custom property on
-// documentElement, and custom properties inherit — Blink invalidates style for
-// everything that could inherit the write, which is the whole document, whether
-// or not anything actually reads the property. Measured on this app: ~3.5ms of
-// style recalc per dragged frame at 2.5k elements and ~13ms at 6k, which is
-// where a vault of a thousand notes lands, because the sidebar list is not
-// virtualised. Writing the resolved pixels onto these five costs 0.3-0.7ms at
-// either size, since width and left do not inherit at all.
-//
-// Only the drag takes this path. The variable stays the source of truth
-// everywhere else, and the end of the drag writes it before putting every
-// declaration here back exactly as React left it.
+// Boxes that read --noa-sidebar-width during a drag, each paired with the declaration it resolves into.
+// Writing the variable on documentElement would invalidate style for the whole document (custom
+// properties inherit); writing resolved pixels onto these boxes directly avoids that. Only the drag
+// uses this path; the variable stays the source of truth otherwise.
 const SIDEBAR_DRAG_TARGETS: ReadonlyArray<readonly [selector: string, property: string]> = [
   ['[data-sidebar-container]', 'width'],
   ['[data-sidebar-content-layer="true"]', 'width'],
@@ -109,12 +93,7 @@ export function useLayout() {
       : 'split';
   });
 
-  // Pointer and keyboard paths share the same responsive maximum, and each
-  // panel floors that maximum at its own default width. Without the floor a
-  // desktop narrower than default/0.35 (971px for the right panel) caps below
-  // the declared default, so the panel opens narrower than the width every CSS
-  // fallback and every drag boundary claims it has — and jumps on the first
-  // resize interaction.
+  // Each panel floors the shared responsive maximum at its own default, or it opens narrower than declared and jumps on first resize.
   const clampSidebarWidth = useCallback(
     (v: number) => Math.max(SIDEBAR_MIN_WIDTH, Math.min(
       v,
@@ -159,10 +138,7 @@ export function useLayout() {
       override.element.style.setProperty(override.property, `${size}px`);
     }
   }, []);
-  // Same reasoning as SIDEBAR_DRAG_TARGETS: during a drag the width goes onto
-  // the two boxes that read it — the column and the titlebar actions anchored
-  // to its edge — instead of onto documentElement, where every frame would
-  // invalidate style for the whole document.
+  // As with SIDEBAR_DRAG_TARGETS: write the width onto the boxes that read it, not documentElement.
   const rightPanelDragTargetsRef = useRef<HTMLElement[] | null>(null);
   const previewedRightPanelWidthRef = useRef(RIGHT_PANEL_DEFAULT_WIDTH);
   const previewRightPanelWidth = useCallback((size: number) => {
@@ -174,13 +150,8 @@ export function useLayout() {
     }
     for (const target of targets) target.style.setProperty('--noa-right-panel-width', `${size}px`);
   }, []);
-  // How wide the graph may be dragged when it has the column to itself: well
-  // past the shared ceiling, but never so far that the editor disappears.
-  // The ratio alone is not enough: with the sidebar open, 70% of the window
-  // leaves the editor a sliver in which its scrollbar gutter cuts into the
-  // text. So the editor is also guaranteed a readable minimum.
-  // The width the graph opens at alone is also its floor: it can be dragged
-  // wider from there, never narrower.
+  // Graph drag ceiling when alone in the column: capped by a ratio and by a
+  // minimum editor width (a 70% ratio alone leaves the editor a sliver). Its opening width is the floor.
   const getGraphPanelMin = useCallback(
     () => Math.max(RIGHT_PANEL_DEFAULT_WIDTH, Math.min(GRAPH_PANEL_DEFAULT_WIDTH, window.innerWidth * PANEL_MAX_VIEWPORT_RATIO)),
     []
@@ -276,12 +247,8 @@ export function useLayout() {
     };
   }, [isDraggingRightPanel]);
 
-  // The translucent sidebar paints its veil from a pseudo-element on the app
-  // shell, and a pseudo can only read an inherited property from the element it
-  // hangs off — that single consumer forces the subtree-wide write back no
-  // matter where the value lands. The setting is off by default, so the common
-  // drag takes the cheap path and the opt-in keeps its old cost rather than a
-  // veil frozen at the width the drag started from.
+  // The translucent sidebar veil is a pseudo-element that needs the inherited variable, so this opt-in
+  // keeps the subtree-wide write; off by default, the drag takes the cheaper path.
   useEffect(() => {
     if (!isDraggingSidebar) return;
     if (document.documentElement.dataset.translucentSidebar === 'enabled') return;
@@ -328,10 +295,7 @@ export function useLayout() {
   useLayoutEffect(() => {
     previewSidebarWidth(sidebarWidth);
     if (isRightPanelWide && hasGraphPanelWidth) {
-      // The dragged width is a preference, clamped here against the sidebar
-      // as it is now — the same ceiling the drag handle applies. A width
-      // dragged with the sidebar closed would otherwise survive opening it
-      // and crush the editor to a sliver it can't be dragged back out of.
+      // Clamp the saved width against the sidebar's current state, or a width dragged while closed crushes the editor on reopen.
       const sidebarSpace = isSidebarOpen ? `${sidebarWidth}px` : '0px';
       const floor = `max(${RIGHT_PANEL_DEFAULT_WIDTH}px, min(${GRAPH_PANEL_DEFAULT_WIDTH}px, ${PANEL_MAX_VIEWPORT_RATIO * 100}vw))`;
       const ceiling = `min(${GRAPH_PANEL_MAX_VIEWPORT_RATIO * 100}vw, 100vw - ${sidebarSpace} - ${EDITOR_MIN_WIDTH_BESIDE_GRAPH}px)`;

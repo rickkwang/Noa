@@ -27,9 +27,7 @@ export function useSidebarSearch({
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
 
-  // Latest inputs for on-demand index builds — the Fuse index (title + full
-  // content) is expensive, so it is only (re)built when a search is actually
-  // running, never while the user is just typing in the editor.
+  // The Fuse index is expensive: build it only while a search is running, never while typing in the editor.
   const inputsRef = useRef({ notes, folders, caseSensitive, fuzzySearch });
   inputsRef.current = { notes, folders, caseSensitive, fuzzySearch };
 
@@ -68,14 +66,11 @@ export function useSidebarSearch({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = null;
     };
-  // Query changes do not invalidate the index; both raw and deferred query are
-  // intentionally excluded so typing only reruns search against the same index.
+  // Query changes don't invalidate the index; typing reruns search against the same index.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, folders, caseSensitive, fuzzySearch, ensureFreshIndex]);
 
-  // Clear pending work immediately when the real query is cleared; waiting for
-  // the deferred value would leave a window where note edits can rebuild an
-  // index the user is no longer using.
+  // Clear pending work immediately on empty query, or edits could rebuild an index nobody is using.
   useEffect(() => {
     if (searchQuery) return;
     if (debounceRef.current) {

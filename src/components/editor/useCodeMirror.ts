@@ -11,8 +11,7 @@ import { buildMinimalReplaceChange } from './contentSync';
 import { hideTaskMarkers } from './hideTaskMarkers';
 import { inlineTitle, setInlineTitle } from './inlineTitle';
 
-// Annotation to mark external content syncs so history does not merge them
-// into the user's local undo stack.
+// Marks external content syncs so they stay out of the user's undo history.
 const remoteSyncAnnotation = Annotation.define<boolean>();
 
 // Module-level pure function — no stale closure risk
@@ -51,17 +50,14 @@ const darkTheme = EditorView.theme({
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
-  // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
-  // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
-  // heading keeps the same size when toggling between edit and preview.
+  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
   { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
-  // Matches the preview's `.prose strong` weight in index.css, so the same
-  // **text** keeps its thickness when switching between edit and preview.
+  // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#F9F9F7' },
@@ -91,17 +87,14 @@ const lightTheme = EditorView.theme({
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
-  // Obsidian's ×1.125 modular heading scale (--h1-size…--h6-size in its
-  // default theme), mirrored by the `.prose h1…h5` rules in index.css so a
-  // heading keeps the same size when toggling between edit and preview.
+  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
   { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
-  // Matches the preview's `.prose strong` weight in index.css, so the same
-  // **text** keeps its thickness when switching between edit and preview.
+  // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'inherit', color: '#2D2D2B' },
@@ -111,11 +104,8 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2B80' },
 ]);
 
-// Caps the content column to a reading width and centers it. The vertical/right
-// padding lives in the base light/dark theme's .cm-content rule (a single
-// shorthand) so it isn't clobbered by ordering against this compartment — the
-// top pad sits inside .cm-scroller so the first line isn't clipped behind the
-// toolbar. See editPane padding note in Editor.tsx.
+// Caps the content column to a reading width. Padding stays in the base theme's .cm-content shorthand so
+// this compartment's ordering can't clobber it (see the editPane note in Editor.tsx).
 const buildWidthTheme = (w: number) => EditorView.theme({
   '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box' },
 });
@@ -151,20 +141,15 @@ export function useCodeMirror({
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
   const lastBuiltNoteIdRef = useRef<string | undefined>(undefined);
-  // Per-note cursor so A → B → A restores A's last cursor, not 0. Entries are
-  // only written on view teardown, so deleted notes age out naturally (their
-  // id never reappears in note?.id and the entry is unreachable).
+  // Per-note cursor so A → B → A restores A's position. Written on teardown only; deleted notes age out.
   const cursorByNoteIdRef = useRef<Map<string, number>>(new Map());
   const widthCompartmentRef = useRef(new Compartment());
   const maxWidthRef = useRef(maxWidth);
   const readOnlyCompartmentRef = useRef(new Compartment());
   const readOnlyRef = useRef(readOnly);
 
-  // Mirror the content currently held by EditorView. The update listener already
-  // serializes every changed document for local updates, so retaining that string
-  // lets React round trips skip another O(doc) serialization. Remote transactions
-  // update this ref too, preventing an older local value from masking a later
-  // external A -> B -> A transition.
+  // Mirror of the EditorView's content, so React round trips skip another O(doc) serialization.
+  // Remote transactions update it too, so an older local value can't mask an external A -> B -> A.
   const editorContentRef = useRef<string | null>(null);
 
   // Keep callback refs stable so the CodeMirror instance never captures stale closures
@@ -184,11 +169,8 @@ export function useCodeMirror({
       if (update.docChanged) {
         const content = update.state.doc.toString();
         editorContentRef.current = content;
-        // Suppress onUpdate while an IME composition is in-flight. Firing mid-
-        // composition causes extractLinks/debounceSave to race with the user
-        // finishing a CJK character, producing jittery link state. The final
-        // compositionend triggers a regular docChanged transaction which will
-        // flush the complete content.
+        // Suppress onUpdate during IME composition: firing mid-composition makes link extraction race the
+        // user's CJK input. compositionend flushes the complete content.
         if (!isRemoteSync && !update.view.composing) {
           onUpdateRef.current(content);
 
@@ -274,9 +256,7 @@ export function useCodeMirror({
 
     const docContent = note?.content ?? '';
     editorContentRef.current = docContent;
-    // Prefer the per-note cursor (A → B → A restores A). Fall back to
-    // savedCursorRef when rebuilding the same note (e.g. dark-mode toggle),
-    // since that ref is always up to date without a teardown hop.
+    // Per-note cursor on note switch; savedCursorRef when rebuilding the same note (e.g. dark-mode toggle).
     const perNoteCursor = note?.id ? cursorByNoteIdRef.current.get(note.id) : undefined;
     const cursorPos = note?.id === lastBuiltNoteIdRef.current
       ? Math.min(savedCursorRef.current, docContent.length)
@@ -310,10 +290,7 @@ export function useCodeMirror({
       view.destroy();
       editorViewRef.current = null;
     };
-    // Refs are stable and safe to read in cleanup. containerRef/editPaneRef
-    // are not read here; note?.content is intentionally omitted — content
-    // changes are handled by a separate dispatch effect below, not by
-    // rebuilding the editor (which would drop cursor + undo history).
+    // note?.content is omitted on purpose: content changes dispatch below instead of rebuilding (which would drop cursor + undo history).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id, isDark]);
 
@@ -325,8 +302,7 @@ export function useCodeMirror({
     view.dispatch({ effects: widthCompartmentRef.current.reconfigure(buildWidthTheme(maxWidth)) });
   }, [maxWidth]);
 
-  // Toggle readOnly without rebuilding the editor — a rebuild would drop the
-  // cursor, scroll position and undo history on every sync-status flip.
+  // Toggled without a rebuild, which would drop cursor, scroll and undo history.
   useEffect(() => {
     readOnlyRef.current = readOnly;
     const view = editorViewRef.current;
@@ -338,8 +314,7 @@ export function useCodeMirror({
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view || !note) return;
-    // Round-trip guard against the editor's current content, not merely the last
-    // locally emitted value. Remote transactions also update editorContentRef.
+    // Guards against the editor's current content, not just the last local emit.
     if (note.content === editorContentRef.current) return;
     const currentDoc = editorContentRef.current ?? view.state.doc.toString();
     const minimalChange = buildMinimalReplaceChange(currentDoc, note.content);
@@ -349,15 +324,11 @@ export function useCodeMirror({
         annotations: [remoteSyncAnnotation.of(true), Transaction.addToHistory.of(false)],
       });
     }
-    // Depend on note?.content (string) rather than note (object) — the parent
-    // re-creates note on every keystroke; using content avoids re-running this
-    // effect on unrelated note field changes.
+    // Keyed on note?.content, not the note object, which is recreated on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.content]);
 
-  // Rename of the open note: refresh the inline-title widget without touching
-  // the editor. Editor rebuilds (note switch, theme toggle) get the title from
-  // the field's init instead, which is why this only watches note?.title.
+  // Rename refreshes the inline-title widget; rebuilds take the title from init instead.
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view) return;

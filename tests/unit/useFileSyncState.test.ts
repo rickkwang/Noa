@@ -57,7 +57,7 @@ describe('assessSyncWatchdog', () => {
   it('waits while tracked operations or authoritative scans are in flight', () => {
     expect(assessSyncWatchdog({ ...idle, trackedOperationCount: 1 })).toBe('wait');
     expect(assessSyncWatchdog({ ...idle, authoritativeWorkCount: 1 })).toBe('wait');
-    // A hung write is indistinguishable from slow IO — never fail it.
+    // A hung write looks like slow IO, so the watchdog must not fail it.
     expect(assessSyncWatchdog({
       ...idle,
       trackedOperationCount: 1,

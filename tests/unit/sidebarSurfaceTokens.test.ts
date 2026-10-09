@@ -22,22 +22,16 @@ describe('sidebar surface tokens', () => {
 
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#323230');");
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#FBFBF9');");
-    // Multi-layer falloff, not a single mid-blur cast: one blurless contact
-    // line plus three negative-spread layers. The old single 6px/14px shadow
-    // banded visibly against the dark canvas.
+    // Multi-layer falloff: a single 6px/14px shadow banded visibly on the dark canvas.
     expect(injector).toContain(
       "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');",
     );
     expect(injector).toContain(
       "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');",
     );
-    // Light mode alone needs the paired highlight token: its row highlight is a
-    // solid colour, so it has to move down with the floor. Dark mode highlights
-    // with translucent white and re-adapts on its own.
+    // Light-only: the solid row highlight must move with the floor (dark uses translucent white).
     expect(injector).toContain("root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');");
-    // The preview itself uses --bg-primary, but BrowserWindow is the backing
-    // plane for the whole app and must continue matching --bg-primary during
-    // startup and live resize.
+    // BrowserWindow backs the whole app, so it must match --bg-primary during startup and resize.
     expect(injector).toContain("isDark ? '#2D2D2B' : '#FCFCFB'");
     expect(electronMain).toContain("backgroundColor: '#FCFCFB'");
   });
@@ -50,10 +44,7 @@ describe('sidebar surface tokens', () => {
       readFile(appPath, 'utf8'),
     ]);
 
-    // Scoped to the rule block, not the file. A bare toContain passes on any
-    // other rule that happens to use the same declaration (the nested
-    // section-surface rule does), so it would not notice this one being
-    // rewritten to a literal. `\s*\{` pins it to the bare class selector.
+    // Scoped to the rule block: a bare toContain would match the nested section-surface rule too.
     expect(css).toMatch(
       /\.noa-sidebar-surface\s*\{[^}]*background-color:\s*var\(--bg-sidebar,\s*#F4F4F2\)/,
     );
@@ -61,10 +52,7 @@ describe('sidebar surface tokens', () => {
       /\[data-sidebar-preview="true"\]\s+\.noa-sidebar-surface,\s*\[data-sidebar-preview="true"\]\s+\.noa-sidebar-section-surface[^{]*\{[^}]*background-color:\s*transparent/,
     );
 
-    // Preview is one full-height floating surface rooted in the app shell and
-    // deliberately matches the main canvas. The expanded sidebar keeps its
-    // own floor, while painting a separate titlebar band would recreate the
-    // visible seam.
+    // Preview matches the main canvas on purpose; a separate titlebar band would recreate the seam.
     expect(sidebar).toMatch(/className="noa-sidebar-surface\b/);
     expect(app).toContain('data-sidebar-column-surface="true"');
     expect(app).toContain('data-sidebar-preview-shell={isSidebarPreviewOpen');
@@ -135,10 +123,7 @@ describe('sidebar surface tokens', () => {
     expect(calendar).toContain('bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20');
     expect(calendar).toContain('bg-[#CC7D5E] text-white');
     expect(calendar).toContain('text-xs font-medium font-redaction');
-    // Raised from /60 deliberately: the weekday header sits at /50, and at /60
-    // the numerals carried nearly the same weight, so the grid read as one flat
-    // block instead of dates above a label row. Pinned so the step does not
-    // quietly collapse again.
+    // Kept at /75 (not /60): at /60 the numerals matched the weekday header's weight and the grid read flat.
     expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/75';");
     expect(calendar).toContain('text-[#2D2D2B]/50');
   });
@@ -154,8 +139,6 @@ describe('sidebar surface tokens', () => {
     expect(css).toContain('color: hsl(var(--tag-h) 16% 64%);');
     expect(css).toContain('border-color: var(--divider-subtle, rgba(249,249,247,0.15));');
     expect(tagBrowser).toContain("style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}");
-    // No header row any more (the toggle is in the footer), so no uppercase
-    // tracked label either.
     expect(tagBrowser).not.toContain('uppercase tracking-');
   });
 
@@ -176,20 +159,15 @@ describe('sidebar surface tokens', () => {
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '70%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#3B3B39');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#FAFAF8');");
-    // The app-shell separator is a plain hairline on the shared divider token,
-    // with no weight step and no shadow of its own: both the bespoke
-    // --sidebar-divider-color and --sidebar-divider-shadow are gone, so it can
-    // no longer drift away from every other divider on screen.
+    // Separator uses the shared divider token; no bespoke colour/shadow vars may return.
     expect(injector).not.toContain('--sidebar-divider-color');
     expect(injector).not.toContain('--sidebar-divider-shadow');
     expect(electronMain).toContain("const allowedThemeSources = new Set(['system', 'light', 'dark']);");
     expect(electronMain).toContain('nativeTheme.themeSource = themeSource;');
     expect(electronMain).toContain("setVibrancy(resolved.vibrancy, { animationDuration: 160 })");
-    // Following the window, macOS swaps to the pale inactive material on blur
-    // and back on refocus, which reads as the sidebar flashing.
+    // Pinned 'active' so blur doesn't swap to the pale inactive material (reads as flashing).
     expect(electronMain).toContain("visualEffectState: 'active',");
-    // A transparent window drops the material for ~0.45s after every Stage
-    // Manager switch back to Noa; the material works without it.
+    // Transparent windows drop the material after a Stage Manager switch; keep it opaque.
     expect(electronMain).not.toMatch(/new BrowserWindow\(\{[^}]*transparent:/);
     expect(app).toContain("data-sidebar-expanded={isSidebarMaterialActive ? 'true' : undefined}");
     expect(app).toContain('className={`pointer-events-none absolute top-0 bottom-0 z-30 ${isPromotingSidebarPreview');
@@ -198,77 +176,51 @@ describe('sidebar surface tokens', () => {
     expect(css).toMatch(
       /@property --noa-sidebar-material-width\s*\{[^}]*syntax:\s*['"]<length>['"][^}]*inherits:\s*true[^}]*initial-value:\s*0px/,
     );
-    // Inheriting is only affordable because nothing transitions the property.
-    // An animated inherited registered property re-invalidates the whole app
-    // subtree every frame; the veils animate transform from it instead.
+    // Inherited registered property must never transition: it would re-style the whole app every frame.
     expect(app).toContain("transition: 'none',");
     expect(css).not.toMatch(/transition:[^;]*--noa-sidebar-material-width/);
     expect(app).not.toMatch(/transition:[^,]*--noa-sidebar-material-width/);
-    // The drag used to carry its own attribute here purely so the veil could opt
-    // out of transitioning. It is one of the states the arming flag excludes now,
-    // and nothing else ever read it.
     expect(app).toContain("data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}");
     expect(app).not.toContain('data-sidebar-dragging');
-    // Every translucency rule is gated on :where(:not([data-settings-open])),
-    // which switches without contributing specificity.
-    // The settings scrim blurs the frame behind it in premultiplied alpha, and
-    // translucency leaves that frame transparent over the sidebar, which haloes
-    // the text there. Switching the rules off lets each surface fall back to
-    // the opaque floor it already carries — nothing is restated, so a
-    // transparent surface added later cannot forget to opt in.
+    // Translucency is gated on :where(:not([data-settings-open])) so the settings scrim doesn't halo the text.
     expect(css).toMatch(
       /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\)\s+\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--sidebar-material-color, #FAFAF8\) var\(--sidebar-material-tint, 70%\), transparent\)/,
     );
     expect(css).not.toContain('[data-sidebar-separator="true"] {');
     expect(css).not.toContain('.noa-app-shell:has([data-sidebar-container][data-sidebar-expanded="true"])::after');
-    // Electron supplies the native macOS sidebar material. A CSS backdrop blur
-    // on this boundary samples the white editor plane outside the sidebar and
-    // paints it back inside as a wide, bright edge halo.
+    // Electron provides the native material; a CSS backdrop-filter here would halo the edge.
     expect(css).not.toMatch(
       /\[data-sidebar-expanded="true"\]\[data-sidebar-column-surface="true"\]\s*\{[^}]*backdrop-filter:/,
     );
-    // The opaque plane is one ::before veil on the shell, slid by transform.
+    // The opaque plane is a single ::before veil on the shell, slid by transform.
     expect(css).toMatch(
       /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)\s*\{[^}]*background:\s*transparent\s*!important;[^}]*isolation:\s*isolate/,
     );
     expect(css).toMatch(
       /\.noa-app-shell:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{[^}]*z-index:\s*-1;[^}]*background-color:\s*var\(--bg-primary, #FCFCFB\);[^}]*transform:\s*translateX\(var\(--noa-sidebar-material-width\)\);[^}]*transition:\s*none;/,
     );
-    // Dropping the start value costs one frame of translucent titlebar on open,
-    // which no computed-style assertion can see after the fact.
+    // Start value is needed so the veil animates from it on open (not a computed-style check).
     expect(css).toMatch(
       /@starting-style \{\s*transform: translateX\(0\);/,
     );
-    // And the arming rule that gives that start value something to interpolate
-    // from — only for the dock motion, and only once the shell has painted. The
-    // veil rides the sidebar's own edge; every other way that edge moves puts it
-    // somewhere in one frame, and a 320ms sweep over a column that is already
-    // full reads as an opaque plane crossing the editor. Promoting the hover
-    // preview is exactly that case, and it is also a first render, so
-    // @starting-style fires on it.
+    // Arming rule: the veil transitions only for the dock motion, after first paint. Otherwise
+    // @starting-style fires on promotion (a first render) and sweeps an opaque plane across the editor.
     expect(css).toMatch(
       /html\[data-translucent-sidebar="enabled"\]:where\(:not\(\[data-settings-open="true"\]\)\) \.noa-app-shell\[data-sidebar-dock-motion="true"\]\[data-sidebar-material-painted="true"\]:has\(\[data-sidebar-expanded="true"\]\)::before\s*\{\s*transition:\s*transform 500ms/,
     );
-    // The titlebar only goes transparent so that veil shows through. Giving it
-    // a veil — and so a stacking context — of its own re-rasterized the
-    // half-alpha icon strokes over the vibrant region; verified pixel-identical
-    // to the old gradient only once it was removed.
+    // Titlebar is transparent so the shell veil shows through; its own ::before would re-rasterize icon strokes.
     expect(css).toMatch(
       /\[data-translucent-sidebar-titlebar="true"\]\s*\{[^}]*background:\s*transparent\s*!important/,
     );
     expect(css).not.toMatch(/\[data-translucent-sidebar-titlebar="true"\]::before/);
-    // A pointer drag already delivers one width per frame; a transition on top
-    // of that only lags behind the cursor. It needs no rule of its own now —
-    // the drag is one of the states the arming flag above excludes — but it
-    // must not come back as a default with exclusions hung off it.
+    // Drag must not get a transition: it would lag the cursor. It stays excluded by the arming flag, not default-on.
     expect(css).not.toMatch(
       /\.noa-app-shell\[data-sidebar-dragging="true"\]::before/,
     );
     expect(css).not.toMatch(
       /\.noa-app-shell:not\(\[data-sidebar-material-painted="true"\]\)/,
     );
-    // Reduced motion must reach the veil, not just its host — the host no
-    // longer carries the animation.
+    // Reduced motion must reach the veil itself, since the host no longer animates.
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,400}\.noa-app-shell::before\s*\{\s*transition:\s*none !important/,
     );

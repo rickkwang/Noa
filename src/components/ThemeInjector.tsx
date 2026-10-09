@@ -21,27 +21,13 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // editor's red-blue spread at 2 (50/50/48 versus 45/45/43), so it reads
       // as depth rather than as a colour cast.
       root.style.setProperty('--bg-sidebar', '#323230');
-      // Translucent-sidebar tint, matched to Codex's runtime theme: surface
-      // #2D2D2B mixed 7% toward ink #F9F9F7, at 70% over the native `menu`
-      // material. Separate from --bg-sidebar, the opaque floor when
-      // translucency is off.
+      // Translucent-sidebar tint over the native `menu` material. Separate from --bg-sidebar (the opaque floor).
       root.style.setProperty('--sidebar-material-color', '#3B3B39');
       root.style.setProperty('--sidebar-material-tint', '70%');
-      // Four stacked layers instead of one 6px/14px cast. A single mid-blur
-      // shadow lands on a dark floor as a band with a readable outer edge —
-      // the preview looks like a sheet pasted over the canvas rather than
-      // lifted off it. Layering a contact line, a tight cast and two wide
-      // negative-spread falloffs approximates real light decay, so no single
-      // layer's edge is locatable. Alphas sit about a third below the first
-      // pass at this geometry, which had the falloff right but carried it too
-      // far — the stack should read as lift, not as a cast.
+      // Four stacked layers approximate light falloff; a single shadow reads as a band with a visible edge on dark.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
-      // Dark row highlights are restated per-rule in index.css (translucent
-      // white, which re-adapts to any floor), so nothing reads this token
-      // today — the dark rules there outrank the shared one that consumes it.
-      // It exists so the pair is symmetric: any rule added later that reaches
-      // for --bg-sidebar-raised resolves to a dark value instead of silently
-      // taking the light #EAE5DE fallback baked into the shared rule.
+      // Nothing reads this today (index.css restates dark row highlights), but it keeps the light/dark
+      // pair symmetric so a future rule doesn't silently take the light #EAE5DE fallback.
       root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.08)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
@@ -55,22 +41,13 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.removeAttribute('data-theme');
       root.style.setProperty('--bg-primary', '#FCFCFB');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
-      // Same neutral family as the editor plane, nudged to 251/251/249 so the
-      // sidebar reads as a quieter plane change rather than a colour shift. An
-      // earlier pass used a warmer paper tone and it read as the sidebar turning
-      // yellow rather than creating a quiet plane change.
+      // Neutral, nudged to 251/251/249 so the sidebar reads as a plane change, not a colour shift (warm paper read as yellow).
       root.style.setProperty('--bg-sidebar', '#FBFBF9');
-      // Codex light: surface #F9F9F7 mixed 12% toward white, at 70% over `menu`.
       root.style.setProperty('--sidebar-material-color', '#FAFAF8');
       root.style.setProperty('--sidebar-material-tint', '70%');
-      // Light counterpart of the dark stack above, same four-layer geometry at
-      // roughly the previous total weight — on a light floor the single-layer
-      // version was already faint enough not to band.
+      // Light counterpart of the dark stack, at lower weight since light floors don't band.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
-      // The paired highlight token, light mode only: the row highlight has to
-      // move down with the floor or it lands level with it. Kept on the warm
-      // paper tone, which is the brand at row scale, and placed so the solid
-      // highlight keeps exactly the 4.3% gap it had over the editor plane.
+      // Paired row-highlight token: moves with the floor so it stays distinct from it.
       root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
@@ -100,12 +77,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
 
   const fontFamilyStyle = resolveFontFamily(settings.appearance.fontFamily);
 
-  // The rules below are the second of two layers that remap Tailwind
-  // arbitrary-value colour classes with `!important`; index.css carries the
-  // dark-mode set and, above it, the note on why a literal hex must never be
-  // used for a foreground mark. This sheet sits later in document order, so it
-  // wins every overlap — where the two disagree on a value, this one applies.
-  // Keep the two in sync.
+  // Second of two !important colour-remap layers (index.css holds the dark set). This sheet is later in
+  // document order and wins any overlap; keep the two in sync.
   return (
     <style>{`
       /* CSS variable-based overrides — work in both light and dark */

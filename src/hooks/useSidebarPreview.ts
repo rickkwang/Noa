@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-// Mirror the durations in index.css / the inline styles below, plus slack for a
-// frame that lands late. These back the fallbacks that end each animated phase:
-// transitionend is not a guaranteed event, and every phase here has exactly one
-// way out.
+// Mirror index.css durations plus slack; these timers end each animated phase, since transitionend isn't guaranteed.
 const SIDEBAR_PREVIEW_EXIT_MS = 180;
 const SIDEBAR_DOCK_MOTION_MS = 500;
 const SIDEBAR_PROMOTION_MS = 500;
@@ -114,12 +111,8 @@ export function useSidebarPreview({
       phase === 'promoting-close' ? 'settling-close' : phase === 'promoting-open' ? 'idle' : phase
     ));
   }, []);
-  // Leaving the preview drops the sidebar back into the docked flow, where its
-  // own width is the collapse mask — so that width goes from the full column to
-  // 0 in the same commit. Without a frame of suppression the mask would play a
-  // phantom collapse for a sidebar the user already dismissed, shoving the
-  // editor across the screen and back. The layout effect lands the suppressed
-  // style before the browser gets a chance to start that transition.
+  // Leaving the preview drops the docked width from full to 0 in one commit; suppress it in a layout effect
+  // so the browser never starts a phantom collapse for an already-dismissed sidebar.
   useLayoutEffect(() => {
     if (wasSidebarPreviewOpenRef.current && !isSidebarPreviewOpen) setIsSidebarPreviewSettling(true);
     wasSidebarPreviewOpenRef.current = isSidebarPreviewOpen;
@@ -134,16 +127,9 @@ export function useSidebarPreview({
     const frame = window.requestAnimationFrame(() => setSidebarPreviewPhase('idle'));
     return () => window.cancelAnimationFrame(frame);
   }, [isSettlingSidebarPromotionClose]);
-  // Every animated phase terminates on its own, because the transitionend it
-  // would otherwise wait on can legitimately never arrive. The exit style can
-  // land in the same style flush as the entry — a fast hover-then-Escape, or a
-  // loaded machine coalescing both mutations — and then opacity never leaves the
-  // @starting-style 0, no transition is generated, and no event fires. The phase
-  // would stay 'closing' forever: an invisible preview left over the app, still
-  // reachable by keyboard, with the sidebar never returning to inert. The same
-  // holds when a transition is dropped because the element's transition
-  // shorthand resolved to none for that commit. These land after the animation,
-  // so the event still wins whenever it does fire.
+  // Each animated phase must end on its own: entry and exit can coalesce into one style flush, so no
+  // transition or transitionend ever fires, and the phase would stick. Timers land after the animation,
+  // so a real transitionend still wins.
   useEffect(() => {
     const fallbackMs = sidebarPreviewPhase === 'closing'
       ? SIDEBAR_PREVIEW_EXIT_MS + SIDEBAR_MOTION_FALLBACK_SLACK_MS
@@ -162,9 +148,7 @@ export function useSidebarPreview({
     }, fallbackMs);
     return () => window.clearTimeout(timer);
   }, [sidebarPreviewPhase]);
-  // Same hazard on the dock: toggling while a resize drag holds the transition
-  // at none leaves no width animation to end, and a stuck true keeps the
-  // translucent material painted for a sidebar that is already closed.
+  // Same on the dock: toggling during a resize drag (transition: none) leaves no animation to end, so a stuck flag would keep the material painted.
   useEffect(() => {
     if (!isSidebarDockClosing) return;
     const timer = window.setTimeout(

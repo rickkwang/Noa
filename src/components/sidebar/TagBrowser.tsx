@@ -10,9 +10,7 @@ interface TagBrowserProps {
   isOpen: boolean;
 }
 
-// Curated warm/earthy hues that sit in the same family as the gold/coral accent,
-// so tags stay color-coded for classification without breaking the paper theme.
-// (terracotta, ochre, gold, mustard, olive, sage, clay-brown, dusty rose)
+// Warm, earthy hues matching the gold/coral accent, so tags stay colour-coded without breaking the paper theme.
 const TAG_HUES = [12, 26, 40, 52, 74, 98, 22, 348];
 
 function tagHue(name: string): number {
@@ -26,8 +24,7 @@ function tagHue(name: string): number {
 export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen }: TagBrowserProps) {
   const isBodyMounted = isTagsOpen;
 
-  // Mirror search.ts's tag-extraction regex so the active-state highlight stays
-  // in sync with what the search engine actually filters on.
+  // Mirrors search.ts's tag regex so the active highlight matches what search filters on.
   const activeTags = useMemo(() => {
     const set = new Set<string>();
     if (!searchQuery) return set;
@@ -57,12 +54,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
       .map(([name, count]) => ({ name, count }));
   }, [notes]);
 
-  // tagsHeight is the whole section — there is no header row (the toggle is
-  // in the footer); the 1px top border only exists while the body is mounted.
-  // The body gets an explicit height rather than the section: a height swap
-  // between a number and auto cannot ease, while a fixed body inside a 0fr/1fr
-  // track can, and a resize drag still lands in one frame because the track is
-  // already 1fr.
+  // Body gets an explicit height (not auto) so the 0fr/1fr collapse can ease; a drag still lands in one frame.
   const bodyHeight = Math.max(0, tagsHeight - (isBodyMounted ? 1 : 0));
 
   return (

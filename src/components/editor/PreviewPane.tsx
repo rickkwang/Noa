@@ -527,9 +527,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       return note.attachments?.find((a) => a.filename === ref || a.filename === basename);
     };
 
-    // Step 0: strip %%comments%% (Obsidian comments) so they never render. Done at
-    // the string level to match Obsidian's pre-parse behavior; the rare case of a
-    // literal %% inside a fenced code block is not special-cased.
+    // Step 0: strip %%comments%% at the string level, as Obsidian does before parsing.
     const withoutComments = mapAttachmentReferences(stripTaskMarkers(note.content).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
       const attachment = wiki ? undefined : findAttachment(target);
       return attachment ? `note-attachment://id/${encodeURIComponent(attachment.id)}` : undefined;
@@ -1014,9 +1012,7 @@ export const PreviewPane = React.memo(function PreviewPane({
 
   const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
 
-  // The top fade tracks how far the note has travelled under the tab strip; at
-  // rest the leading edge stays fully opaque. Written straight to the DOM node
-  // so scroll events never re-render the markdown body.
+  // Top fade is written straight to the DOM so scroll never re-renders the markdown body.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || printMode) return;
@@ -1042,11 +1038,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
-          {/* Obsidian-style inline title: the file name heads the rendered
-              document, mirroring the editor's CodeMirror title widget. Kept
-              out of print output so PDF exports are unchanged. */}
-          {/* The note's own name is the page heading: templates no longer
-              repeat it as a `#` line in the body, so nothing else is. */}
+          {/* Inline title mirrors the editor's title widget; omitted in print output. */}
           {!printMode && <div className="noa-inline-title" role="heading" aria-level={1}>{note.title || 'Untitled'}</div>}
           <NoteMarkdownBody
             note={note}

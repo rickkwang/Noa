@@ -1,6 +1,5 @@
-// Central icon mapping. The app uses Phosphor Icons (thin, rounded — Claude.ai-like),
-// re-exported under the names the codebase already used (formerly lucide-react), so
-// call sites stay unchanged. To swap an icon's shape, change its mapping here only.
+// Central icon mapping: Phosphor Icons re-exported under the legacy lucide-react
+// names so call sites are unchanged. To swap a shape, change its mapping here only.
 import {
   Warning,
   TextAlignLeft,
@@ -68,8 +67,7 @@ import {
 } from '@phosphor-icons/react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
 
-// Wrap so icons default to lucide's 24px size and a thin "regular" weight,
-// while still accepting size/className/color/strokeWidth/etc. per call site.
+// Default to 24px, regular weight; call sites can still override props.
 function icon(Cmp: Icon) {
   return function WrappedIcon(props: IconProps) {
     return <Cmp size={24} weight="regular" {...props} />;
@@ -83,8 +81,7 @@ export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
 export const BookOpen = icon(PhBookOpen);
 export const Calendar = icon(CalendarBlank);
-// The sidebar's month-view toggle. Distinct from Calendar, which the toolbar
-// uses for "open today's daily note".
+// Sidebar month-view toggle (Calendar is the "open today's daily note" icon).
 export const CalendarMonth = icon(CalendarDots);
 export const Check = icon(PhCheck);
 export const CheckCircle2 = icon(CheckCircle);
@@ -93,10 +90,8 @@ export const ChevronDown = icon(CaretDown);
 export const ChevronLeft = icon(CaretLeft);
 export const ChevronRight = icon(CaretRight);
 export const ChevronsUpDown = icon(CaretUpDown);
-// The inward twin of ChevronsUpDown, for "collapse all folders". Phosphor has
-// no such glyph, so it is drawn here on Phosphor's own 256 grid with the
-// regular weight's 16-unit round stroke: the same two carets, each flipped to
-// point at the other, over the same 32–224 extent.
+// Inward twin of ChevronsUpDown ("collapse all folders"), drawn by hand because
+// Phosphor has no such glyph: same 256 grid, 16-unit stroke, carets flipped.
 export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
   return (
     <svg
@@ -142,7 +137,6 @@ export const Info = icon(PhInfo);
 export const Italic = icon(TextItalic);
 export const List = icon(PhList);
 export const Loader2 = icon(CircleNotch);
-// Two plain arrows, no frame.
 export const Maximize2 = icon(ArrowsOutSimple);
 export const Minimize2 = icon(ArrowsInSimple);
 export const Monitor = icon(PhMonitor);

@@ -1,10 +1,7 @@
 import { expect, test } from './fixtures';
 
-// Every caller asserts on a connected vault, and a8e3e3f moved that state's
-// sync status into the row description ("… as the Markdown vault (ready)").
-// Matching only that form is deliberate: the disconnected row spells the status
-// out as body copy instead, and accepting either would let a regression that
-// showed the wrong one for the state pass unnoticed.
+// Matches only the row-description form ("… as the Markdown vault (ready)"), not
+// the disconnected body copy, so a regression showing the wrong state still fails.
 async function expectVaultSyncStatus(
   page: import('@playwright/test').Page,
   status: 'ready' | 'error',
@@ -356,11 +353,10 @@ async function installMockDirectoryPicker(
       return root as unknown as FileSystemDirectoryHandle;
     };
     try {
-      // Some browsers expose a native directory picker that is not writable;
-      // delete first so the mock reliably shadows it in Playwright.
+      // Delete a native, non-writable picker first so the mock reliably shadows it.
       delete (window as typeof window & { showDirectoryPicker?: unknown }).showDirectoryPicker;
     } catch {
-      // Best effort only.
+      // Best effort.
     }
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
@@ -371,22 +367,18 @@ async function installMockDirectoryPicker(
   });
 }
 
-// Opts out of the shared onboarding suppression: this is the one place that
-// drives the real first-launch sequence. `showStorageNotice` is gated on
-// `!showVaultOnboarding` (App.tsx), so the two notices are deliberately
-// sequential rather than stacked — assert that order, not just the second half.
+// Opts out of the shared onboarding suppression to drive the real first-launch
+// sequence. The two notices are sequential (storage notice gated on !showVaultOnboarding),
+// so assert that order.
 test.describe('first launch', () => {
   test.use({ vaultOnboarding: 'shown' });
 
   test('offers vault setup, then local-storage guidance', async ({ page }) => {
     await page.goto('/');
 
-    // 9ed4f65 dropped the "Folder connection" eyebrow; the dialog's own
-    // accessible name is the stable handle for it.
     const onboarding = page.getByRole('dialog', { name: 'Connect a Markdown folder' });
     await expect(onboarding).toBeVisible();
     await expect(onboarding.getByRole('heading', { name: 'Connect a Markdown folder' })).toBeVisible();
-    // Suppressed while the dialog is up — the notices must not stack.
     await expect(page.getByText('Local storage only')).toBeHidden();
 
     await page.getByRole('button', { name: 'Continue without a folder' }).click();
@@ -479,11 +471,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
   await page.goto('/');
   await expect(page.getByTestId('sidebar-file-tree')).toBeVisible();
 
-  // Typing in the editor auto-continues "> " on Enter, nesting the body in a
-  // child blockquote — that path never reproduces a literal multi-line
-  // callout. Notes written outside Noa (Obsidian vaults, backups, .md file
-  // imports) DO carry "> [!TYPE] Title\n> body", so inject via storage the way
-  // an import would.
+  // Typing auto-continues "> " and nests the body, so inject the callout via storage as an import would.
   await page.evaluate(async () => {
     const ts = new Date().toISOString();
     const notes = [
@@ -513,8 +501,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
   await page.reload();
   await expect(page.getByTestId('sidebar-file-tree')).toBeVisible();
 
-  // Titled multi-line callout: styled chrome shows the custom title and the
-  // raw [!NOTE] marker is consumed, not leaked into a plain blockquote.
+  // The raw [!NOTE] marker must be consumed, not leaked into a plain blockquote.
   await page.getByTestId('sidebar-file-tree').getByText('CalloutTitled', { exact: true }).click();
   await ensurePreviewMode(page);
   const titledPreview = page.locator('.prose').last();
@@ -522,8 +509,7 @@ test('imported multi-line callouts render styled chrome, not raw [!TYPE] blockqu
   await expect(titledPreview.getByText('[!NOTE]')).toHaveCount(0);
   await expect(titledPreview.getByText('callout body')).toBeVisible();
 
-  // No-title multi-line callout: default type label; the body line must not
-  // be promoted into the title.
+  // Body line must not be promoted into the title.
   await ensureEditMode(page);
   await page.getByTestId('sidebar-file-tree').getByText('CalloutUntitled', { exact: true }).click();
   await ensurePreviewMode(page);
@@ -638,32 +624,27 @@ test('the title-bar panel menu switches right-column cards on and off', async ({
   const item = (name: string) => page.getByRole('menuitemcheckbox', { name, exact: true });
   const openCards = page.locator('[data-pane][data-state="open"]');
 
-  // The right panel defaults to open on the Tasks card.
   await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
   await expect(openCards).toHaveCount(1);
   await menuButton.click();
   await expect(item('Tasks')).toHaveAttribute('aria-checked', 'true');
   await expect(item('Graph')).toHaveAttribute('aria-checked', 'false');
 
-  // A second card opens beside the first rather than replacing it.
   await item('Graph').click();
   await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(openCards).toHaveCount(2);
 
-  // The last row collapses the whole column; nothing stays checked.
   await menuButton.click();
   await page.getByRole('menuitem', { name: 'Toggle right panel' }).click();
   await expect(menuButton).toHaveAttribute('data-panel-open', 'false');
   await menuButton.click();
   await expect(item('Tasks')).toHaveAttribute('aria-checked', 'false');
 
-  // An item picked while collapsed opens the column on that card alone.
   await item('Graph').click();
   await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
   await expect(openCards).toHaveCount(1);
   await expect(page.locator('[data-pane="graph"]')).toHaveAttribute('data-state', 'open');
 
-  // Closing the last card collapses the column, and the same row restores it.
   await page.locator('[data-pane="graph"]').getByRole('button', { name: 'Close panel' }).click();
   await expect(menuButton).toHaveAttribute('data-panel-open', 'false');
   await menuButton.click();

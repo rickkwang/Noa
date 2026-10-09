@@ -58,15 +58,13 @@ export function useNotes(settings?: AppSettings) {
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(loadRecentNoteIds);
   const isDataReady = isLoaded && loadError === null;
 
-  // Per-note debounce timers
+  // Per-note save and snapshot timers (snapshot: 30s idle, 5min forced)
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  // Per-note snapshot timers (30s idle after last save, max 5min forced)
   const snapshotTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  // Tracks when the first pending snapshot was scheduled per note (for max-interval enforcement)
+  // When each note's pending snapshot window opened (for max-interval enforcement)
   const snapshotFirstScheduled = useRef<Map<string, number>>(new Map());
 
-  // Always holds the latest notes array so debounceSave can access the most
-  // recent version of a note without a stale closure.
+  // Latest notes, read by debounced callbacks to avoid stale closures.
   const notesRef = useRef<Note[]>([]);
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
@@ -93,17 +91,14 @@ export function useNotes(settings?: AppSettings) {
     const noteId = note.id;
     const existing = snapshotTimers.current.get(noteId);
 
-    // Record when we first started tracking this note's pending snapshot
     if (!snapshotFirstScheduled.current.has(noteId)) {
       snapshotFirstScheduled.current.set(noteId, Date.now());
     }
 
     const firstScheduledAt = snapshotFirstScheduled.current.get(noteId)!;
     const elapsed = Date.now() - firstScheduledAt;
-    // If we've been deferring for longer than the max interval, fire immediately
     const delay = elapsed >= MAX_SNAPSHOT_INTERVAL_MS ? 0 : 30_000;
-    // Starting a new window on forced-flush so subsequent edits don't keep
-    // firing at delay=0 before the previous callback drains.
+    // Reset the window on forced flush so later edits don't keep firing at delay=0.
     if (delay === 0) snapshotFirstScheduled.current.delete(noteId);
 
     if (existing) clearTimeout(existing);
@@ -129,10 +124,7 @@ export function useNotes(settings?: AppSettings) {
 
   const debounceSave = useCallback((note: Note) => {
     const noteId = note.id;
-    // If an import is in progress, remember the latest in-memory version of
-    // this note and skip scheduling a write. We flush the queue when the
-    // import finishes; until then, user edits stay in React state and will
-    // be rescued before setNotes(withRefs) runs.
+    // During an import, queue the latest version instead of scheduling a write (see isImportingRef).
     if (isImportingRef.current) {
       deferredSavesRef.current.set(noteId, note);
       return;
@@ -140,10 +132,7 @@ export function useNotes(settings?: AppSettings) {
     const existing = saveTimers.current.get(noteId);
     if (existing) clearTimeout(existing);
     const t = setTimeout(async () => {
-      // Prefer the latest version from the ref so that rapid edits don't
-      // cause an older closure snapshot to overwrite newer content.
-      // Fall back to the passed-in note if the ref hasn't synced yet
-      // (e.g. during initial mount or in test environments).
+      // Prefer the ref so an older closure never overwrites newer content.
       const latest = notesRef.current.find(n => n.id === noteId) ?? note;
       try {
         await writeNote(latest);
@@ -202,13 +191,9 @@ export function useNotes(settings?: AppSettings) {
     return withRefs;
   }, [debounceSave, sameStringArray]);
 
-  // Tracks whether the hook is still mounted. flushAllPendingSaves awaits
-  // storage writes sequentially, so between iterations the component may have
-  // unmounted; re-reading notesRef after unmount risks writing stale snapshots
-  // if something else touched storage in the meantime.
+  // Guards flushAllPendingSaves, which awaits writes sequentially and may outlive the mount.
   const isMountedRef = useRef(true);
 
-  // Cleanup all pending save/snapshot timers on unmount
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     isMountedRef.current = true;
@@ -231,10 +216,7 @@ export function useNotes(settings?: AppSettings) {
       throw new Error('Import is still running');
     }
     if (beforeClose) await Promise.allSettled([...activeNoteWrites.current]);
-    // Snapshot pending ids AND their corresponding notes atomically, before
-    // awaiting. This prevents a late debounceSave between iterations from
-    // inserting a newer timer whose note we'd then read from a possibly
-    // stale-by-the-time-await-resolves notesRef.
+    // Snapshot pending ids and their notes before awaiting, so a late debounceSave can't race the loop.
     const pending = new Set([
       ...saveTimers.current.keys(),
       ...peekRescuedNotes().map(note => note.id),
@@ -250,9 +232,7 @@ export function useNotes(settings?: AppSettings) {
     parkRescuedNotes(notesToFlush);
     let failed = false;
     for (const note of notesToFlush) {
-      // If the component unmounted mid-flush, abort — the unmount cleanup
-      // already cleared timers and any further writes race with whatever
-      // re-mounts after us.
+      // Abort if unmounted mid-flush: cleanup already cleared timers.
       if (!isMountedRef.current) return;
       try {
         await writeNote(note);
@@ -334,8 +314,7 @@ export function useNotes(settings?: AppSettings) {
         const rescued = peekRescuedNotes();
 
         if ((savedNotes && savedNotes.length > 0) || rescued.length > 0) {
-          // Trusted path: our own IndexedDB cache. Preserve the vault origin
-          // marker so mirror rows keep write-through after a reload.
+          // Trusted path (our own cache): keep vault origin so mirror rows keep write-through.
           const { notes: normalized, report } = normalizeAndValidateNotes(savedNotes ?? [], { preserveVaultMetadata: true });
           if (!report.ok) {
             throw new Error(
@@ -350,8 +329,7 @@ export function useNotes(settings?: AppSettings) {
           const persistById = new Map(
             collectChangedRef.current(withRefs, withRescued).map((note) => [note.id, note]),
           );
-          // Rescued edits exist only in localStorage until this write lands, and
-          // collectChanged won't flag them unless their linkRefs happen to differ.
+          // Rescued edits live only in localStorage until this write lands; force-persist them.
           const rescuedIds = new Set(rescued.map((note) => note.id));
           for (const note of withRefs) {
             if (rescuedIds.has(note.id)) persistById.set(note.id, note);
@@ -480,9 +458,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
         : { links: extractLinks(content), tags: extractTags(content) }),
     }, note);
 
-    // React may defer the functional state updater. Keep the latest snapshot
-    // ref synchronous with the user event so an overlapping partial-write
-    // callback never persists the previous content over this edit.
+    // Update notesRef synchronously: React may defer the updater, and an overlapping save must not persist stale content.
     const eagerPrevious = notesRef.current;
     const eagerCurrent = eagerPrevious.find((note) => note.id === id);
     if (eagerCurrent) {
@@ -503,9 +479,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
         return nextNote;
       });
       if (!nextNote) return prev;
-      // Content edits that leave the wikilink set unchanged cannot alter any
-      // note's linkRefs (the title/folder index is untouched) — skip the full
-      // link-index rebuild on this per-keystroke hot path.
+      // Unchanged wikilink set can't alter any linkRefs; skip the rebuild on this per-keystroke path.
       if (sameStringArray(prevLinks ?? [], nextNote.links ?? [])) {
         debounceSave(nextNote);
         return updated;
@@ -569,8 +543,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
         }
         return n;
       });
-      // Save notes whose content changed (renamed note + notes with replaced [[links]]).
-      // syncLinkRefs will additionally save any notes whose linkRefs changed.
+      // syncLinkRefs separately saves notes whose linkRefs changed.
       const prevById = new Map(prev.map(n => [n.id, n]));
       updated.forEach(n => {
         const p = prevById.get(n.id);
@@ -736,16 +709,11 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       linkRefs: [],
       source: 'noa',
     };
-    // Resolve the id to activate inside the updater so it always reflects the
-    // latest prev — avoids a race between the closure check and the updater check.
-    // React in StrictMode may invoke the updater twice; always trust the latest prev.
+    // Resolve the id inside the updater (StrictMode may run it twice; trust the latest prev).
     const resolvedRef = { id: newNote.id };
     setNotes(prev => {
-      // Prefer an existing note with the same title (any match). If a previous
-      // run of this same updater already inserted newNote (StrictMode re-runs
-      // updaters twice), the collision is newNote itself and we must return
-      // prev untouched — inserting again or re-running syncLinkRefs would fire
-      // redundant debounceSaves.
+      // Reuse an existing same-title note. On a StrictMode re-run the collision is newNote
+      // itself; return prev untouched to avoid redundant debounceSaves.
       const collision = prev.find(n => n.title === title);
       if (collision) {
         resolvedRef.id = collision.id;
@@ -767,10 +735,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       setSaveError('Failed to delete note.');
       return false;
     }
-    // Attachment blobs are pruned asynchronously via pruneOrphanedAttachments
-    // using the post-deletion notes list. Computing "still referenced" from
-    // a pre-deletion snapshot (as deleteAttachmentBlobsByNoteId does) races
-    // with concurrent deletions of sibling notes sharing the same blob.
+    // Prune against the post-deletion list; a pre-deletion snapshot races with sibling deletes sharing a blob.
     const remaining = notesRef.current.filter(n => n.id !== id);
     const validIds = new Set(
       remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
@@ -779,8 +744,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     // A deliberately deleted note must not resurface from the import rescue
     // parking lot on next launch.
     unparkRescuedNote(id);
-    // Cancel any pending debounce save/snapshot for this note so it cannot be
-    // re-written to storage after deletion.
+    // Cancel pending save/snapshot so the note can't be re-written after deletion.
     const pending = saveTimers.current.get(id);
     if (pending) {
       clearTimeout(pending);
@@ -792,7 +756,6 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       snapshotTimers.current.delete(id);
       snapshotFirstScheduled.current.delete(id);
     }
-    // Clean up history snapshots for the deleted note (best-effort, non-fatal)
     storage.deleteSnapshotsForNote(id).catch(() => {});
     setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
@@ -893,8 +856,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     if (deletedIds.length > 0 || failedCount === 0) {
       const deletedSet = new Set(deletedIds);
       setRecentNoteIds(prev => prev.filter((noteId) => !deletedSet.has(noteId)));
-      // Remove deleted notes and, when no failures, also remove the folders themselves.
-      // Both are applied in one setNotes call to avoid a redundant syncLinkRefs pass.
+      // Single setNotes call avoids a redundant syncLinkRefs pass.
       const removeFolders = failedCount === 0;
       setNotes(prev => syncLinkRefs(
         prev.filter(n => !deletedSet.has(n.id) && !(removeFolders && folderIdsToDelete.has(n.folder))),
@@ -1119,7 +1081,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     const currentNote = notesRef.current.find(n => n.id === snapshot.noteId);
     if (!currentNote) return;
 
-    // Save the current state as a "before restore" snapshot so the user can undo
+    // Save current state first so the restore can be undone.
     const beforeSnapshot: NoteSnapshot = {
       noteId: currentNote.id,
       content: currentNote.content,
@@ -1131,7 +1093,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       await storage.pruneSnapshots(currentNote.id);
     } catch { /* non-fatal */ }
 
-    // Apply the restored content, re-deriving links/tags so graph and search stay consistent
+    // Re-derive links/tags so graph and search stay consistent.
     const restoredAt = new Date().toISOString();
     const applyRestore = (current: Note[]) => {
       const updated = current.map((note) => note.id === currentNote.id
@@ -1188,9 +1150,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
         return confirmedNote;
       });
 
-    // Authoritative import can start in the same async turn. Update the shared
-    // ref immediately so conflict-preserved rows are not rebased over the disk
-    // scan while React is still scheduling the visible state update.
+    // Update the ref immediately so an authoritative import starting this turn doesn't rebase conflict rows.
     notesRef.current = acknowledge(notesRef.current);
     setNotes((prev) => {
       const next = acknowledge(prev);

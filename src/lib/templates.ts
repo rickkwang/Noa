@@ -5,11 +5,9 @@ export interface Template {
   isBuiltin?: boolean;
 }
 
-// No template opens with a `# heading`: the editor already renders the note's
-// title above the body (inlineTitle.ts), so a leading H1 printed the same name
-// twice in both the editor and the preview. The `${' '}` after an empty
-// `- [ ]` is the space typing continues after; spelled out so a
-// trailing-whitespace trim can't take it.
+// No template starts with a `# heading`: the editor already shows the title
+// (inlineTitle.ts), so an H1 would duplicate it. `${' '}` after `- [ ]` is
+// spelled out so a trailing-whitespace trim can't remove the space.
 export const builtinTemplates: Template[] = [
   {
     id: 'blank',
@@ -85,9 +83,8 @@ export function formatDate(dateFormat: string, date?: Date): string {
 }
 
 /**
- * Expand a template for a specific calendar date. Callers that do not supply a
- * date retain the historical "right now" behaviour; daily-note navigation can
- * provide the day selected in the calendar so its title and placeholders agree.
+ * Expand a template for a date (defaults to now). Daily-note navigation passes
+ * the calendar-selected day so title and placeholders agree.
  */
 export function applyTemplate(template: Template, title: string, dateFormat: string = 'YYYY-MM-DD', dateOverride: Date = new Date()): string {
   const now = dateOverride;

@@ -1,11 +1,8 @@
 import { Folder, Note } from '../types';
 
-// Replaces fenced code blocks (``` ... ```) and inline code spans (`...`)
-// with spaces of equal length. Indented (4-space) code blocks are NOT stripped —
-// they're indistinguishable from nested list content without a full parse.
-// Keeping byte length stable
-// means downstream regex match indices (unused here, but useful for future
-// callers) remain valid. Links/tags inside code must not pollute refs.
+// Blanks fenced and inline code with equal-length spaces so links/tags inside
+// code don't pollute refs and match indices stay valid. Indented (4-space)
+// code blocks are not stripped: indistinguishable from nested lists without a full parse.
 const stripCodeSpans = (content: string): string => {
   let out = content.replace(/```[\s\S]*?```/g, (m) => ' '.repeat(m.length));
   out = out.replace(/`[^`\n]+`/g, (m) => ' '.repeat(m.length));
@@ -99,8 +96,7 @@ export const sliceHeadingSection = (content: string, heading: string): string | 
   return lines.slice(start, end).join('\n');
 };
 
-// CJK Unified Ideographs + CJK Ext-A + Hiragana + Katakana + Hangul Syllables.
-// Broader than before which only covered basic CJK (\u4e00-\u9fa5).
+// CJK Unified Ideographs + Ext-A + Hiragana + Katakana + Hangul Syllables.
 const TAG_CHAR = '\\w\\u3040-\\u309f\\u30a0-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';
 const TAG_REGEX = new RegExp(
   `(?:^|(?<=\\s))#([${TAG_CHAR}]+(?:\\/[${TAG_CHAR}]+)*)(?![${TAG_CHAR}#\\/])`,
@@ -311,10 +307,8 @@ export const computeTopologySignature = (
     }
   };
 
-  // Terminate every value with \u0000 and every list field with \u0001 so
-  // boundaries stay unambiguous — otherwise id "ab" + title "c" hashes
-  // identically to id "a" + title "bc", and a value moving between
-  // links/linkRefs/tags is invisible to the signature.
+  // Terminate values with \u0000 and list fields with \u0001 so boundaries are
+  // unambiguous (id "ab"+title "c" must not hash like id "a"+title "bc").
   const addValue = (value: string) => {
     addString(value);
     addString('\u0000');

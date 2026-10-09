@@ -40,9 +40,7 @@ interface TopBarProps {
 export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
-  // Accent coral is the active-state color everywhere else, but on the dark
-  // charcoal titlebar it reads as too loud right next to the traffic lights —
-  // use a bright neutral instead so "open" still reads as brighter-than-idle.
+  // Dark titlebar uses a bright neutral for "open" — coral reads too loud next to the traffic lights.
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   const actionClass = 'p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer';
   return (
@@ -63,10 +61,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             onClick={onToggleSidebar}
             onMouseEnter={onSidebarPreviewEnter}
             onMouseLeave={onSidebarPreviewLeave}
-            // No active:opacity here: the icon already recolours to
-            // activeToggleClass the instant isSidebarOpen flips, and dimming
-            // it for the press right before that lands is what reads as a
-            // flicker, not a click.
+            // No active:opacity: the icon recolours as soon as isSidebarOpen flips, and a press-fade reads as flicker.
             className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
             title="Toggle Sidebar"
             aria-label="Toggle sidebar"
@@ -85,11 +80,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             }}
           >
             <button
-              // The icon is 28px inside a 26px content box, so it always
-              // overflows this overflow-hidden shell by 2px. Letting the button
-              // take focus makes the browser scroll the shell to reveal it,
-              // which visibly jerks the icon sideways mid-expand. The click
-              // still lands, and the input takes focus straight after.
+              // Prevent focus: the 28px icon overflows the 26px shell by 2px, and focusing it would scroll the shell and jerk the icon mid-expand.
               onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleSearch}
               className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
@@ -99,9 +90,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             >
               <Search size={16} />
             </button>
-            {/* Kept mounted so opening and closing are the same animation
-                played in reverse: unmounting on close made the text vanish
-                instantly while the shell was still collapsing. */}
+            {/* Kept mounted so open and close are the same animation reversed; unmounting made the text vanish early. */}
             <input
               ref={searchInputRef}
               type="text"
@@ -109,9 +98,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               placeholder="Search notes, tags..."
               aria-label="Search notes"
               aria-hidden={!isSearchOpen}
-              // Only while collapsed, and never tabIndex={0}: a literal
-              // tabindex attribute matches the global [tabindex]:focus-visible
-              // ring and paints an accent outline inside the search shell.
+              // Only while collapsed, and never tabIndex={0}: a literal tabindex matches the global focus-visible ring and paints an outline inside the shell.
               tabIndex={isSearchOpen ? undefined : -1}
               className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
               onChange={(event) => onSearchChange(event.target.value)}
@@ -141,19 +128,12 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
 
       {!isMobile && <div aria-hidden="true" className="min-w-0" />}
 
-      {/* Right Section: Actions. The right column's cards run to the top of the
-          window, over this bar, so the actions stop at the column's left edge
-          and travel with it — same distance and curve as the column's own
-          slide in App.tsx. On desktop they are positioned against the bar
-          itself, not laid out in the grid's third cell: the column can be
-          wider than that cell, and an offset larger than the cell pushed the
-          button under the column instead of clear of it. */}
+      {/* Right actions stop at the column's left edge and travel with it. Positioned against the bar itself, not the grid cell, since the column can be wider than that cell. */}
       <div
         className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30 has-[[role=menu]]:z-40' : 'z-40'}`}
         data-right-panel-anchor={isMobile ? undefined : 'true'}
         style={isMobile ? undefined : {
-          // 15px, not a round rem: it puts the menu glyph on the same vertical
-          // line as the editor toolbar's last action directly beneath it.
+          // 15px (not a round rem) lines the menu glyph up with the editor toolbar's last action.
           right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 340px) + 15px)' : '15px',
           transition: rightPanelEdgeTransition,
         }}
@@ -178,10 +158,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 onSelect={onTogglePane}
                 badges={paneBadges}
                 isDark={isDark}
-                // Colour only, not the wash: choosing a card closes the menu
-                // and moves this button to the column's new edge in the same
-                // frame, and a fading background would trail behind as a
-                // ghost block at the spot it jumped to.
+                // Colour only, no background wash: the button jumps to the column's new edge in the same frame, and a fading wash would linger as a ghost.
                 triggerClassName={`transition-[color] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}`}
                 isPanelOpen={isRightPanelOpen}
                 onTogglePanel={onToggleRightPanel}

@@ -4,9 +4,7 @@ import { SYSTEM_DEFAULT_FONT, isSafeFontFamilyName } from '../lib/fontFamily';
 import { AppSettings } from '../types';
 
 /**
- * Keys of the typefaces Noa used to bundle. They no longer ship, so a stored
- * value naming one would resolve to nothing installed; migrate them to the
- * system default rather than leaving the user on a font that cannot load.
+ * Retired bundled typefaces; stored values naming one migrate to the system default (they'd resolve to nothing).
  */
 const REMOVED_BUNDLED_FONTS = new Set([
   'font-iosevka',
@@ -135,14 +133,8 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
       Array.isArray(value) && value.every(isUserTemplate)
     );
 
-    // accentColor was removed; drop it from older stored settings so it is not
-    // merged back in and re-persisted as a dead key.
-    //
-    // Fonts are no longer bundled: settings now hold either the system default
-    // or a family installed on the device. Retire the old bundled keys, and
-    // reject names that could not be a real family (they reach CSS through a
-    // <style> element). Neither case marks the settings invalid — a stale font
-    // name self-heals and should not raise the recovery banner.
+    // Drop the removed accentColor key so it isn't re-persisted. Retire bundled font names and reject
+    // non-family strings (they reach CSS via <style>). Neither marks settings invalid.
     const storedFontFamily = setting(appearance, 'fontFamily', defaultSettings.appearance.fontFamily, isString);
     const fontFamily = REMOVED_BUNDLED_FONTS.has(storedFontFamily) || !isSafeFontFamilyName(storedFontFamily)
       ? SYSTEM_DEFAULT_FONT

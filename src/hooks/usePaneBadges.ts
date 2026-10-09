@@ -5,13 +5,8 @@ import type { Folder, GlobalTask, Note } from '../types';
 import { computeOutgoingLinks } from './useOutgoingLinks';
 
 /**
- * Counts for the card switches in the titlebar. They live here rather than in
- * RightPanel because the switches are always on screen while the panel is a
- * lazy chunk that may never have mounted.
- *
- * The notes array gets a new identity on every keystroke, but these counts
- * only read structural fields (titles/links/linkRefs), so the inputs are keyed
- * on the topology signature and content-only edits skip the recompute.
+ * Counts for the titlebar card switches. Lives here, not in RightPanel, since the switches show before the lazy panel
+ * mounts. Keyed on the structural topology signature, so content-only keystrokes skip the recompute.
  */
 export function usePaneBadges(
   notes: Note[],

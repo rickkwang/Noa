@@ -1,6 +1,4 @@
-// In-memory mock of the File System Access API directory/file handles,
-// covering the subset used by fileSystemStorage/fileSyncService:
-// getFileHandle, getDirectoryHandle, removeEntry, entries, getFile, createWritable.
+// In-memory File System Access handles: the subset fileSystemStorage/fileSyncService use.
 
 function domError(name: string, message = name): DOMException {
   return new DOMException(message, name);
@@ -85,7 +83,7 @@ export function createMemRoot(name = 'vault'): MemDirectoryHandle {
   return new MemDirectoryHandle(name);
 }
 
-/** Resolve a slash-separated path to a handle, or null when missing. */
+/** Resolves a slash-separated path to a handle, or null when missing. */
 export function resolvePath(
   root: MemDirectoryHandle,
   path: string,

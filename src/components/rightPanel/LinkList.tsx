@@ -2,30 +2,16 @@ import React from 'react';
 import { Folder, Note } from '../../types';
 
 /**
- * Shared chrome for the two link panels. They are the same list of the same
- * kind of thing pointed in opposite directions, so any drift between them
- * reads as a bug — keep both going through here.
- *
- * A row, not a card: at this width a bordered card spends its whole first line
- * on chrome and pushes the next title 60px down, which is why seven backlinks
- * used to need a scroll. The list carries its own structure through the
- * two-line rhythm and the hover band, and hover is the only surface drawn —
- * nothing is painted until the pointer asks for it.
+ * Shared chrome for the two link panels (backlinks and outgoing), so they can't drift apart.
+ * A row, not a card: a bordered card spends its first line on chrome. Hover is the only surface drawn.
  */
 export function linkSubtitle(note: Note, folders?: Folder[]): string {
-  // Folder names are flat but vault-imported ones already carry their full
-  // path ("02-Year-2-Study/Communications"), which is exactly the disambiguator
-  // wanted here — two notes with the same title differ by where they live.
+  // Vault-imported folder names already carry their full path, which disambiguates same-titled notes.
   if (!note.folder) return '';
   return folders?.find((folder) => folder.id === note.folder)?.name ?? '';
 }
 
-// Matches PropertiesPanel's own "no note" state exactly — same sibling tab
-// in the same RightPanel, so the two must agree on how "nothing to show
-// because nothing is open" looks. This is distinct from "a real note with
-// zero links", which the section header already answers with a plain 0;
-// conflating the two here made an open note with no links indistinguishable
-// from no note being open at all.
+// Must match PropertiesPanel's "no note" state. Distinct from "a real note with zero links" (the header shows 0).
 export function LinkNoNoteState({ isDark }: { isDark?: boolean }) {
   const muted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
   return <div className={`text-xs font-redaction text-center py-8 ${muted}`}>No note selected</div>;
@@ -60,12 +46,7 @@ export function LinkRow({
     ? (isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50')
     : (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]');
   const subtitleColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
-  // Dark mode used a flat #302F2C against the #2D2D2B panel — a 3/2/1 RGB
-  // step, barely perceptible. Light mode's #EFEAE3/70 wasn't much better:
-  // blended against the #FCFCFB panel it lands around #F1EEE9, a 7-14 RGB
-  // step. Both now match the hover convention used everywhere else in the
-  // app (noa-sidebar-hover-surface): full-strength #EAE5DE in light, a
-  // translucent white wash in dark.
+  // Matches the app-wide hover convention (noa-sidebar-hover-surface): #EAE5DE in light, a white wash in dark.
   const hover = onClick
     ? (isDark ? 'hover:bg-[rgba(249,249,247,0.07)]' : 'hover:bg-[#EAE5DE]')
     : '';
@@ -78,8 +59,7 @@ export function LinkRow({
           {title}
         </span>
       </span>
-      {/* Indented past the icon so the second line hangs off the title, not off
-          the glyph: 13px icon + the 6px gap. */}
+      {/* Indented past the 13px icon + 6px gap so the second line hangs off the title. */}
       {subtitle && (
         <span className={`block truncate text-[11px] leading-4 pl-[19px] ${subtitleColor}`}>{subtitle}</span>
       )}

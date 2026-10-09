@@ -24,9 +24,7 @@ function pad(n: number): string {
 }
 
 /**
- * Build a filename like `noa-backup-2026-04-20-1130.json`. The date fields are
- * laid out so lexicographic string compare matches chronological order, which
- * lets pruneOldBackups sort by filename without parsing.
+ * Filename like `noa-backup-2026-04-20-1130.json`; fields sort lexicographically in time order (pruneOldBackups relies on it).
  */
 export function buildBackupFilename(now = new Date()): string {
   const y = now.getFullYear();
@@ -107,8 +105,7 @@ export async function runAutoBackup(
     // Pruning failure is non-fatal; the write already succeeded.
   }
 
-  // Update both timestamps so backup health reflects successful manual and
-  // automatic snapshots consistently.
+  // Update both timestamps so backup health reflects manual and automatic runs alike.
   lsSet(STORAGE_KEYS.LAST_AUTO_BACKUP_AT, new Date().toISOString());
   lsSet(STORAGE_KEYS.AUTO_BACKUP_LAST_ERROR, '');
   markExported();

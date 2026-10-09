@@ -27,8 +27,7 @@ export function togglePane(state: PaneState, id: RightTab): PaneState {
   return { open: true, panes: [...state.panes, id].slice(-MAX_OPEN_PANES) };
 }
 
-/** Reads the persisted card list, falling back to the single tab the panel
- *  stored before it could show more than one. */
+/** Reads the persisted card list; falls back to the legacy single-tab key. */
 export function parseOpenPanes(saved: string | null, legacyTab: string | null): RightTab[] {
   if (saved) {
     try {

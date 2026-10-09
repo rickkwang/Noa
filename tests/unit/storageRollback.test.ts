@@ -40,9 +40,8 @@ describe('saveNotesBatch rollback', () => {
       saveNotesBatch(store, [makeNote('n1', 'new content'), makeNote('n2'), makeNote('n3')]),
     ).rejects.toThrow(/rolled back/);
 
-    // The pre-existing note must be restored, not deleted.
+    // Pre-existing notes are restored; newly created ones are removed.
     expect(store.map.get('note:n1')).toEqual(previous);
-    // The note that never existed before must be removed.
     expect(store.map.has('note:n2')).toBe(false);
     expect(store.map.has('note:n3')).toBe(false);
   });

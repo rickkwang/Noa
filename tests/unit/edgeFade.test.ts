@@ -3,12 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { attachEdgeFade, FADE_TRAVEL_PX } from '../../src/lib/edgeFade';
 
-/* The driver behind every scroll-edge fade in the app. It runs on nothing but
-   a scroller's numbers and an element's style, so it is exercised here against
-   fakes rather than a DOM — what matters is the contract the CSS depends on:
-   0 at rest (which is what makes "no fade until scrolled" free, with no second
-   rule anywhere), 1 past the travel distance, and one write per frame however
-   many scroll events arrive. */
+/* Scroll-edge fade driver, tested against fakes. Contract the CSS depends on:
+   0 at rest (so "no fade until scrolled" needs no extra rule), 1 past the
+   travel distance, and one write per frame however many scroll events fire. */
 
 type FakeStyle = {
   setProperty: (name: string, value: string) => void;
@@ -150,14 +147,12 @@ describe('the surfaces that consume it', () => {
 
   it('keeps every ramp on the same sampled smoothstep', async () => {
     const css = await readFile(cssPath, 'utf8');
-    // The curve, not the lengths: a linear ramp reads as two hard edges, and
-    // these alphas are what make it dissolve instead.
+    // Pins the curve, not the lengths: a linear ramp would read as two hard edges.
     for (const alpha of ['0.04', '0.16', '0.32', '0.5', '0.68', '0.84', '0.96']) {
       expect(css).toContain(`rgb(0 0 0 / ${alpha}) calc(var(--noa-fade-top, 0)`);
       expect(css).toContain(`rgb(0 0 0 / ${alpha}) calc(var(--noa-fade-left, 0)`);
     }
-    // The sidebar seam spends the same strength as opacity rather than height,
-    // but must still be gated on the tree having scrolled.
+    // Sidebar seam uses opacity, still gated on scroll.
     expect(css).toContain('opacity: var(--noa-fade-top, 0);');
   });
 });

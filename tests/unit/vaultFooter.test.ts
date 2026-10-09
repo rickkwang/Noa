@@ -17,8 +17,7 @@ describe('sidebar vault footer', () => {
     );
     expect(switchBody).toContain('await handleDisconnectFolder();');
     expect(switchBody).toContain('await connect();');
-    // Order matters: connect() layered on a live vault skips the dirty-edit and
-    // pending-structural-op guards and merges into a stale vault cache.
+    // Order matters: connect() on a live vault skips the dirty-edit guards and merges into a stale cache.
     expect(switchBody.indexOf('await handleDisconnectFolder();'))
       .toBeLessThan(switchBody.indexOf('await connect();'));
   });
@@ -26,13 +25,11 @@ describe('sidebar vault footer', () => {
   it('keeps the footer busy latch off the onboarding dialog trigger', async () => {
     const app = await readFile(appPath, 'utf8');
 
-    // vaultOnboardingBusy force-shows the onboarding modal; reusing it for the
-    // footer's own actions would pop that dialog mid-switch.
+    // Reusing vaultOnboardingBusy would force-show the onboarding modal mid-switch.
     expect(app).toContain('const [vaultActionBusy, setVaultActionBusy] = useState(false);');
     expect(app).toContain('|| vaultOnboardingBusy;');
     expect(app).toContain('busy: vaultActionBusy,');
-    // All three vault actions take the latch, or the menu stays clickable
-    // through whichever one skipped it.
+    // All three vault actions must take the latch.
     expect(app).toContain('void handleConnectVaultFolder();');
     expect(app).toContain('void handleSwitchVaultFolder();');
     expect(app).toContain('void handleDisconnectVaultFolder();');
@@ -49,9 +46,7 @@ describe('sidebar vault footer', () => {
 
     expect(footer).toContain('confirmSwitch');
     expect(footer).toContain('onClick={() => setConfirmSwitch(true)}');
-    // This prompt is the only consent gate for a disconnect that deletes every
-    // vault note and folder from the workspace (useNotes.clearWorkspaceAfterDisconnect),
-    // so it has to name that, not just the missing connection.
+    // The only consent gate for a disconnect that deletes vault notes, so it must name that.
     expect(footer).toContain('leave the workspace');
     expect(footer).toContain('tabs close');
     expect(footer).toContain('files on');
@@ -63,8 +58,7 @@ describe('sidebar vault footer', () => {
   it('keeps its Escape from collapsing the sidebar behind it', async () => {
     const footer = await readFile(footerPath, 'utf8');
 
-    // useSidebarPreview closes the hover preview on Escape from a window
-    // listener, which is later in the bubble than this document one.
+    // useSidebarPreview closes on Escape from a later-bubbling window listener.
     const escapeHandler = footer.slice(
       footer.indexOf('const handleEscape'),
       footer.indexOf("document.addEventListener('mousedown'")
@@ -75,9 +69,7 @@ describe('sidebar vault footer', () => {
   it('states workspace and vault as separate rows rather than one conflated label', async () => {
     const footer = await readFile(footerPath, 'utf8');
 
-    // The button label is the workspace — always present — and the vault is a
-    // distinct, optional row. Collapsing them hid the workspace whenever a
-    // vault was attached, even though most notes may not live in that folder.
+    // The label is always the workspace; collapsing it into the vault name hid the workspace.
     expect(footer).toContain('const label = workspaceName.trim()');
     expect(footer).not.toContain('vaultName ?? workspaceName');
     expect(footer).not.toContain('vaultName || workspaceName');
@@ -100,8 +92,7 @@ describe('sidebar vault footer', () => {
       readFile(fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url)), 'utf8'),
     ]);
 
-    // One row instead of three stacked bars: the panels have no header rows,
-    // Sidebar owns their open state and hands the toggles to the footer.
+    // One footer row: Sidebar owns the panels' open state and hands the toggles to the footer.
     expect(tagBrowser).not.toContain('aria-expanded');
     expect(calendar).not.toContain('aria-expanded');
     expect(footer).toContain('{actions}');
@@ -110,11 +101,9 @@ describe('sidebar vault footer', () => {
     expect(sidebar).toContain('aria-label="Tags"');
     expect(sidebar).toContain('className={footerIconButton(isCalendarOpen)}');
     expect(sidebar).toContain('className={footerIconButton(isTagsOpen)}');
-    // Open state swaps the colour class: ThemeInjector forces the /70 class
-    // with !important, so an inline colour on top of it never showed.
+    // Open state must swap the class: ThemeInjector's !important /70 class would beat an inline colour.
     expect(footer).toContain("${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70'}");
-    // Dividers: the footer always carries one; each panel only while mounted,
-    // so closed (zero-height) panels never stack a second line on it.
+    // Footer always has a divider; panels only while mounted, so closed panels don't stack a second line.
     expect(footer).toContain('shrink-0 border-t pl-1.5 pr-1 py-1');
     expect(calendar).toContain("${isBodyMounted ? 'border-t' : ''}");
     expect(tagBrowser).toContain("${isBodyMounted ? 'border-t' : ''}");
@@ -127,9 +116,7 @@ describe('sidebar vault footer', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    // The dark theme rewrites these classes by exact name, one rule per opacity
-    // step. A step with no rule keeps its light value — near-black text on the
-    // menu's near-black dark surface. /45 and /55 shipped that way once.
+    // Dark theme remaps these classes per opacity step; a step with no rule keeps near-black text on dark.
     const stepsIn = (source: string, pattern: RegExp) =>
       new Set([...source.matchAll(pattern)].map((match) => match[1]));
 

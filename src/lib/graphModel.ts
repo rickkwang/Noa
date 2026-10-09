@@ -42,9 +42,8 @@ export interface GraphModel {
   activeConnections: string[];
 }
 
-// ![[image.png]] embeds are extracted into note.links too. Obsidian's graph
-// hides attachment files by default ("Attachments" toggle off) \u2014 suppress
-// ghost nodes for these targets instead of painting one per embedded file.
+// ![[image.png]] embeds land in note.links too. Obsidian's graph hides attachments
+// by default, so no ghost nodes for them.
 const ATTACHMENT_EXT_RE = /\.(png|jpe?g|gif|webp|svg|bmp|ico|pdf|mp3|wav|m4a|ogg|flac|mp4|mov|mkv|webm|avi|zip|gz|7z|rar|doc|docx|xls|xlsx|ppt|pptx|csv|json)$/i;
 
 const edgeKeyFor = (sourceId: string, targetId: string): string =>
@@ -65,9 +64,8 @@ export function pruneGraphTagFilter(selected: string[], available: string[]): st
 
 export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOptions = {}): GraphModel {
   const showUnresolved = options.showUnresolved ?? true;
-  // Edges are resolved fresh from `links` via the shared Obsidian-aligned
-  // resolver — stored `linkRefs` are deliberately NOT read, so stale
-  // frontmatter refs can't produce edges Obsidian wouldn't draw.
+  // Edges resolve fresh from `links`; stored `linkRefs` are deliberately not read,
+  // so stale refs can't produce edges Obsidian wouldn't draw.
   const linkIndex = buildLinkIndex(notes, options.folders ?? []);
   const realNodes = notes.map((note): GraphModelNode => ({
     id: note.id,
@@ -88,8 +86,7 @@ export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOpti
       }
       if (!showUnresolved) return;
       if (ATTACHMENT_EXT_RE.test(rawTarget.trim())) return;
-      // Unresolved target → ghost node, deduped case-insensitively across the
-      // vault ([[foo]] and [[Foo.md]] are one ghost; a/Note and b/Note are two).
+      // Unresolved target → ghost node, deduped case-insensitively vault-wide.
       const key = normalizeLinkKey(rawTarget);
       if (!key) return;
       const ghostId = `ghost:${key}`;
@@ -115,8 +112,7 @@ export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOpti
     });
   });
 
-  // Ghosts participate in layout and degree counts like Obsidian's unresolved
-  // nodes; stats that mean "your notes" (totalNotes, isolated, ranked) skip them.
+  // Ghosts count toward layout and degree; "your notes" stats (totalNotes, isolated, ranked) skip them.
   const nodes: GraphModelNode[] = [...realNodes, ...ghostNodes.values()];
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const degreeMap = new Map(nodes.map((node) => [node.id, 0]));
@@ -200,9 +196,7 @@ export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOpti
   });
 
   if (options.hideIsolated) {
-    // Isolation is judged on the *visible* subgraph, not the full graph — a node
-    // whose neighbours are all filtered out is hidden too, so the toggle and
-    // stats.isolated can't contradict each other.
+    // Judge isolation on the visible subgraph so the toggle and stats.isolated agree.
     visibleNodes = visibleNodes.filter((node) =>
       (visibleDegreeMap.get(node.id) ?? 0) > 0 ||
       ((options.localDepth ?? 0) > 0 && node.id === options.activeNoteId)

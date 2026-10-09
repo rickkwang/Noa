@@ -125,12 +125,9 @@ describe('SearchEngine', () => {
     const engine = new SearchEngine([xssNote], false, false);
     const results = engine.search('"script"');
     const snippet = results[0]?.contentSnippet ?? '';
-    // The only complete HTML tags in snippets must be <b> or </b> markers.
-    // HighlightedText parses these as React nodes, so text like '<' and '>'
-    // are automatically escaped by React — <script> never executes in the DOM.
+    // Snippets may carry only <b>/</b> markers; anything else must not reach the DOM.
     expect(snippet).not.toContain('<script>');
     expect(snippet).not.toContain('</script>');
-    // No complete HTML tags other than the bold markers should appear.
     const unexpectedTags = snippet.match(/<(?!b>|\/b>)[^>]+>/g);
     expect(unexpectedTags).toBeNull();
   });

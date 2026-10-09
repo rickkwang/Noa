@@ -8,12 +8,8 @@ export interface OutgoingLinks {
 }
 
 /**
- * Single source of truth for a note's outgoing [[wikilinks]].
- *
- * `links` (extracted from content) is authoritative for which targets the
- * author currently references. Each target resolves to at most ONE note via
- * the shared Obsidian-aligned resolver, so this panel always agrees with the
- * knowledge graph's edges.
+ * Source of truth for a note's outgoing [[wikilinks]]: `links` is authoritative, and each target resolves to at most one
+ * note via the shared resolver, so this panel agrees with the graph's edges.
  */
 export function computeOutgoingLinks(
   activeNote: Note | undefined,

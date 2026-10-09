@@ -316,8 +316,7 @@ export default function App() {
     if (!isDataReady) return;
     const opened = handleOpenDailyNote(targetDate);
     // Only the explicit "today" actions (shortcut, palette, sidebar button)
-    // mean "I'm about to write". A calendar click passes a date and is often
-    // just a look back, so it keeps focus where the user put it.
+    // mean "I'm about to write". A calendar click (passes a date) is often just a look back, so it keeps focus.
     if (!opened || targetDate !== undefined) return;
     // Only a note this call created may be edited to make its template slot
     // usable (a space after an empty `- [ ]`). An existing note is focused
@@ -329,8 +328,7 @@ export default function App() {
     const note = notesRef.current.find((item) => item.id === task.noteId);
     if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     const toggled = handleToggleTask(task);
-    // Write through to the vault — a storage-only toggle would be reverted by
-    // the next disk-authoritative scan.
+    // Write through to the vault, or the next disk-authoritative scan reverts it.
     if (toggled) syncNoteOnUpdate(toggled.noteId, toggled.content);
   }, [blockVaultCacheWrite, handleToggleTask, syncNoteOnUpdate]);
 
@@ -338,8 +336,7 @@ export default function App() {
     const note = notesRef.current.find((item) => item.id === snapshot.noteId);
     if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     await restoreSnapshot(snapshot);
-    // Write through to the vault — a storage-only restore would be reverted by
-    // the next disk-authoritative scan.
+    // Write through to the vault, or the next disk-authoritative scan reverts it.
     syncNoteOnUpdate(snapshot.noteId, snapshot.content);
   }, [blockVaultCacheWrite, restoreSnapshot, syncNoteOnUpdate]);
 
@@ -387,17 +384,14 @@ export default function App() {
     syncFolderOnDelete,
   });
 
-  // Disconnecting is an explicit "no vault" choice — don't re-prompt onboarding.
+  // Explicit "no vault" choice: don't re-prompt onboarding.
   const handleDisconnectFolderAndDismissOnboarding = useCallback(async () => {
     await handleDisconnectFolder();
     dismissVaultOnboarding();
   }, [handleDisconnectFolder, dismissVaultOnboarding]);
 
-  // Switching vaults is disconnect-then-connect, never a bare connect():
-  // connect() on top of a live vault skips handleDisconnectFolder's guards
-  // (unflushed vaultDirty edits, pending structural ops) and would merge the new
-  // folder into a cache still holding the old vault's notes. A cancelled picker
-  // therefore leaves no vault attached — the footer confirms before calling this.
+  // Switching vaults is disconnect-then-connect, never a bare connect(): that would skip
+  // handleDisconnectFolder's guards and merge into the old vault's cache. A cancelled picker leaves no vault attached.
   const handleSwitchVaultFolder = useCallback(async () => {
     setVaultActionBusy(true);
     try {
@@ -530,13 +524,8 @@ export default function App() {
     return () => window.cancelAnimationFrame(frameId);
   }, [isFocusMode, isSearchOpen]);
 
-  // Keep the graph/tasks bundle out of the first render. If the panel was
-  // restored as open, mount it on the next frame so the app shell can paint
-  // first; if closed, mount it while idle. Once mounted, retain it across
-  // toggles to preserve panel state and make every open instantaneous.
-  // An expanded card stretches the column over the editor, so the column
-  // leaves the flow for it. Opening, closing, expanding and collapsing all
-  // snap.
+  // Keep the graph/tasks bundle out of the first render: mount next frame if restored open, else while idle.
+  // Once mounted it stays mounted, so every open is instant.
   const isPaneExpanded = expandedPane !== null && !isFocusMode;
   const isRightPanelFloating = isPaneExpanded;
   const rightPanelColumnWidth = isPaneExpanded
@@ -544,11 +533,8 @@ export default function App() {
     // leaves the sidebar with no edge.
     ? (isSidebarOpen ? 'calc(100vw - var(--noa-sidebar-width, 325px) - 1px)' : '100vw')
     : 'var(--noa-right-panel-width, 340px)';
-  // The column otherwise snaps, but a sidebar toggle can change its width
-  // (an expanded card runs to the sidebar's edge; a wide graph is capped
-  // against it), and that change has to ride the sidebar's own 500ms clock or
-  // the two edges part mid-motion. Set during render so the very commit that
-  // flips the sidebar already carries the transition.
+  // Column width changes with the sidebar toggle must ride the sidebar's 500ms clock or the edges part mid-motion.
+  // Set during render so the same commit that flips the sidebar carries the transition.
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);
   const [isSidebarMoving, setIsSidebarMoving] = useState(false);
   if (prevSidebarOpen !== isSidebarOpen) {
@@ -569,10 +555,7 @@ export default function App() {
       const frame = window.requestAnimationFrame(() => setHasMountedRightPanel(true));
       return () => window.cancelAnimationFrame(frame);
     }
-    // Restored closed: mount behind the zero-width mask while idle. Warming
-    // the module alone is not enough — lazy() still suspends once on mount,
-    // and React holds a shown fallback for ~300ms, so the first open showed
-    // "Loading panel…" instead of the cards.
+    // Restored closed: mount behind the zero-width mask while idle; warming the module alone still shows "Loading panel…" on first open.
     if (typeof window.requestIdleCallback !== 'function') {
       const timer = window.setTimeout(() => setHasMountedRightPanel(true), 2000);
       return () => window.clearTimeout(timer);
@@ -581,20 +564,9 @@ export default function App() {
     return () => window.cancelIdleCallback(id);
   }, [hasMountedRightPanel, isLoaded, isRightPanelOpen]);
 
-  // The translucent veil earns its entry animation only after the app has
-  // painted once. Its @starting-style exists so the layer grows with the edge
-  // that reveals it, but @starting-style fires on any first render — and a
-  // restart with the sidebar already open is one, so the veil swept the whole
-  // column open behind a sidebar that was never closed. Settings are read
-  // synchronously into the first render, so the veil can only appear in that
-  // first paint or later from something the user did.
-  //
-  // Both waits are load-bearing, and both were measured rather than guessed.
-  // isLoaded, because the app renders a skeleton first: an unguarded effect
-  // spends its frames there and the flag is already set by the time the shell
-  // exists. Then two frames rather than one, because this effect can still run
-  // before the browser paints the commit that created the veil, which puts a
-  // single rAF inside that same paint.
+  // The veil's entry animation (@starting-style) must not fire on the first render,
+  // or a restart with the sidebar open would sweep the column open. Wait for isLoaded
+  // (past the skeleton) and two frames (one rAF can land inside the commit's paint).
   const [hasPaintedSidebarMaterial, setHasPaintedSidebarMaterial] = useState(false);
   useEffect(() => {
     if (!isLoaded) return;
@@ -639,11 +611,7 @@ export default function App() {
 
   const handleTabChange = useCallback((id: string) => {
     if (id === activeNoteId) return;
-    // Switch immediately, then persist the outgoing note's pending edits in the
-    // background. The debounce-save timers in useNotes are independent of the
-    // editor unmount, so nothing is lost by not awaiting — and awaiting an
-    // IndexedDB write here is what made tab switches stutter whenever a save
-    // was still pending (i.e. right after typing).
+    // Switch immediately and persist the outgoing note in the background; awaiting IndexedDB here stutters tab switches.
     setActiveNoteId(id);
     void flushAllPendingSaves().catch(err => {
       console.error('[Noa] Failed to flush saves on tab change:', err);
@@ -659,9 +627,7 @@ export default function App() {
   const paneBadges = usePaneBadges(notes, folders, activeNoteId, globalTasks);
   const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
 
-  // Detect orphan activeNoteId: the note was deleted in another tab/window.
-  // Without this, Editor.onUpdate fires into a null target and edits are
-  // silently dropped. Clear the selection and surface a toast.
+  // Orphan activeNoteId (deleted in another window): clear selection and toast, or edits drop silently.
   useEffect(() => {
     if (!isLoaded) return;
     if (activeNoteId && !activeNote) {
@@ -719,10 +685,7 @@ export default function App() {
   }, [handleOpenDailyNoteGuarded, isMobile, setIsSidebarOpen]);
 
   const handleSidebarSelectNote = useCallback((id: string) => {
-    // Switch + arm the entrance synchronously so the editor build and tab
-    // animation aren't gated on an IndexedDB write; flush the outgoing note's
-    // pending saves in the background (timers are independent of unmount, so
-    // nothing is lost).
+    // Switch synchronously so the editor and tab animation aren't gated on IndexedDB; flush outgoing saves in background.
     openTabForNote(id, true);
     setActiveNoteId(id);
     if (isMobile) setIsSidebarOpen(false);
@@ -785,19 +748,11 @@ export default function App() {
     );
   }
 
-  // The docked sidebar collapses under a mask instead of sliding: its own box
-  // shrinks over stationary content. True means the mask is closed — the state
-  // both the shrinking edge and the content's dissolve are driven from.
+  // Docked sidebar collapses under a mask (its box shrinks over stationary content). True = mask closed.
   const isSidebarContentMasked = !isMobile && !isPromotingSidebarPreview && !isSidebarPreviewOpen && (isFocusMode || !isSidebarOpen);
 
-  // True exactly when the docked sidebar's own width is the thing moving. The
-  // titlebar's hairline starts at that edge but is a stylesheet rule on a
-  // pseudo-element, so it cannot read the same inline conditions the boxes on
-  // that edge do — it gets this instead. Stated as an opt-in rather than a list
-  // of exclusions: every other way the edge moves puts it somewhere in one
-  // frame (the preview appears at full width, promotion and the drag run their
-  // own clocks), and a line that eases 325px behind an edge that is already
-  // there is the whole defect. A state added later gets the snap by default.
+  // True only when the docked sidebar's own width is moving. Opt-in by design: a state added later
+  // snaps by default, since other edge moves would otherwise make the titlebar hairline lag behind the edge.
   const isSidebarDockMotionLive = !isMobile
     && !isSidebarPreviewOpen
     && !isPromotingSidebarPreview
@@ -820,10 +775,7 @@ export default function App() {
         '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
           ? 'var(--noa-sidebar-width, 325px)'
           : '0px',
-        // Never transitioned. The variable lands at its target immediately and
-        // the translucent veils in index.css animate transform from it, which
-        // the compositor can run on its own; animating the property itself
-        // re-invalidated this element's whole subtree on every frame.
+        // Not transitioned: veils in index.css animate transform from this variable on the compositor instead.
         transition: 'none',
       } as React.CSSProperties}
     >
@@ -842,10 +794,7 @@ export default function App() {
             width: '1px',
             backgroundColor: 'var(--divider-subtle, #E6E2DA)',
             opacity: isSidebarOpen ? 1 : 0,
-            // A direct toggle follows the sliding sidebar edge. During preview
-            // promotion the divider is already at its final edge and remains
-            // fixed while the editor layout catches up, fading in as the
-            // preview's shadow settles rather than landing on the first frame.
+            // Direct toggle follows the sidebar edge; during preview promotion it stays fixed and fades in with the shadow.
             transition: isPromotingSidebarPreview
               ? `opacity ${SIDEBAR_PROMOTION_EDGE_CLOCK}`
               : isDraggingSidebar
@@ -873,15 +822,8 @@ export default function App() {
               ? 'var(--bg-primary, #FCFCFB)'
               : 'var(--bg-sidebar, #F4F4F2)',
             opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
-            // Promotion eases the preview's elevation away on the spacer's clock
-            // — shadow, corner and floor colour — so the floating panel settles
-            // into the dock as one motion instead of snapping flat on the first
-            // frame while the editor is still only starting to move.
-            // isSidebarPreviewSettling for the same reason the container and its
-            // content layer carry it: leaving the preview drops this surface
-            // from the preview's full column to 0 in one commit, and without a
-            // frame of suppression it plays a 500ms collapse of a column the
-            // user already dismissed — behind the preview that is fading out.
+            // Promotion eases the preview's elevation on the spacer's clock so it settles into the dock.
+            // isSidebarPreviewSettling suppresses the 500ms collapse this surface would otherwise play on dismiss.
             transition: isSidebarPreviewOpen
               ? undefined
               : isPromotingSidebarPreview
@@ -918,11 +860,7 @@ export default function App() {
           setSearchQuery('');
           setIsSearchOpen(false);
         }}
-        // Losing focus must not destroy the search. Blur fires on mousedown,
-        // before click — tearing the results down there would unmount the row
-        // the user is clicking and swallow the click. An active query keeps the
-        // field open; clearing stays with the explicit exits (Escape, the clear
-        // button, the search icon, the sidebar's close button).
+        // Blur fires on mousedown, before click; tearing results down there would swallow the click. Only explicit exits clear the search.
         onSearchBlur={() => {
           if (searchQuery) return;
           setIsSearchOpen(false);
@@ -964,10 +902,7 @@ export default function App() {
           onTransitionCancel={finishSidebarDockMotion}
           className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
-            // The docked sidebar never moves. Its own width is the mask: the
-            // content sits in a fixed-width child that stays put at the app's
-            // left edge while this box's right edge — the separator's track —
-            // travels left across it and clips it away.
+            // Docked sidebar never moves: its width is the mask, clipping a fixed-width child at the left edge.
             width: isMobile
               ? '80%'
               : isSidebarContentMasked ? '0px' : 'var(--noa-sidebar-width, 325px)',
@@ -995,16 +930,9 @@ export default function App() {
             style={{
               width: isMobile ? '80vw' : 'var(--noa-sidebar-width, 325px)',
               maxWidth: isMobile ? '320px' : undefined,
-              // The edge alone would hard-cut whatever it crosses. Dimming the
-              // whole column on a slightly shorter curve means the part still
-              // ahead of the edge is already dissolving, and the last sliver is
-              // gone before the edge reaches it.
+              // Dim on a slightly shorter curve so content dissolves before the edge reaches it.
               opacity: isSidebarContentMasked ? 0 : 1,
-              // Width matters here only when the column is resized, not when it
-              // collapses. A keyboard nudge or a viewport clamp moves the same
-              // variable outside a drag, and the masking edge eases to it — so
-              // the content has to ease with it or spend the whole motion
-              // clipped short of its own box.
+              // Width eases with the variable too, or content spends the motion clipped short of its box.
               transition: isMobile
                 || isDraggingSidebar
                 || isSidebarPreviewOpen
@@ -1062,10 +990,7 @@ export default function App() {
                   },
                 }}
                 onImportNote={handleImportNoteGuarded}
-                // Both of these replace the file tree with a result list, so
-                // the query behind it has to be on screen. Setting the query
-                // without opening the field made the sidebar look like it
-                // changed on its own, with no way to read or adjust the filter.
+                // Both replace the file tree with a result list, so the query must be visible.
                 onSearchTag={(tag) => {
                   setSearchQuery(`tag:${tag}`);
                   setIsSearchOpen(true);
@@ -1171,18 +1096,8 @@ export default function App() {
 
         {/* Right Panel — always rendered for slide animation */}
         <div
-          // Exactly one position class: with both `relative` and `absolute`
-          // on the element, Tailwind's source order let `relative` win, so the
-          // mobile overlay stayed in flow and squeezed the editor to ~80px.
-          // Desktop: lifted over the 44px titlebar so the cards run to the top
-          // of the window. Focus mode has no titlebar to lift over.
-          //
-          // Expanded: out of flow and stretched over the editor's area, up to
-          // the sidebar's edge. Out of flow so the editor underneath keeps its
-          // own width instead of being squeezed to nothing and laid out again
-          // on every frame of the stretch. With the sidebar closed the titlebar
-          // holds the traffic lights and the sidebar toggle, so the column
-          // stays below it rather than lifting over them.
+          // Exactly one position class: `relative` + `absolute` together let Tailwind's source order keep the overlay in flow.
+          // Desktop lifts over the 44px titlebar; expanded goes out of flow over the editor (stays below the titlebar when the sidebar is closed).
           className={`flex justify-end shrink-0 min-h-0 overflow-hidden ${
             isMobile
               ? 'absolute inset-y-0 right-0 z-40 shadow-xl'
@@ -1209,10 +1124,7 @@ export default function App() {
                 ? `width ${RIGHT_PANEL_TOGGLE_CLOCK}, top ${RIGHT_PANEL_TOGGLE_CLOCK}`
                 : 'none',
             minWidth: 0,
-            // The column is lifted over the titlebar, which is a window drag
-            // region. Electron resolves drag regions by geometry, not z-order:
-            // without this the titlebar underneath swallows every click on the
-            // top 44px of the cards.
+            // Electron resolves drag regions by geometry, not z-order: without this lift the titlebar swallows clicks on the cards' top 44px.
             WebkitAppRegion: 'no-drag',
           } as React.CSSProperties}
         >

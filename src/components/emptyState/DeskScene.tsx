@@ -24,8 +24,7 @@ const L: Legend = {
   f: 'lotus', Y: 'buttercup',
 };
 
-// A slim open book seen from just above: pages dipping into the gutter, a
-// thin cover under them, a ribbon marker trailing onto the desk.
+// A slim open book from above: pages dip into the gutter over a thin cover; a ribbon trails onto the desk.
 const BOOK = [
   '..PPPPPPPP..PPPPPPPP..',
   '.PPPPPPPPPuuPPPPPPPPP.',
@@ -35,7 +34,7 @@ const BOOK = [
 ];
 const BOOK_X = 56;
 const BOOK_Y = TOP - 4;
-const GUTTER = BOOK_X + 11; // the right-hand of the two gutter columns
+const GUTTER = BOOK_X + 11; // right-hand of the two gutter columns
 const MUG = ['mmmmm..', 'MMMMMMM', 'MMMMM.M', 'MMMMM.M', 'MMMMMM.', '.MMM...'];
 const BOOKS = ['...111111111..', '...1pppppppp..', '.2222222222...', '.2pppppppppp..', '..33333333333.', '..3pppppppppp.'];
 const SHADE = ['..SSSS..', '.SSSSSS.', 'SSSSSSSS', 'ssssssss', '...yy...'];
@@ -194,7 +193,7 @@ export default function DeskScene({ tier, phase }: SceneProps) {
   const layers = useMemo(() => buildLayers(tier), [tier]);
   const { isLit, toggle } = useLamps(phase);
   const [bloom, setBloom] = useState(-1);
-  // Page numbers showing on each side; a turn reveals the next spread.
+  // Page numbers on each side; a turn reveals the next spread.
   const [spread, setSpread] = useState({ left: 0, right: 1 });
   const turning = useRef(false);
   const writing = useMemo(() => {
@@ -207,8 +206,7 @@ export default function DeskScene({ tier, phase }: SceneProps) {
   const onBook = () => {
     if (turning.current || !roomFxRef.current) return;
     turning.current = true;
-    // The page lifting off the right uncovers the next right-hand page at once;
-    // its back lands on the left only when the turn finishes.
+    // The lifting page reveals the next right-hand page at once; its back lands on the left only when the turn finishes.
     setSpread((sp) => ({ ...sp, right: sp.right + 2 }));
     turnPage(roomFxRef.current, () => {
       setSpread((sp) => ({ ...sp, left: sp.left + 2 }));

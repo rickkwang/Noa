@@ -9,10 +9,8 @@ interface ScrollTimers {
 }
 
 /**
- * Tags whichever element is scrolling with `.is-scrolling` (then
- * `.is-scrolling-out` after an idle delay) so the overlay scrollbar thumb in
- * index.css fades in and out. Mount once at the app root: scroll events don't
- * bubble, but a capturing listener on document sees them for every element.
+ * Tags the scrolling element with `.is-scrolling` (then `.is-scrolling-out`) for the overlay scrollbar.
+ * Mount once at the root: scroll doesn't bubble, so a capturing listener on document is needed.
  */
 export function useGlobalScrollingClass() {
   useEffect(() => {

@@ -1,19 +1,14 @@
 // Pure policy for renderer permission checks and requests.
 // Kept free of Electron imports so it can be unit-tested directly.
 
-// The window only ever loads Noa's own local bundle, but a blanket grant would
-// still hand camera, microphone, geolocation and friends to anything that
-// managed to run script inside it. Allow exactly what the app calls, deny the
-// rest — the renderer needs no other capability.
+// Default-deny: anything not listed here (camera, mic, geolocation, ...) is refused,
+// since the renderer needs no other capability.
 //
 // fileSystem
-//   Vault and backup directory handles. The packaged app runs from a file://
-//   origin, which Chromium treats as opaque and so cannot persist File System
-//   Access grants across relaunches — without an affirmative grant the restored
-//   handle reads back as 'prompt' on every launch, the bootstrap scan fails with
-//   NotAllowedError, and the "reconnect vault" error surfaces each time.
-//   Directories are only ever obtained through the native picker, so granting
-//   this re-authorizes a path the user already chose; it cannot reach elsewhere.
+//   Vault and backup directory handles. file:// is an opaque origin, so Chromium won't
+//   persist File System Access grants across relaunches; without this grant the restored
+//   handle reads 'prompt' and the bootstrap scan fails with NotAllowedError. Handles only
+//   come from the native picker, so this re-authorizes a path the user already chose.
 //
 // clipboard-sanitized-write
 //   navigator.clipboard.writeText for the preview pane's copy-code button.

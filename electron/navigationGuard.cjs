@@ -6,10 +6,8 @@ const path = require('path');
 /**
  * Is this file: URL inside the packaged bundle directory?
  *
- * bundleDir arrives as a raw filesystem path while pathname is percent-encoded,
- * so decode before comparing or a bundle installed under a path containing a
- * space ("/Applications/My App.app/...") never matches its own %20 form.
- * normalize() then collapses any dot segments the URL parser left behind.
+ * pathname is percent-encoded but bundleDir is a raw path, so decode first or a
+ * bundle under a path with spaces ("/Applications/My App.app/...") never matches.
  *
  * @param {URL} parsed
  * @param {string | undefined} bundleDir
@@ -29,8 +27,7 @@ function isInsideBundleDir(parsed, bundleDir) {
 
   const target = path.posix.normalize(decoded);
   const root = path.posix.normalize(bundleDir).replace(/\/$/, '');
-  // A root-normalized bundleDir ('/') would empty the prefix and match
-  // every absolute path; fail closed instead.
+  // A bundleDir of '/' would match every absolute path; fail closed.
   if (!root) return false;
   return target === root || target.startsWith(`${root}/`);
 }
@@ -58,9 +55,7 @@ function resolveNavigationPolicy(targetUrl, { isDev, bundleDir }) {
       return 'allow';
     }
   } else if (parsed.protocol === 'file:') {
-    // Packaged app loads the bundle via loadFile. Only the bundle itself is
-    // in-app navigable — any other local file would be rendered in a window
-    // that carries the preload bridge.
+    // Only the packaged bundle is in-app navigable; other local files would load with the preload bridge.
     return isInsideBundleDir(parsed, bundleDir) ? 'allow' : 'deny';
   }
 

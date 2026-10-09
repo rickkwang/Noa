@@ -19,8 +19,7 @@ export const RIGHT_TAB_LABELS: Record<RightTab, string> = {
   properties: 'Properties',
 };
 
-/** Counts shown on the card switches. Computed outside the lazy panel so the
- *  titlebar can show them before the panel chunk has loaded. */
+/** Counts on the card switches; computed outside the lazy panel so the titlebar can show them before it loads. */
 export interface PaneBadges {
   backlinks: number;
   outgoing: number;

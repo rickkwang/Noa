@@ -174,7 +174,7 @@ describe('useNotes handleImportData attachment rollback', () => {
     await expect(api.handleImportData([note])).rejects.toThrow();
 
     expect(storageMock.saveNotes).toHaveBeenCalledOnce();
-    // Existing blobs are restored, never removed by failed-import cleanup.
+    // Pre-existing blobs must never be removed by failed-import cleanup.
     expect(deleteAttachmentBlob).toHaveBeenCalledWith('brand-new');
     expect(deleteAttachmentBlob).not.toHaveBeenCalledWith('pre-existing');
   });
@@ -215,17 +215,15 @@ describe('useNotes handleImportData attachment rollback', () => {
 
     await api.handleImportData([vaultNote]);
 
-    // The mirror cache row must keep origin: 'vault' through normalize/persist —
-    // otherwise on reload it would look Noa-owned and lose write-through.
+    // origin must survive normalize/persist, or the row reloads as Noa-owned and loses write-through.
     const savedArgs = saveNotes.mock.calls as unknown as Array<[Array<{ id: string; origin?: string }>]>;
     const persisted = savedArgs[0]?.[0]?.find((n) => n.id === 'n1');
     expect(persisted?.origin).toBe('vault');
   });
 });
 
-// Like createReactHarness, but useEffect actually runs effects with React-like
-// dependency comparison — needed by flows that read notesRef/foldersRef
-// (synced via effects) instead of functional setState.
+// Like createReactHarness, but runs effects with dependency comparison, for flows that read
+// refs synced via effects.
 function createEffectHarness({ deferState = false } = {}) {
   const states: any[] = [];
   const refs: Array<{ current: unknown }> = [];
@@ -579,8 +577,7 @@ describe('useNotes vault conflict acknowledgement', () => {
     api = useNotes();
     storageMock.saveNote.mockClear();
 
-    // Queue C in React without committing the updater. The synchronous latest
-    // ref must still let the B failure callback persist C/base=B.
+    // The synchronous latest ref must let the B failure callback persist C with base=B.
     api.handleUpdateNote(dirty.id, 'version C');
     await api.advanceVaultNoteBaseline(dirty.id, 'version B');
 
@@ -798,8 +795,7 @@ describe('useNotes clearWorkspaceAfterDisconnect attachment pruning', () => {
 
     const storageMock = baseStorageMock();
     storageMock.getNotes = vi.fn(async () => [vaultNote('v1'), vaultNote('v2'), noaNote]);
-    // Simulate the pre-deletion-snapshot race: per-note blob deletion sees the
-    // sibling vault note still referencing the shared blob and skips it.
+    // Per-note blob deletion sees the sibling vault note still referencing the shared blob and skips it.
     storageMock.deleteAttachmentBlobsByNoteId = vi.fn(async () => undefined);
     const harness = createEffectHarness();
 

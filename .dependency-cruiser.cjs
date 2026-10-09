@@ -1,8 +1,7 @@
 // dependency-cruiser configuration.
 //
-// AST-level enforcement of the App.tsx → hooks → services/lib layering rule.
-// AST resolution is what makes this trustworthy: aliased imports, re-exports,
-// and dynamic import() all get caught, none of which a source-text scan sees.
+// AST-level enforcement of the App.tsx → hooks → services/lib layering. AST resolution
+// catches aliased imports, re-exports and dynamic import(), which a text scan would miss.
 //
 // Key rules (matching CLAUDE.md):
 //   1. App.tsx must NOT import directly from:
@@ -37,7 +36,7 @@ module.exports = {
         ],
       },
       comment:
-        'App.tsx must not import storage/sync/data-integrity modules directly — go through hooks (useFileSync, useDataTransfer, useAutoBackup). This is the CLAUDE.md hard rule, previously enforced by a string-`includes` script that aliases could bypass.',
+        'App.tsx must not import storage/sync/data-integrity modules directly — go through hooks (useFileSync, useDataTransfer, useAutoBackup). This is the CLAUDE.md hard rule.',
     },
 
     // ─── Override recommended's not-to-unresolvable to allow type-only and
@@ -110,9 +109,6 @@ module.exports = {
     enhancedResolveOptions: {
       extensions: ['.ts', '.tsx', '.cjs', '.mjs', '.js', '.jsx'],
     },
-    // Exclude dynamic imports and type-only virtual modules from resolution
-    // checks — these are valid at runtime but dependency-cruiser's static
-    // analysis flags them as unresolvable.
     exoticRequireStrings: [],
   },
 };

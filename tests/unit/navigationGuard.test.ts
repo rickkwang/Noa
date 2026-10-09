@@ -19,7 +19,7 @@ describe('resolveNavigationPolicy', () => {
   it('denies local files outside the bundle', () => {
     expect(resolveNavigationPolicy('file:///etc/passwd', packaged)).toBe('deny');
     expect(resolveNavigationPolicy('file:///Users/me/.ssh/id_rsa', packaged)).toBe('deny');
-    // A sibling directory that merely shares the bundle's prefix.
+    // Sibling directory sharing the bundle's prefix.
     expect(resolveNavigationPolicy(`file://${BUNDLE_DIR}-evil/index.html`, packaged)).toBe('deny');
   });
 
@@ -38,16 +38,16 @@ describe('resolveNavigationPolicy', () => {
 
   it('denies file urls carrying a host, and denies all file urls without a bundleDir', () => {
     expect(resolveNavigationPolicy(`file://evil.com${BUNDLE_DIR}/index.html`, packaged)).toBe('deny');
-    // Fail closed: a caller that forgets bundleDir must not open the filesystem.
+    // Fail closed when bundleDir is missing.
     expect(resolveNavigationPolicy(`file://${BUNDLE_DIR}/index.html`, { isDev: false })).toBe('deny');
-    // A bundleDir of '/' would normalize to an empty prefix; it must not match everything.
+    // A '/' bundleDir normalizes to an empty prefix and must not match everything.
     expect(resolveNavigationPolicy('file:///etc/passwd', { isDev: false, bundleDir: '/' })).toBe('deny');
   });
 
   it('allows the dev server origin only in dev mode', () => {
     expect(resolveNavigationPolicy('http://127.0.0.1:3000/', { isDev: true })).toBe('allow');
     expect(resolveNavigationPolicy('http://localhost:3000/notes', { isDev: true })).toBe('allow');
-    // In production a localhost url is just an external link.
+    // In production, localhost is an ordinary external link.
     expect(resolveNavigationPolicy('http://127.0.0.1:3000/', packaged)).toBe('open-external');
   });
 

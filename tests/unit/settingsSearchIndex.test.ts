@@ -17,8 +17,7 @@ async function renderedSettingLabels(): Promise<string[]> {
   const sources = await Promise.all(
     SECTION_SOURCES.map((rel) => readFile(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')),
   );
-  // <SettingItem label="X" …> on one line, and the multi-line form where label
-  // sits on its own line under the tag.
+  // Matches both the one-line and multi-line <SettingItem label="…"> forms.
   const labels = sources.flatMap((source) => [
     ...source.matchAll(/<SettingItem[\s\n]+[^>]*?label="([^"]+)"/g),
   ].map((match) => match[1]));
@@ -27,9 +26,7 @@ async function renderedSettingLabels(): Promise<string[]> {
 
 describe('settings search index', () => {
   it('covers every setting the panel renders, and nothing it does not', async () => {
-    // A hand-written index goes stale silently; this is the guard. Only the
-    // active tab is ever mounted, so the index cannot be built from the DOM —
-    // it has to be checked against the sources instead.
+    // Only the active tab mounts, so check the index against the sources, not the DOM.
     // The shortcut table is indexed but is not a SettingItem.
     const anchoredSections = ['Keyboard Shortcuts'];
     const rendered = [...(await renderedSettingLabels()), ...anchoredSections].sort();
@@ -50,12 +47,12 @@ describe('settings search index', () => {
     expect(searchSettings('   ')).toHaveLength(0);
 
     expect(searchSettings('line height').map((e) => e.label)).toContain('Line Height');
-    // Section name: someone typing "typography" wants everything under it.
+    // Section names match too.
     expect(searchSettings('typography').map((e) => e.label)).toEqual(['Font Family', 'Font Size']);
-    // Keyword: the word a person actually types is not in the label.
+    // Keywords match even when absent from the label.
     expect(searchSettings('dark').map((e) => e.label)).toContain('Base Theme');
     expect(searchSettings('obsidian').map((e) => e.label)).toContain('Import Vault Folder');
-    // Keywords hold upper-case tokens; a person types them lower case.
+    // Keyword tokens are upper-case in the index; matching is case-insensitive.
     expect(searchSettings('yyyy').map((e) => e.label)).toContain('Date Format');
   });
 });

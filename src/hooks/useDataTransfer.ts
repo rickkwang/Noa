@@ -271,10 +271,7 @@ async function buildVaultImportPayload(
       } catch {
         continue;
       }
-      // Same contract as the vault-connect scan path: frontmatter is split off
-      // into rawFrontmatter (verbatim, for round-trip write-back) instead of
-      // leaking into the editor body — otherwise a later vault sync would stack
-      // a second frontmatter block on top of the original one.
+      // As in the vault-connect scan path: split frontmatter into rawFrontmatter, or a later sync stacks a second block.
       const isMarkdown = /\.(md|markdown|mdown)$/i.test(file.name);
       const { rawBlock, body, eol } = isMarkdown
         ? splitFrontmatter(raw)
@@ -504,9 +501,7 @@ export function useDataTransfer({
         `# ${workspaceName} Vault${VAULT_README_BODY}`
       );
 
-      // Used filenames per archive directory — duplicate titles must not
-      // overwrite each other's entries (keyed by folder path so two folder
-      // records sharing a name still land in one namespace).
+      // Per-directory filename registry so duplicate titles don't overwrite each other (keyed by folder path).
       const usedNamesByDir = new Map<string, Set<string>>();
       const usedNamesFor = (dirKey: string): Set<string> => {
         let used = usedNamesByDir.get(dirKey);

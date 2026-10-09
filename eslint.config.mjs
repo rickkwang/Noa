@@ -1,13 +1,7 @@
-// ESLint flat config. Composes:
-//   - @eslint/js recommended baseline
-//   - typescript-eslint recommended (type-aware rules kept off for speed)
-//   - eslint-plugin-react-hooks (rules-of-hooks + exhaustive-deps)
-//   - eslint-plugin-import (basic hygiene; no path alias resolution to avoid
-//     extra config overhead — TS already checks imports)
+// ESLint flat config: @eslint/js + typescript-eslint recommended (type-aware rules off for speed),
+// react-hooks, and basic eslint-plugin-import hygiene (no path alias resolution; TS checks imports).
 //
-// Strategy: error on correctness rules that catch real bugs (hooks deps,
-// hooks rules), warn on style/noise rules so the codebase converges without
-// a single big-bang cleanup.
+// Correctness rules (hooks) are errors; style/noise rules are warnings so the codebase converges gradually.
 
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -25,8 +19,7 @@ export default tseslint.config(
       'test-results/',
       'node_modules/',
       '.worktrees/',
-      // Agent tooling — skill/harness scripts that ship with their own runtime
-      // assumptions (bare Node globals, no project tsconfig). Not app code.
+      // Agent tooling: ships its own runtime assumptions (bare Node globals, no project tsconfig).
       '.claude/',
       '.agents/',
       'docs/superpowers/',
@@ -59,7 +52,7 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
 
-      // ─── TypeScript (noise — warn to enable gradual cleanup) ──
+      // ─── TypeScript (noise: warn for gradual cleanup) ──
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -72,8 +65,7 @@ export default tseslint.config(
       '@typescript-eslint/no-empty-interface': 'off',
       '@typescript-eslint/ban-types': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
-      // TS already checks undefined identifiers; no-undef produces false
-      // positives on browser/Node globals (URL, fetch, setTimeout, console).
+      // TS already checks undefined identifiers; no-undef false-positives on browser/Node globals.
       'no-undef': 'off',
 
       // ─── General hygiene ──────────────────────────────────────
@@ -153,9 +145,7 @@ export default tseslint.config(
     },
   },
 
-  // Tests — relax noise rules. Hooks linting in test scaffolds (especially
-  // hook-regression specs that intentionally call hooks in loops/Effects) is
-  // more noisy than valuable; the production code is already covered.
+  // Tests: relax noise rules. Hook-regression specs intentionally call hooks in loops/effects.
   {
     files: ['tests/**/*.{ts,tsx}'],
     languageOptions: {

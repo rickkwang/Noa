@@ -197,9 +197,7 @@ export function useVaultOperations({
           handedOffOperationKeys.add(operation.key);
         });
         const canceledOperations = [...cancel];
-        // Mirror mode: only a vault folder has a directory on disk to remove.
-        // A Noa-owned folder never touched the vault, and its name could match
-        // an unrelated vault directory — so never run the disk cleanup for it.
+        // Mirror mode: only vault folders have a disk directory; never run disk cleanup for a Noa-owned folder (its name could match an unrelated vault dir).
         if (deletedFolder && folderOperation && foldersDeleted) {
           syncFolderOnDelete(deletedFolder, folderOperation);
           handedOffOperationKeys.add(folderOperation.key);

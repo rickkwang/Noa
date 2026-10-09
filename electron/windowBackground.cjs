@@ -1,9 +1,6 @@
-// Validates the background color the renderer asks the native window to adopt.
-// The native BrowserWindow backgroundColor is what macOS paints at the window
-// edges while renderer frames lag during live resize — it must track the app
-// theme or dark mode shows light "ghost" bands when the window is resized.
-// Only plain 6-digit hex is accepted so a compromised renderer can't smuggle
-// alpha (transparent windows change compositing) or arbitrary strings.
+// Validates the background colour the renderer asks the native window to adopt. It must track
+// the app theme, or light "ghost" bands show during live resize. Only plain 6-digit hex is
+// accepted: alpha changes window compositing, and a compromised renderer shouldn't pass arbitrary strings.
 function resolveBackgroundColor(color) {
   if (typeof color !== 'string') return null;
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null;

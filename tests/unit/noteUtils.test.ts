@@ -83,7 +83,7 @@ describe('resolveLinkTarget', () => {
       note({ id: 'zzz', title: 'A', folder: 'f2' }), // Archive
       note({ id: 'aaa', title: 'A', folder: 'f1' }), // Projects
     ], folders);
-    // 'archive' < 'projects' → the Archive note wins independent of input order.
+    // 'archive' < 'projects', so the Archive note wins regardless of input order.
     expect(resolveLinkTarget('A', index)).toBe('zzz');
   });
 
@@ -94,9 +94,7 @@ describe('resolveLinkTarget', () => {
   });
 
   it('resolves ./relative paths against the source note folder', () => {
-    // A markdown link "./Excerpts/Note.md" written in a note that lives in
-    // "Projects" points at the "Projects/Sub"-style nested folder... here:
-    // source folder "Projects", target folder "Projects/Sub".
+    // Source folder "Projects" + "./Sub/Note.md" resolves to "Projects/Sub".
     const index = buildLinkIndex([note({ id: 's', title: 'Note', folder: 'f3' })], folders);
     expect(resolveLinkTarget('./Sub/Note.md', index, 'f1')).toBe('s');
     // Without source context the explicit-relative path cannot resolve.
@@ -107,8 +105,7 @@ describe('resolveLinkTarget', () => {
     const index = buildLinkIndex([
       note({ id: 'nested', title: 'Note', folder: 'f3' }), // Projects/Sub
     ], folders);
-    // "Sub/Note" matches no vault-absolute folder named "Sub" → falls back to
-    // source-relative: Projects + Sub = Projects/Sub.
+    // No vault-absolute "Sub" folder, so it falls back to source-relative Projects/Sub.
     expect(resolveLinkTarget('Sub/Note.md', index, 'f1')).toBe('nested');
   });
 
@@ -146,7 +143,7 @@ describe('recomputeLinkRefsForNotes', () => {
     ];
     const withRefs = recomputeLinkRefsForNotes(notes, [{ id: 'f1', name: 'Projects' }]);
     const a = withRefs.find((n) => n.id === 'a');
-    // Duplicate title "Dup": the root-level note wins; the other id is NOT added.
+    // Duplicate title: the root-level note wins and the other id is not added.
     expect(a?.linkRefs).toEqual(['b', 'd1']);
   });
 
@@ -222,7 +219,7 @@ describe('extractLinks', () => {
   });
 
   it('strips table-escaped alias pipes', () => {
-    // Inside Markdown tables Obsidian writes [[Note\|display]].
+    // Table-escaped pipe form, as Obsidian writes it inside tables.
     expect(extractLinks('| [[Real Note\\|shown]] |')).toEqual(['Real Note']);
   });
 
@@ -253,7 +250,7 @@ describe('extractLinks', () => {
 
   it('percent-decodes markdown link targets, tolerating malformed escapes', () => {
     expect(extractLinks('[Journal](./Journal%20📖.md)')).toEqual(['./Journal 📖.md']);
-    // "%泄" is not a valid escape — left as-is instead of throwing.
+    // Malformed escape ("%泄") is left as-is rather than throwing.
     expect(extractLinks('[x](A%20B%泄露.md)')).toEqual(['A B%泄露.md']);
   });
 
@@ -268,8 +265,7 @@ describe('extractLinks', () => {
 
 describe('extractTags', () => {
   it('ignores hashtags glued together without whitespace (requires boundary)', () => {
-    // By design: adjacent hashtags like "#tag1#tag2" are not split — a hashtag
-    // must be preceded by start-of-string or whitespace to count.
+    // A hashtag needs start-of-string or whitespace before it, so "#tag1#tag2" is not split.
     expect(extractTags('#tag1#tag2')).toEqual([]);
   });
 

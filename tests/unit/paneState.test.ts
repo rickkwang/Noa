@@ -13,7 +13,7 @@ describe('right-column pane state', () => {
   it('closes one card, and collapses the column when the last one closes', () => {
     const one = togglePane({ open: true, panes: ['tasks', 'backlinks'] }, 'tasks');
     expect(one).toEqual({ open: true, panes: ['backlinks'] });
-    // The last card stays remembered so the column has something to restore.
+    // The last card stays remembered so the column can restore it.
     expect(togglePane(one, 'backlinks')).toEqual({ open: false, panes: ['backlinks'] });
   });
 

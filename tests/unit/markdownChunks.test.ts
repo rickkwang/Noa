@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { splitMarkdownForChunkedPreview } from '../../src/lib/markdownChunks';
 
-// Small options so tests don't need megabyte fixtures. Production defaults are
-// larger; the splitting logic is identical.
+// Small options so tests don't need megabyte fixtures; the splitting logic is identical.
 const opts = { threshold: 200, minChunkChars: 50 };
 
 const section = (title: string, lines = 4) =>
@@ -36,7 +35,7 @@ describe('splitMarkdownForChunkedPreview', () => {
     const chunks = splitMarkdownForChunkedPreview(md, opts);
     expect(chunks.join('')).toBe(md);
     for (const chunk of chunks) {
-      // A fence must never be torn apart: fences per chunk are balanced.
+      // A fence must never be split across chunks.
       const fences = (chunk.match(/^```/gm) ?? []).length;
       expect(fences % 2).toBe(0);
     }
@@ -125,7 +124,7 @@ describe('splitMarkdownForChunkedPreview', () => {
       tiny('U') + tiny('V') + tiny('W') + tiny('X') + tiny('Y') + tiny('Z');
     const chunks = splitMarkdownForChunkedPreview(md, opts);
     expect(chunks.join('')).toBe(md);
-    // All but the last chunk should have reached the minimum size.
+    // Every chunk except the last must meet the minimum size.
     for (const chunk of chunks.slice(0, -1)) {
       expect(chunk.length).toBeGreaterThanOrEqual(opts.minChunkChars);
     }

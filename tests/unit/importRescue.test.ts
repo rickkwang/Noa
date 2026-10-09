@@ -25,9 +25,7 @@ function makeNote(id: string, content = 'body', updatedAt = '2026-01-02T00:00:00
   };
 }
 
-// vitest runs in the node environment, which has no localStorage. Install a
-// minimal stand-in so these tests exercise the real safeLocalStorage path
-// rather than its swallow-everything fallback.
+// Node has no localStorage; install a stand-in so the real safeLocalStorage path runs, not its fallback.
 let store: Map<string, string>;
 let failWrites = false;
 
@@ -60,8 +58,7 @@ describe('withTimeout', () => {
   it('rejects when the promise never settles, so catch/finally can run', async () => {
     vi.useFakeTimers();
     try {
-      // The exact failure this guards: an await that never resolves skips both
-      // catch and finally, stranding the import lock.
+      // A never-settling await skips catch and finally, stranding the import lock.
       const pending = withTimeout(new Promise<void>(() => {}), 'saveNotes', 60_000);
       const assertion = expect(pending).rejects.toBeInstanceOf(StorageStalledError);
       await vi.advanceTimersByTimeAsync(60_000);
@@ -76,7 +73,7 @@ describe('parkRescuedNotes / peekRescuedNotes', () => {
   it('round-trips parked notes without consuming them', () => {
     expect(parkRescuedNotes([makeNote('a')])).toBe(true);
     expect(peekRescuedNotes().map((n) => n.id)).toEqual(['a']);
-    // Peek must be non-destructive, or a failed write-back loses them for good.
+    // Peek must be non-destructive, or a failed write-back loses them.
     expect(peekRescuedNotes().map((n) => n.id)).toEqual(['a']);
     clearRescuedNotes();
     expect(peekRescuedNotes()).toEqual([]);
@@ -92,8 +89,7 @@ describe('parkRescuedNotes / peekRescuedNotes', () => {
 
   it('reports failure when localStorage refuses the write', () => {
     failWrites = true;
-    // The caller uses this to escalate from "set aside for you" to "copy your
-    // text out now", so a false negative here would be a silent data loss.
+    // A false negative here is silent data loss: the caller escalates to "copy your text out now".
     expect(parkRescuedNotes([makeNote('a')])).toBe(false);
   });
 
@@ -117,8 +113,7 @@ describe('mergeRescuedNotes', () => {
   });
 
   it('keeps the stored copy when it accepted newer writes after the edit was parked', () => {
-    // IndexedDB recovers mid-session → debounceSave lands a newer version;
-    // the stale parked copy must not clobber it on the next launch.
+    // A stale parked copy must not clobber a newer version that landed after recovery.
     const merged = mergeRescuedNotes(
       [makeNote('a', 'stored-newer', '2026-01-03T00:00:00.000Z')],
       [makeNote('a', 'rescued-stale')],

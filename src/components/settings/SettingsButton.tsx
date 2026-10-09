@@ -1,18 +1,8 @@
 import React from 'react';
 
-// One button language for the settings dialog. Each section used to spell its
-// own className, which drifted into four heights (26/26/30/38px), three
-// disabled opacities and buttons with no hover state at all.
-//
-// Two sizes only: `regular` for a setting's own action (the right-hand control
-// of a SettingItem, or a section's action row), `compact` for actions nested
-// inside something smaller — a confirm strip, a banner, a list row. Icons go
-// 14px in regular buttons, 12px in compact ones.
-//
-// Radius is the literal `rounded-[3px]` on purpose: index.css restates that
-// utility as 6px inside [data-settings-surface], which is what keeps buttons on
-// the dialog's curve. The colour classes are the same literals the dark-theme
-// remap already covers, so dark mode needs nothing here.
+// One button language for the settings dialog, so sections don't drift in height or disabled opacity.
+// `regular` for a setting's own action, `compact` for actions nested in smaller containers.
+// Radius is the literal `rounded-[3px]` on purpose: index.css restates it as 6px inside [data-settings-surface].
 export type SettingsButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 export type SettingsButtonSize = 'regular' | 'compact';
 
@@ -28,7 +18,7 @@ const SIZES: Record<SettingsButtonSize, string> = {
 const VARIANTS: Record<SettingsButtonVariant, string> = {
   primary: 'bg-[#CC7D5E] text-white border-[#2D2D2B] hover:opacity-90',
   secondary: 'bg-[#F9F9F7] text-[#2D2D2B] border-[#2D2D2B] hover:bg-[#EFEAE3]',
-  // Transparent border, not none, so it stands exactly as tall as its siblings.
+  // Transparent border (not none) keeps it the same height as its siblings.
   ghost: 'bg-transparent text-[#2D2D2B]/70 border-transparent hover:bg-[#EFEAE3] hover:text-[#2D2D2B]',
   danger: 'bg-transparent text-[#C24444] border-[#C24444] hover:bg-[#C24444]/10',
   warning: 'bg-[#EC9A3C] text-white border-[#2D2D2B] hover:opacity-90',

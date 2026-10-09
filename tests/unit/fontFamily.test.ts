@@ -11,8 +11,7 @@ describe('resolveFontFamily', () => {
     const resolved = resolveFontFamily(SYSTEM_DEFAULT_FONT);
 
     expect(resolved).toBe(SYSTEM_FONT_STACK);
-    // Browsers refuse to match the platform UI face by its real name, so a
-    // name-based reference would silently render a different typeface.
+    // Browsers won't match the platform UI face by name; a name would silently fall back.
     expect(resolved).toContain('-apple-system');
     expect(resolved).toContain('system-ui');
     expect(resolved).not.toContain('AppleSystemUIFont');
@@ -32,8 +31,7 @@ describe('resolveFontFamily', () => {
   });
 
   it('refuses names that could break out of the CSS declaration', () => {
-    // The resolved value is interpolated into a <style> element by
-    // ThemeInjector, so a family name carrying CSS syntax must not survive.
+    // ThemeInjector interpolates this into a <style> element, so CSS syntax must not survive.
     for (const hostile of [
       'Arial"; } body { display: none } .x {',
       'Arial; color: red',

@@ -32,8 +32,7 @@ export const parseQuery = (queryString: string, caseSensitive: boolean = false):
     return '';
   });
 
-  // Extract before:/after: operators
-  // Parse as local time (not UTC) so the date boundary matches what the user typed.
+  // Extract before:/after: operators (local time, so the boundary matches what was typed)
   currentQuery = currentQuery.replace(/\bbefore:(\d{4}-\d{2}-\d{2})\b/gi, (_, d) => {
     const [y, mo, day] = d.split('-').map(Number);
     before = new Date(y, mo - 1, day, 23, 59, 59, 999);
@@ -209,8 +208,7 @@ export class SearchEngine {
           : contentMatch ? this.getFuseSnippet(result.item.content, contentMatch.indices as readonly [number, number][]) : this.getSnippet(result.item.content, exactPhrases, isCaseSensitive),
       };
     });
-    // True LRU: cached hits re-insert above so the first key is always the
-    // least-recently-used. Evict it when we exceed the cap.
+    // True LRU: evict the first (least-recently-used) key when over the cap.
     if (this.cache.size >= CACHE_MAX_SIZE) {
       const oldest = this.cache.keys().next().value;
       if (oldest !== undefined) this.cache.delete(oldest);
@@ -229,8 +227,7 @@ export class SearchEngine {
     return { open, close };
   }
 
-  // Snippets use plain <b>…</b> markers only. The Sidebar renders them via
-  // HighlightedText which reconstructs React nodes — no raw HTML hits the DOM.
+  // Snippets use plain markers; HighlightedText builds React nodes, so no raw HTML reaches the DOM.
   private wrapBold(text: string, marker: { open: string; close: string }): string {
     return `${marker.open}${text}${marker.close}`;
   }

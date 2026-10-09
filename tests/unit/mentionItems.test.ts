@@ -26,7 +26,7 @@ describe('buildMentionItems', () => {
 
   it('filters by lowercase substring and excludes current note', () => {
     const items = buildMentionItems(notes, 'a', 'alp');
-    // current note 'a' excluded; 'Alpine' matches 'alp'
+    // Current note 'a' is excluded.
     expect(items.map((i) => i.kind === 'existing' ? i.id : `new:${i.title}`))
       .toEqual(['c', 'new:alp']);
   });
@@ -42,7 +42,6 @@ describe('buildMentionItems', () => {
       makeNote(`n${i}`, `Note ${i}`, `2026-04-${10 + i}T00:00:00Z`),
     );
     const items = buildMentionItems(many, 'zzz', 'note');
-    // non-create items
     const existing = items.filter((i) => i.kind === 'existing');
     expect(existing).toHaveLength(5);
   });
@@ -80,7 +79,7 @@ describe('buildMentionItems', () => {
     const fuzzyNotes: Note[] = [
       makeNote('f1', 'Alpha Beta Gamma', '2026-04-20T10:00:00Z'),
     ];
-    // "abg" is not a substring but is a subsequence of "Alpha Beta Gamma"
+    // 'abg' is not a substring but is a subsequence, so it still matches.
     const items = buildMentionItems(fuzzyNotes, 'x', 'abg');
     expect(items).toHaveLength(2); // 1 fuzzy + 1 create
     const existing = items.find((i) => i.kind === 'existing');

@@ -2,9 +2,7 @@ import { syntaxTree } from '@codemirror/language';
 import { RangeSetBuilder } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 
-// Full-width line background + left rule for every line a code block spans.
-// First/last lines carry extra classes that add top/bottom padding so the
-// opening/closing fence isn't glued to the block's edge.
+// Full-width background + left rule on each line of a code block; first/last lines add padding so fences aren't glued to the edge.
 const codeLineDeco = Decoration.line({ class: 'cm-code-line' });
 const codeLineFirstDeco = Decoration.line({ class: 'cm-code-line cm-code-line-first' });
 const codeLineLastDeco = Decoration.line({ class: 'cm-code-line cm-code-line-last' });
@@ -21,8 +19,7 @@ function buildDecorations(view: EditorView): DecorationSet {
       to,
       enter: (node) => {
         if (node.name === 'FencedCode' || node.name === 'CodeBlock') {
-          // Clamp to the visible range so multi-range viewports never add
-          // line decorations out of order (RangeSetBuilder requires sorted adds).
+          // Clamp to the visible range: RangeSetBuilder needs sorted adds, and multi-range viewports break that otherwise.
           const startLine = doc.lineAt(Math.max(node.from, from)).number;
           const endLine = doc.lineAt(Math.min(node.to, to)).number;
           for (let n = startLine; n <= endLine; n++) {
@@ -43,10 +40,7 @@ function buildDecorations(view: EditorView): DecorationSet {
   return builder.finish();
 }
 
-// View-only: paints a unified background behind fenced/indented code blocks
-// (per-token highlight backgrounds leave ragged bars) and a rounded pill behind
-// inline code. Visual styling lives in the light/dark theme's .cm-code-line /
-// .cm-inline-code rules.
+// View-only: a unified background per code block (per-token backgrounds look ragged). Styling lives in the theme's .cm-code-line rules.
 export const codeDecorations = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;

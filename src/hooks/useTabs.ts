@@ -5,9 +5,7 @@ import type { Note } from '../types';
 
 const OPEN_TABS_KEY = STORAGE_KEYS.OPEN_TABS;
 
-// Fallbacks for when animationend never arrives (interrupted animation, tab
-// hidden mid-flight). Both sit just past TAB_ANIM_MS in EditorHeader, which is
-// itself kept in sync with the editor-tab-slot-enter/exit keyframes.
+// Fallbacks for when animationend never fires; kept just past TAB_ANIM_MS in EditorHeader.
 const TAB_ENTER_FALLBACK_MS = 190;
 const TAB_EXIT_FALLBACK_MS = 220;
 
@@ -20,12 +18,8 @@ interface UseTabsOptions {
 
 export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseTabsOptions) {
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
-  // Entering tabs are tracked as a set, mirroring closingTabIds. A single slot
-  // meant a second open within the 170ms entrance stripped the first tab's
-  // animation class mid-flight: it jumped straight to full width (measured:
-  // 1.9px -> 126px in one frame) instead of finishing its slide.
-  // Value is the tab that was active when this one opened, used to suppress the
-  // adjacent divider while the entrance runs.
+  // Entering tabs are a set (like closingTabIds): a single slot let a second open strip the first tab's animation mid-flight.
+  // Value: the tab active when this one opened, used to suppress the adjacent divider during the entrance.
   const [enteringTabs, setEnteringTabs] = useState<Map<string, string | null>>(() => new Map());
   const [closingTabIds, setClosingTabIds] = useState<Set<string>>(() => new Set());
   const [tabLimitWarning, setTabLimitWarning] = useState(false);
@@ -141,10 +135,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
   }, []);
 
   const markEnteringTab = useCallback((id: string, fromId: string | null) => {
-    // Mirror handleTabClose. Under reduced motion the enter keyframes are off,
-    // so flagging the tab only leaves it squeezed (min-width:0) until the
-    // fallback fires — animationend never arrives to clear it early. That pop is
-    // worse than the motion it replaces.
+    // Reduced motion disables the enter keyframes, so flagging the tab would leave it squeezed until the fallback fires.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     setEnteringTabs((prev) => {
       if (prev.has(id) && prev.get(id) === fromId) return prev;
@@ -186,9 +177,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     closingTabTimeoutsRef.current.clear();
   }, []);
 
-  // Sync activeNoteId into openTabIds. Animate: openTabForNote only marks the
-  // tab as entering when it's genuinely new and other tabs already exist, so
-  // sidebar/search-opened notes get the same entrance as the "+" button.
+  // Sync activeNoteId into openTabIds; a genuinely new tab animates in, matching the "+" button.
   useEffect(() => {
     if (!activeNoteId) return;
     openTabForNote(activeNoteId, true);
@@ -248,11 +237,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     setOpenTabIds(next);
   }, [closingTabIds]);
 
-  // Only ids and titles are rendered, but `notes` changes on every keystroke.
-  // Handing EditorHeader a fresh array each time would re-run its layout
-  // effects mid-typing — a smooth scrollIntoView restart plus a forced
-  // scrollLeft/scrollWidth read per character. Reuse the previous array
-  // whenever the visible tab set is unchanged.
+  // Reuse the previous array when the visible tab set is unchanged; a fresh array per keystroke re-runs EditorHeader's layout effects.
   const openTabsRef = useRef<{ id: string; title: string }[]>([]);
   const openTabs = useMemo(() => {
     const titleById = new Map(notes.map(n => [n.id, n.title]));

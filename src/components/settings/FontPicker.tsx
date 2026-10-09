@@ -4,10 +4,7 @@ import { Check, ChevronDown, Search } from '@/src/lib/icons';
 
 const SYSTEM_DEFAULT_LABEL = 'System Default';
 
-// Module-level cache: queryLocalFonts() enumerates every installed font, which
-// is slow enough to visibly stutter the picker. This component unmounts when
-// Settings closes, so without a cache that survives mounts the enumeration
-// re-ran on every open.
+// Module-level cache: queryLocalFonts() is slow, and the component unmounts on every settings close.
 let cachedSystemFonts: string[] | null = null;
 let systemFontsPromise: Promise<string[]> | null = null;
 
@@ -24,10 +21,7 @@ function loadSystemFonts(): Promise<string[]> {
 
   systemFontsPromise = api()
     .then((fonts) => {
-      // queryLocalFonts() reports one entry per face (Regular, Bold, Italic …);
-      // collapse to families, and drop names that cannot be safely emitted into
-      // CSS — notably macOS's hidden system faces such as ".AppleSystemUIFont",
-      // which the browser refuses to resolve by name anyway.
+      // One entry per face: collapse to families, and drop names unsafe for CSS (e.g. macOS's hidden ".AppleSystemUIFont").
       const families = Array.from(new Set(fonts.map((font) => font.family)))
         .filter(isSafeFontFamilyName)
         .sort((a, b) => a.localeCompare(b));
@@ -71,9 +65,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
   const baseId = useId();
   const listboxId = `${baseId}-listbox`;
 
-  // Enumerate only when the picker opens: on the web queryLocalFonts() raises a
-  // browser permission prompt, and firing that just because the Appearance tab
-  // became visible would be intrusive.
+  // Enumerate only on open: queryLocalFonts() raises a permission prompt, which shouldn't fire just from viewing the tab.
   const ensureFontsLoaded = useCallback(() => {
     if (didLoad.current || cachedSystemFonts) return;
     didLoad.current = true;
@@ -93,9 +85,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
 
   const options = useMemo((): FontOption[] => {
     const list: FontOption[] = [{ value: SYSTEM_DEFAULT_FONT, label: SYSTEM_DEFAULT_LABEL }];
-    // Keep the active font selectable even when it is missing from the
-    // enumeration — the API may be unavailable (non-Chromium, permission
-    // denied) or the font may have been uninstalled since it was chosen.
+    // Keep the active font selectable even if it's missing from enumeration (API unavailable, or font uninstalled).
     if (value !== SYSTEM_DEFAULT_FONT && !systemFonts.includes(value)) {
       list.push({ value, label: value });
     }
@@ -242,9 +232,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
             id={listboxId}
             role="listbox"
             aria-label="Fonts"
-            // both-edges keeps the reserved 6px scrollbar gutter mirrored on the
-            // left, so the inset row highlight sits on equal whitespace either
-            // side instead of hugging the left edge.
+            // both-edges mirrors the scrollbar gutter so row highlights sit on equal whitespace each side.
             className="max-h-64 overflow-y-auto [scrollbar-gutter:stable_both-edges] py-1"
           >
             {filtered.map((option, index) => {
@@ -258,8 +246,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
                     data-index={index}
                     role="option"
                     aria-selected={isSelected}
-                    // Selection runs on click; pointerdown would race the
-                    // outside-click listener that closes the popup.
+                    // Select on click, not pointerdown, which would race the outside-click listener.
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => select(option.value)}
                     className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[#CC7D5E]/10' : ''}`}

@@ -41,9 +41,7 @@ export default function SegmentedControl<T extends string>({
     const measure = () => {
       const node = itemRefs.current.get(value);
       if (!node) return;
-      // Bail out when nothing moved. Without this a caller passing an inline
-      // options array would loop: new array identity → effect → setPill with a
-      // fresh object → render → new array identity again.
+      // Bail when nothing moved; otherwise an inline options array would loop (new identity → effect → setPill → render).
       setPill((prev) => (prev && prev.left === node.offsetLeft && prev.width === node.offsetWidth
         ? prev
         : { left: node.offsetLeft, width: node.offsetWidth }));
@@ -81,14 +79,10 @@ export default function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      // inline-grid with equal auto columns: every segment takes the width of
-      // the widest one, so the pill is the same size wherever it lands. A flex
-      // row sized each segment to its own label, which made the pill grow and
-      // shrink as it slid.
+      // Equal auto columns so the pill is the same size wherever it lands (a flex row made it resize as it slid).
       className="noa-segmented-track relative inline-grid grid-flow-col [grid-auto-columns:1fr] items-center gap-0.5 rounded-[9px] p-0.5"
     >
-      {/* Mounted only once a position is known, so the pill appears under the
-          current segment instead of sliding in from the track's left edge. */}
+      {/* Mounted only once a position is known, so it doesn't slide in from the left edge. */}
       {pill && (
         <span
           aria-hidden="true"
@@ -113,11 +107,7 @@ export default function SegmentedControl<T extends string>({
             onKeyDown={(event) => handleKeyDown(event, index)}
             aria-label={option.icon ? option.label : undefined}
             title={option.icon ? option.label : undefined}
-            // Positioned but z-index:auto, so the labels paint above the
-            // sliding pill on DOM order alone. A positive z-index here would
-            // lift them out of the scroll pane's paint order too, and they
-            // would stay crisp over the top fade that is meant to dissolve
-            // them (SettingsModal).
+            // z-index:auto so labels paint above the pill by DOM order; a positive z-index would escape the scroll pane's top fade (SettingsModal).
             className={`relative flex items-center justify-center rounded-[7px] py-1 text-sm font-medium transition-colors ${
               option.icon ? 'px-2.5' : 'px-3'
             } ${

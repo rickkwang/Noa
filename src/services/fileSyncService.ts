@@ -169,9 +169,8 @@ export function mergeVaultNotes(
     const localById = new Map(notes.map((note) => [note.id, note]));
     const scannedIds = new Set(uniqueScanned.map((note) => note.id));
     const deletedNoteIds = notes
-      // origin is the ownership boundary. A cached vault row missing from the
-      // disk scan was deleted externally even if the vault never had a manifest;
-      // a Noa-owned or one-time-import row must survive regardless of source.
+      // origin is the ownership boundary: a vault cache row missing from disk was
+      // deleted externally; Noa-owned and one-time-import rows always survive.
       .filter((note) => note.origin === 'vault' && !note.vaultDirty && !scannedIds.has(note.id))
       .map((note) => note.id);
     const keptLocal = notes.filter(
@@ -198,9 +197,8 @@ export function mergeVaultNotes(
   }
 
   const deletedNoteIds: string[] = [];
-  // Notes whose visible content actually changed by taking the disk version —
-  // used for the "vault changes merged" notice. A disk win with identical
-  // content (routine mtime drift after Noa's own writes) doesn't count.
+  // Notes whose visible content changed by taking the disk version (drives the
+  // "vault changes merged" notice; mtime-only wins don't count).
   const updatedNoteIds: string[] = [];
   const merged = notes.flatMap((n) => {
     const fresh = scannedById.get(n.id);
@@ -765,10 +763,8 @@ export async function syncNoteMove(
 }
 
 /**
- * Reconcile the latest cached vault note after a previous write failed or the
- * app restarted with vaultDirty persisted. This is deliberately immediate and
- * idempotent: it writes the desired snapshot, then removes an obsolete path
- * left behind by a failed rename/move.
+ * Reconcile the cached vault note after a failed write or a restart with vaultDirty
+ * persisted. Idempotent: writes the snapshot, then removes any stale path.
  */
 export async function syncVaultNoteSnapshot(
   handle: FileSystemDirectoryHandle,
@@ -828,10 +824,7 @@ export async function syncFolderRename(
     const nextFolder = currentFolders.find((folder) => folder.id === folderId);
     if (nextFolder?.origin !== 'vault') return;
 
-    // currentFolders already has the new names, so match against the new folder's
-    // id plus any child that was a descendant of previousName (now updated to
-    // the new prefix).  We derive the new prefix from nextFolder to avoid
-    // matching stale previousName in already-renamed currentFolders.
+    // currentFolders already carries the new names; derive the prefix from nextFolder.
     const newPrefix = nextFolder.name;
     const affectedFolderIds = new Set(
       currentFolders

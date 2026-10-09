@@ -26,8 +26,7 @@ it.each([null, 'vault-daily'])('keeps a new daily note local when the saved fold
   renderToString(createElement(Harness));
   const opened = openDaily();
   expect(notes).toHaveLength(1);
-  // App focuses whatever this returns; only a created note gets its template
-  // slot filled, so `created` must be true here and false on a reopen.
+  // `created` gates the template fill, so it must be true here and false on reopen.
   expect(opened).toEqual({ noteId: notes[0].id, created: true });
   expect(notes[0].folder).not.toBe('vault-daily');
   expect(folders.find(folder => folder.id === notes[0].folder)).toMatchObject({ name: 'Daily Notes' });

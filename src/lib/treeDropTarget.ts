@@ -12,17 +12,12 @@ export type TreeDropResolution =
 const NONE: TreeDropResolution = { kind: 'none' };
 const NOOP: TreeDropResolution = { kind: 'noop' };
 
-/* What a drop would do. One predicate serves both the hover and the drop:
-   Obsidian runs its equivalent (`zj`) on dragover as well, so a target that
-   would be refused never lights up — the highlight cannot promise a move the
-   drop then silently declines.
+/* What a drop would do. One predicate serves both hover and drop, so a target
+   that would be refused never highlights.
 
-   `none` and `noop` are both write-free, but they mean different things.
-   `none` is *illegal* — cross-ownership, a folder into its own descendant —
-   and the hover refuses it (forbidden cursor, no highlight). `noop` is
-   *already there* — the item lives exactly where this drop would put it. That
-   landing is safe, so the hover still welcomes it; only the write is skipped,
-   which is what saves a pointless rename and vault write. */
+   `none` is illegal (cross-ownership, folder into its own descendant): hover
+   refuses it. `noop` is already in place: hover welcomes it, but the write is
+   skipped. */
 export function resolveTreeDrop(
   item: TreeDragItem,
   targetFolderId: string | null,
@@ -55,16 +50,13 @@ export function resolveTreeDrop(
   } else if (isVault(source) !== rootIsVault) {
     return NONE;
   }
-  // Equal paths count as descendant, so this rejects a folder dropped on
-  // itself as well as on anything beneath it.
+  // Equal paths count as descendant: rejects dropping a folder onto itself too.
   if (isDescendantPath(targetPath, source.name)) return NONE;
   const leaf = getFolderLeafName(source.name);
   const nextPath = targetPath ? `${targetPath}/${leaf}` : leaf;
   if (nextPath === source.name) return NOOP;
-  // Same rule the rename dialog enforces (Sidebar's `renameFolderWithValidation`):
-  // a folder may not land beside a sibling of the same name. Without it the drop
-  // writes a second folder onto an occupied path — and because this predicate also
-  // drives the hover, the target would have lit up promising exactly that move.
+  // Same sibling-name rule as the rename dialog (Sidebar's `renameFolderWithValidation`).
+  // This predicate also drives hover, so the target must not light up for an occupied path.
   const leafKey = leaf.toLocaleLowerCase();
   const occupied = folders.some((f) =>
     f.id !== source.id &&

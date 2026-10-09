@@ -10,41 +10,23 @@
   --font-redaction: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* UI chrome uses `font-bold` in ~120 places, and those were tuned against a
-     bundled single-weight typeface: `@fontsource/work-sans` ships only a 400
-     face, so every one of them was really Skia's synthetic bold, which on a
-     geometric sans adds very little stroke. System fonts draw every weight for
-     real, so matching the old look means undershooting the "bold" number, not
-     hitting some measured equivalent — 450/400 is the current calibration.
-     Markdown `**strong**` and headings don't use it: that weight is content,
-     not chrome, and takes --font-weight-content-bold below. */
+  /* Chrome `font-bold` is calibrated to 450 (old bundled 400-only face used synthetic bold; system fonts draw real weights).
+     Content bold (`**strong**`, headings) uses --font-weight-content-bold below. */
   --font-weight-bold: 450;
   --font-weight-medium: 400;
 }
 
-/* Weight for what the user wrote: `**strong**`, headings, the inline title,
-   table headers — in both the preview and CodeMirror. 450 against 400 body
-   text was indistinguishable on a real system face (and in dark mode, where
-   strong and body share a colour, invisible). Kept off @theme so it doesn't
-   mint a `font-*` utility for chrome to reach for. */
+/* Content bold (`**strong**`, headings, inline title) in preview and CodeMirror. Kept off @theme so chrome gets no `font-*` utility. */
 :root { --font-weight-content-bold: 600; }
 
-/* Titlebar clearance for the macOS traffic lights. Only the desktop shell has
-   them — main.tsx sets data-desktop when the Electron preload bridge exists —
-   so the web build keeps a plain gutter instead of an empty 85.5px band.
-   The reserve is that inset plus the sidebar-toggle/search group (61.5px);
-   on desktop it resolves to 147px. The inset tracks trafficLightPosition.x in
-   electron/main.cjs: the lights end 60px after it, and the first icon's glyph
-   starts 14.5px after that. */
+/* Titlebar clearance for macOS traffic lights (data-desktop set by main.tsx). Inset must track
+   trafficLightPosition.x in electron/main.cjs. */
 :root { --noa-titlebar-inset: 0.5rem; }
 :root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }
 :root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }
 
-/* Inherited, and cheap to inherit because nothing transitions it: the shell
-   sets it twice per toggle and the veils below animate transform instead.
-   Transitioning this property was what made the toggle expensive — an animated
-   inherited registered property re-invalidates the whole app subtree on every
-   frame, measured at ~72ms of style recalc per toggle against ~5ms now. */
+/* Must never be transitioned: an animated inherited registered property re-invalidates the whole subtree each frame.
+   Veils animate transform instead. */
 @property --noa-sidebar-material-width {
   syntax: '<length>';
   inherits: true;
@@ -57,9 +39,7 @@ button {
   box-shadow: none;
 }
 
-/* Single global keyboard-focus affordance. Inputs and textareas are excluded:
-   the caret already shows where typing lands, and the square ring reads as
-   chrome around borderless fields. Buttons keep the ring for keyboard nav. */
+/* Global keyboard-focus ring. Inputs/textareas excluded: the caret already marks focus. */
 button:focus-visible,
 a:focus-visible,
 select:focus-visible,
@@ -77,9 +57,7 @@ select:focus-visible,
   border: 0;
   color: var(--text-primary, #2D2D2B);
   outline: none;
-  /* The field stays mounted so opening and closing are one animation played
-     both ways. Visibility flips only after the fade-out finishes, so nothing
-     of it (caret included) survives the collapsed state or reads as visible. */
+  /* Stays mounted so open/close animate both ways; visibility flips only after the fade-out. */
   transition: opacity 200ms ease-out, visibility 0s;
 }
 .noa-titlebar-search-input[aria-hidden='true'] {
@@ -104,12 +82,7 @@ body {
   font-size: 12px;
   line-height: 1.5;
   --panel-divider: var(--divider-subtle, #E6E2DA);
-  /* Shadow language: --shadow-ambient for cards that sit *in* the document
-     flow (no light direction implied, so the falloff is even on all four
-     sides), --shadow-elevated for raised cards (graph panels),
-     --shadow-floating for layers above the canvas (dialogs, dropdowns,
-     toasts). Hard-offset shadows stay reserved for selected/interactive
-     states and are not tokenized here. */
+  /* Shadows: ambient = in-flow cards, elevated = raised graph panels, floating = dialogs/dropdowns/toasts. */
   --shadow-ambient: 0 0 2px 0 rgba(45,45,43,0.04), 0 0 10px 0 rgba(45,45,43,0.05);
   --shadow-elevated: 0 0 2px 0 rgba(45,45,43,0.05), 0 0 14px -3px rgba(45,45,43,0.10);
   --shadow-floating: 0 4px 12px 0 rgba(45,45,43,0.12);
@@ -126,11 +99,7 @@ body {
   user-select: text;
 }
 
-/* Resize-handle highlight. Drawn on the divider itself (a ::after covering the
-   divider's own 1px box) rather than inside the handle — anything rendered in
-   the handle sits one pixel off the divider and the two lines read as a double
-   image. Neutral text colour, not the accent, so it lights up as the divider
-   getting stronger instead of a coloured beam next to it. */
+/* Resize-handle highlight, drawn on the divider itself (inside the handle it sits 1px off and reads as a double line). Neutral colour, not accent. */
 [data-sidebar-separator]::after {
   content: '';
   position: absolute;
@@ -145,20 +114,8 @@ body {
 .noa-app-shell:has(.noa-resize-handle[data-edge="right"]:is(:hover, :focus-visible)) [data-sidebar-separator]::after { opacity: 0.7; }
 .noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after { opacity: 1; }
 
-/* The titlebar's hairline starts where the sidebar ends, so it is part of the
-   dock motion whether it likes it or not: the class swap alone lands its new
-   left edge on the first frame, which reads as the line jumping across a
-   sidebar that then takes the full motion to leave. Same clock as everything
-   else on that edge — but only for that motion, which is why this is an opt-in
-   keyed on the shell rather than a default with exclusions hung off it. The
-   hairline's own left comes from a class on the titlebar, and that class tracks
-   "is a sidebar visible", which is also true for the hover preview: the preview
-   arrives at full width in one frame and leaves on a 180ms fade, so a hairline
-   easing 325px across the titlebar behind it is the line crawling out from
-   under a panel that is already gone. A resize drag and the promotion phases
-   are the same story from the other end — each lands the edge on its own clock.
-   App.tsx computes the one case that is the dock motion; everything else snaps,
-   including anything added later. */
+/* Titlebar hairline animates its left edge only during the sidebar dock motion (opt-in via the shell attribute);
+   every other edge move (hover preview, resize drag, promotion) snaps. */
 [data-titlebar="true"]::after {
   transition: none;
 }
@@ -166,21 +123,9 @@ body {
   transition: left 500ms ease-in-out;
 }
 
-/* The lifted editor header's left traffic-light reservation is margin, so the
-   titlebar buttons it floats over stay clickable — but under a translucent
-   sidebar the titlebar is transparent, and the band between the sidebar edge
-   and the strip must read as one surface from the first frame of the dock
-   motion. This pseudo carries the header's own floor across that margin gap:
-   base-layer paint (a transformed layer lagged and left the native material
-   showing as a gray ghost), pointer-events none (it must not swallow the
-   buttons it crosses), and background-color inherit so the dark remap that
-   rewrites the header's own class follows automatically. It rides the same
-   500ms clock as the margin it shadows.
-   `right: 100%` pins its right edge to the header's own left edge and is what
-   gives the box any width at all: with only `left` set, width resolves
-   shrink-to-fit over empty content and the whole rule paints nothing. Pinned,
-   the single animated `left` is both the position and the width — 0 when there
-   is no reservation, one margin's worth when there is. */
+/* Carries the editor header's floor across its left traffic-light margin so the band reads as one surface under a
+   translucent sidebar. Base-layer paint (transforms ghost the native material), pointer-events none (don't swallow
+   the buttons beneath), background inherit (follows the dark remap). `right: 100%` gives it width; `left` animates. */
 .noa-editor-header-floor::before {
   content: '';
   position: absolute;
@@ -196,26 +141,12 @@ body {
   left: calc(-1 * var(--noa-titlebar-reserve));
 }
 
-/* Shared surface for the graph's small control clusters (header filter field,
-   canvas zoom pad). Two things it has to be at once: opaque, because the zoom
-   pad floats over a busy, ever-shifting canvas of nodes and edges rather than
-   one flat backdrop — a translucent wash (this briefly used the sidebar's
-   --bg-sidebar-raised, itself rgba(...,0.08)) just lets the graph bleed
-   straight through and the control disappears again; and neutral, because an
-   accent-tinted wash (the original version) doesn't belong to any other
-   surface in the app and reads as an odd warm patch next to the graph's own
-   saturated node colours.
-   Mixing --text-primary into --bg-primary gets both: it's the same "how far a
-   surface sits from the page" recipe --divider-subtle already uses elsewhere,
-   it's fully opaque, and because --text-primary itself flips with the theme,
-   one rule adapts to light and dark without separate tuning. The surface
-   itself never changes on hover or focus; accent is reserved for the buttons
-   on it. */
+/* Opaque, neutral control surface for the graph's floating controls (translucent lets the canvas bleed through).
+   Mixing --text-primary into --bg-primary keeps it theme-adaptive. Accent is reserved for the buttons on it. */
 .noa-graph-control-surface {
   background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, var(--bg-primary, #FCFCFB));
 }
-/* On the dark card (#313130) the mix above lands within a shade of the card
-   itself, so the field gets its own step up. */
+/* The mix lands too close to the dark card (#313130); step it up. */
 [data-theme="dark"] .noa-graph-control-surface {
   background-color: #3D3D3B;
 }
@@ -223,28 +154,17 @@ body {
   background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
 }
 
-/* The sidebar is a plane, not a page. Its separation from the editor is the
-   background step alone — no border, no shadow, no accent tint — and the step
-   is deliberately tiny: 1.5% OKLCH lightness in light, 1.2% in dark. It works
-   at that size only because the hue is identical to the editor plane, so the
-   eye reads depth rather than a colour change. */
+/* Sidebar is a plane: separated from the editor by a tiny background step only (same hue, so it reads as depth). */
 .noa-sidebar-surface {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
-/* Tree rows sit just under the full text colour — 90% keeps labels and icons
-   reading as primary text without the slight harshness of full strength
-   against the sidebar floor. The accent remains reserved for active or hover
-   feedback, so a resting sidebar does not mix coral icons with dark text. */
+/* Tree rows at 85% text colour; accent is reserved for active/hover feedback. */
 .noa-sidebar-tree-item {
   color: color-mix(in srgb, var(--text-primary, #2D2D2B) 85%, transparent);
 }
 
-/* Sections (CalendarPanel, TagBrowser) are only ever rendered inside the
-   sidebar, so they share its floor and let their border-t do the separating.
-   One flat rule, not a descendant-scoped override plus a --bg-primary base:
-   the base could never win against the scoped rule and was dead the moment
-   the sidebar got its own floor. */
+/* Sidebar sections share its floor; border-t does the separating. */
 .noa-sidebar-section-surface {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
@@ -255,18 +175,8 @@ body {
   position: relative;
   background-color: var(--bg-sidebar, #F4F4F2);
 }
-/* Stops 6px short of the right edge: that strip is the scroll container's
-   scrollbar gutter, and a gradient drawn over the thumb's top reads as a
-   rendering bug. Same rule the preview pane's mask follows — must match
-   ::-webkit-scrollbar's width.
-
-   Unlike the panes above this is a colored overlay, not a mask: it sits over a
-   surface whose color is a known token, and an overlay costs nothing to fade.
-   So it spends the shared strength as opacity over a fixed 32px band rather
-   than growing the band — same curve, same "nothing until the tree has
-   actually scrolled" rule, cheaper to animate. It used to be an always-on 10px
-   linear wash, which meant the first row of an unscrolled tree was dimmed for
-   no reason and a row crossing the seam was cut in a third of its height. */
+/* Stops 6px short of the right edge to clear the scrollbar gutter (must match ::-webkit-scrollbar width).
+   A colored overlay (not a mask) on a fixed 32px band, faded by opacity. */
 .noa-sidebar-toolbar-mask::after {
   content: '';
   position: absolute;
@@ -289,41 +199,13 @@ body {
     color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 0%, transparent) 32px);
 }
 
-/* ── The shared edge-fade curve ────────────────────────────────────────────
-   Every scroll-edge fade in the app runs the same sampled smoothstep, at a
-   strength lib/edgeFade writes into --noa-fade-top / --noa-fade-left /
-   --noa-fade-right as a 0→1 number. Two properties of that curve are the whole
-   point, and both were learned by getting them wrong:
+/* ── Shared edge-fade curve ──
+   Scroll-edge fades use a smoothstep driven by --noa-fade-top/left/right (0→1, written by lib/edgeFade).
+   Eased, not linear (linear kinks read as edges). Long relative to text (≥ ~3 line-heights, so glyphs aren't sliced).
+   Stops are restated per surface: var() in a custom property is substituted at declaration, so a :root ramp would freeze. */
 
-   It is eased, not linear. A linear alpha ramp changes slope instantly at both
-   ends and the eye reads those kinks as edges — a visible line where the fade
-   stops, a hard clip where it starts.
-
-   It is long relative to the text it crosses. A ramp shorter than about three
-   line-heights crosses a line faster than the line is tall, so the gradient is
-   visible *within* the glyphs and text looks sliced rather than dimmed. 96px
-   vertical against prose; the horizontal ones are shorter on purpose (see
-   below). If the type scale grows, these grow with it.
-
-   The stops are restated per surface rather than shared through one variable:
-   var() inside a custom property is substituted where the property is
-   *declared*, so a ramp defined on :root would resolve --noa-fade-top there
-   (to its 0 fallback) and inherit down already frozen. Declared on the surface
-   itself, it resolves against that surface's own value — which is also why the
-   split editor can read a variable its parent pane owns.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* The preview pane and the split-mode editor: the note's leading edge
-   dissolves as it travels under the tab strip. At rest --noa-fade-top is 0,
-   every stop collapses onto 0px, the ramp has no height, and the first line is
-   fully opaque — so there is no separate "unscrolled" rule to keep in sync.
-
-   The second mask layer is a solid strip pinned to the right edge so the
-   scrollbar keeps full opacity — a mask covers the element's own scrollbar,
-   and a half-faded thumb reads as a rendering bug. Its 6px width must match
-   ::-webkit-scrollbar below (Firefox's wider default just fades a sliver of
-   track; harmless). Layers composite additively, so the strip wins over the
-   fade where they overlap. */
+/* Preview pane and split editor: leading edge dissolves under the tab strip. At rest the ramp has zero height.
+   The right-edge solid strip keeps the scrollbar fully opaque; its 6px must match ::-webkit-scrollbar. */
 .noa-top-scroll-fade,
 .noa-split-editor-mask .cm-editor {
   --noa-fade-ramp:
@@ -425,11 +307,7 @@ body {
   }
 }
 
-/* Segmented control track. A palette step could not work in both themes here:
-   the card behind it is --bg-secondary in light and the same value again in
-   dark, so any fixed track colour matched one of them and disappeared. A low
-   ink wash always sinks below whatever surface it lands on, which is all the
-   well has to do — the raised segment supplies the contrast. */
+/* Track uses a low ink wash: a palette step disappears in one theme or the other. */
 .noa-segmented-track {
   background-color: rgba(45, 45, 43, 0.07);
 }
@@ -438,9 +316,7 @@ body {
   background-color: rgba(0, 0, 0, 0.22);
 }
 
-/* The pill is the only thing that moves. transform and width are both cheap to
-   animate here (one element, no layout of its own), and the easing is the
-   shell's own out-curve so the slide settles rather than stopping dead. */
+/* Only the pill moves; transform/width are cheap here (no layout of its own). */
 .noa-segmented-pill {
   transition:
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -453,24 +329,9 @@ body {
   }
 }
 
-/* Optional glass treatment for the docked desktop sidebar. Electron supplies
-   the native macOS sidebar material; this layer only adds the theme tint. 
-
-   Every translucency rule in this block is gated on
-   :where(:not([data-settings-open="true"])), except the veil layer, which
-   hides for the dialog instead.
-   :where() contributes no specificity, so the gate is purely a switch and the
-   cascade these rules already win stays exactly as it was. The settings
-   scrim carries a backdrop-filter, which blurs the composited frame behind it
-   in premultiplied alpha — and translucency leaves that frame transparent over
-   the sidebar column, since its real floor is the native material behind the
-   window. Blurring alpha there mixes transparent pixels into the opaque glyphs
-   above them, and unpremultiplying lifts the edges, so every line of sidebar
-   text picks up a halo while the opaque editor half blurs cleanly. Switching
-   the rules off restores each surface's own opaque floor (all three carry one
-   already), which is the whole fix: nothing here needs restating, so a
-   transparent surface added later cannot forget to opt in. The material is
-   fully hidden behind the dialog anyway. */
+/* Translucent docked-sidebar glass (Electron supplies the native material; this adds the tint).
+   Gated on :where(:not([data-settings-open])) because the settings scrim's backdrop-filter blurs transparent
+   pixels in premultiplied alpha, haloing sidebar text. :where() adds no specificity. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-column-surface="true"] {
   background-color: color-mix(in srgb, var(--sidebar-material-color, #FAFAF8) var(--sidebar-material-tint, 70%), transparent) !important;
 }
@@ -479,28 +340,15 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
-/* The opaque plane is a translated layer, not a gradient stop that follows the
-   sidebar edge. Both paint the same thing — transparent for the leftmost
-   --noa-sidebar-material-width, --bg-primary from there to the right edge — but
-   a gradient whose stop is an animated custom property has to be re-resolved on
-   every frame, while translateX rides the compositor. The layer is full-size
-   and slides right, so its own right edge leaves the viewport and is clipped by
-   the shell's overflow. */
+/* Opaque plane is a translated layer, not a gradient whose stop animates (translateX rides the compositor). */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell:has([data-sidebar-expanded="true"]) {
   background: transparent !important;
-  /* Contains the veil's negative z-index so it cannot slip behind the host's
-     own background. isolation alone does not create a containing block, so
-     fixed-position toasts inside the shell keep resolving against the viewport. */
+  /* Contains the veil's negative z-index (no containing block, so fixed toasts still use the viewport). */
   isolation: isolate;
 }
 
-/* This one rule is the block's exception to the settings gate, because its
-   @starting-style makes the gate's mechanism visible. A gate in the selector
-   works by destroying the element, and @starting-style fires on whatever brings
-   the element back — it cannot tell "the sidebar just opened" from "the dialog
-   just closed". Gated here, leaving settings replayed the whole 500ms expansion
-   over a sidebar that had not moved. So existence tracks the sidebar alone, and
-   the dialog hides the layer it already has, below. */
+/* Exempt from the settings gate: gating destroys the element, and @starting-style would replay the expansion
+   when the dialog closes. Existence tracks the sidebar alone; the dialog hides it below. */
 html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expanded="true"])::before {
   content: '';
   position: absolute;
@@ -509,58 +357,30 @@ html[data-translucent-sidebar="enabled"] .noa-app-shell:has([data-sidebar-expand
   pointer-events: none;
   background-color: var(--bg-primary, #FCFCFB);
   transform: translateX(var(--noa-sidebar-material-width));
-  /* Parked. The rule below is the only thing that arms this, and it is the only
-     motion on this edge the veil is allowed to join. */
+  /* Parked; only the dock-motion rule below arms a transition. */
   transition: none;
 
-  /* Closing is symmetric on its own: the layer already exists and slides back
-     to 0 before the selector stops matching. Opening is not — the veil comes
-     into existence with the attribute, so without a start value it materializes
-     already parked at the full column width and the whole titlebar flashes
-     translucent one frame before anything has moved. Starting it at 0 lets the
-     translucent region grow with the edge that reveals it.
-     It only has that meaning for the dock motion, which is why this needs the
-     transition to stay off by default: @starting-style fires on whatever brings
-     the element into existence, and promoting the hover preview does that over
-     a column the preview is already filling. Unarmed, there is no transition to
-     interpolate from and the start value is inert. */
+  /* Opening starts at 0 so the translucent region grows with the edge (otherwise it flashes at full width).
+     Inert unless armed, since the hover preview also brings this element into existence. */
   @starting-style {
     transform: translateX(0);
   }
 }
 
-/* The veil grows with the sidebar's own edge, so it rides that edge's clock and
-   nothing else. data-sidebar-dock-motion is App.tsx's answer to "is the docked
-   width what is moving right now": false for the hover preview and its
-   promotion (the column is already at full width — the veil sweeping across it
-   is an opaque plane crossing the editor for no reason), false during a resize
-   drag (pointermove already lands one value per frame and a transition only
-   adds lag), and false for the settle frames on either side. The painted flag
-   is the other half: first paint is not an entry, so a restart with the sidebar
-   already open must not animate a column that was never closed.
-   :where() for the dialog gate so this contributes no specificity there and the
-   hide-for-settings rule above keeps its `transition: none`. */
+/* Veil animates only on the sidebar's own dock motion (data-sidebar-dock-motion from App.tsx), not for
+   preview, resize drag, or settle frames. The painted flag excludes first paint (no entry animation on restart). */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) .noa-app-shell[data-sidebar-dock-motion="true"][data-sidebar-material-painted="true"]:has([data-sidebar-expanded="true"])::before {
   transition: transform 500ms ease-in-out;
 }
 
-/* The dialog's share of the gate: hide the veil instead of destroying it, so
-   the element survives the round trip and @starting-style stays a sidebar-only
-   signal. The surfaces underneath have their opaque floors back by then (the
-   gated rules above), so there is nothing for this layer to contribute anyway.
-   `transition: none` covers the other direction — enabling translucency from
-   inside the dialog builds the veil right there, and its entry animation has to
-   be over before the dialog uncovers it. The arming rule above carries the
-   dialog in a :where(), so it does not reach past this one. */
+/* Dialog hides the veil rather than destroying it (keeps @starting-style sidebar-only). transition: none
+   covers enabling translucency from inside the dialog. */
 html[data-translucent-sidebar="enabled"][data-settings-open="true"] .noa-app-shell:has([data-sidebar-expanded="true"])::before {
   opacity: 0;
   transition: none;
 }
 
-/* The titlebar only goes transparent so the shell's veil shows through it. It
-   gets no veil of its own: that would paint the same --bg-primary at the same
-   edge, and the stacking context it needed re-rasterized the half-alpha icon
-   strokes sitting over the vibrant region. */
+/* Titlebar goes transparent so the shell veil shows through; no veil of its own (it would re-rasterize icon strokes). */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-translucent-sidebar-titlebar="true"] {
   background: transparent !important;
 }
@@ -570,9 +390,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
-/* The toolbar mask is another sidebar-painted surface. It cannot keep its
-   opaque fallback in a translucent column, or it becomes a visible horizontal
-   band; preview mode has the same single-shell paint rule. */
+/* Toolbar mask must go transparent in a translucent column, or it shows as a horizontal band. */
 html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])) [data-sidebar-expanded="true"][data-sidebar-container] .noa-sidebar-toolbar-mask,
 [data-sidebar-preview="true"] .noa-sidebar-toolbar-mask,
 [data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-toolbar-mask {
@@ -584,13 +402,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   display: none;
 }
 
-/* Preview is painted once by the full-height shell. Its mounted sidebar and
-   nested sections stay transparent so the titlebar and content cannot form
-   separate colour bands. The rule is preview-scoped; expanded sidebars keep
-   their normal --bg-sidebar floor. Promotion keeps them transparent too: the
-   shell eases its floor from the preview's colour to --bg-sidebar, and inner
-   surfaces snapping opaque on the first frame would hide that fade. They land
-   on the same colour the shell has reached when the phase ends. */
+/* Preview and promotion: the full-height shell paints once, so inner sidebar surfaces stay transparent
+   (opaque inner surfaces would snap on frame one and hide the shell's floor fade). */
 [data-sidebar-preview="true"] .noa-sidebar-surface,
 [data-sidebar-preview="true"] .noa-sidebar-section-surface,
 [data-sidebar-promoting="true"][data-sidebar-container] .noa-sidebar-surface,
@@ -598,11 +411,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
-/* Semantic sidebar interaction states. Components opt into these explicitly;
-   their meaning no longer depends on a particular Tailwind palette utility or
-   on the order of the global dark-mode overrides below. Hover rules stay
-   important so they can override the app's important base-surface utilities
-   on compact sidebar buttons. */
+/* Semantic sidebar states, opted into explicitly. Hover rules stay !important to beat base-surface utilities. */
 .noa-sidebar-active-surface {
   background-color: var(--bg-sidebar-raised, #EAE5DE) !important;
 }
@@ -613,9 +422,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: color-mix(in srgb, var(--bg-sidebar-raised, #EAE5DE) 55%, transparent) !important;
 }
 
-/* Dark translucent white re-adapts to the lowered floor. The theme-qualified
-   semantic selectors out-specify their light counterparts, independent of
-   stylesheet order. */
+/* Dark variants: theme-qualified selectors out-specify the light ones regardless of order. */
 [data-theme="dark"] .noa-sidebar-active-surface {
   background-color: rgba(249, 249, 247, 0.08) !important;
 }
@@ -626,13 +433,11 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: rgba(249, 249, 247, 0.04) !important;
 }
 
-/* Soft elevation. Blur stays under the 8px container padding so the
-   parent's overflow-hidden doesn't clip it. */
+/* Blur stays under the 8px container padding so the parent's overflow-hidden doesn't clip it. */
 .noa-elevated-panel {
   box-shadow: var(--shadow-elevated);
 }
-/* Even falloff on all four sides — for cards that sit in the document flow
-   rather than above it. */
+/* Even falloff on all four sides, for in-flow cards. */
 .noa-ambient-panel {
   box-shadow: var(--shadow-ambient);
 }
@@ -640,22 +445,13 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: var(--shadow-floating);
 }
 
-/* A card in the right column. It floats on the page rather than docking to
-   the window edge: the ring and the ambient shadow are both box-shadow, not
-   border, so a card that has shrunk to nothing really is zero pixels tall and
-   the card beside it lands exactly where a lone card would.
-
-   Cards share the column by flex-grow and nothing animates: a card opens,
-   closes and maximises in one frame. The 8px gap is the card's own margin so
-   it goes with the card. */
+/* Right-column card: floats on the page (box-shadow ring, not border) so a collapsed card is truly zero px.
+   Cards share the column by flex-grow; nothing animates. */
 .noa-pane-card {
   flex: 1 1 0%;
   min-height: 0;
   margin-top: 8px;
-  /* Not --shadow-ambient: its 10px blur overruns the 8px gutter and the
-     column's overflow cuts it off in a straight line. This one is a halo on
-     all four sides, barely offset: 7px sideways, 6px up, 8px down — inside
-     the 8px gutter every way. */
+  /* Not --shadow-ambient: its 10px blur overruns the 8px gutter and gets clipped. */
   box-shadow:
     0 0 0 1px rgba(45, 45, 43, 0.08),
     0 1px 2px 0 rgba(45, 45, 43, 0.08),
@@ -676,17 +472,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-pane-card[data-state="hidden"] {
   display: none;
 }
-/* DARK MODE — triggered by data-theme="dark" on <html>
-   Uses [data-theme="dark"] for higher specificity than Tailwind */
-
-/* Warm dark palette:
-   bg-primary   #2D2D2B  (main content bg)
-   bg-secondary #252523  (sidebar / panels / code blocks — soft warm charcoal)
-   text-primary #F9F9F7  (warm white)
-   accent       #CC7D5E  (Anthropic coral)
-   divider      rgba(249,249,247,0.15) (structural dividers)
-   shadow       #1A1A18  (hard offset shadows only)
-*/
+/* DARK MODE: data-theme="dark" on <html>; [data-theme] selectors for specificity over Tailwind. */
 
 [data-theme="dark"] body {
   background-color: #2D2D2B;
@@ -697,34 +483,11 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   --shadow-floating: 0 4px 12px 0 rgba(0,0,0,0.45);
 }
 
-/* ── How dark mode works, and the one way it bites ──────────────────────────
-   The rules below rewrite Tailwind arbitrary-value colour classes globally with
-   `!important`. ThemeInjector.tsx injects a second, unconditional set over the
-   same classes. The two layers do not always agree on an overlapped value
-   (`bg-[#EFEAE3]/30`, `text-[#2D2D2B]/70`–`/90` differ); nothing breaks because
-   the injected sheet sits later in document order, so at equal specificity
-   under `!important` it wins every overlap and the copies below are dead.
-   Treat ThemeInjector as the source of truth for any class both layers cover.
-
-   This makes a colour *value* stand in for a semantic *role*: `bg-[#F9F9F7]`
-   is assumed to always mean "page surface". The moment a component means it as
-   a light mark ON a dark surface — a progress fill, an inverted badge — these
-   rules silently invert it, and `!important` means a normal class cannot win it
-   back. Nothing catches that: TypeScript can't see it, and the token tests pin
-   only a handful of specific regression colours. It surfaces as something
-   invisible in dark mode, found by eye.
-
-   So for anything that is foreground rather than surface, don't reach for the
-   literal hex — read the token: `bg-[var(--text-primary,#2D2D2B)]`. The class
-   Tailwind generates for that matches none of the selectors below. Keep the
-   fallback: `--text-primary` has no baseline definition (no `:root` sets it and
-   public/theme-bootstrap.js pre-sets only --bg-primary/--bg-secondary), so it
-   is undefined until ThemeInjector's layout effect runs.
-
-   Re-spelling the colour to dodge the selector (`bg-[rgba(249,249,247,0.9)]`)
-   works too, and a few call sites do it — but that leaves two spellings of one
-   colour where only one is safe. Prefer the token.
-   ──────────────────────────────────────────────────────────────────────────── */
+/* ── Dark-mode colour remap ──
+   These !important rules rewrite Tailwind arbitrary colour classes globally; ThemeInjector.tsx injects a later,
+   unconditional set that wins overlaps (treat it as source of truth). A colour *value* stands in for a *role*, so a
+   light mark on a dark surface gets inverted silently. For foreground colours, use a token instead of a literal hex:
+   `bg-[var(--text-primary,#2D2D2B)]` (keep the fallback: --text-primary is undefined until ThemeInjector runs). */
 
 /* ── Backgrounds ── */
 [data-theme="dark"] .bg-\[\#F9F9F7\]    { background-color: #2D2D2B !important; }
@@ -755,8 +518,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .text-\[\#2D2D2B\]\/90  { color: rgba(220,220,214,0.90) !important; }
 [data-theme="dark"] .text-\[\#CC7D5E\]      { color: #CC7D5E !important; }
 
-/* ── Status dots: the calendar's due/overdue markers are 3px, so they need the
-   same lift the status text gets or they vanish against the dark floor ── */
+/* ── Status dots: 3px markers need the same lift as status text or they vanish on the dark floor ── */
 [data-theme="dark"] .bg-\[\#D9862B\] { background-color: #F0A94E !important; }
 [data-theme="dark"] .bg-\[\#C24444\] { background-color: #E08A8A !important; }
 
@@ -799,15 +561,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .hover\:border-\[\#CC7D5E\]:hover { border-color: #CC7D5E !important; }
 [data-theme="dark"] .divide-\[\#2D2D2B\] > :not(:last-child) { border-color: var(--divider-subtle) !important; }
 
-/* Sidebar boxed confirm buttons: the global dark remap above turns their frame
-   into the near-invisible divider tone, so restore a visible border. Without it
-   the neutral Cancel (bg remapped to the sidebar color) loses its outline and
-   reads smaller than the filled red Delete next to it. */
+/* Restore a visible border on sidebar confirm buttons (the remap makes it near-invisible). */
 [data-theme="dark"] .noa-confirm-btn { border-color: var(--border-strong, rgba(249,249,247,0.30)) !important; }
 
-/* Settings is a single low-contrast surface: every ordinary ink border inside
-   it follows the shared divider token. Semantic accent, warning, and error
-   borders keep their own colors. */
+/* Settings: ordinary ink borders follow the divider token; semantic accent/warning/error borders keep theirs. */
 [data-settings-surface="true"] .border-\[\#2D2D2B\],
 [data-settings-surface="true"] .border-\[\#2D2D2B\]\/10,
 [data-settings-surface="true"] .border-\[\#2D2D2B\]\/15,
@@ -838,9 +595,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-tag { color: #CC7D5E; background: rgba(204,125,94,0.12); border-radius: 4px; padding: 0 0.3em; font-size: 0.9em; font-weight: 600; white-space: nowrap; }
 [data-theme="dark"] .noa-tag { color: #CC7D5E; background: rgba(204,125,94,0.15); }
 
-/* ── Tag Explorer pills (sidebar) ──
-   Per-tag hue lives in --tag-h (set inline); lightness/saturation are baked here
-   so each pill stays muted and on-theme in both light and dark. */
+/* ── Tag Explorer pills: per-tag hue in --tag-h (inline); lightness/saturation baked here. ── */
 .noa-tag-pill {
   border-radius: 3px;
   background: hsl(var(--tag-h) 18% 90%);
@@ -856,8 +611,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 [data-theme="dark"] .noa-tag-pill:hover { background: hsl(var(--tag-h) 13% 22%); }
 
-/* Active = currently filtering on this tag. Thin accent border + accent text,
-   placed last with theme-qualified selectors so it wins over the dark base rule. */
+/* Active (filtering on this tag): accent border + text; theme-qualified so it wins over the dark base rule. */
 .noa-tag-pill[data-active="true"],
 [data-theme="dark"] .noa-tag-pill[data-active="true"] {
   border-color: var(--accent-color, #CC7D5E);
@@ -869,11 +623,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .prose-pre\:text-\[\#2D2D2B\] pre        { color: #F9F9F7 !important; }
 [data-theme="dark"] .prose-code\:text-\[\#CC7D5E\] code      { color: #CC7D5E !important; }
 
-/* ── highlight.js code blocks ──
-   Backgrounds stay transparent in BOTH themes: the injected github/github-dark
-   stylesheets (Editor.tsx) each set an .hljs background, but the pre's coral
-   tint is owned by the CodeBlock component in PreviewPane.tsx (matching the
-   editor's .cm-code-line look). */
+/* ── highlight.js: backgrounds transparent in both themes; the pre's tint is owned by CodeBlock in PreviewPane.tsx. */
 .hljs                                       { background: transparent !important; }
 [data-theme="dark"] .hljs                   { background: transparent !important; color: #F9F9F7 !important; border: none !important; border-radius: 0 !important; }
 [data-theme="dark"] pre:has(.hljs)          { border: none !important; border-radius: 0 !important; }
@@ -894,10 +644,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .hljs-tag              { color: #CC7D5E !important; }
 [data-theme="dark"] .hljs-meta             { color: rgba(249,249,247,0.45) !important; }
 
-/* ── Footnotes ──
-   The footnote separator (border/margin/padding/size/opacity) is owned by the
-   <section> component override in PreviewPane.tsx, which is theme-aware. Only the
-   list indent and inline ref/backref link styling live here. */
+/* ── Footnotes: separator is owned by PreviewPane.tsx; only list indent lives here. */
 .prose .footnotes ol         { padding-left: 1.25rem; }
 .prose a[data-footnote-ref] { color: #CC7D5E; font-weight: 600; text-decoration: none; }
 .prose a[data-footnote-ref]:hover { text-decoration: underline; }
@@ -905,50 +652,23 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .prose a[data-footnote-ref]  { color: #CC7D5E !important; }
 [data-theme="dark"] .prose a[data-footnote-backref] { color: #CC7D5E !important; }
 
-/* ── Preview weights ──
-   Typography ships h1:800 / h2:700 / h3,h4,strong:600. Those were only ever
-   seen through a bundled 400-weight face, where Skia's synthetic bold collapses
-   every one of them into a single rendered weight — so the preview looked flat
-   and light no matter what the numbers said. Against a real font family those
-   numbers resolve to genuinely drawn faces and the preview turns heavy.
-   They still collapse to one weight — size carries the heading hierarchy —
-   but that weight is the content semibold, not the chrome's 450, which left
-   `**strong**` indistinguishable from body text. `.prose h1` (0,1,1) outranks
-   the plugin's `:where()` selectors (0,1,0) without !important; the inline
-   weights in PreviewPane.tsx are set there instead. */
+/* ── Preview weights: headings and strong use the content semibold (size carries hierarchy). `.prose h1` (0,1,1)
+   outranks the plugin's :where() selectors without !important; inline weights in PreviewPane.tsx are set there. */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
 .prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-content-bold); }
 
-/* ── Preview heading scale ──
-   Obsidian's ×1.125 modular scale (--h1-size…--h5-size and the per-level line
-   heights, pulled from Obsidian 1.5.8's obsidian.asar), duplicated in the
-   CodeMirror highlight styles in useCodeMirror.ts so a heading keeps the same
-   size when toggling between edit and preview. Typography's sm theme otherwise
-   ships 30/20/18px for h1–h3, no size at all for h4, and nothing for h5/h6. */
+/* ── Preview heading scale: Obsidian's ×1.125 scale, mirrored in useCodeMirror.ts so headings don't jump between modes. */
 .prose h1 { font-size: 1.802em; line-height: 1.2; }
 .prose h2 { font-size: 1.602em; line-height: 1.2; }
 .prose h3 { font-size: 1.424em; line-height: 1.3; }
 .prose h4 { font-size: 1.266em; line-height: 1.4; }
 .prose h5 { font-size: 1.125em; line-height: 1.5; }
 
-/* ── Preview heading spacing ──
-   Obsidian's model: 1rem on both sides of every heading (--p-spacing), so the
-   gap above and below a heading is identical; a heading that directly follows
-   body content gets a 2.5rem section break above it (--heading-spacing).
-   Typography instead gives h2/h3 ~2× more margin above than below, which read
-   as uneven spacing around every heading. rem (not em) keeps the gap constant
-   across heading sizes, matching Obsidian. */
+/* ── Preview heading spacing: Obsidian's model: 1rem above and below, 2.5rem section break after body content. rem keeps it constant across sizes. */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
 .prose :is(p, pre, table, ul, ol) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
 
-/* ── Inline title (file name) ──
-   Obsidian's inline title mirrors its h1 metrics (--inline-title-size /
-   -weight / -line-height → --h1-*) with a 0.5em margin below (values from
-   Obsidian 1.5.8's obsidian.asar). Edit mode renders it as a CodeMirror block
-   widget (.cm-noa-inline-title), the preview as the prose column's first child
-   (.noa-inline-title); colour is inherited in both, so no per-theme rules. The
-   element right after the title sheds its top margin so the title reads as the
-   head of the page instead of doubling the gap. */
+/* ── Inline title (file name): Obsidian h1 metrics; edit mode is a CM widget, preview the prose column's first child. */
 .cm-noa-inline-title, .noa-inline-title {
   font-size: 1.802em;
   line-height: 1.2;
@@ -957,11 +677,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .prose .noa-inline-title + * { margin-top: 0; }
 
-/* ── Blockquote ──
-   Obsidian-style: accent bar, upright text, no auto quote marks. Typography's
-   defaults (gray bar, italic, open/close-quote pseudo-content) made quotes look
-   like disabled text. Text is dimmed via colour, not opacity, so the bar keeps
-   full accent strength; the p selector outranks the dark theme's prose-p colour. */
+/* ── Blockquote: Obsidian-style accent bar, upright text. Dimmed via colour (not opacity) so the bar keeps full strength. */
 .prose blockquote.noa-blockquote {
   border-left: 2px solid var(--accent-color, #CC7D5E);
   padding-left: 1rem;
@@ -972,22 +688,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .prose blockquote.noa-blockquote,
 .prose blockquote.noa-blockquote p { color: rgba(45, 45, 43, 0.75); }
-/* A loose task list wraps each item's text in <p>; prose's paragraph margin
-   then drops the text a line below its checkbox. */
+/* Loose task list wraps item text in <p>; drop its margin so text aligns with the checkbox. */
 .prose .noa-task-text > p:first-child { margin-top: 0; }
 [data-theme="dark"] .prose blockquote.noa-blockquote,
 [data-theme="dark"] .prose blockquote.noa-blockquote p { color: rgba(249, 249, 247, 0.72); }
 .prose blockquote.noa-blockquote p::before,
 .prose blockquote.noa-blockquote p::after { content: none; }
 
-/* ── External link icon ──
-   Obsidian-style trailing arrow-out-of-box glyph on links that leave the app,
-   so they read differently from in-app note links. Masked rather than an <img>
-   so it takes a theme token colour; muted, like Obsidian's, so the link text
-   stays the accent-coloured part. Inline-block keeps the underline off it. The
-   viewBox is cropped to the stroke's outer edge (lucide's 24-unit grid pads 2
-   units per side), so the box bottom is the drawn bottom and vertical-align:
-   baseline sets the glyph on the text baseline. */
+/* ── External link icon: masked (takes a token colour); viewBox cropped to the stroke so baseline alignment is exact. */
 .prose a.noa-external-link::after {
   content: '';
   display: inline-block;
@@ -1000,19 +708,12 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='2 2 20 20' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-/* ── List markers (bullets / numbers) ──
-   Typography's --tw-prose-bullets/counters default to grays that wash out on
-   the light cream background; pin markers to the body text color per theme. */
+/* ── List markers: typography's default grays wash out on cream; pin to body text colour per theme. */
 .prose li::marker { color: #2D2D2B; }
 [data-theme="dark"] .prose li::marker { color: #F9F9F7 !important; }
 
-/* ── Scrollbar ──
-   No !important here (unlike the rest of the dark overrides): it would beat
-   the fade keyframes too, snapping the thumb in/out. The [data-theme="dark"]
-   prefix already out-specifies the light rules below. */
-/* NOTE: every rule here must use background-color, never the background
-   shorthand — the shorthand resets background-clip and would undo the
-   transparent-border inset on the thumb (see the light rules below). */
+/* ── Scrollbar: no !important (it would beat the fade keyframes). Use background-color, never the shorthand,
+   which resets background-clip and undoes the thumb's transparent-border inset. */
 @keyframes scrollbar-fadeout-dark {
   from { background-color: rgba(249,249,247,0.22); }
   to   { background-color: rgba(249,249,247,0); }
@@ -1036,26 +737,9 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10.animate-pulse,
 [data-theme="dark"] .animate-pulse.bg-\[\#2D2D2B\]\/10 { background-color: rgba(249,249,247,0.06) !important; }
 
-/* Sidebar drag & drop, following Obsidian's file-explorer model (app.css:
-   `.nav-folder.is-being-dragged-over`, `.tree-item-self.is-being-dragged`).
-   The whole vocabulary there is *washes*, never outlines: a drop target is
-   `hsla(accent, 0.1)` with no border and no shadow. The wash goes on the
-   *block* — folder title plus subtree — because dropping into a folder drops
-   into everything under it; the title row inside takes only the highlighted
-   colour, never a second wash, or the two stack into a band twice the
-   intended strength.
-
-   The wash is painted on a ::before, not on the block's own background. A
-   real margin would shove every row inside the block sideways the moment the
-   target lit up, so the box stays full-width and the inset happens in the
-   paint layer. The inset is the rows' own 6px: on the right, a full-bleed
-   wash reaches into the scrollbar strip the content is pulled back over,
-   where the scrollport clips the corner radius off; on the left, it sits the
-   wash off the parent's guide line, which ends only 1px before the block's
-   edge. The ::before paints at z-index:-1 so the wash lands behind the rows'
-   own backgrounds and text, and the block's z-index:0 keeps that -1 from
-   slipping behind the sidebar floor. Corners stay at the rows' `rounded-lg`
-   8px, so every corner in the tree — hover, active, target, source — agrees. */
+/* Sidebar drag & drop (after Obsidian's explorer): drop targets are *washes*, never outlines. The wash sits on the
+   block (folder + subtree) via a ::before inset by the rows' 6px, so rows don't shift and the scrollbar strip isn't
+   painted. z-index:0 on the block keeps the -1 wash above the sidebar floor. Corners match the rows' 8px. */
 .noa-sidebar-drop-root,
 .noa-sidebar-drop-branch {
   position: relative;
@@ -1072,31 +756,20 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   z-index: -1;
 }
 
-/* Title row of the targeted folder: colour only (Obsidian's
-   --nav-item-color-highlighted), which is what names the target inside the
-   block wash. */
+/* Targeted folder's title row: colour only, naming the target inside the block wash. */
 .noa-sidebar-drop-row {
   color: var(--accent-color, #CC7D5E);
 }
 
-/* The source row stays put and is filled solid, rather than dimmed: the tree
-   never appears to lose an item, and the fill is the one place in the
-   interaction where the accent is at full strength. The fill stands alone —
-   FileNode drops the row's hover/active/selected surface class while dragging,
-   so no `!important` hover rule is there to contest it (they would win:
-   their specificity beats a bare class, and Chromium freezes :hover at
-   dragstart, so the wash would stick for the whole drag). The `!important`
-   stays only as a guard against future surface classes on the row. */
+/* Source row is filled solid (not dimmed). FileNode drops hover/selected classes during drag; the !important is only a
+   guard against future surface classes, since Chromium freezes :hover at dragstart and would stick the wash. */
 .noa-sidebar-row-dragging {
   background-color: var(--accent-color, #CC7D5E) !important;
   color: #F9F9F7;
   border-radius: 8px;
 }
 
-/* Hover is noise once a drag is in flight — Obsidian gates every hover rule in
-   the explorer behind `body:not(.is-grabbing)`. The :not() guards keep the
-   suppression from overriding the drag/drop fills above, which would otherwise
-   lose to this `!important` (it is needed only to beat the hover rules' own). */
+/* No hover while dragging (Obsidian gates hover behind is-grabbing). :not() guards keep drag/drop fills intact. */
 [data-grabbing='true'] .noa-sidebar-hover-surface:hover:not(.noa-sidebar-row-dragging):not(.noa-sidebar-drop-row),
 [data-grabbing='true'] .noa-sidebar-hover-surface-subtle:hover:not(.noa-sidebar-row-dragging):not(.noa-sidebar-drop-row) {
   background-color: transparent !important;
@@ -1105,11 +778,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   opacity: 0 !important;
 }
 
-/* Drag chip (built in lib/treeDragImage.ts). Geometry is Obsidian's
-   `.drag-ghost`: 6px/8px padding, --radius-s, a 300px cap and `0 2px 8px`.
-   Like Obsidian's, it stays dark in both themes — it has to read over the
-   sidebar, the editor and whatever is behind the window — so dark mode only
-   adds the hairline that keeps it off a near-black surface. */
+/* Drag chip (lib/treeDragImage.ts), geometry from Obsidian's .drag-ghost. Dark in both themes so it reads over anything. */
 .noa-tree-drag-ghost {
   position: fixed;
   display: inline-flex;
@@ -1130,18 +799,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(249, 249, 247, 0.14);
 }
 
-/* The sidebar scrollbar overlays the row gutter instead of taking layout from
-   it. Without this, a scrollable list shrinks the scrollport by the scrollbar
-   width and every row's right margin jumps by that amount while the left stays
-   put. `scrollbar-gutter: stable` makes the reservation permanent (no jump when
-   the list becomes scrollable) and the -6px pull-back hands the strip back to
-   the content, so rows keep an identical 6px margin on both edges and the thumb
-   rides in the right one.
-   The 6px is load-bearing three times over and the three must stay equal: the
-   ::-webkit-scrollbar width below, this pull-back, and the rows' own mx-1.5.
-   Pull back more than the rows' margin and their right edge lands outside the
-   scrollport, which clips the corner radius on that side only — a row whose
-   right corners are visibly flatter than its left ones. */
+/* Scrollbar overlays the row gutter: stable reserves it, and the -6px pull-back returns the strip to content so rows
+   keep equal 6px margins. This 6px must equal ::-webkit-scrollbar width and the rows' mx-1.5, or corners clip. */
 .noa-sidebar-scroll {
   scrollbar-gutter: stable;
 }
@@ -1149,12 +808,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   margin-right: -6px;
 }
 
-/* Same trick for the right panel's tab bodies. Their `scrollbar-gutter: stable`
-   reserved 6px on the right only, so every hover band sat 6px further from the
-   right edge than from the left — visible as a lopsided highlight. Pulling the
-   content back by the scrollbar width hands that strip back, and the thumb
-   rides in the panel's own right padding. Keep the 6px equal to
-   ::-webkit-scrollbar's width. */
+/* Same pull-back for the right panel's tab bodies (keeps hover bands symmetric). Keep 6px equal to ::-webkit-scrollbar width. */
 .noa-panel-scroll {
   scrollbar-gutter: stable;
 }
@@ -1163,7 +817,6 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 /* Scrollbar (light mode) */
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -1180,9 +833,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   from { background-color: rgba(45, 45, 43, 0); }
   to   { background-color: rgba(45, 45, 43, 0.25); }
 }
-/* The transparent border + padding-box clip centers the painted thumb inside
-   its track. Webkit scrollbars have no margin property — the border is the
-   only way to create this balanced inset without clipping one side. */
+/* Transparent border + padding-box clip centres the thumb (webkit scrollbars have no margin). */
 ::-webkit-scrollbar-thumb {
   background-color: rgba(45, 45, 43, 0);
   background-clip: padding-box;
@@ -1210,34 +861,18 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 /* ── Editor tab strip ── */
-/* Every tab is exactly --noa-tab-w wide, and the component sizes the tab off
-   the same variable (`w-[var(--noa-tab-w)]` + `flex-none`). That is load-bearing,
-   not cosmetic: tabs used to be `flex-1` with a 0 basis, which made each tab's
-   width the *average* of the whole set, so opening or closing one resized every
-   other tab. The enter/exit keyframes take the animating tab out of flex, so
-   that re-average could not be interpolated — it landed as a single-frame jump
-   (measured: 13.5px per tab on open, 24px with mixed-length titles). With a
-   fixed width the animating tab is the only thing that moves.
-   When the strip runs short, the tabs compress instead of scrolling (as in
-   Obsidian): EditorHeader writes --noa-tab-fit-w, the space divided by the tab
-   count, clamped to [44px, 9rem]. Still one explicit width for every tab, so the
-   rule above holds — and when the count changes, data-tab-resizing eases the
-   siblings to the new width on the enter/exit keyframes' own clock, so the
-   growing tab and the shrinking ones move together instead of a re-average
-   landing in one frame. Resizes (sidebar drag) stay instant. Below the 44px
-   floor the strip scrolls as before. */
+/* Every tab is exactly --noa-tab-w (flex-none), so opening/closing one doesn't re-average and resize its siblings in one
+   frame. When the strip runs short, EditorHeader writes --noa-tab-fit-w (clamped to [44px, 9rem]); data-tab-resizing eases
+   siblings on the enter/exit clock. Below 44px the strip scrolls. */
 .editor-tab {
   --noa-tab-w: var(--noa-tab-fit-w, 9rem);
-  /* The inset gives way as the tab compresses: 12px down to a 68px tab, then
-     easing to 6px at the 44px floor, where a fixed 12px left the title 20px —
-     not even room for its ellipsis. */
+  /* Inset eases from 12px down to 6px as the tab compresses, so the title keeps room for its ellipsis. */
   --noa-tab-pad: clamp(0.375rem, calc((var(--noa-tab-w) - 44px) / 4 + 0.375rem), 0.75rem);
   padding-left: var(--noa-tab-pad);
   padding-right: var(--noa-tab-pad);
   backface-visibility: hidden;
 }
-/* Below TAB_ACTIVE_MIN_W the active tab stops compressing (EditorHeader writes
-   both widths), so its close glyph and rename field keep room. */
+/* Below TAB_ACTIVE_MIN_W the active tab stops compressing (close glyph and rename field keep room). */
 .editor-tab[data-active-tab="true"],
 .editor-tab[data-closing-active-tab="true"] {
   --noa-tab-w: var(--noa-tab-active-fit-w, var(--noa-tab-fit-w, 9rem));
@@ -1250,11 +885,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .editor-tab-divider {
   transition: opacity 140ms ease-out;
 }
-/* The active tab is a raised pill, drawn the same way as the right column's
-   cards: a hairline ring and a soft shadow, both box-shadow so they add
-   nothing to the tab's box. Its fill is one step lighter than the bar — pure
-   white in light, a wash of the text colour in dark — and is set here rather
-   than with a colour utility so the dark-mode remap cannot flatten it. */
+/* Active tab is a raised pill (box-shadow ring + soft shadow, like the right-column cards). Set here, not via a
+   colour utility, so the dark-mode remap can't flatten it. */
 .editor-tab[data-active-tab="true"] {
   background-color: #FFFFFF;
   box-shadow: 0 0 0 1px var(--divider-subtle, #E6E2DA), 0 1px 2px 0 rgba(45, 45, 43, 0.06);
@@ -1266,10 +898,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .editor-tab[data-active-tab="false"]:hover {
   background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
 }
-/* A dragged tab rides over its neighbours, and an inactive tab's surface is at
-   most the 5% hover wash — their titles showed straight through it. Lifted, it
-   takes the active pill's opaque surface. The extra attribute in the selector
-   outranks the hover rule above, which pointer capture keeps live mid-drag. */
+/* Dragged tab takes an opaque surface so neighbours' titles don't show through; the extra attribute outranks the hover rule. */
 .editor-tab[data-dragging-tab="true"][data-active-tab] {
   background-color: #FFFFFF;
   box-shadow: 0 0 0 1px var(--divider-subtle, #E6E2DA), 0 2px 6px 0 rgba(45, 45, 43, 0.10);
@@ -1388,10 +1017,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   animation: slide-down 150ms ease-out both;
 }
 
-/* ── PDF export via system print dialog ──
-   The print root is a portal on <body> holding a light-themed PreviewPane
-   copy of the note being exported. On screen it stays hidden; during print
-   it replaces the app entirely. */
+/* ── PDF export: hidden portal of a light-themed PreviewPane copy; on print it replaces the app. */
 #noa-print-root {
   display: none;
 }
@@ -1435,19 +1061,11 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 
 .noa-sidebar-preview-shell {
-  /* Fallback mirrors the light token ThemeInjector sets; it only paints on the
-     frame before that runs, and a stale single-layer value there flashed the
-     pre-735df9f elevation. */
+  /* Fallback mirrors ThemeInjector's light token; only paints before that runs. */
   box-shadow: var(--sidebar-preview-shadow, 0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05));
 }
 
-/* The spacer is what opens the docked gap under a promoted preview, so it moves
-   the editor's left edge — the same edge the lifted tab strip's traffic-light
-   reservation is measured back from. Those two have to share a clock or the
-   strip is not monotonic: the reservation used to shrink over 500ms while this
-   finished in 220ms, so the strip ran right with the edge, arrived, and then
-   crept ~16px back left over the last 100ms with nothing else moving. One
-   clock for the whole left edge. */
+/* Opens the docked gap under a promoted preview. Must share the 500ms clock with the header reservation, or the strip creeps. */
 .noa-sidebar-promotion-spacer {
   width: var(--noa-sidebar-width, 325px);
   transition: width 500ms ease-in-out;
@@ -1480,14 +1098,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
     transition: none;
   }
 
-  /* The docked collapse is driven from inline styles on four elements that have
-     to stay on one clock: the masking edge, the separator riding it, the column
-     surface, and the content dissolving underneath. Inline wins over a plain rule,
-     so this needs !important to reach them at all. The titlebar hairline joins
-     them here because it starts at the same edge, even though its own transition
-     is a stylesheet rule. The hook already skips its closing flag under reduced
-     motion, and every phase has a timer fallback, so nothing here depends on a
-     transitionend that no longer fires. */
+  /* Inline docked-collapse styles need !important to reach; the titlebar hairline joins since it shares the edge. */
   [data-sidebar-container],
   [data-sidebar-content-layer="true"],
   [data-sidebar-separator="true"],
@@ -1496,8 +1107,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
     transition: none !important;
   }
 
-  /* The right column's open/close mask and its sidebar-following width are
-     inline too, as is the titlebar actions' edge that rides them. */
+  /* Right column's inline mask and width, plus the titlebar actions edge that rides them. */
   [data-right-panel-column="true"],
   [data-right-panel-column="true"] > *,
   [data-right-panel-anchor="true"] {
@@ -1505,20 +1115,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   }
 }
 
-/* While a sidebar or the right column opens or closes, scrollbar strips sweep
-   under a still pointer and the reflow nudges scroll positions; either would
-   flash a thumb in and out. Nothing is being scrolled, so hide them all. */
+/* During sidebar/right-column layout motion, hide scrollbar thumbs (they'd flash in and out). */
 .noa-app-shell[data-layout-motion="true"] ::-webkit-scrollbar-thumb,
 .noa-app-shell[data-layout-motion="true"] ::-webkit-scrollbar-thumb:hover {
   background-color: transparent !important;
   animation: none !important;
 }
 
-/* Same sweep, for controls: the right column's card buttons and the sidebar's
-   rows slide under a still pointer and would flash their hover wash on and off.
-   Only the side whose edge is moving gives up input for the motion: the right
-   column follows either toggle, the sidebar only its own — a right-panel
-   toggle must not swallow a click on a sidebar row that never moved. */
+/* Only the moving side gives up pointer input during motion (a right-panel toggle must not block sidebar clicks). */
 .noa-app-shell[data-layout-motion="true"] [data-right-panel-column="true"],
 .noa-app-shell[data-sidebar-moving="true"] [data-sidebar-container] {
   pointer-events: none;

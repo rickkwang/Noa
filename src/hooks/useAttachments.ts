@@ -34,12 +34,8 @@ export function useAttachments(
   ]));
   const attachmentSignature = JSON.stringify([...attachmentVersions]);
 
-  // Load blob URLs for all attachments of the current note.
-  // Incremental: only revoke URLs whose attachment id is gone (or whose size/
-  // mimeType/filename changed — signature mismatch). URLs for unchanged ids
-  // are kept across renders so <img> tags do not flicker when a sibling
-  // attachment is added/removed, and so uploadFile's optimistic URL isn't
-  // double-revoked by this effect.
+  // Incremental: revoke only URLs whose attachment is gone or changed, so <img> tags don't flicker
+  // and uploadFile's optimistic URL isn't double-revoked.
   useEffect(() => {
     let cancelled = false;
     const previousMap = new Map(objectUrlsRef.current);
@@ -108,9 +104,7 @@ export function useAttachments(
     });
 
     return () => { cancelled = true; };
-    // attachmentSignature is a hash of note?.attachments; depending on the
-    // signature (not the array ref) avoids re-running on every note object
-    // identity change while still reloading when attachments actually change.
+    // Depend on the signature, not the array ref, so note identity churn doesn't re-run this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id, attachmentSignature, revokeUrls]);
 

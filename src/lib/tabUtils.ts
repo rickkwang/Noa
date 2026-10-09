@@ -1,9 +1,8 @@
 export const MAX_OPEN_TABS = 20;
 
 /**
- * Append a tab, evicting the leftmost tab when at capacity. Returns the input
- * array unchanged (same reference) when the tab is already open, so callers
- * can skip downstream work on identity equality.
+ * Append a tab, evicting the leftmost (non-`id`) tab at capacity. Returns the
+ * same array reference when the tab is already open.
  */
 export function addTabId(openTabIds: string[], id: string, maxTabs: number = MAX_OPEN_TABS): string[] {
   if (openTabIds.includes(id)) return openTabIds;

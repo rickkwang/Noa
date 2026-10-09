@@ -16,9 +16,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
     palette.inputRef.current?.select();
   }, [palette.inputRef]);
 
-  // getElementById, not querySelector: the id embeds a note id, which comes
-  // from imports unvalidated. A `"` in it made the selector throw, and with no
-  // error boundary above the palette that blanked the whole app.
+  // getElementById, not querySelector: the id embeds an unvalidated note id, and a `"` in it made the selector throw.
   useEffect(() => {
     if (!selectedOptionId) return;
     document.getElementById(selectedOptionId)?.scrollIntoView({ block: 'nearest' });
@@ -80,9 +78,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
                 role="option"
                 aria-selected={index === palette.selectedIndex}
                 onClick={() => palette.run(item.action)}
-                // Pointer and keyboard share one highlight. onMouseMove rather
-                // than onMouseEnter: scrolling the list under a resting pointer
-                // must not steal the row the arrows just picked.
+                // onMouseMove, not onMouseEnter, so scrolling under a resting pointer doesn't steal the arrow-key highlight.
                 onMouseMove={() => { if (index !== palette.selectedIndex) palette.setSelectedIndex(index); }}
                 className={`w-full text-left px-3 py-2 text-sm rounded-md font-redaction ${index === palette.selectedIndex ? 'bg-[#EFEAE3]' : ''}`}
               >

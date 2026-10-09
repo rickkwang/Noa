@@ -38,10 +38,7 @@ function syncLabel(status: SyncStatus, lastSyncAt?: string | null): string {
   return `Synced ${new Date(lastSyncAt).toLocaleDateString()}`;
 }
 
-/** Shared by the gear and the Calendar/Tags toggles Sidebar passes as `actions`.
- *  The open state swaps the colour class rather than layering an inline colour:
- *  ThemeInjector forces `text-[#2D2D2B]/70` with !important in both themes, so
- *  a style={{ color }} on top of it never shows. */
+/** Shared by the gear and the Calendar/Tags toggles. Swaps the colour class, not an inline style: ThemeInjector's !important rules would beat it. */
 export const footerIconButton = (active = false) =>
   `p-1.5 shrink-0 rounded-lg ${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70'} hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer`;
 
@@ -68,8 +65,7 @@ export function VaultFooter({
   actions,
 }: VaultFooterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Switching disconnects before it can open the picker, and a cancelled picker
-  // leaves no vault attached — so it asks first rather than acting on one click.
+  // Switching disconnects before the picker opens, and a cancelled picker leaves no vault, so confirm first.
   const [confirmSwitch, setConfirmSwitch] = useState(false);
 
   useEffect(() => {
@@ -82,9 +78,7 @@ export function VaultFooter({
     };
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      // The sidebar's hover preview closes on Escape too (useSidebarPreview), and
-      // it listens on window — later in the bubble than this. Without stopping
-      // here, one keypress dismisses the menu and collapses the whole sidebar.
+      // Stop propagation: the sidebar's hover preview also listens for Escape on window and would collapse with the menu.
       e.stopPropagation();
       setIsOpen(false);
     };
@@ -144,9 +138,7 @@ export function VaultFooter({
             </div>
           ) : (
             <>
-              {/* Workspace and vault are separate things that coexist: the
-                  workspace is always here, the vault is an optional folder
-                  mirrored into it. The menu states both rather than picking one. */}
+              {/* Workspace and vault coexist: the workspace is always present, the vault is an optional mirrored folder. */}
               <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-[13px] font-redaction text-[#2D2D2B]/90">
                 <Check size={13} className="shrink-0 text-[#2D2D2B]/50" />
                 <span className="truncate">{label}</span>
@@ -226,10 +218,7 @@ export function VaultFooter({
             three icons land on the same 12px rail. */}
         <ChevronsUpDown size={11} className="mr-1.5 shrink-0" />
         <span className="truncate">{label}</span>
-        {/* The dot rides vertical-align:middle inside its own inline context —
-            baseline + half x-height, i.e. the optical centre of the lowercase
-            text. As a bare flex child it centres on the line box instead, which
-            includes descender space the label doesn't use and reads ~1.5px high. */}
+        {/* Inline vertical-align:middle centres on the x-height; a flex child would centre on the line box and read ~1.5px high. */}
         {vaultName && (
           <span className="ml-1.5 shrink-0" aria-hidden>
             <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${DOT_CLASS[syncStatus]}`} />

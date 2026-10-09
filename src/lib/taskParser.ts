@@ -115,7 +115,7 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
     : undefined;
 
   if (!target) {
-    // Fallback for legacy tasks: same text + state + occurrence + structure marker.
+    // Fallback: same text, state, occurrence, and list marker.
     target = parsedLines.find(
       (item) =>
         item.content === task.content &&
@@ -126,7 +126,7 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
   }
 
   if (!target) {
-    // Fallback for legacy tasks where marker shape changed (e.g. "-" -> "*").
+    // Fallback for when the list marker changed (e.g. "-" -> "*").
     target = parsedLines.find(
       (item) =>
         item.content === task.content &&
@@ -136,7 +136,7 @@ export function toggleTaskInNoteContent(content: string, task: GlobalTask): { up
   }
 
   if (!target) {
-    // Last fallback: exact previous line.
+    // Last resort: exact original line.
     target = parsedLines.find((item) => item.originalLine === task.originalString);
   }
 
@@ -154,13 +154,10 @@ const parseTasksFromNote = (note: Note): GlobalTask[] => {
   const lines = note.content.split('\n');
   parseTaskLines(lines).forEach((parsed) => {
     const { index, originalLine: line } = parsed;
-    // Empty text (editor list auto-continuation leaves "- [ ] ", or the text
-    // was only metadata tokens) — not a real task; don't surface it. The line
-    // still passes through parseTaskLine so occurrence indices stay aligned
-    // with toggleTaskInNoteContent, which parses the same lines.
+    // Empty text (auto-continued "- [ ] " or metadata-only) is not a task. It still
+    // goes through parseTaskLine so occurrence indices stay aligned with toggleTaskInNoteContent.
     if (!parsed.content) return;
 
-    // Re-extract due date for parsed task payload.
     const dueDate = extractValidDueDate(line);
 
     let priority: Priority = 'none';
@@ -189,10 +186,8 @@ const parseTasksFromNote = (note: Note): GlobalTask[] => {
   return tasks;
 };
 
-// Per-note parse cache keyed by object identity. Every mutation path creates a
-// fresh Note object, so an unchanged reference means unchanged content — this
-// is called on every notes-state change (i.e. every keystroke) and must not
-// re-run the line regexes over the whole vault each time.
+// Per-note parse cache keyed by object identity: every mutation creates a fresh
+// Note, so an unchanged reference means unchanged content. Runs on every keystroke.
 const noteTasksCache = new WeakMap<Note, GlobalTask[]>();
 
 export const parseTasksFromNotes = (notes: Note[]): GlobalTask[] => {

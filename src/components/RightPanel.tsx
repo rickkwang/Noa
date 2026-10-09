@@ -44,10 +44,8 @@ function usePaneSlots(open: readonly RightTab[]) {
   };
 }
 
-// One floating card in the right column. Its surface is one step off the
-// page in both themes — white on the light page, #313130 on the dark one — so
-// the card reads as raised rather than as a hole cut in the page. The header is the same on every card
-// so two stacked cards line up; anything card-specific goes in `actions`.
+// One floating card in the right column, one step off the page in both themes so it reads as raised.
+// The header is identical on every card so stacked cards line up; card-specific controls go in `actions`.
 function PaneCard({
   id,
   state,
@@ -75,8 +73,7 @@ function PaneCard({
   children: React.ReactNode;
 }) {
   const title = RIGHT_TAB_LABELS[id];
-  // 20px in a 28px row: the hover wash clears the card's top edge by 4px and
-  // stays off its rounded corner. A 24px square crowded the corner.
+  // 20px in a 28px row: the hover wash clears the card's top edge and rounded corner.
   const controlClass = `flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
       ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[rgba(249,249,247,0.07)]'
@@ -91,18 +88,8 @@ function PaneCard({
       className={`noa-pane-card flex flex-col overflow-hidden rounded-[10px] ${isDark ? 'bg-[#313130]' : 'bg-white'}`}
       style={{ order, flexGrow: grow }}
     >
-      {/* 28px under the card's 8px top gutter centres this row on 22px — the
-          centre line of the 44px titlebar beside it, so the card title and its
-          controls sit level with the tabs and the panel menu. */}
-      {/* Every card's content keeps a 12px inset on both sides, and this row
-          sets it: the title starts at 12px, and pr-1.5 lands the close
-          glyph's drawn strokes there too (the X is inset ~2.5px inside its
-          13px box), so title, section labels, counts and the close button
-          share two vertical lines. */}
-      {/* The column is lifted over the titlebar and has to be no-drag as a
-          whole (see App.tsx), which took the window's drag strip away along
-          its width. The header gives it back: the bar itself drags the
-          window, its controls opt out. */}
+      {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
+          no-drag as a whole (see App.tsx), so the header restores the window drag strip; its controls opt out. */}
       <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
         <h2 className={`mr-auto truncate text-[12.5px] font-medium font-redaction ${isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85'}`}>{title}</h2>
         <div className="flex min-w-0 items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -113,8 +100,7 @@ function PaneCard({
             title={isExpanded ? 'Collapse' : 'Expand'}
             aria-label={isExpanded ? 'Collapse panel' : 'Expand panel'}
             aria-pressed={isExpanded}
-            // No pressed wash: the glyph already flips to collapse, and a
-            // resting fill read as a stuck hover highlight.
+            // No pressed wash: the glyph already flips, and a resting fill reads as a stuck hover.
             className={controlClass}
           >
             {isExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
@@ -181,9 +167,7 @@ export default function RightPanel({
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [showGraphSearch]);
-  // Drawer settings that drop nodes. Colour and size are display-only, and
-  // search / hide-isolated already show their state in the header. Depth with
-  // no active note has no anchor, so GraphView ignores it.
+  // Counts only settings that drop nodes; colour and size are display-only.
   const activeFilterCount =
     (localDepth > 0 && activeNoteId ? 1 : 0) +
     (tagFilter.length > 0 ? 1 : 0) +
@@ -196,13 +180,8 @@ export default function RightPanel({
     setShowUnresolved(true);
   };
 
-  // Topology-stable snapshot of notes/folders. The notes array gets a new
-  // identity on every keystroke (debounce only guards storage writes, not
-  // state), but the tag chips and graph only depend on structural data
-  // (titles/links/linkRefs/tags/folders). Key their inputs on the topology
-  // signature so content-only edits skip every downstream recompute —
-  // including GraphView/GraphInfoPanel's own signature guards, which now see a
-  // stable array identity and bail before hashing.
+  // Topology-stable snapshot: notes gets a new identity on every keystroke, but the chips and graph
+  // only depend on structure, so content-only edits skip the downstream recompute.
   const topologyKey = useMemo(() => computeTopologySignature(notes, folders), [notes, folders]);
   const stableTopologyRef = useRef<{ key: string; notes: Note[]; folders?: Folder[] }>({ key: '', notes: [], folders: undefined });
   if (stableTopologyRef.current.key !== topologyKey) {
@@ -222,8 +201,7 @@ export default function RightPanel({
     }
     return out;
   }, [topologyNotes]);
-  // Same first-appearance order GraphView uses for its tag → colour map, so a
-  // chip's dot is the legend for the node's dot.
+  // Same first-appearance order as GraphView's tag colour map, so chip dots match node dots.
   const tagColors = useMemo(
     () => new Map(allTags.map((tag, i) => [tag, TAG_PALETTE[i % TAG_PALETTE.length]])),
     [allTags]
@@ -248,9 +226,7 @@ export default function RightPanel({
       : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[#2D2D2B]/[0.06]'
   }`;
 
-  // Once the graph card is opened, keep it mounted while closed so the force
-  // simulation and viewport survive — otherwise reopening replays the "explode
-  // and zoom-to-fit" animation every time.
+  // Once opened, the graph stays mounted while closed so its simulation and viewport survive.
   const isGraphOpen = visiblePanes.includes('graph');
   const [hasVisitedGraph, setHasVisitedGraph] = useState(isGraphOpen);
   useEffect(() => {
@@ -297,9 +273,8 @@ export default function RightPanel({
     document.documentElement.setAttribute('data-pane-split-drag', 'true');
     setIsSplitDragging(true);
     let latest = split;
-    // The drag writes flex-grow straight onto the two cards, once per frame,
-    // and only commits to state on release: re-rendering the whole panel on
-    // every pointer event is what made the edge trail the cursor.
+    // Drag writes flex-grow straight to the two cards per frame and commits to state on release,
+    // so the panel doesn't re-render on every pointer event.
     const upper = splitPair ? column.querySelector<HTMLElement>(`[data-pane="${splitPair[0]}"]`) : null;
     const lower = splitPair ? column.querySelector<HTMLElement>(`[data-pane="${splitPair[1]}"]`) : null;
     const rect = column.getBoundingClientRect();
@@ -425,11 +400,7 @@ export default function RightPanel({
                       </div>
                     )}
                   </div>
-                  {/* Name stays fixed and aria-pressed carries the state. Letting the
-                      name flip too (as `title` does) would have a screen reader
-                      announce "Show all nodes, pressed" — the label and the state
-                      then contradict each other. `title` still flips: as a tooltip
-                      it should say what the click will do. */}
+                  {/* Name stays fixed so aria-pressed carries the state without contradicting it; `title` flips as a tooltip. */}
                   <button onClick={() => setHideIsolated(v => !v)} title={hideIsolated ? 'Show all nodes' : 'Hide isolated nodes'}
                     aria-label="Hide isolated nodes"
                     aria-pressed={hideIsolated}
@@ -437,10 +408,7 @@ export default function RightPanel({
                     style={hideIsolated ? { color: '#CC7D5E' } : undefined}>
                     <Network size={13} />
                   </button>
-                  {/* Colour says the drawer is open; the dot says filters are
-                      applied, which has to stay visible once the drawer closes.
-                      Unlike hide-isolated above, the name may carry the count:
-                      "Filters, 2 active, pressed" doesn't contradict itself. */}
+                  {/* Colour shows the drawer is open; the dot shows filters are applied. The name may carry the count. */}
                   <button onClick={() => setShowFilters(v => !v)}
                     title={`${showFilters ? 'Hide filters' : 'Show filters'}${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
                     aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : 'Filters'}
@@ -493,10 +461,7 @@ export default function RightPanel({
                   onTagFilterChange={setTagFilter}
                 />
               )}
-              {/* The canvas gets everything the summary row below does not
-                  need. The connection lists open over it rather than beside
-                  it: GraphView deliberately doesn't re-fit on resize, so
-                  taking height from the canvas would just crop nodes. */}
+              {/* Lists open over the canvas rather than shrinking it: GraphView doesn't re-fit on resize, so height taken would crop nodes. */}
               <div className="flex-1 min-h-[120px] overflow-hidden">
                 <GraphView notes={topologyNotes} folders={topologyFolders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                   searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
@@ -599,9 +564,7 @@ function GraphInfoPanel({
   searchQuery,
   showUnresolved = true,
 }: GraphInfoPanelProps) {
-  // Same guard as GraphView: topologyKey stands in for `notes`, so content-only
-  // edits (which change the notes array identity on every debounced save) don't
-  // rebuild the whole graph model — only id/title/link/tag/folder changes do.
+  // Same guard as GraphView: content-only edits don't rebuild the graph model.
   const topologyKey = useMemo(() => computeTopologySignature(notes, folders), [notes, folders]);
   const stableNotesRef = useRef<{ key: string; notes: Note[]; folders: Folder[] }>({ key: '', notes: [], folders: [] });
   if (stableNotesRef.current.key !== topologyKey) {
@@ -615,9 +578,7 @@ function GraphInfoPanel({
     searchQuery,
     folders: stableNotesRef.current.folders,
     showUnresolved,
-  // topologyKey is a stable hash standing in for `notes`/`folders` (see
-  // stableNotesRef pattern above); depending on the arrays directly would
-  // recompute graphModel on every parent re-render with new array identities.
+  // topologyKey stands in for the notes/folders arrays (see stableNotesRef above).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [topologyKey, activeNoteId, hideIsolated, localDepth, tagFilter, searchQuery, showUnresolved]);
   const { stats } = graphModel;
@@ -700,9 +661,7 @@ function GraphInfoPanel({
                       return (
                         <button key={id} onClick={() => onNavigateToNoteById(id)}
                           className={`flex items-center gap-1.5 w-full text-left text-xs transition-colors ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}>
-                          {/* Same degree-sized square as Most Connected below, so both
-                              lists speak one marker language. (A Phosphor Circle here
-                              drew a hollow ring — `fill-*` can't fill its stroke path.) */}
+                                        {/* Same degree-sized square as Most Connected below. A Phosphor Circle drew a hollow ring here. */}
                           <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                           <span className="truncate">{target.title}</span>
                           <span className={`ml-auto text-[10px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{degree}</span>
@@ -811,11 +770,7 @@ function GraphFilterPanel({
         title={title}
         className={`relative flex flex-1 gap-0.5 rounded-md p-0.5 ${isDark ? 'bg-[rgba(249,249,247,0.06)]' : 'bg-[rgba(45,45,43,0.05)]'}`}
       >
-        {/* One raised thumb that slides between the two halves, instead of
-            each button swapping its own background: the choice visibly moves
-            rather than blinking from one side to the other. Each half is
-            (track − 4px padding − 2px gap) / 2 wide, so the far position is
-            the thumb's own width plus the gap. */}
+        {/* One raised thumb slides between halves so the choice visibly moves; far position = thumb width + gap. */}
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-3px)] rounded transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
@@ -900,13 +855,12 @@ function GraphFilterPanel({
                         ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.65)] hover:bg-[rgba(249,249,247,0.1)]'
                         : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:bg-[rgba(45,45,43,0.09)]'
                   }`}
-                  // Selected is an accent tint, not a solid fill: the dot is the
-                  // graph's colour legend and has to stay readable on it.
+                  // Accent tint, not a solid fill, so the colour-legend dot stays readable.
                   style={active
                     ? { background: 'color-mix(in srgb, var(--accent-color, #CC7D5E) 18%, transparent)', color: isDark ? '#F9F9F7' : '#2D2D2B', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #CC7D5E) 55%, transparent)' }
                     : undefined}
                 >
-                  {/* Same palette, same order as the node fill in GraphView. */}
+                  {/* Same palette and order as GraphView's node fill. */}
                   <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagColors.get(t) }} />
                   {t}
                 </button>

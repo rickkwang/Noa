@@ -25,10 +25,7 @@ interface UseAutoBackupOptions {
   isLoaded: boolean;
   autoBackupEnabled: boolean;
   onSettingsUpdate: (patch: { autoBackupEnabled: boolean }) => void;
-  // Returns true while useNotes is running handleImportData; we must not
-  // snapshot during an import, because notes/folders may be in a transitional
-  // state (partially merged). A backup taken then would look internally
-  // consistent but capture a moment that never existed in the user's timeline.
+  // True while handleImportData runs; never snapshot mid-import, where notes/folders are partially merged.
   getIsImporting: () => boolean;
 }
 
@@ -132,13 +129,8 @@ export function useAutoBackup({
     return false;
   }, [getIsImporting]);
 
-  // Bootstrap scheduler: once per app start, if enabled + handle present +
-  // permission granted + 24h elapsed, run a backup.
-  //
-  // If an import is in flight when we arrive (e.g. vault reconnect triggered
-  // handleImportData on mount), we must not mark bootstrap as done — that
-  // would strand the user without a backup for the rest of the session. Poll
-  // briefly and retry; imports typically complete in under a second.
+    // Bootstrap: once per start (enabled, handle, permission, 24h elapsed). If an import is running,
+  // don't mark bootstrap done (that would skip backups all session); retry shortly.
   useEffect(() => {
     if (!isLoaded) return;
     if (!autoBackupEnabled) return;
@@ -198,10 +190,7 @@ export function useAutoBackup({
     setHandle(picked);
     setDirectoryName(picked.name);
     onSettingsUpdate({ autoBackupEnabled: true });
-    // Run an immediate backup so the user sees confirmation the folder works.
-    // If the confirmation write fails, roll the connection back so we don't
-    // leave a persisted handle that the bootstrap will retry with on every
-    // launch.
+    // Immediate backup confirms the folder works; on failure roll back so bootstrap doesn't retry the bad handle every launch.
     const ok = await doRun(picked);
     if (!ok) {
       try { await clearBackupHandle(); } catch { /* best-effort */ }

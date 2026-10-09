@@ -30,8 +30,7 @@ function readSidebarClamp(useLayout: string): { min: number; max: number } {
 }
 
 function collectFallbacks(source: string, variable: string): number[] {
-  // Matches both spellings in the tree: `var(--x, 325px)` in inline styles and
-  // `var(--x,325px)` inside Tailwind arbitrary values, which cannot take spaces.
+  // Matches `var(--x, 325px)` inline and `var(--x,325px)` in Tailwind arbitrary values (no spaces).
   const pattern = new RegExp(`var\\(${variable},\\s*(\\d+)px\\)`, 'g');
   return [...source.matchAll(pattern)].map((m) => Number(m[1]));
 }
@@ -50,11 +49,7 @@ describe('sidebar width fallbacks', () => {
       ...collectFallbacks(topBar, '--noa-sidebar-width'),
     ];
 
-    // The fallback only paints on the first frame, before useLayout's effect
-    // writes the real value onto the root element. A stale one is therefore
-    // invisible in tests and shows up in the product as a one-frame jump on
-    // every cold start, which is exactly the kind of drift nothing else here
-    // was catching.
+    // A stale fallback paints only before useLayout's effect runs, so it shows as a cold-start jump.
     expect(fallbacks.length).toBeGreaterThan(0);
     for (const value of fallbacks) {
       expect(value).toBe(expected);
@@ -72,8 +67,7 @@ describe('sidebar width fallbacks', () => {
     expect(match).not.toBeNull();
     const expected = Number(match![1]);
     expect(useLayout).toMatch(/useResizeDrag\(\s*RIGHT_PANEL_DEFAULT_WIDTH,\s*RIGHT_PANEL_MIN_WIDTH,\s*PANEL_MAX_WIDTH,\s*getRightPanelValue/);
-    // The drag minimum is the default itself, not a lower number the panel can
-    // never climb back to.
+    // Drag minimum equals the default; a lower minimum would be unreachable on the way back up.
     expect(RIGHT_PANEL_MIN_WIDTH).toBe(expected);
 
     const fallbacks = [
@@ -92,28 +86,21 @@ describe('sidebar width fallbacks', () => {
     const match = useLayout.match(/const RIGHT_PANEL_DEFAULT_WIDTH\s*=\s*(\d+)/);
     const expected = Number(match![1]);
 
-    // Same guarantee the sidebar already had. Floored at its own default, the
-    // responsive cap can never come in under it, so the panel opens at the
-    // width the CSS fallbacks and the drag range all agree on — 971px is where
-    // the 35% viewport cap crosses 340px, and below it the unfloored version
-    // used to open narrow and jump on the first drag.
+    // Floored at its own default so the panel never opens narrower than the fallbacks and drag range.
     expect(getResponsivePanelMaxWidth(900, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(971, expected)).toBe(expected);
     expect(getResponsivePanelMaxWidth(1600, expected)).toBe(480);
     // The clamp and the drag.
     expect(useLayout.match(/getResponsivePanelMaxWidth\(window\.innerWidth, RIGHT_PANEL_DEFAULT_WIDTH\)/g))
       .toHaveLength(2);
-    // The graph alone opens narrower than the shared ceiling, but never under
-    // the column's own default.
+    // Graph opens narrower than the ceiling but never under the column default.
     expect(useLayout).toContain('Math.max(RIGHT_PANEL_DEFAULT_WIDTH, Math.min(GRAPH_PANEL_DEFAULT_WIDTH, window.innerWidth * PANEL_MAX_VIEWPORT_RATIO))');
   });
 
   it('reports the real drag bounds on both resize handles', async () => {
     const app = await readFile(appPath, 'utf8');
 
-    // These were literals, and both had gone stale against the widths they
-    // claimed to describe. A screen reader announces this range, so a wrong
-    // number here is wrong in the only place the range is ever spoken.
+    // Screen readers announce this range, so it must derive from the constants, not literals.
     expect(app).toContain('aria-valuemin={SIDEBAR_MIN_WIDTH}');
     expect(app).toContain('aria-valuemin={RIGHT_PANEL_MIN_WIDTH}');
     expect(app.match(/aria-valuemax=\{PANEL_MAX_WIDTH\}/g)).toHaveLength(2);
@@ -127,8 +114,7 @@ describe('sidebar width fallbacks', () => {
     const initial = readSidebarDefault(useLayout);
     const { min, max } = readSidebarClamp(useLayout);
 
-    // A default below the min would be silently clamped up on the first drag,
-    // making the app jump the moment the user grabs the handle.
+    // A default below min would be clamped up on the first drag, causing a jump.
     expect(initial).toBeGreaterThanOrEqual(min);
     expect(initial).toBeLessThanOrEqual(max);
   });
@@ -137,10 +123,7 @@ describe('sidebar width fallbacks', () => {
     const useLayout = await readFile(useLayoutPath, 'utf8');
     const initial = readSidebarDefault(useLayout);
 
-    // Both pointer and keyboard paths must share a viewport cap whose floor is
-    // the default width. Otherwise a narrow desktop (for example 800px wide,
-    // where 35% of the viewport lands under the default) opens narrower than
-    // the default and jumps down on the first resize interaction.
+    // Pointer and keyboard share a viewport cap floored at the default, so narrow desktops don't jump.
     expect(getResponsivePanelMaxWidth(800, initial)).toBe(initial);
     expect(getResponsivePanelMaxWidth(885, initial)).toBe(initial);
     expect(getResponsivePanelMaxWidth(1600, initial)).toBe(480);

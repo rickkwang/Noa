@@ -58,8 +58,7 @@ describe('buildGraphModel', () => {
       note({ id: 'd', title: 'Delta', tags: ['drop'], links: [], linkRefs: [] }),
     ], { tagFilter: ['keep'], hideIsolated: true });
 
-    // c's only neighbour (d) is filtered out, so c is isolated in the visible
-    // graph and must be hidden — and stats.isolated must agree with the toggle.
+    // c's only neighbour is filtered out, so c is isolated and hidden; stats.isolated must agree.
     expect(model.nodes.map((node) => node.id).sort()).toEqual(['a', 'b']);
     expect(model.stats.isolated).toBe(0);
   });
@@ -79,8 +78,7 @@ describe('buildGraphModel', () => {
   });
 
   it('ignores stored linkRefs — edges come only from resolving links', () => {
-    // Stale frontmatter linkRefs used to union into the edge set, producing
-    // edges Obsidian doesn't have.
+    // Stale linkRefs must not add edges Obsidian doesn't have.
     const model = buildGraphModel([
       note({ id: 'a', title: 'A', links: [], linkRefs: ['b'] }),
       note({ id: 'b', title: 'B', links: [], linkRefs: [] }),
@@ -110,8 +108,7 @@ describe('buildGraphModel', () => {
   });
 
   it('does not create ghosts for attachment embeds', () => {
-    // ![[image.png]] lands in note.links; Obsidian hides attachments in the
-    // graph by default, so these must not paint ghost nodes.
+    // Attachment embeds land in links, but Obsidian hides attachments in the graph, so no ghosts.
     const model = buildGraphModel([
       note({ id: 'a', title: 'A', links: ['screenshot.png', 'paper.PDF', 'Missing Note'] }),
     ]);
@@ -136,8 +133,7 @@ describe('buildGraphModel', () => {
   });
 
   it('draws edges for markdown-style relative links (Obsidian vault shape)', () => {
-    // Mirrors a real vault: an index note in "04-Writing" linking to notes in
-    // "04-Writing/Excerpts" via [text](./Excerpts/Note.md) markdown links.
+    // Mirrors a real vault: markdown ./Excerpts/Note.md links from an index note.
     const model = buildGraphModel([
       note({ id: 'index', title: '一些摘抄', folder: 'w', links: ['./Excerpts/Vibe-Coding-Skill.md', 'Self-Reflection.md'] }),
       note({ id: 'v', title: 'Vibe-Coding-Skill', folder: 'we' }),

@@ -204,7 +204,7 @@ describe('parseTasksFromNotes per-note cache', () => {
     const noteB = { ...note('- [ ] task b'), id: 'b' };
     const first = parseTasksFromNotes([noteA, noteB]);
 
-    // Simulate an edit: a new object for A (state never mutates in place).
+    // A new object for A simulates an edit (state is never mutated in place).
     const editedA = { ...noteA, content: '- [ ] task a edited' };
     const second = parseTasksFromNotes([editedA, noteB]);
 

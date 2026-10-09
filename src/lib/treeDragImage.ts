@@ -1,10 +1,6 @@
-/* The browser's default drag ghost is a snapshot of the row element, and a
-   sidebar row is a full-width flex container: the ghost comes out as a wide
-   slab of empty space, carrying whatever the row happened to be showing at
-   mousedown — including the hover-only delete button — and with the title
-   still clipped by the row's own `truncate`. This builds a compact chip
-   instead — icon plus the full label, sized to its text — the way Obsidian
-   builds its own `.drag-ghost` rather than dragging the row. */
+/* Builds a compact chip (icon + full label) rather than using the browser's
+   default ghost, which snapshots the full-width sidebar row, including hover-only
+   controls and a `truncate`-clipped title. Mirrors Obsidian's `.drag-ghost`. */
 
 const ICONS = {
   note: '<path d="M8.25 1.75H4a1 1 0 0 0-1 1v10.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6.5zM8.25 1.75V6.5H13" /><path d="M5.5 9h5M5.5 11.25h3.5" />',
@@ -24,9 +20,8 @@ export function setTreeItemDragImage(
   const rowStyle = view.getComputedStyle(row);
   const ghost = doc.createElement('div');
   ghost.setAttribute('aria-hidden', 'true');
-  // Surface, padding and radius live in `.noa-tree-drag-ghost` (index.css) so
-  // the dark theme can adjust them; only the type is copied from the row, so
-  // the chip is set in whatever face the user picked.
+  // Surface/padding/radius live in `.noa-tree-drag-ghost` (index.css) for the dark
+  // theme; only the font is copied from the row.
   ghost.className = 'noa-tree-drag-ghost';
   ghost.style.fontFamily = rowStyle.fontFamily;
   ghost.style.fontSize = rowStyle.fontSize;

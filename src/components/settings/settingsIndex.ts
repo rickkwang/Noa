@@ -19,16 +19,9 @@ export interface SettingsIndexEntry {
 }
 
 /**
- * What the settings search actually searches. Hand-written rather than derived
- * at runtime: only the active tab is mounted, so there is no DOM to read for
- * the five tabs a person has not opened.
- *
- * `tests/unit/settingsSearchIndex.test.ts` parses every `<SettingItem label=…>`
- * out of the section sources and fails if this list drifts from them, which is
- * the part a hand-written index normally gets wrong.
- *
- * Keywords carry the vocabulary the labels do not: someone looking for dark
- * mode types "dark", not "base theme".
+ * Hand-written because only the active tab is mounted, so the DOM can't be read for the rest.
+ * `tests/unit/settingsSearchIndex.test.ts` fails if this drifts from the SettingItem labels.
+ * Keywords carry vocabulary the labels lack ("dark" for "Base Theme").
  */
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   // General
@@ -80,8 +73,7 @@ export function settingAnchorId(label: string): string {
 export function searchSettings(query: string): SettingsIndexEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  // Every side is lowered: keywords carry things like "YYYY MM DD", which a
-  // person types in lower case.
+  // Everything is lowercased, since people type "yyyy mm dd" in lower case.
   return SETTINGS_INDEX.filter((entry) =>
     entry.label.toLowerCase().includes(q)
     || entry.section.toLowerCase().includes(q)

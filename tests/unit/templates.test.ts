@@ -19,8 +19,7 @@ describe('applyTemplate', () => {
 });
 
 describe('builtinTemplates', () => {
-  // The editor renders the note title above the body, so a template that opens
-  // with a heading printed the same name twice.
+  // The editor already renders the title, so a leading heading would duplicate it.
   it.each(builtinTemplates.filter(template => template.content))('$name does not open with a heading', template => {
     expect(template.content.trimStart()).not.toMatch(/^#\s/);
   });

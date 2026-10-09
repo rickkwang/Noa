@@ -27,8 +27,7 @@ describe('computeOutgoingLinks', () => {
   });
 
   it('drops ghost linkRefs whose title is no longer in links', () => {
-    // Scenario: [[B]] was removed from content; `links` already excludes B
-    // but `linkRefs` still contains b.id (stale, pre-debounce window).
+    // Stale linkRefs (pre-debounce) may still hold a removed link's id; `links` is authoritative.
     const b = mk({ id: 'b', title: 'B' });
     const c = mk({ id: 'c', title: 'C' });
     const a = mk({ id: 'a', title: 'A', links: ['C'], linkRefs: ['b', 'c'] });
@@ -44,8 +43,7 @@ describe('computeOutgoingLinks', () => {
   });
 
   it('resolves a title collision to a single note, matching the graph', () => {
-    // Obsidian picks one target per link; root-level notes win, remaining ties
-    // break by stable (folder name, id) order.
+    // One target per link, matching the graph: root-level wins, then (folder, id) order.
     const b1 = mk({ id: 'b1', title: 'B' });
     const b2 = mk({ id: 'b2', title: 'B' });
     const a = mk({ id: 'a', title: 'A', links: ['B'], linkRefs: ['b1', 'b2'] });

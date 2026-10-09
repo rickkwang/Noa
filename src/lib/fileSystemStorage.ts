@@ -48,8 +48,7 @@ async function restoreHandleFromStore(
   try {
     const handle = await store.getItem<FileSystemDirectoryHandle>('root-handle');
     if (!handle) return null;
-    // Do not prompt during app bootstrap. Persisted handles should still be
-    // restorable so the user can explicitly reconnect or disconnect later.
+    // No permission prompt at bootstrap; the user reconnects explicitly.
     return handle;
   } catch {
     return null;
@@ -64,21 +63,15 @@ export async function clearPersistedHandle(): Promise<void> {
   await fsHandleStore.removeItem('root-handle');
 }
 
-// Unlike sanitizeFolderPath (imported from importUtils, keeps spaces),
-// this additionally collapses whitespace — used only for on-disk directory
-// names under attachments/, which getFolderHandle creates without spaces.
-// sanitizeFolderPath must keep spaces: manifest keys and scan matching
-// compare against real on-disk directory names, which keep their spaces
-// (Obsidian vault folders are created with spaces; replacing them here
-// would make every manifest lookup miss).
+// Unlike sanitizeFolderPath, also collapses whitespace; used only for
+// attachments/ directory names. sanitizeFolderPath must keep spaces, since
+// manifest keys and scan matching compare against real on-disk names.
 function sanitizePathSegment(name: string): string {
   return sanitizeFilename(name).replace(/\s+/g, '_');
 }
 
-// Strips Noa-owned keys from a frontmatter block. Only ever call this on
-// frontmatter Noa itself authored (source === 'noa') — user frontmatter from
-// Obsidian vaults commonly contains keys like id:/links:/createdAt: as their
-// own metadata, and stripping or reformatting it would corrupt their files.
+// Strips Noa-owned keys. Only call on Noa-authored frontmatter (source ===
+// 'noa'): Obsidian users' own id:/links:/createdAt: keys must be preserved.
 function sanitizeRawFrontmatter(rawBlock: string): string {
   if (!rawBlock) return '';
   const lines = rawBlock.split(/\r?\n/);
@@ -117,13 +110,10 @@ export const __test__ = {
 
 /**
  * Parse frontmatter from a vault file.
- * Returns:
- *   meta      — flat key/value map of Noa-owned fields only (id, folder, tags, links, linkRefs, createdAt).
- *               Callers must only TRUST these on Noa-authored files (noaSource/manifest) — an Obsidian
- *               user's own id:/links: keys land here too and must not be adopted.
- *   rawBlock  — the raw YAML text between the --- delimiters, verbatim (line endings included) so
- *               write-back can round-trip the file byte-for-byte
- *   content   — the body text after the closing ---
+ *   meta     — Noa-owned keys only. Trust these only on Noa-authored files
+ *              (noaSource/manifest); Obsidian users' id:/links: must not be adopted.
+ *   rawBlock — YAML between the --- delimiters, verbatim, for byte-exact write-back.
+ *   content  — body after the closing ---.
  */
 function parseFrontMatter(text: string): {
   meta: Record<string, string | string[]>;
@@ -223,9 +213,8 @@ function noteCollisionSuffix(noteId: string): string {
  */
 function buildFrontMatter(note: Note): string {
   if ((note.source ?? 'noa') !== 'noa') {
-    // Imported notes: the user (Obsidian) owns this frontmatter. Reproduce it
-    // byte-for-byte — matching the block's own line endings — so writing an
-    // unmodified note back never alters the original file.
+    // Imported notes: reproduce the user's frontmatter byte-for-byte so an
+    // unmodified note never alters the original file.
     const rawBlock = note.rawFrontmatter ?? '';
     if (note.rawFrontmatter !== undefined) {
       const eol = note.frontmatterEol ?? (rawBlock.includes('\r\n') ? '\r\n' : '\n');
@@ -267,10 +256,8 @@ export async function getVaultIdentity(rootHandle: FileSystemDirectoryHandle): P
   return vaultId;
 }
 
-// Noa's app data lives in a hidden .noa/ directory — the Obsidian convention
-// (.obsidian/): never place app files where they show up as vault content.
-// Older versions wrote manifest.json at the vault root; reads fall back to it
-// and the next manifest write removes it.
+// App data lives in hidden .noa/ so it never shows up as vault content. Reads
+// fall back to a root-level manifest.json; the next write removes it.
 async function readVaultManifest(rootHandle: FileSystemDirectoryHandle): Promise<VaultManifest> {
   try {
     const noaDir = await rootHandle.getDirectoryHandle(NOA_DATA_DIRNAME);
@@ -432,9 +419,7 @@ async function syncAttachmentsForNote(
   rootHandle: FileSystemDirectoryHandle,
   note: Note
 ): Promise<void> {
-  // Obsidian-imported notes are never owned by Noa — their attachment folders
-  // exist in the vault and must not be modified. Only sync attachments for
-  // Noa-native notes.
+  // Obsidian-imported notes' attachment folders belong to the vault; never modify them.
   if ((note.source ?? 'noa') !== 'noa') return;
   const attachments = (note.attachments ?? []).filter((att) => isNoaOwnedAttachment(note, att));
   if (!attachments.length) return;
@@ -489,16 +474,13 @@ export async function writeNote(
   folders: Folder[],
   payloadOverride?: string,
 ): Promise<WrittenNoteFile | null> {
-  // Defense in depth for mirror mode: only vault-origin notes are ever
-  // materialised on disk. A Noa-owned note (no origin marker) reaching this
-  // path through a stray caller must never pollute the user's vault.
+  // Defense in depth: only vault-origin notes are ever written to disk.
   if (note.origin !== 'vault') return null;
   const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
   const folder = folders.find(f => f.id === note.folder);
-  // A vault note may stay at the vault root, but a non-root destination must
-  // itself be a vault-origin folder. This prevents cross-section moves from
-  // materialising private Noa folder names inside the connected vault.
+  // A non-root destination must be a vault-origin folder, so private Noa folder
+  // names never leak into the connected vault.
   if (note.folder && (!folder || folder.origin !== 'vault')) return null;
   const dirHandle = folder
     ? await getFolderHandle(rootHandle, folder.name)
@@ -531,10 +513,8 @@ export async function writeNote(
     }
   }
 
-  // A byte-identical file on disk is never rewritten — unchanged files keep
-  // their mtime (git/iCloud/Obsidian treat mtime as "modified", and a scanned
-  // note's updatedAt IS the file mtime). This also keeps the first write after
-  // connecting an existing vault from touching an unchanged note file.
+  // Never rewrite a byte-identical file: git/iCloud/Obsidian treat mtime as
+  // "modified", and a scanned note's updatedAt is the file mtime.
   const currentEntry = manifest.notes[nextPath];
   const manifestUnchanged =
     currentEntry?.id === diskNoteId &&
@@ -589,16 +569,15 @@ export async function deleteNoteFile(
   folders: Folder[],
   options?: { keepAttachments?: boolean }
 ): Promise<string | null> {
-  // Defense in depth for mirror mode: a Noa-owned note has no vault file, and
-  // its title could collide with an unrelated vault file — never let a delete
-  // fall through to title heuristics against the vault.
+  // Defense in depth: a Noa-owned note has no vault file, and its title could
+  // collide with an unrelated one, so never fall through to title matching.
   if (note.origin !== 'vault') return null;
   const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
   const manifestEntry = manifestEntryForId(manifest, diskNoteId);
 
-  // The manifest records which file this note id owns — use it so duplicate
-  // titles never cause a sibling note's file to be removed.
+  // Prefer the manifest's record of the owned file so duplicate titles never
+  // remove a sibling's file.
   let deleted = false;
   let removedPath: string | null = null;
   if (manifestEntry) {
@@ -625,9 +604,8 @@ export async function deleteNoteFile(
     }
   }
 
-  // Legacy cache rows may predate vaultPath. Only those rows use the title
-  // fallback; a modern row with an exact path must never delete a same-titled
-  // unrelated file when its own path is already gone.
+  // Title fallback only for legacy rows without vaultPath; a row with an exact
+  // path must never delete a same-titled unrelated file.
   if (!deleted && !note.vaultPath) {
     const folder = folders.find(f => f.id === note.folder);
     const dirHandle = folder
@@ -751,8 +729,7 @@ async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): P
   for (const [name, handle] of subdirs) {
     await pruneEmptySubdirectories(handle);
     try {
-      // Non-recursive removeEntry only succeeds on empty directories, so any
-      // untracked files (PDFs, .canvas, ...) keep their parent chain alive.
+      // Non-recursive removeEntry fails on non-empty dirs, preserving untracked files.
       await dirHandle.removeEntry(name);
     } catch {
       // Directory still has content — keep it.
@@ -761,7 +738,7 @@ async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): P
   const remaining: string[] = [];
   for await (const [name] of dirHandle.entries()) remaining.push(name);
   if (remaining.length === 1 && remaining[0] === '.DS_Store') {
-    // Finder metadata should not keep an otherwise empty folder alive.
+    // Finder's .DS_Store must not keep an otherwise empty folder alive.
     try {
       await dirHandle.removeEntry('.DS_Store');
     } catch {
@@ -771,9 +748,8 @@ async function pruneEmptySubdirectories(dirHandle: FileSystemDirectoryHandle): P
 }
 
 /**
- * Remove a folder tree, but only the parts that are empty. Vault folders may
- * contain files Noa does not track; those files (and their parent directories)
- * must survive structural operations like folder renames.
+ * Remove only the empty parts of a folder tree. Untracked vault files and
+ * their parent directories must survive folder renames.
  */
 export async function removeEmptyFolderTree(
   rootHandle: FileSystemDirectoryHandle,
@@ -795,10 +771,7 @@ export async function removeEmptyFolderTree(
   }
 }
 
-/**
- * Collect directory paths and file mtime/size without reading file contents.
- * Hidden/config entries stay excluded; attachment changes also trigger a scan.
- */
+/** Collect directory paths and file mtime/size without reading contents. */
 export async function scanNoteFileStats(
   rootHandle: FileSystemDirectoryHandle
 ): Promise<Map<string, string>> {
@@ -807,8 +780,7 @@ export async function scanNoteFileStats(
   async function walk(dirHandle: FileSystemDirectoryHandle, pathSegments: string[], depth: number): Promise<void> {
     if (depth > MAX_DIR_DEPTH) return;
     for await (const [name, handle] of dirHandle.entries()) {
-      // Hidden entries (.noa, .obsidian, .DS_Store, ...) are never vault
-      // content — same convention as Obsidian.
+      // Hidden entries (.noa, .obsidian, .DS_Store) are never vault content.
       if (name.startsWith('.')) continue;
       if (handle.kind === 'file') {
         if (!name.endsWith('.md') && !pathSegments.includes('attachments')) continue;
@@ -825,9 +797,7 @@ export async function scanNoteFileStats(
 }
 
 export interface ScanDirectoryOptions {
-  /**
-   * Skip cached payloads only when their disk metadata still matches.
-   */
+  /** Skip cached payloads only when their disk metadata still matches. */
   existingAttachmentBlobIds?: ReadonlySet<string>;
   existingAttachments?: ReadonlyMap<string, Attachment>;
 }
@@ -843,10 +813,8 @@ export async function scanDirectory(
   const newFolders: Folder[] = [];
   const attachmentsByNoteId = new Map<string, Attachment[]>();
   const imageFiles = new Map<string, FileSystemFileHandle>();
-  // Combined folder lookup: existing + newly created during this scan
-  // Folder names are not globally unique across the two ownership domains.
-  // Only a previously scanned vault folder may be reused for a disk directory;
-  // a same-named Noa folder must remain a distinct local row.
+  // Folder names aren't unique across ownership domains: only vault folders may
+  // be reused for a disk directory; a same-named Noa folder stays a distinct row.
   const allFolders = folders.filter((folder) => folder.origin === 'vault');
   const isFileHandle = (handle: FileSystemHandle): handle is FileSystemFileHandle =>
     handle.kind === 'file';
@@ -873,7 +841,7 @@ export async function scanDirectory(
     for await (const [name, handle] of dirHandle.entries()) {
       const currentPath = [...pathSegments, name];
       const currentPathKey = currentPath.join('/');
-      // Hidden entries are never vault content — same convention as Obsidian.
+      // Hidden entries are never vault content.
       if (name.startsWith('.')) continue;
       if (isFileHandle(handle) && name.endsWith('.md')) {
         const file = await handle.getFile();
@@ -884,10 +852,9 @@ export async function scanDirectory(
         const manifestEntry = manifest.notes[notePath];
         const metaSource = meta.noaSource === 'noa' ? 'noa' : undefined;
         const noteSource = manifestEntry?.source ?? metaSource ?? 'obsidian-import';
-        // Only Noa-authored files get their id/createdAt/linkRefs keys trusted
-        // (and stripped from the preserved block for re-append on write). On
-        // Obsidian files these are the USER's own metadata: adopting a
-        // template-duplicated id: would collapse distinct notes into one.
+        // Trust id/createdAt/linkRefs only on Noa-authored files; on Obsidian
+        // files they are the user's metadata (adopting a template-duplicated id:
+        // would collapse distinct notes into one).
         const trustNoaMeta = noteSource === 'noa';
         const metaId = trustNoaMeta && typeof meta.id === 'string' && meta.id.length > 0 ? meta.id : undefined;
         const metaTags = extractObsidianTags(text);
@@ -899,9 +866,8 @@ export async function scanDirectory(
         const noteId = manifestEntry?.id || metaId || stableVaultId(notePath);
         const baseTitle = name.replace(/\.md$/, '');
         const collisionSuffix = noteCollisionSuffix(noteId);
-        // Only strip the `_xxxxxxxx` collision suffix Noa itself appends — it
-        // always mirrors the owning note id. User filenames that happen to end
-        // in eight hex chars (journal_20240115.md) keep their suffix.
+        // Strip only the `_xxxxxxxx` suffix Noa appends (it mirrors the note id);
+        // user filenames that end in 8 hex chars keep theirs.
         const title = baseTitle.endsWith(`_${collisionSuffix}`)
           ? baseTitle.slice(0, -(collisionSuffix.length + 1))
           : baseTitle;
@@ -916,35 +882,27 @@ export async function scanDirectory(
           createdAt: manifestEntry?.createdAt || metaCreatedAt || new Date(file.lastModified).toISOString(),
           updatedAt: new Date(file.lastModified).toISOString(),
           source: noteSource,
-          // Every scanned file is a live mirror of a disk file — mark it so the
-          // merge and write-path guards can tell vault rows from Noa-owned notes.
+          // Live mirror of a disk file; lets merge/write guards tell vault rows apart.
           origin: 'vault',
           vaultPath: notePath,
-          // Keep the exact bytes until attachments have been associated below;
-          // the serializer can then decide whether a clean row needs this
-          // non-canonical baseline persisted.
+          // Exact bytes, kept until attachments are associated below.
           vaultBaseText: exactText,
-          // Preserved verbatim (minus Noa's own keys on Noa-authored files) for
-          // byte-exact round-trip write-back.
+          // Verbatim frontmatter (minus Noa's keys) for byte-exact write-back.
           ...(eol ? { rawFrontmatter: preservedFrontmatter, frontmatterEol: eol } : {}),
         });
       } else if (isDirectoryHandle(handle)) {
         if (name === 'attachments') {
           await readImageHandles(handle, currentPath, depth + 1);
-          // Attachment filename format written by Noa: `${uuid}-${originalFilename}`
-          // UUID has 5 dash-separated groups (8-4-4-4-12 chars = 36 chars total).
+          // Noa layout: attachments/{noteId}/{uuid}-{filename}; both must look like UUIDs.
           const UUID_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i;
-          // Noa uses a two-level structure: attachments/{noteId}/{uuid}-{filename}
-          // The noteId directory name must itself look like a UUID.
           for await (const [noteId, attachmentDir] of handle.entries()) {
-            // Skip non-UUID directory names — those are Obsidian-native attachment
-            // folders (e.g. a flat "attachments/image.png") and must not be touched.
+            // Non-UUID entries are Obsidian-native attachments; leave them alone.
             if (!isDirectoryHandle(attachmentDir)) continue;
             if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(noteId)) continue;
             const noteAttachments: Attachment[] = [];
             for await (const [attachmentName, attachmentHandle] of attachmentDir.entries()) {
               if (!isFileHandle(attachmentHandle)) continue;
-              // Only read files that match Noa's own naming convention.
+              // Only Noa-named files.
               const uuidMatch = attachmentName.match(UUID_RE);
               if (!uuidMatch) continue;
               const attachmentId = uuidMatch[1];
@@ -972,15 +930,13 @@ export async function scanDirectory(
         } else {
           let matchedFolder = allFolders.find((folder) => sanitizeFolderPath(folder.name) === currentPathKey);
           if (!matchedFolder) {
-            // Directory exists in vault but not in Noa — create it on the fly.
-            // origin: 'vault' marks it as a live mirror of the disk directory.
+            // Disk directory unknown to Noa: create it as a vault-origin folder.
             matchedFolder = { id: crypto.randomUUID(), name: currentPath.join('/'), source: 'obsidian-import' as const, origin: 'vault' as const };
             newFolders.push(matchedFolder);
             allFolders.push(matchedFolder);
           }
           if (!scannedFolders.some((folder) => folder.id === matchedFolder.id)) {
-            // Any directory present on disk is a vault folder — mark it so folder
-            // write-path guards never mistake it for a Noa-owned folder.
+            // Mark every on-disk directory vault-origin so write guards never treat it as Noa-owned.
             scannedFolders.push(matchedFolder.origin === 'vault' ? matchedFolder : { ...matchedFolder, origin: 'vault' as const });
           }
           await readDir(handle, matchedFolder.id, currentPath, depth + 1);
@@ -1017,9 +973,8 @@ export async function scanDirectory(
         ...(blobAlreadyStored ? {} : { dataBase64: await fileToBase64(file) }),
       });
     }
-    // Canonical files can be reconstructed exactly without duplicating their
-    // full content in IndexedDB. Non-canonical but valid files retain their
-    // exact last-read bytes so the first edit does not create a false conflict.
+    // Canonical files are rebuilt from fields (no IndexedDB duplicate); non-canonical
+    // ones keep exact bytes so the first edit doesn't raise a false conflict.
     if (note.vaultBaseText === serializeNoteForVault(note)) {
       delete note.vaultBaseText;
     }

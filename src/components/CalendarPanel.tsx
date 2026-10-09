@@ -18,9 +18,7 @@ interface CalendarPanelProps {
 }
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-// No 'Week': the filter runs on updatedAt, and no note is edited in the
-// future, so a Mon–Sun week only ever resolves to "Monday through today" —
-// 2 days on a Tuesday, and indistinguishable from 7d by Sunday.
+// No 'Week': the filter runs on updatedAt, so a Mon–Sun week would just mean "Monday through today".
 const PRESETS = ['Today', '7d', '30d', 'Month'] as const;
 type Preset = typeof PRESETS[number];
 
@@ -64,11 +62,8 @@ export default function CalendarPanel({
   const month = viewMonth.getMonth();
   const today = formatDate('YYYY-MM-DD');
 
-  // Always six rows. A 5-row month next to a 6-row one resized the whole
-  // bottom-anchored panel, so the nav arrows moved under the cursor between
-  // clicks. The rows are filled from the neighbouring months (dimmed) rather
-  // than left blank, which otherwise read as a dead band above the presets.
-  // getDay() returns 0=Sun..6=Sat; convert to Mon-based (0=Mon..6=Sun).
+  // Always six rows, so the bottom-anchored panel doesn't resize and move the nav arrows under the cursor.
+  // getDay() is Sun-based; convert to Mon-based.
   const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
   const gridDates = useMemo(
     () => Array.from({ length: 42 }, (_, i) => new Date(year, month, 1 - firstDayOffset + i)),
@@ -77,11 +72,7 @@ export default function CalendarPanel({
   const gridFirstKey = toKey(gridDates[0]);
   const gridLastKey = toKey(gridDates[41]);
 
-  // One pass over notes + tasks per open month, rather than 31 × O(n) lookups
-  // from inside the cell loop. Gated on the body being mounted — open, or still
-  // easing closed, so the dots don't vanish mid-collapse: this component
-  // re-renders on every notes change (every keystroke) and must do no per-note
-  // work while collapsed.
+  // One pass over notes + tasks per month. Gated on isBodyMounted so it does no per-note work while collapsed.
   const { days: dayMeta, activeKey } = useMemo(() => {
     const days = new Map<string, DayMeta>();
     if (!isBodyMounted) return { days, activeKey: null as string | null };
@@ -106,9 +97,7 @@ export default function CalendarPanel({
       if (inGrid(key)) ensure(key).notes += 1;
     }
 
-    // Daily notes are titled by the formatted date, and dateFormat is
-    // user-configurable — so format each day forward and probe the title set
-    // rather than trying to parse titles back into dates.
+    // dateFormat is user-configurable, so format each day and probe the title set rather than parsing titles.
     const activeTitle = notes.find(n => n.id === activeNoteId)?.title ?? '';
     let activeKey: string | null = null;
     for (const date of gridDates) {
@@ -147,8 +136,7 @@ export default function CalendarPanel({
     if (searchQuery !== `after:${range.start} before:${range.end}`) setRange(null);
   }, [searchQuery, range]);
 
-  // Pointer-up lands on window, not the grid: a drag that ends outside the
-  // calendar (or outside the sidebar) must still commit rather than stick.
+  // Pointer-up is listened for on window so a drag ending outside the grid still commits.
   useEffect(() => {
     const finish = () => {
       const drag = dragRef.current;
@@ -243,17 +231,7 @@ export default function CalendarPanel({
         <div inert={!isOpen ? true : undefined}>
           {isBodyMounted && (
             <div className="select-none">
-              {/* Range summary sits under the section header, not above the
-                  weekday row. Two alignment systems meet in this panel: left-set
-                  text (header, summary, chips) starts at 12px, while weekday
-                  labels and dates are centred inside 32px cells and so start
-                  ~20px in. Neither is wrong, but butted against each other they
-                  read as a misalignment — so the text rows group together and the
-                  grid rows group together.
-
-                  It must also stay above the grid: the panel is bottom-anchored,
-                  so a row appearing below the grid shoves the grid up by its own
-                  height mid-drag and the pointer lands a whole week off target. */}
+              {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
               {activeRange && (
                 <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] font-redaction">
                   <span className="text-[#CC7D5E] font-medium truncate">
@@ -261,9 +239,7 @@ export default function CalendarPanel({
                       ? shortDate(activeRange.start)
                       : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
                   </span>
-                  {/* "edited", not "notes": the filter runs on updatedAt, so a
-                      note written months ago and touched yesterday belongs in the
-                      count. Calling them "notes" read as "notes from this week". */}
+                  {/* "edited", not "notes": the filter runs on updatedAt. */}
                   <span className="text-[#2D2D2B]/40 shrink-0" title="Notes edited in this range">
                     {rangeNoteCount} edited
                   </span>
@@ -319,25 +295,17 @@ export default function CalendarPanel({
                   let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-redaction rounded-md transition-colors cursor-pointer ';
                   if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
                   else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-                  // Only the two edges take accent ink. Tinting every day in the
-                  // range turned a week into a solid orange block that shouted
-                  // louder than today's marker sitting inside it.
+                  // Only the range edges take accent ink; tinting every day drowned out today's marker.
                   else if (inRange) cellClass += isRangeEdge
                     ? 'bg-[#CC7D5E]/22 text-[#CC7D5E] font-bold'
                     : 'bg-[#CC7D5E]/10 text-[#2D2D2B]/80';
                   else if (hasNote) cellClass += 'text-[#2D2D2B]/80 noa-sidebar-hover-surface';
-                  // /75 against the /50 weekday header. At the old /60 the two rows
-                  // sat at nearly the same weight and the grid read as one flat block.
+                  // /75 keeps the grid distinct from the /50 weekday header.
                   else cellClass += 'text-[#2D2D2B]/75';
-                  // Neighbouring-month days stay fully usable (open, range-drag,
-                  // dots) but recede: /75 × 40% lands under the /50 weekday row.
-                  // Selection, today and range keep full strength so a state
-                  // never looks disabled just because it sits across a month edge.
+                  // Neighbouring-month days recede but stay usable; selection, today and range keep full strength.
                   if (outside && !isActive && !isToday && !inRange) cellClass += ' opacity-40';
 
-                  // Two 3px dots at most: notes on the left, open tasks on the
-                  // right. They read as one small cluster instead of competing for
-                  // the same slot under the numeral.
+                  // Up to two 3px dots: notes left, open tasks right.
                   const noteDot = meta && (meta.daily || meta.notes > 0);
                   const taskDot = (meta?.due ?? 0) > 0;
                   const taskStatus = meta?.due
@@ -385,13 +353,7 @@ export default function CalendarPanel({
                 })}
               </div>
 
-              {/* Range presets. Outlined, not bare text: as plain labels in the
-                  sidebar's muted grey they read as a caption rather than four
-                  things you can press. The 3px radius is the codebase's default
-                  for controls — TasksPanel's filter chips are the same shape. */}
-              {/* px-3, not the px-2 the grid rows use: those centre a 32px cell in a
-                  wider column, so their ink starts ~13px in. These chips are
-                  left-aligned, so they need the padding to do that job themselves. */}
+              {/* Outlined so the presets read as buttons, not captions. px-3 aligns them with the left-set text rows. */}
               <div className="flex items-center gap-1 px-3 pb-3 text-[10px] font-redaction">
                 {PRESETS.map(preset => {
                   const target = presetRange(preset);
@@ -402,9 +364,7 @@ export default function CalendarPanel({
                       type="button"
                       onClick={() => (isSelected ? clearRange() : applyRange(target))}
                       aria-pressed={isSelected}
-                      // No active:opacity: the preset already recolours on click
-                      // (border/text/bg all switch to accent), and fading it for
-                      // the press first is what reads as a flicker.
+                      // No active:opacity: the preset already recolours on click, and a press-fade reads as flicker.
                       className={`px-1.5 py-0.5 border rounded-[3px] transition-colors cursor-pointer ${
                         isSelected
                           ? 'border-[#CC7D5E] text-[#CC7D5E] bg-[#CC7D5E]/10'

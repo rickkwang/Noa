@@ -45,15 +45,13 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
 
   const findInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus the find input when panel opens
+  // Focus the find input on open
   useEffect(() => {
     findInputRef.current?.focus();
     findInputRef.current?.select();
   }, []);
 
-  // Recompute matches whenever search params or the committed note content
-  // change. Read the live document so match positions agree with the ones
-  // replace/scroll recompute, even while an IME composition delays `content`.
+  // Read the live document (not the possibly-stale `content` prop during IME) so match positions agree with replace/scroll.
   useEffect(() => {
     const view = editorViewRef.current;
     if (!view) return;

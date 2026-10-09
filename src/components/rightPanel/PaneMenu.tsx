@@ -24,11 +24,8 @@ function OutgoingIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: n
   );
 }
 
-// Kept in this file, not PaneTabs: the titlebar menu is in the entry chunk and
-// the phone drawer's strip is not, so the strip imports the list from here and
-// stays out of the entry budget.
-// Display order of the cards' switches. Not RIGHT_TABS order: that one is the
-// persisted enum, this one is what the eye reads left to right.
+// Kept here, not in PaneTabs, so the phone drawer's strip stays out of the entry chunk.
+// Display order (not RIGHT_TABS order, which is the persisted enum).
 export const PANE_TABS = [
   { id: 'backlinks', icon: BacklinksIcon },
   { id: 'outgoing', icon: OutgoingIcon },
@@ -58,10 +55,8 @@ interface PaneMenuProps extends PaneSwitchProps {
 }
 
 /**
- * The titlebar's one control for the right column: a "more" button opening a
- * checklist of its cards, with the whole-column switch as the last row. One
- * button instead of a toggle plus a menu — both were ways into the same
- * column — and a list has room for names, which bare icons never did.
+ * The titlebar's one control for the right column: a "more" button opening a checklist of its cards,
+ * with the whole-column switch as the last row.
  */
 export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassName, isPanelOpen, onTogglePanel }: PaneMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -103,8 +98,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
         aria-haspopup="menu"
         aria-expanded={isOpen}
         data-panel-open={isPanelOpen}
-        // The wash holds while the menu is open, so the button reads as the
-        // thing the list hangs from.
+        // The wash holds while open, so the button reads as the thing the list hangs from.
         className={`${triggerClassName} flex h-6 w-6 items-center justify-center rounded-md ${
           isOpen
             ? (isDark ? 'bg-[rgba(249,249,247,0.10)]' : 'bg-[#2D2D2B]/[0.07]')

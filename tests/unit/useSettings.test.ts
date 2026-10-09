@@ -56,7 +56,7 @@ describe('loadSettings', () => {
       });
 
       expect(loaded.settings.appearance.fontFamily).toBe(SYSTEM_DEFAULT_FONT);
-      // A stale font name self-heals; it must not raise the recovery banner.
+      // A retired font self-heals without raising the recovery banner.
       expect(loaded.canPersist).toBe(true);
     }
   });

@@ -54,8 +54,6 @@ describe('light theme border tokens', () => {
     expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
     expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
-    // The graph filter drawer no longer draws boxed controls; its one rule is
-    // the shared divider.
     expect(rightPanel).toContain('border-b border-[var(--divider-subtle)] pb-3 pt-1');
   });
 
@@ -70,11 +68,7 @@ describe('light theme border tokens', () => {
     ]);
 
     expect(settingsModal).toContain('bg-[#F9F9F7] border border-[var(--divider-subtle)]');
-    // The title bar is gone; the sidebar's search field is the surface that
-    // now carries a border of its own, and it takes the same token.
     expect(settingsSidebar).toContain('border border-[var(--divider-subtle)]');
-    // The shortcuts table lost its own bordered wrapper and header strip; it
-    // sits in a standard SettingSection card like every other block now.
     expect(settingsModal).not.toContain('rounded overflow-hidden');
     expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
     expect(settingSection).toContain('bg-[#EFEAE3] border border-[var(--divider-subtle)]');
@@ -127,10 +121,7 @@ describe('light theme border tokens', () => {
     expect(previewPane).toContain("var(--divider-subtle, #E6E2DA)");
     expect(previewPane).not.toContain("rgba(45,45,43,0.2)");
     expect(previewPane).not.toContain("var(--border-strong, #AAA397)");
-    // The preview's leading-edge fade lives on the shared scroll-fade class now;
-    // the gradient itself sits in index.css and scales off --noa-fade-top, which
-    // lib/edgeFade writes from the scroll position — so the ramp has no height
-    // until the note has actually moved.
+    // The fade ramp scales off --noa-fade-top (written by lib/edgeFade), so it has no height until the note scrolls.
     expect(previewPane).toContain('noa-top-scroll-fade');
     expect(indexCss).toContain('.noa-top-scroll-fade,');
     expect(indexCss).toContain('calc(var(--noa-fade-top, 0) *');
@@ -138,11 +129,9 @@ describe('light theme border tokens', () => {
     expect(rightPanel).not.toContain("border-[#2D2D2B]}`");
     expect(rightPanel).not.toContain("'rgba(45,45,43,0.1)'");
     expect(rightPanel).toContain('h-10 shrink-0 flex items-center px-2');
-    // The column is a stack of floating cards: their ring is a box-shadow in
-    // index.css, and the graph card no longer nests two bordered cards.
     expect(rightPanel).toContain('flex-1 min-h-0 flex flex-col px-2 pb-2');
     expect(rightPanel).not.toContain('noa-elevated-panel');
-    // The card shadow has to fit the 8px gutter, so it is not the 10px-blur ambient one.
+    // Card shadow must fit the 8px gutter, so it is not the 10px-blur ambient one.
     expect(indexCss).toMatch(/\.noa-pane-card \{[^}]*0 0 0 1px rgba\(45, 45, 43, 0\.08\),[^}]*0 1px 8px -1px rgba\(45, 45, 43, 0\.17\);/);
     expect(indexCss).not.toMatch(/\.noa-pane-card \{[^}]*var\(--shadow-ambient\)/);
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
@@ -157,17 +146,14 @@ describe('light theme border tokens', () => {
     const previewPane = await readFile(previewPanePath, 'utf8');
 
     expect(previewPane).toContain("borderTop: '1px dashed var(--divider-subtle, #E6E2DA)'");
-    // The card hairline derives from that same divider, at half weight: the
-    // ambient shadow carries the card's edge, so the border only has to keep
-    // it from dissolving into the page.
+    // Card hairline is the same divider at half weight; the shadow carries the edge.
     expect(previewPane).toContain(
       "border: '1px solid color-mix(in srgb, var(--divider-subtle, #E6E2DA) 50%, transparent)'"
     );
   });
 
   it('draws no baseline beneath the editor tab strip', async () => {
-    // Tabs are free-standing pills, not tabs hanging off a rule: the titlebar
-    // row and the editor below it are one surface.
+    // Tabs are free-standing pills; the titlebar row and editor are one surface.
     const [editorHeader, topBar, indexCss] = await Promise.all([
       readFile(editorHeaderPath, 'utf8'),
       readFile(topBarPath, 'utf8'),
@@ -192,12 +178,10 @@ describe('light theme border tokens', () => {
       readFile(editorActionsPath, 'utf8'),
     ]);
 
-    // The header renders them through its actions slot, not inline.
     expect(editorHeader).not.toContain('ExportMenu');
     expect(editorHeader).not.toContain('onToggleHistory');
     expect(editorHeader).not.toContain('setViewMode');
 
-    // Not a second "more" glyph: the titlebar's panel menu sits right above it.
     expect(editorActions).toContain('<Upload size={14} />');
     expect(editorActions).toContain('aria-haspopup="menu"');
     expect(editorActions).toContain('Version History');
@@ -218,7 +202,7 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain("const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };");
     expect(editorHeader).toContain('style={noDragRegion}');
 
-    // Phone widths drop split from the cycle (allowSplit={false}); desktop keeps all three.
+    // Phone widths drop split from the cycle (allowSplit={false}).
     expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? (allowSplit ? 'split' : 'preview') : viewMode === 'split' ? 'preview' : 'edit';");
     expect(editorActions).toContain('onClick={() => setViewMode(nextViewMode)}');
     expect(editorActions).toContain('aria-label={`Switch to ${nextViewModeLabel} view`}');
@@ -262,8 +246,7 @@ describe('light theme border tokens', () => {
     const topBar = await readFile(topBarPath, 'utf8');
 
     expect(topBar).toContain("isMobile ? 'pl-2 pr-1' : 'pl-[var(--noa-titlebar-inset)] pr-4'");
-    // The traffic-light clearance only exists in the desktop shell; the web
-    // build gets a plain gutter. The reserve must still resolve to 9rem there.
+    // Web build gets a plain gutter; the reserve must still resolve to 9rem there.
     const [indexCss, main] = await Promise.all([
       readFile(indexCssPath, 'utf8'),
       readFile(fileURLToPath(new URL('../../src/main.tsx', import.meta.url)), 'utf8'),
@@ -283,13 +266,8 @@ describe('light theme border tokens', () => {
     expect(topBar).not.toContain('className="h-8 border-b grid');
     expect(topBar).not.toContain('className="pointer-events-none absolute bottom-0 right-0 h-px transition-[left]"');
     expect(app).toContain('className="flex-1 flex min-h-0 overflow-visible relative"');
-    // The titlebar hairline starts at the sidebar's edge, so it has to ride the
-    // dock motion. A bare class swap lands it on the first frame and the line
-    // jumps across a sidebar that is still on screen. Pinned as an opt-in: the
-    // hairline's left tracks "is a sidebar visible", which the hover preview
-    // also satisfies, and the preview arrives in one frame — a default-on
-    // transition eased the line across the titlebar behind a panel that was
-    // already in place, and back out from under one that had already left.
+    // Titlebar hairline must ride the dock motion, but only as an opt-in: a default-on
+    // transition would also fire on the one-frame hover preview and sweep the line across the titlebar.
     expect(topBar).toContain('data-titlebar="true"');
     expect(indexCss).toContain('[data-titlebar="true"]::after {\n  transition: none;\n}');
     expect(indexCss).toContain('.noa-app-shell[data-sidebar-dock-motion="true"] [data-titlebar="true"]::after {\n  transition: left 500ms ease-in-out;\n}');
@@ -303,8 +281,7 @@ describe('light theme border tokens', () => {
     expect(app).toContain(": isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '0px'");
     expect(app).toContain('opacity: isSidebarOpen ? 1 : 0');
     expect(app).toMatch(/left: isPromotingSidebarPreview[\s\S]*?opacity: isSidebarOpen \? 1 : 0,[\s\S]*?transition: isPromotingSidebarPreview\s*\n\s*\? `opacity \$\{SIDEBAR_PROMOTION_EDGE_CLOCK\}`\s*\n\s*: isDraggingSidebar/);
-    // Promotion fades the elevation away on the spacer's clock rather than
-    // dropping shadow, corner and floor colour on the first frame.
+    // Promotion fades elevation on the spacer's clock instead of dropping it on frame one.
     expect(app).toMatch(/: isPromotingSidebarPreview\s*\n\s*\? SIDEBAR_PROMOTION_SURFACE_TRANSITION/);
     expect(app).toContain("const SIDEBAR_PROMOTION_EDGE_CLOCK = '500ms ease-in-out';");
     expect(app).toContain('`left 500ms ease-in-out, opacity 0ms linear ${isSidebarOpen ? \'0ms\' : \'500ms\'}`');
@@ -312,7 +289,6 @@ describe('light theme border tokens', () => {
     expect(indexCss).not.toContain('@keyframes noa-sidebar-promotion-divider-push');
     expect(app).not.toContain('opacity 80ms ease-out 140ms');
     expect(app).not.toContain("left: 'var(--noa-sidebar-width, 325px)'");
-    // The right column's cards carry their own edge; no rule divides it from the editor.
     expect(app).not.toContain('data-right-panel-separator');
     expect(app).not.toContain('borderRightWidth: isFocusMode ? 0 : 1');
     expect(app).not.toContain('borderLeftWidth: isFocusMode ? 0 : 1');
@@ -331,19 +307,14 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain('reserveTitlebarTraffic?: boolean;');
     expect(editorHeader).toContain('reserveTitlebarTraffic = false,');
     expect(editorHeader).toContain("marginRight: reserveTitlebarActions ? '7.25rem' : undefined");
-    // Pinned as separate longhands because a `margin` shorthand recombines the
-    // two edges onto one clock and nothing else catches it — EditorHeader.tsx
-    // carries the reasoning.
+    // Separate longhands: a `margin` shorthand merges both edges onto one clock.
     expect(editorHeader).toContain("marginLeft: liftTabStrip && reserveTitlebarTraffic ? 'var(--noa-titlebar-reserve)' : undefined");
     expect(editorHeader).toContain("? 'margin-left 500ms ease-in-out'\n");
     expect(editorHeader).not.toContain("transition: liftTabStrip ? 'margin 220ms");
     expect(editorHeader).not.toContain("paddingLeft: liftTabStrip && reserveTitlebarTraffic");
     expect(editorHeader).not.toContain("paddingRight: reserveTitlebarActions");
     expect(editorHeader).toContain("noa-editor-header-floor");
-    // Scoped to the rule body on purpose: a bare toContain('pointer-events: none;')
-    // matches a dozen unrelated rules in this file and proves nothing about this
-    // one. These two declarations are what make the floor paint at all and keep
-    // it from swallowing the buttons it crosses.
+    // Scoped to the rule body: the floor must paint and must not swallow the buttons it crosses.
     expect(indexCss).toMatch(
       /\.noa-editor-header-floor::before \{[^}]*\bright: 100%;[^}]*\bpointer-events: none;[^}]*\}/,
     );
@@ -360,32 +331,23 @@ describe('light theme border tokens', () => {
       readFile(fileURLToPath(new URL('../../src/hooks/useSidebarPreview.ts', import.meta.url)), 'utf8'),
     ]);
 
-    // Pins the mask against a return to the slide it replaced: a negative margin
-    // on the container drags the content off screen instead of clipping it, and
-    // without the opacity the edge hard-cuts whatever it crosses.
+    // Guards against regressing to the slide: a negative margin drags content off screen instead of clipping it.
     expect(app).toContain('const isSidebarContentMasked = !isMobile && !isPromotingSidebarPreview && !isSidebarPreviewOpen && (isFocusMode || !isSidebarOpen);');
     expect(app).toContain("width: isMobile\n              ? '80%'\n              : isSidebarContentMasked ? '0px' : 'var(--noa-sidebar-width, 325px)',");
     expect(app).toContain('opacity: isSidebarContentMasked ? 0 : 1,');
     expect(app).not.toMatch(/marginLeft:[\s\S]{0,120}?calc\(-1 \* var\(--noa-sidebar-width/);
     expect(app).toContain(": 'opacity 500ms ease-in-out, width 500ms ease-in-out',");
-    // 500ms is one motion in five places. The JS fallback is the one that can
-    // drift unnoticed: shorter than the motion, it drops the translucent
-    // material mid-collapse.
+    // JS fallback must match the 500ms motion, or it drops the translucent material mid-collapse.
     expect(sidebarPreview).toContain('const SIDEBAR_DOCK_MOTION_MS = 500;');
-    // All three boxes on the masking edge need the one-frame suppression, not
-    // just the two the mask is written on: leaving the preview drops the column
-    // surface from a full column to 0 in the same commit, and the surface alone
-    // played the collapse the other two were spared.
+    // All three masking-edge boxes need the one-frame suppression, including the column surface.
     expect(app).toMatch(
       /isSettlingSidebarPromotionClose \|\| isDraggingSidebar \|\| isSidebarPreviewSettling\s*\n\s*\? 'none'/,
     );
     expect(indexCss).toContain('transition: transform 500ms ease-in-out;');
-    // Only !important outranks an inline transition, and all five have to drop
-    // together or the masking edge and its content come apart.
+    // Only !important outranks an inline transition; all five must drop together.
     expect(indexCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\[data-sidebar-container\],\s*\[data-sidebar-content-layer="true"\],\s*\[data-sidebar-separator="true"\],\s*\[data-sidebar-column-surface="true"\],\s*\[data-titlebar="true"\]::after \{\s*transition: none !important;/);
     expect(app).toMatch(/transition: isSidebarPreviewOpen[\s\S]*?isDraggingSidebar \|\| isPromotingSidebarPreview[\s\S]*?\? 'none'[\s\S]*?: \(isMobile \? 'transform 220ms cubic-bezier\(0\.4, 0, 0\.2, 1\)' : 'width 500ms ease-in-out'\)/);
-    // On desktop the right column opens and closes at once: a zero-width
-    // column when closed, and no transition outside a sidebar toggle.
+    // Desktop right column opens/closes at once: zero width when closed, no transition outside a sidebar toggle.
     expect(app).toContain(": !isRightPanelFloating && (isFocusMode || !isRightPanelOpen) ? '0px' : rightPanelColumnWidth");
     expect(app).not.toContain('RIGHT_PANEL_OPEN_TRANSITION');
     expect(app).not.toContain('isRightPanelMasking');
@@ -422,26 +384,13 @@ describe('light theme border tokens', () => {
 
     expect(findReplace).toContain("const border = 'var(--divider-subtle, #E6E2DA)'");
     expect(historyPanel).toContain("const border = 'var(--divider-subtle, #E6E2DA)'");
-    // The zoom pad dropped its frame for the shared accent wash
-    // (.noa-graph-control-surface), so there is no longer a border to route
-    // through the token. Guard the file instead: no raw hex border colour may
-    // reappear in an inline style. Tailwind `border-[#…]` classes are NOT caught
-    // here on purpose — those are class-name handles that ThemeInjector remaps
-    // onto tokens, so they are the sanctioned form. Inline styles bypass that
-    // remapping, which is exactly what this guards. var() fallbacks legitimately
-    // carry a hex, so neutralize them before scanning.
-    //
-    // The value side must stay unanchored from the quote: `isDark ? '#A' : '#B'`
-    // is the dominant inline-style shape in this file, so a pattern that only
-    // matched a quote directly after the colon would miss the most likely way
-    // for a hex to come back. Stopping at , ; } newline keeps it from bridging
-    // into an unrelated property on the same line. Not covered: a hex reached
-    // through an intermediate const (`borderColor: someVar`) — that needs data
-    // flow, not a regex.
+    // Guards inline-style border hex. Tailwind border-[#…] classes are intentionally not caught:
+    // ThemeInjector remaps those, so they are the sanctioned form. var() fallbacks may carry a hex.
+    // The value side is unanchored from the quote so `isDark ? '#A' : '#B'` is caught;
+    // a hex reached via an intermediate const needs data flow, not a regex.
     const HEX_BORDER = /border(?:[A-Z]\w+|-\w+)*\s*[:=][^\n;},]*#[0-9a-fA-F]{3,8}/;
 
-    // Guard the guard: these are the shapes it must keep catching if someone
-    // rewrites the pattern later.
+    // The guard's own self-test: shapes it must keep catching, and clean shapes it must not flag.
     for (const shape of [
       "border: '1px solid #E6E2DA'",
       'borderColor: isDark ? "#3A3A37" : "#E6E2DA"',
@@ -450,7 +399,6 @@ describe('light theme border tokens', () => {
     ]) {
       expect(HEX_BORDER.test(shape)).toBe(true);
     }
-    // …and these must stay clean, or the guard just becomes noise.
     for (const shape of [
       "border: '1px solid var(--token)'",
       "borderRadius: 4, background: '#CC7D5E'",

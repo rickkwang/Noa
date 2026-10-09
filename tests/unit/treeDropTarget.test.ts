@@ -17,9 +17,6 @@ const note = (over: Partial<Note> & Pick<Note, 'id'>): Note => ({
 const folder = (id: string, name: string, origin?: 'vault'): Folder =>
   ({ id, name, ...(origin ? { origin } : {}) }) as Folder;
 
-// projects/            f1
-// projects/alpha/      f2
-// archive/             f3
 const folders = [
   folder('f1', 'projects'),
   folder('f2', 'projects/alpha'),
@@ -93,9 +90,6 @@ describe('resolveTreeDrop — folders', () => {
 });
 
 describe('resolveTreeDrop — folder name collisions', () => {
-  // projects/          f1        archive/           f3
-  // archive/projects   f4        archive/Alpha      f5
-  // vault-notes/       v1        vault-notes/projects  v2
   const withSiblings = [
     folder('f1', 'projects'),
     folder('f2', 'projects/alpha'),
@@ -127,7 +121,7 @@ describe('resolveTreeDrop — folder name collisions', () => {
   });
 
   it('does not see a same-named folder across the ownership boundary as a collision', () => {
-    // `vault-notes/projects` must not block noa's `projects` from entering `archive`
+    // A vault-owned folder must not block a noa folder of the same name.
     const crossOwned = [folder('f1', 'projects'), folder('f3', 'archive'), folder('v2', 'archive/projects', 'vault')];
     expect(resolveTreeDrop(drag('folder', 'f1'), 'f3', false, [], crossOwned))
       .toEqual({ kind: 'folder', folderId: 'f1', nextPath: 'archive/projects' });

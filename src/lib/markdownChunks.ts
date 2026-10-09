@@ -25,12 +25,10 @@ const HEADING_RE = /^#{1,6} /;
 const FENCE_OPEN_RE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 const MATH_FENCE_RE = /^ {0,3}\$\$[ \t]*$/;
-// Raw HTML blocks have more cross-line states than a lightweight splitter can
-// safely reproduce. Conservatively keep these uncommon documents as one chunk.
-// The post-name delimiter excludes autolinks such as <https://example.com>.
+// Raw HTML blocks have cross-line states this splitter can't reproduce, so such
+// documents stay one chunk. The post-name delimiter excludes autolinks (<https://…>).
 const HTML_BLOCK_START_RE = /^ {0,3}(?:<!--|<\?|<![A-Z]|<!\[CDATA\[|<\/?[A-Za-z][A-Za-z0-9-]*(?:\s|\/?>|$))/i;
-// Footnote ([^id]: …) and reference-link ([id]: …) definitions have
-// document-wide scope, so separate Markdown parses would orphan references.
+// Footnote and reference-link definitions are document-wide; splitting would orphan references.
 const DEFINITION_RE = /^ {0,3}\[[^\]]*\]:/;
 
 interface FenceState {

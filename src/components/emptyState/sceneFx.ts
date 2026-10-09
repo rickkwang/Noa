@@ -25,7 +25,7 @@ export function prefersReducedMotion(): boolean {
 }
 
 export function runActor(fx: Element, draw: Draw, onDone?: () => void): void {
-  // With reduced motion there is no flight, fall or flip — only its outcome.
+  // Reduced motion skips the animation and only reports the outcome.
   if (prefersReducedMotion()) {
     onDone?.();
     return;
@@ -36,7 +36,7 @@ export function runActor(fx: Element, draw: Draw, onDone?: () => void): void {
   let painted = '';
   const tick = (now: number) => {
     if (!start) start = now;
-    // A scene that unmounted mid-effect takes the group with it; stop there.
+    // Stop if the scene unmounted mid-effect.
     const cells = g.isConnected ? draw((now - start) / 1000) : null;
     if (!cells) {
       g.remove();

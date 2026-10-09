@@ -15,9 +15,7 @@ describe('right-panel link rows', () => {
     ]);
 
     for (const source of sources) {
-      // The dark card border was once spelled out as a literal instead of
-      // taking the shared token; rows carry no border at all now, so neither
-      // spelling belongs here.
+      // Rows carry no border, so neither the literal nor a token spelling belongs here.
       expect(source).not.toContain('border-[rgba(249,249,247,0.25)]');
       expect(source).not.toMatch(/\bborder(-dashed)?\b(?!-)/);
     }

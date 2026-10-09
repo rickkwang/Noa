@@ -101,7 +101,6 @@ describe('useNotes import mutex', () => {
     const api = useNotes();
 
     const importPromise = api.handleImportData([makeNote({ id: 'imported' })]);
-    // Let the import run up to the held saveNotes write.
     await vi.advanceTimersByTimeAsync(0);
     expect(api.getIsImporting()).toBe(true);
 
@@ -110,13 +109,13 @@ describe('useNotes import mutex', () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(saveNote).not.toHaveBeenCalled();
 
-    // Releasing the import flushes the queued edit immediately — no debounce.
+    // Releasing the import flushes the queued edit without a debounce.
     releaseImport!();
     await importPromise;
     expect(api.getIsImporting()).toBe(false);
     expect(saveNote).toHaveBeenCalledTimes(1);
     expect(saveNote.mock.calls[0]?.[0]).toMatchObject({ id: 'n1', content: 'edited during import' });
-    // The imported batch lands before the rescued edit, so the edit wins.
+    // The imported batch must land before the rescued edit, so the edit wins.
     expect(saveNotes.mock.invocationCallOrder[0]).toBeLessThan(saveNote.mock.invocationCallOrder[0]!);
   });
 
@@ -136,23 +135,21 @@ describe('useNotes import mutex', () => {
     const api = useNotes();
 
     const importPromise = api.handleImportData([makeNote({ content: 'import delivered' })]);
-    // Let the import run past reconcileConcurrentImportEdits and hold at the
-    // batch write. An edit landing here misses the merge — the deferred flush
-    // in the finally block is its only persistence path.
+    // An edit landing while the batch write is held misses the merge; the deferred flush is its only path.
     await vi.advanceTimersByTimeAsync(0);
 
     api.handleSaveNote(makeNote({ content: 'locally edited' }));
     releaseImport!();
     await importPromise;
 
-    // The batch predates the edit, so it carries the import-delivered body...
+    // The batch predates the edit, so it carries the import-delivered body.
     const batch = saveNotes.mock.calls[0]?.[0] as Array<{ id: string; content: string }>;
     expect(batch.find((note) => note.id === 'n1')?.content).toBe('import delivered');
-    // ...but the edit is not lost: the deferred flush writes it after the batch.
+    // The edit is not lost: the deferred flush writes it after the batch.
     expect(saveNote).toHaveBeenCalledTimes(1);
     expect(saveNote.mock.calls[0]?.[0]).toMatchObject({ id: 'n1', content: 'locally edited' });
     expect(saveNotes.mock.invocationCallOrder[0]).toBeLessThan(saveNote.mock.invocationCallOrder[0]!);
-    // And state must converge on the edit too — storage and UI must not diverge.
+    // State must converge on the edit too, so storage and UI don't diverge.
     const notesState = (harness.states as unknown[]).find(
       (s) => Array.isArray(s) && s.some((n) => n?.id === 'n1'),
     ) as Array<{ id: string; content: string }>;

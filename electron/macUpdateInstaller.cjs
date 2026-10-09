@@ -328,9 +328,7 @@ async function installMacUpdate({ app, updateInfo, onProgress }) {
   const extractDir = path.join(workDir, 'extracted');
   const logPath = path.join(workDir, 'install.log');
 
-  // Any failure before the detached installer takes ownership of workDir must
-  // remove it, or aborted updates leave the downloaded zip and extracted app
-  // accumulating in the temp directory.
+  // Any failure before the detached installer owns workDir must clean it up, or aborted updates accumulate in tmp.
   try {
     fs.mkdirSync(extractDir, { recursive: true });
 

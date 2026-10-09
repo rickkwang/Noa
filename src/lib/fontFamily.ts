@@ -1,18 +1,14 @@
 /**
  * Resolves the stored `appearance.fontFamily` setting into a CSS font stack.
+ * The setting is SYSTEM_DEFAULT_FONT or the family name of a locally installed
+ * font (from `queryLocalFonts()`). Typefaces are not bundled.
  *
- * Noa no longer bundles typefaces. The setting holds either SYSTEM_DEFAULT_FONT
- * or the family name of a font already installed on the device (enumerated via
- * `queryLocalFonts()` in the settings picker).
+ * The system default uses CSS generic keywords, not a family name: browsers
+ * won't resolve the platform UI face (`.AppleSystemUIFont`) by name, so that
+ * name silently renders a different face.
  *
- * The system default is deliberately expressed as CSS generic keywords rather
- * than a family name: browsers refuse to resolve the platform UI face by its
- * real name (`.AppleSystemUIFont` on macOS) as an anti-fingerprinting measure,
- * so referencing it by the name `queryLocalFonts()` reports silently renders a
- * different face. `-apple-system` / `system-ui` are the supported spellings.
- *
- * Keep SYSTEM_FONT_STACK in sync with the `--font-redaction` fallback in
- * `src/index.css`, which paints before this module's value is applied.
+ * Keep SYSTEM_FONT_STACK in sync with `--font-redaction` in `src/index.css`,
+ * which paints before this module runs.
  */
 
 export const SYSTEM_DEFAULT_FONT = 'system-default';

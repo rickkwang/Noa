@@ -3,9 +3,8 @@ import { Note } from '../types';
 import { lsGetJson, lsRemove, lsSetJson } from './safeLocalStorage';
 
 /**
- * Generous on purpose. This exists to convert a *wedged* IndexedDB into a
- * rejection, not to police slow ones — a large vault on a slow disk can take
- * tens of seconds legitimately, and aborting that would fail a healthy import.
+ * Generous on purpose: converts a *wedged* IndexedDB into a rejection without
+ * aborting legitimately slow writes on large vaults.
  */
 export const STORAGE_STALL_TIMEOUT_MS = 60_000;
 
@@ -17,12 +16,9 @@ export class StorageStalledError extends Error {
 }
 
 /**
- * Reject if `promise` has not settled within the timeout.
- *
- * The underlying operation is not cancelled — it cannot be. The point is to
- * hand control back to the caller's catch/finally: an await that never settles
- * runs neither, so a hang inside the import lock would otherwise strand the
- * lock forever and silently strip every later edit of its write path.
+ * Reject if `promise` has not settled within `ms`. The operation itself is not
+ * cancelled; the point is to return control to the caller's catch/finally, so a
+ * hang inside the import lock can't strand the lock forever.
  */
 export function withTimeout<T>(
   promise: Promise<T>,
@@ -40,9 +36,8 @@ export function withTimeout<T>(
 
 /**
  * Park edits that could not reach IndexedDB so the next launch can restore them.
- * Returns false when localStorage refused the write (quota/private mode), which
- * is the one case where the edits really are unrecoverable and the user has to
- * be told while their text is still on screen.
+ * Returns false when localStorage refuses the write (quota/private mode): the
+ * one case where edits are unrecoverable and the user must be told.
  */
 export function parkRescuedNotes(notes: Note[]): boolean {
   if (notes.length === 0) return true;
@@ -54,9 +49,8 @@ export function parkRescuedNotes(notes: Note[]): boolean {
 }
 
 /**
- * Read parked edits without consuming them. Clearing is a separate step so the
- * caller can wait until the notes are safely back in the real store — reading
- * destructively would lose them for good if that write then failed.
+ * Read parked edits without consuming them; clearing is a separate step so the
+ * caller can clear only after the notes are safely back in the real store.
  */
 export function peekRescuedNotes(): Note[] {
   const parked = lsGetJson<Note[]>(STORAGE_KEYS.RESCUED_IMPORT_EDITS);
@@ -69,9 +63,8 @@ export function clearRescuedNotes(): void {
 }
 
 /**
- * Drop one note from the parking lot. Called when the user deliberately deletes
- * the note — without this, the append path in mergeRescuedNotes would resurrect
- * it on the next launch.
+ * Drop one note from the parking lot when the user deletes it; otherwise
+ * mergeRescuedNotes' append path would resurrect it on next launch.
  */
 export function unparkRescuedNote(noteId: string): void {
   const parked = lsGetJson<Note[]>(STORAGE_KEYS.RESCUED_IMPORT_EDITS);
@@ -80,18 +73,13 @@ export function unparkRescuedNote(noteId: string): void {
 }
 
 /**
- * Overlay rescued edits onto the notes just loaded from storage.
+ * Overlay rescued edits onto notes just loaded from storage.
  *
- * A parked edit wins only when it is newer than the stored copy: parking is not
- * invalidated by later successful saves, so once IndexedDB recovers mid-session
- * the stored note can hold strictly newer text that must not be clobbered by a
- * stale parked copy. When either side lacks a comparable updatedAt the parked
- * edit keeps winning — losing text the user never got back is the greater harm.
- *
- * Parked notes with no stored copy are appended rather than dropped: an import
- * may have deleted the note, but resurfacing a note the user has to delete
- * again is a smaller harm than discarding text they typed and never got back.
- * User-initiated deletes never reach here — they unpark at the source.
+ * A parked edit wins only if newer than the stored copy (parking isn't
+ * invalidated by later saves, so the stored note may be strictly newer). If
+ * either side lacks a comparable updatedAt, the parked edit wins: losing
+ * unrecovered text is the greater harm. Parked notes with no stored copy are
+ * appended, not dropped; user deletes never reach here (they unpark at source).
  */
 export function mergeRescuedNotes(loaded: Note[], rescued: Note[]): Note[] {
   if (rescued.length === 0) return loaded;

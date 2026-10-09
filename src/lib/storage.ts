@@ -2,14 +2,11 @@ import localforage from 'localforage';
 import { Note, Folder, Attachment, NoteSnapshot, VaultPendingOperation } from '../types';
 
 const MAX_SNAPSHOTS_PER_NOTE = 60;
-// Exponential-decay retention window (ms). Within the newest snapshot, adjacent
-// kept snapshots must be separated by at least BASE_SPACING_MS × 2^depth.
-// This gives dense history for the last few minutes and sparse history hours back,
-// instead of the previous "last 10 minutes only" behavior at 20/30s cadence.
+// Exponential-decay retention: kept snapshots are spaced at least
+// BASE_SPACING_MS × 2^depth apart, so history is dense recently and sparse hours back.
 const DECAY_BASE_SPACING_MS = 30_000;
 const LEGACY_LOCAL_STORAGE_KEYS = ['pixel-notes', 'pixel-folders', 'pixel-workspace'] as const;
 
-// Initialize localforage instances
 const notesStore = localforage.createInstance({
   name: 'redaction-diary-notes-db',
   storeName: 'notes'
@@ -72,9 +69,7 @@ export async function saveNotesBatch(store: NoteBatchStore, notes: Note[]): Prom
     );
     const rollbackFailures = rollback.filter(r => r.status === 'rejected').length;
     if (rollbackFailures > 0) {
-      // Store is now in an inconsistent state — partial writes remain.
-      // Surface this explicitly so the caller can prompt the user to
-      // reset or restore from backup instead of silently proceeding.
+      // Partial writes remain; surface explicitly so the user can reset or restore.
       throw new Error(
         `Import failed after writing ${written.length}/${notes.length} notes, and ${rollbackFailures} rollback operation(s) also failed. Storage is in an inconsistent state — please reset the workspace and restore from backup.`
       );
@@ -90,7 +85,6 @@ export const storage = {
     await workspaceStore.setItem('__healthcheck__', 'ok');
     await workspaceStore.removeItem('__healthcheck__');
   },
-  // Per-note storage (new)
   async saveNote(note: Note): Promise<void> {
     await notesStore.setItem(`note:${note.id}`, note);
   },
@@ -109,8 +103,7 @@ export const storage = {
     return notes.length > 0 ? notes : null;
   },
 
-  // Batch save for import. Writes sequentially so we can roll back on failure
-  // without leaving the store in a partially-imported state.
+  // Sequential so a failed import can roll back without a partial state.
   async saveNotes(notes: Note[]): Promise<void> {
     return saveNotesBatch(notesStore, notes);
   },
@@ -147,10 +140,8 @@ export const storage = {
     await historyStore.clear();
   },
 
-  // Migration: old 'all-notes' key → per-note keys
-  // Safe: writes all new keys first, only removes the legacy key after
-  // all writes succeed. If the process dies mid-flight the migration flag
-  // is never set, so we will retry (idempotent because setItem overwrites).
+  // 'all-notes' → per-note keys. Legacy key is removed only after all writes
+  // succeed; the flag is set last, so an interrupted run retries (setItem is idempotent).
   async migrateToPerNoteStorage(): Promise<void> {
     const done = await notesStore.getItem<boolean>('migration:per-note-done');
     if (done) return;
@@ -159,9 +150,8 @@ export const storage = {
       await notesStore.setItem('migration:per-note-done', true);
       return;
     }
-    // Write all per-note keys first. If any fail, leave the legacy key and
-    // surface the failure so bootstrap enters recovery instead of loading a
-    // partial workspace. The next retry remains idempotent.
+    // On any failure, keep the legacy key and throw so bootstrap enters recovery
+    // rather than loading a partial workspace.
     const results = await Promise.allSettled(
       legacy.map(n => notesStore.setItem(`note:${n.id}`, n))
     );
@@ -171,7 +161,6 @@ export const storage = {
         `Migration failed after writing ${legacy.length - failed.length}/${legacy.length} notes.`
       );
     }
-    // All writes succeeded — safe to remove the legacy blob and mark done.
     await notesStore.removeItem('all-notes');
     await notesStore.setItem('migration:per-note-done', true);
   },
@@ -236,9 +225,8 @@ export const storage = {
           if (!validSet.has(id)) keysToDelete.push(key);
         }
       });
-      // Use allSettled so one failed removeItem doesn't short-circuit the rest.
-      // Previously Promise.all would reject on first failure, leaving later
-      // orphans in storage that would resurrect on next load.
+      // allSettled, not all: one failed removeItem must not strand later orphans,
+      // which would resurrect on next load.
       const results = await Promise.allSettled(keysToDelete.map(k => notesStore.removeItem(k)));
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
@@ -328,10 +316,7 @@ export const storage = {
     await historyStore.removeItem(`history:${noteId}:${savedAt}`);
   },
 
-  // Keep the newest snapshot plus an exponentially-spaced tail, then cap at
-  // MAX_SNAPSHOTS_PER_NOTE. Dense recent history, thinning as we look back —
-  // so an 8-hour editing session still has snapshots from hours 1 and 2, not
-  // only the last 10 minutes.
+  // Keep the newest snapshot plus an exponentially-spaced tail, capped at MAX_SNAPSHOTS_PER_NOTE.
   async pruneSnapshots(noteId: string): Promise<void> {
     const snapshots = await this.getSnapshots(noteId);
     if (snapshots.length === 0) return;
@@ -377,7 +362,7 @@ export const storage = {
     }
   },
 
-  // Migration from localStorage
+  // localStorage → IndexedDB
   async migrateFromLocalStorage(): Promise<boolean> {
     const lsNotes = localStorage.getItem('pixel-notes');
     const lsFolders = localStorage.getItem('pixel-folders');

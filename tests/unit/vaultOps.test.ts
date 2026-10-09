@@ -130,7 +130,7 @@ describe('selectUnclaimedOperations', () => {
   });
 });
 
-// Type-level guard: operations must satisfy the VaultPendingOperation union.
+// Compile-time guard: builder output must satisfy the VaultPendingOperation union.
 const _typeCheck: VaultPendingOperation | undefined = buildVaultNoteDeleteOperations(
   [vaultNote], [vaultChild], new Set(['vf-2']),
 ).get('note-1');

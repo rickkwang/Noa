@@ -32,11 +32,7 @@ type MentionItem = Suggestion | CreateSuggestion;
 
 const MAX_SUGGESTIONS = 5;
 
-/**
- * Subsequence match: returns indices in `title` (lowercased) where each
- * character of `query` (lowercased) was found in order. Null if no match.
- * Greedy-earliest: picks the first available position for each query char.
- */
+/** Subsequence match: indices in `title` of each `query` char, greedy-earliest. Null if no match. */
 export function fuzzyMatch(title: string, query: string): number[] | null {
   if (query.length === 0) return [];
   const t = title.toLowerCase();
@@ -53,10 +49,7 @@ export function fuzzyMatch(title: string, query: string): number[] | null {
 }
 
 /**
- * Build the dropdown item list given a query. Pure so it can be unit-tested.
- * Strategy: substring matches first (tighter, preserves recency), then fill
- * remaining slots with fuzzy subsequence matches. Both tiers sorted by
- * updatedAt desc — users reference actively-edited notes, not alphabetical.
+ * Builds the dropdown items. Substring matches first, then fuzzy fill; both tiers sorted by updatedAt desc.
  */
 export function buildMentionItems(
   allNotes: Note[],
@@ -88,10 +81,7 @@ export function buildMentionItems(
     }
   }
 
-  // Offer a "Create" row when the query is non-empty AND no existing title
-  // exactly matches it. Clicking/Enter inserts [[query]] — the target note
-  // itself is created lazily when the user navigates the link
-  // (see handleNavigateToNote in useNotes).
+  // "Create" row when no title matches exactly; the target note is created lazily on navigation (useNotes).
   const trimmed = query.trim();
   const hasExactMatch = trimmed.length > 0 &&
     allNotes.some((n) => n.title.toLowerCase() === trimmed);
@@ -104,9 +94,7 @@ export function buildMentionItems(
 function renderHighlighted(title: string, matchIndices: number[]) {
   if (matchIndices.length === 0) return title;
   const set = new Set(matchIndices);
-  // Index by UTF-16 code unit to stay in sync with matchIndices (which come
-  // from string.indexOf / title[i]). Array.from(title) would split by code
-  // point and misalign on astral-plane characters.
+  // Index by UTF-16 code unit to match matchIndices; Array.from would split astral characters and misalign.
   const chars: string[] = [];
   for (let i = 0; i < title.length; i++) chars.push(title[i]);
   return chars.map((ch, i) =>
@@ -190,9 +178,7 @@ export function MentionDropdown({
           <div
             key={item.kind === 'existing' ? item.id : `create:${item.title}`}
             ref={active ? selectedRef : undefined}
-            // The active row is a wash mixed from the token, not a literal
-            // hex: the panel's `bg-[#F9F9F7]` is globally remapped in dark
-            // mode, and a literal ink colour would not follow it.
+            // Token-based wash, not a literal hex, so it follows the dark-mode remap.
             className={`flex h-7 items-center px-2 rounded-md cursor-pointer truncate text-[#2D2D2B]/90 ${active ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)]' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault();

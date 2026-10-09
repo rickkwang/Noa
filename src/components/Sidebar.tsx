@@ -62,10 +62,7 @@ interface SidebarNoteRowProps {
   onDragEnd: () => void;
 }
 
-// Memo boundary for note rows: the sidebar re-renders on every notes-state
-// change (every keystroke — modified-time sorting depends on it), but rows for
-// untouched notes keep the same props and skip. All callbacks must stay
-// referentially stable or this memo is defeated.
+// Memo boundary for note rows: the sidebar re-renders every keystroke, so all callbacks must stay referentially stable.
 const SidebarNoteRow = React.memo(function SidebarNoteRow({
   note, depth, isActive, isSelected, isDragging,
   onSelect, onRequestDelete, onRename, onDragStart, onDragEnd,
@@ -153,9 +150,7 @@ export default function Sidebar({
   );
   useEffect(() => { lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); }, [noteSortOrder]);
 
-  // Sorted once per notes/sort-order change — sorting inside the render pass
-  // (per folder, per render) re-copied and re-sorted every list on every
-  // keystroke.
+  // Sorted once per notes/sort-order change, not per render.
   const notesByFolderId = useMemo(() => {
     const map = new Map<string, Note[]>();
     notes.forEach((note) => {
@@ -180,7 +175,7 @@ export default function Sidebar({
     [notesByFolderId]
   );
 
-  // Stable handlers for SidebarNoteRow — see the memo note on that component.
+  // Stable handlers for SidebarNoteRow (see the memo note above).
   const handleNoteRowSelect = useCallback((id: string, multi: boolean) => {
     if (multi) {
       setSelectedNoteIds(prev => {
@@ -233,8 +228,7 @@ export default function Sidebar({
     return notes.filter((note) => targetIds.has(note.folder)).length;
   }, [folders, isVaultFolder, notes]);
 
-  // Both roots drop into the same (null) folder and are told apart by their
-  // ownership flag; the ids exist only to say which region lights up.
+  // Both roots drop into the null folder and are told apart by ownership; the ids only mark which region lights up.
   const markNoaRootTarget = useMemo(
     () => handleDragTarget(NOA_ROOT_DROP_TARGET_ID, null),
     [handleDragTarget]
@@ -334,9 +328,7 @@ export default function Sidebar({
 
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // During dragenter/dragover/dragleave, browsers put dataTransfer in "protected mode"
-  // where files is an empty FileList — only `types` reliably exposes that files are involved.
-  // (files becomes populated only at drop time.)
+  // During drag events dataTransfer.files is empty (protected mode); only `types` reveals files. `files` fills at drop.
   const isFileImportDrag = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -349,9 +341,7 @@ export default function Sidebar({
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     if (!isFileImportDrag(e)) return;
-    // dragleave fires every time the cursor crosses an internal child boundary.
-    // Only clear the overlay when the cursor actually exits the sidebar
-    // (relatedTarget is null when leaving the window entirely; contains(null) is false).
+    // dragleave fires at every child boundary; only clear the overlay when leaving the sidebar itself.
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setIsDragOver(false);
     }
@@ -396,9 +386,7 @@ export default function Sidebar({
     }
   };
 
-  // The toolbar's seam only exists once the tree has scrolled under it. The
-  // strength is written on the sidebar root because the overlay lives on the
-  // toolbar, which is the scroller's sibling, not its child.
+  // The toolbar seam appears once the tree scrolls under it; the fade writes to the sidebar root since the overlay is the scroller's sibling.
   const sidebarRootRef = useRef<HTMLDivElement>(null);
   const treeScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -428,10 +416,7 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      {/* Vertical rhythm, by centre line: titlebar 22px, this row 60px, first
-          tree row ~98px — two equal 38px steps, then the tree's own 31px
-          pitch. The row used to carry 6px of top padding, which made the
-          first step 41px and the second 36px. */}
+      {/* Vertical rhythm by centre line: titlebar 22px, this row 60px, first tree row ~98px — two equal 38px steps. */}
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(primaryNoaFolderId)}
@@ -713,8 +698,7 @@ export default function Sidebar({
           </div>
         </div>
 
-      {/* Calendar Panel — always mounted so open/closed and viewMonth state survive
-          search toggles (otherwise it remounts on every searchQuery flip). */}
+      {/* Always mounted so open state and viewMonth survive search toggles. */}
       <CalendarPanel
         notes={notes}
         tasks={tasks}
@@ -728,8 +712,7 @@ export default function Sidebar({
 
       <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} isOpen={isTagsOpen} />
 
-      {/* Calendar and Tags open from the footer row rather than two header bars
-          stacked above it; an open panel's toggle takes the accent. */}
+      {/* Calendar and Tags toggle from the footer row; an open panel's toggle takes the accent. */}
       <VaultFooter
         {...vault}
         actions={(

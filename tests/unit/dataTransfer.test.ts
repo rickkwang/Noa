@@ -353,9 +353,7 @@ describe('buildVaultImportPayload', () => {
 
     const result = await buildVaultImportPayload(files, folderIdByPath);
 
-    // Consistent with the vault-connect scan path: frontmatter never leaks into
-    // the editor body, and a later vault write can reproduce the original file
-    // instead of stacking a second frontmatter block on top.
+    // Frontmatter stays out of the body and is kept raw, so a vault write won't stack a second block.
     expect(result.notes[0]?.content).toBe('# Guide body');
     expect(result.notes[0]?.rawFrontmatter).toBe('id: 20240101\ntags: [work]');
     expect(result.notes[0]?.tags).toEqual(['work']);
@@ -439,7 +437,7 @@ describe('resolveImportedFolders', () => {
   it('merge: keeps every existing folder and appends only new incoming ids', () => {
     const result = resolveImportedFolders('merge', existing, incoming);
     expect(result.map((f) => f.id)).toEqual(['f-existing', 'f-shared', 'f-new']);
-    // The existing folder wins on id conflicts — its name is not clobbered.
+    // On id conflicts the existing folder wins and keeps its name.
     expect(result.find((f) => f.id === 'f-shared')?.name).toBe('essays');
   });
 

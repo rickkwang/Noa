@@ -149,12 +149,11 @@ function graphCooldownTime(nodeCount: number): number {
   return nodeCount > 200 ? 700 : nodeCount > 100 ? 850 : 1200;
 }
 
-// Higher than d3-force's degree-based default; tightens link springs so flowers
-// keep a clean radial shape. Update reset-view alongside if changed.
+// Above d3-force's degree-based default; tightens links for a clean radial shape.
+// Update reset-view alongside if changed.
 const LINK_STRENGTH = 1.25;
 
-// Node radius: log-scaled by degree (Obsidian-like).
-// sizeByDegree=false → fixed 5px (legacy mode).
+// Node radius: log-scaled by degree; fixed 5px when sizeByDegree is false.
 const NODE_RADIUS_MAX = 9;
 function nodeRadius(degree: number, sizeByDegree: boolean): number {
   if (!sizeByDegree) return 5;
@@ -217,18 +216,14 @@ function fitZoomFor(bboxW: number, bboxH: number, width: number, height: number)
   const fill = FIT_FILL + (FIT_FILL_WIDE - FIT_FILL) * wide;
   return Math.min(FIT_MAX_ZOOM, exactFit * fill);
 }
-// The post-rebuild fit eases rather than cuts, so a filter change reads as the
-// camera travelling to the new graph instead of teleporting (it was a 65% jump).
+// The post-rebuild fit eases rather than cuts, so filter changes don't teleport the camera.
 const EARLY_FIT_DURATION = 240;
 // The engine-stop fit is a correction, not a move: skip it when it would shift
 // the camera by less than this. Otherwise every load ends with a pointless ~2%
 // zoom nudge a third of a second after the graph already looked settled.
 const LATE_FIT_MIN_DELTA = 0.03;
 
-// Below the label fade-in threshold (~0.5 zoom, hit around 150+ nodes) all
-// labels used to vanish, leaving an anonymous dot field. Keep the handful of
-// structural anchors readable instead: the top-degree hubs always show their
-// names, which is what orients the user at overview zoom.
+// Top-degree hubs keep their labels at overview zoom, so the graph stays oriented.
 const HUB_LABEL_COUNT = 8;
 // Zoom range over which hub and active-note labels fade out when zooming away.
 const ANCHOR_LABEL_FADE_START = 0.45;
@@ -257,10 +252,8 @@ export default function GraphView({
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<GraphNodeData, GraphLinkData> | undefined>(undefined);
-  // The canvas backing store is sized to cover the largest right panel and is
-  // CSS-centred inside the visible container, which clips the overflow. Resizing
-  // a canvas reallocates its GPU backing store and clears a frame, so the graph
-  // should adapt to window/panel changes through zoom/pan only.
+  // Canvas is oversized and CSS-centred; resizing it reallocates the backing store
+  // and clears a frame, so adapt to container changes via zoom/pan only.
   const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
   const dimensionsRef = useRef(canvasSize);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -555,7 +548,6 @@ export default function GraphView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery, showUnresolved]);
 
-  // Build neighbour set for hovered node
   const hoveredNeighbours = useMemo(() => {
     if (!hoveredNodeId) return null;
     const neighbours = new Set<string>([hoveredNodeId]);
@@ -628,23 +620,11 @@ export default function GraphView({
     pendingEarlyFitRef.current = true;
   }, [graphData]);
 
-  // Re-fit as soon as the rebuilt layout exists, rather than leaving the graph
-  // mis-scaled until onEngineStop ~1s later — which is what made every load and
-  // filter change blank out.
-  // Fit off force-graph's own tick signal rather than a rAF. resetCountdown()
-  // runs at the tail of the data update — after graphData is ingested and after
-  // warmupTicks — so the first tick is the earliest moment the bbox is both
-  // populated and current. A rAF cannot promise either: it can land before the
-  // 1ms-debounced digest (unpositioned nodes → NaN bounds) or, worse, while
-  // force-graph still holds the *previous* graph, whose bounds are perfectly
-  // finite and would fit the camera to the wrong layout.
+  // Fit off force-graph's tick, not a rAF: the first tick is the earliest point where the bbox is
+  // both populated and current (a rAF can run before the digest, or still see the previous graph).
   const handleEngineTick = useCallback(() => {
     if (!pendingEarlyFitRef.current) return;
-    // minRelDelta matters more than it used to: position carry-over keeps the
-    // bbox stable across filter toggles, and without the guard every rebuild
-    // ends in a pointless 240ms camera nudge over an unchanged layout. The
-    // guard only ever skips when the camera is already within 3% of the
-    // fitted view — i.e. when the nudge would be invisible anyway.
+    // Skip the fit when the camera is already within 3% of it, so an unchanged layout doesn't get a pointless nudge.
     if (fitView(prefersReducedMotion() ? 0 : EARLY_FIT_DURATION, LATE_FIT_MIN_DELTA)) pendingEarlyFitRef.current = false;
   }, [fitView]);
 
@@ -758,16 +738,10 @@ export default function GraphView({
         }}
         onNodeHover={(node: GraphNode | null) => setHoveredNodeId(node ? String(node.id) : null)}
         enableNodeDrag={true}
-        // Disable pan whenever a node is hovered. Hover state is set before
-        // mouse-down, so by the time the user presses on a node, pan is already
-        // off and won't race with the node-drag handler. (A ref-based predicate
-        // wouldn't work — d3-zoom's filter runs on mousedown, when the drag flag
-        // is still false from the previous frame.)
+        // Pan is disabled while hovering so it can't race the node-drag handler; a ref-based predicate would be read too early on mousedown.
         enablePanInteraction={!hoveredNodeId}
         enableZoomInteraction={true}
-        // Most of the settle happens in warmupTicks (synchronous, pre-paint) so the
-        // graph is already at its final scale on the first frame; the cooldown
-        // ticks below only polish leaf positions around their hubs.
+        // Most of the settle happens in warmupTicks (pre-paint); cooldown only polishes leaf positions.
         warmupTicks={graphWarmupTicks(graphData.nodes.length)}
         cooldownTicks={graphCooldownTicks(graphData.nodes.length)}
         cooldownTime={graphCooldownTime(graphData.nodes.length)}
@@ -811,31 +785,14 @@ export default function GraphView({
           ctx.fillStyle = fillColor;
           ctx.fill();
 
-          // Selection ring. Active is the full-weight ring; hover is the same
-          // ring at two-thirds weight. One shape carrying two states beats a
-          // ring for one and a halo for the other — and the graph stays on the
-          // same flat plane as every other surface in the app.
-          //
-          // A brief detour unified both to 1.5 on the theory that this was
-          // the same click-flicker chased elsewhere in the app — it wasn't:
-          // that flicker turned out to be `active:opacity` press-fade
-          // colliding with a DOM element's own click-driven restyle, and a
-          // canvas node has no `:active` pseudo-state to collide with in the
-          // first place. Unifying the weights just deleted the one signal
-          // this ring carries (hovering a node vs. it being the open note)
-          // for no corresponding fix, so it's reverted.
+          // Selection ring: full weight when active, lighter on hover, so the two states stay distinct.
           if (isActive || isHovered) {
             ctx.strokeStyle = textColor;
             ctx.lineWidth = (isActive ? 1.5 : 1) / globalScale;
             ctx.stroke();
           }
 
-          // Label: smooth fade in based on globalScale, with text shadow for legibility.
-          // Hubs and the open note are the graph's orientation anchors, so
-          // they outlast the other labels — but not forever: far enough out
-          // the nodes are a few pixels apart and even eight names pile into
-          // an unreadable heap, so the anchors fade too and the graph is
-          // shape only. The hovered node always answers with its name.
+          // Labels fade in with zoom. Hubs and the open note fade out later, and the hovered node always shows its name.
           const labelFadeStart = 0.5;
           const labelFadeEnd = 0.9;
           const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
@@ -874,11 +831,7 @@ export default function GraphView({
           const radius = nodeRadius(node.degree ?? 0, sizeByDegree) * zoomDamp(globalScale);
           ctx.fillStyle = color;
           ctx.beginPath();
-          // Slightly larger hit area makes node drags less likely to start a canvas
-          // pan. The padding is divided by globalScale so it stays 8 *screen* px:
-          // as a raw world-unit value it ballooned when zoomed in, overlapping
-          // neighbouring hit areas and — via enablePanInteraction={!hoveredNodeId}
-          // — leaving no background left to pan from.
+          // Hit area is 8 screen px larger than the node; divided by globalScale so it doesn't balloon when zoomed in.
           ctx.arc(node.x, node.y, radius + 8 / globalScale, 0, 2 * Math.PI);
           ctx.fill();
         }}

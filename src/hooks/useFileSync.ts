@@ -86,9 +86,7 @@ const AUTO_RETRY_MULTIPLIER = 2;
 const AUTO_RETRY_MAX_DELAY_MS = 15_000;
 const AUTO_RETRY_MAX_ATTEMPTS = 5;
 
-// The watchdog tick doubles as the grace period: a transient gap between a
-// structural reservation and its tracked operation lasts milliseconds, so a
-// full tick spent in that gap means the owner died without cleanup.
+// The watchdog tick is the grace period: a full tick in the reservation-to-operation gap means the owner died.
 const SYNC_WATCHDOG_INTERVAL_MS = 45_000;
 
 // External-change polling cadence. The FSA API has no watcher; window focus is
@@ -131,11 +129,8 @@ export async function settleDurableVaultConflict(
 
 export type SyncWatchdogVerdict = 'wait' | 'land-ready' | 'stalled';
 
-// Decision core of the stuck-`syncing` watchdog. Every convergence path back
-// to `ready` relies on a completion callback landing recordSuccess; if all of
-// them early-return (generation bump, superseded operation, abandoned scan),
-// the status spins forever with nothing in flight. A hung write is
-// indistinguishable from slow IO, so in-flight work always waits.
+// Decision core of the stuck-`syncing` watchdog: if every completion callback early-returns, status
+// spins with nothing in flight. A hung write looks like slow IO, so in-flight work always waits.
 export function assessSyncWatchdog({
   trackedOperationCount,
   authoritativeWorkCount,
@@ -227,9 +222,7 @@ export function useFileSync({
   }, [notes, folders, workspaceName]);
   useEffect(() => { fsHandleRef.current = fsHandle; }, [fsHandle]);
 
-  // Tracks the retry-generation id. Every user-initiated reset (retry/reconnect/
-  // disconnect) bumps this so any timer or in-flight retry callback scheduled
-  // under an older generation becomes a no-op when it eventually fires.
+  // Retry generation: user resets bump it, turning stale scheduled retries into no-ops.
   const retryGeneration = useRef(0);
 
   const clearRetryTimer = useCallback(() => {
@@ -241,8 +234,7 @@ export function useFileSync({
   const resetRetryState = useCallback(() => {
     clearRetryTimer();
     autoRetryAttempts.current = 0;
-    // Invalidate any in-flight retry callback so it becomes a no-op when it
-    // eventually settles (see scheduleRetry's generation check).
+    // Invalidate in-flight retries (see scheduleRetry's generation check).
     retryGeneration.current += 1;
   }, [clearRetryTimer]);
 
@@ -296,10 +288,7 @@ export function useFileSync({
     });
   }, []);
 
-  // Stuck-`syncing` watchdog: retry() is guarded against the syncing state, so
-  // an abandoned status would otherwise leave the user with no escape short of
-  // a reload. `land-ready` is safe by construction — recordSuccess re-checks
-  // the same gates before landing.
+  // Stuck-`syncing` watchdog: retry() is blocked while syncing, so an abandoned status needs this escape.
   useEffect(() => {
     if (syncStatus !== 'syncing') return;
     const timer = setInterval(() => {
@@ -392,8 +381,7 @@ export function useFileSync({
       }
     }
 
-    // vaultDirty survives reloads, when the in-memory failed-operation closure
-    // does not. Reconcile every dirty row from its latest cached snapshot.
+    // vaultDirty survives reloads but the failed-operation closure does not; reconcile dirty rows from cache.
     const dirtySnapshots = notesRef.current.filter(
       (note) => note.origin === 'vault' && note.vaultDirty,
     );
@@ -438,9 +426,7 @@ export function useFileSync({
     handle: FileSystemDirectoryHandle,
     generation: number,
   ): Promise<{ deletedNoteIds: string[]; updatedNoteIds: string[] } | null> => {
-    // A prepared structural transaction has already reserved its local entity
-    // but may still be persisting the matching local mutation. Do not let an
-    // authoritative scan observe or promote that half-finished transaction.
+    // A prepared structural transaction may still be persisting its local mutation; an authoritative scan must not observe it.
     if (reservedStructuralEntityKeysRef.current.size > 0) return null;
     authoritativeWorkCountRef.current += 1;
     setAuthoritativeSyncInProgress(true);
@@ -493,9 +479,7 @@ export function useFileSync({
     const generation = retryGeneration.current;
     autoRetryTimer.current = setTimeout(() => {
       autoRetryTimer.current = null;
-      // If resetRetryState ran while we were waiting, our generation is stale.
-      // Aborting here prevents a dead branch from resurrecting sync after the
-      // user disconnected or manually retried.
+      // Stale generation (reset ran while waiting): abort so a dead branch can't resurrect sync.
       if (generation !== retryGeneration.current) return;
       const handle = fsHandleRef.current;
       if (!handle) return;
@@ -619,9 +603,7 @@ export function useFileSync({
     if (!fsHandle || syncStatus === 'syncing') return;
     resetRetryState();
     const generation = retryGeneration.current;
-    // Keep autoRetryExhausted sticky through the attempt so the Disconnect
-    // escape hatch stays visible if this manual retry also fails.
-    // recordSuccess clears it on the happy path.
+    // Keep autoRetryExhausted sticky so Disconnect stays visible if this retry fails; recordSuccess clears it.
     setSyncStatus('syncing');
     void syncFromAuthoritativeDisk(fsHandle, generation)
       .then(() => {
@@ -670,9 +652,7 @@ export function useFileSync({
     }
     if (bootstrapped.current) return;
     bootstrapped.current = true;
-    // Captured for the async chain below: if isLoaded flips false again
-    // before restore resolves, bootstrapped.current will have been reset,
-    // signalling that we should abandon the in-flight restore.
+    // If isLoaded flips false before restore resolves, bootstrapped.current is reset: abandon the restore.
     const bootstrapToken = bootstrapped;
     const generation = retryGeneration.current;
 

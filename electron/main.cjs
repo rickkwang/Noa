@@ -71,9 +71,8 @@ function setupAutoUpdater() {
 
   autoUpdater.on('checking-for-update', () => {
     emitUpdateStatus({ state: 'checking', message: 'Checking for updates...' });
-    // Guard against the updater getting wedged in 'checking' if the network
-    // silently drops the request — fire a synthetic error so the UI can
-    // recover rather than leaving the button disabled forever.
+    // If the network silently drops the request, the updater stays in 'checking' forever;
+    // fire a synthetic error so the UI can recover.
     clearCheckTimeout();
     checkTimeoutTimer = setTimeout(() => {
       checkTimeoutTimer = null;
@@ -172,20 +171,13 @@ function createWindow() {
     title: 'Noa',
     icon: iconPath,
     frame: false,
-    // No `transparent`, like Codex. With it, every Stage Manager switch back to
-    // Noa ended with ~0.45s of flat, material-less sidebar after the window
-    // landed. It was added (0cdaf22) for stale colours when GraphView mounted
-    // its GPU canvas after the material cleared the backing; that no longer
-    // reproduces without it, frame by frame, on the current Electron.
-    // Keep the sidebar material in its active look when the window loses
-    // focus. Following the window, macOS swaps to the pale inactive material
-    // and the swap back on refocus reads as the sidebar flashing.
+    // No `transparent`: with it, each Stage Manager switch back to Noa showed
+    // ~0.45s of flat, material-less sidebar.
+    // Pin the active material so focus changes don't swap to the pale inactive one.
     visualEffectState: 'active',
     hasShadow: true,
-    // Light-theme default; the renderer re-syncs this to the active theme via
-    // 'window:set-sidebar-translucency'. macOS paints this color at the window
-    // edges while renderer frames lag during live resize, so a mismatch with
-    // the page background shows as bright ghosting along the frame.
+    // Light-theme default; the renderer re-syncs it via 'window:set-sidebar-translucency'.
+    // macOS paints this at the edges during live resize, so a mismatch with the page shows as ghosting.
     backgroundColor: '#FCFCFB',
     titleBarStyle: 'hidden',
     // Equal insets from the top and the left, so the lights sit evenly inside
@@ -200,9 +192,7 @@ function createWindow() {
 
   installCloseGuard({ app, win, ipcMain });
 
-  // A frameless window removes macOS's reflective edge while retaining the
-  // native controls and rounded corners. Keep the traffic lights explicitly
-  // visible because frame:false otherwise hides them on some macOS versions.
+  // frame:false keeps native controls and rounded corners, but can hide the traffic lights on some macOS versions.
   if (typeof win.setWindowButtonVisibility === 'function') {
     win.setWindowButtonVisibility(true);
   }
@@ -244,8 +234,7 @@ async function doCheckForUpdates() {
   }
 }
 
-// Grant only the permissions the renderer actually uses; deny everything else.
-// See permissionPolicy.cjs for why 'fileSystem' must be affirmatively re-granted.
+// Grant only the permissions the renderer uses; deny everything else (see permissionPolicy.cjs).
 function installPermissionHandlers() {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => isPermissionAllowed(permission));
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
@@ -253,10 +242,9 @@ function installPermissionHandlers() {
   });
 }
 
-// Packaged file:// pages receive their CSP as a build-time meta tag because
-// Chromium cannot attach HTTP response headers to file resources. This handler
-// is only for Vite development, where HMR needs loopback HTTP/WebSocket access
-// and the React refresh transform injects inline/eval-based development code.
+// Packaged file:// pages get their CSP as a build-time meta tag, since Chromium can't attach
+// headers to file resources. This handler is dev-only: HMR needs loopback HTTP/WS and the
+// React refresh transform injects inline/eval code.
 function installDevCsp() {
   if (app.isPackaged) return;
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -419,8 +407,7 @@ if (isPrimaryInstance) app.whenReady().then(() => {
 
   ipcMain.handle('app-updater:open-download-url', async (_event, url) => {
     if (!url || typeof url !== 'string') return false;
-    // Only allow HTTPS URLs from trusted GitHub domains to prevent a
-    // compromised renderer from opening arbitrary local or remote resources.
+    // Only trusted GitHub HTTPS URLs: a compromised renderer must not open arbitrary resources.
     let parsed;
     try { parsed = new URL(url); } catch { return false; }
     if (parsed.protocol !== 'https:') return false;

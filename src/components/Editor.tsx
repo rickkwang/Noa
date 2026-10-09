@@ -168,16 +168,9 @@ export default function Editor({
   );
 
 
-  // Markdown preview parsing is expensive for large notes. Feeding the preview
-  // deferred values keeps NoteMarkdownBody's memo props stable during the
-  // urgent render, so keystrokes paint first and the re-parse runs in a
-  // follow-up low-priority render. The deferred value is only
-  // eventually-consistent, though: after a note switch React keeps serving the
-  // previous note, and that catch-up can be starved indefinitely (observed:
-  // preview stayed blank until a full reload). So mounting must not wait on
-  // it — gate on a one-frame lag of the note id instead, which still keeps the
-  // switch frame free of an eager parse, and read the fresh note while the
-  // deferred one lags. Same-id typing always takes the deferred branch.
+  // Preview gets deferred values so keystrokes paint before the expensive re-parse. The deferred
+  // value can be starved after a note switch (preview went blank until reload), so gate on the note id
+  // lagging one frame and read the fresh note meanwhile; same-id typing still takes the deferred branch.
   const deferredNote = useDeferredValue<Note | undefined>(note, undefined);
   const deferredAllNotes = useDeferredValue(allNotes);
   const [settledNoteId, setSettledNoteId] = useState(note?.id);
@@ -214,11 +207,8 @@ export default function Editor({
     return () => window.cancelAnimationFrame(frame);
   }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
 
-  // Split mode fades the CodeMirror pane's leading edge as its scroller moves —
-  // same rule as the preview pane's .noa-top-scroll-fade. The variable goes on
-  // the pane and .cm-editor inherits it, because the EditorView (and with it
-  // .cm-scroller) is recreated on note id / theme change, so the listener
-  // re-attaches on those deps and must not be the thing holding the state.
+  // Split mode fades the CodeMirror pane's top edge like the preview's. The EditorView is recreated
+  // on note/theme change, so the listener re-attaches on those deps and the fade state lives on the pane.
   useEffect(() => {
     if (viewMode !== 'split') return;
     const pane = editPaneRef.current;
@@ -284,10 +274,7 @@ export default function Editor({
   }, [scanNote?.content]);
 
   useEffect(() => {
-    // Reset transient UI state whenever the active note changes — including when
-    // it becomes undefined (e.g. the note was deleted in another tab). Leaving
-    // stale titleInput / dropdowns visible misleads the user into thinking they
-    // are still editing the previous note.
+    // Reset transient UI when the active note changes (including to undefined), so stale dropdowns don't suggest the old note is still being edited.
     setTitleInput(note?.title || '');
     setMentionQuery(null);
     setSlashQuery(null);
@@ -295,8 +282,7 @@ export default function Editor({
     setIsFindReplaceOpen(false);
     setIsEditingTitle(false);
     setImageError(null);
-    // Reset UI state only when switching notes (by id), not on every keystroke
-    // that produces a new note object (e.g. title edits).
+    // Keyed on note id, not the note object, so title edits don't trigger the reset.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);
 
@@ -365,7 +351,7 @@ export default function Editor({
             insertFormatting(syntax);
           }
         } else if (file.type.startsWith('image/')) {
-          // Fallback: base64 embed (legacy, no onNoteUpdate)
+          // Fallback when no onNoteUpdate: inline base64 embed
           const IMAGE_SIZE_LIMIT = 500 * 1024;
           const reader = new FileReader();
           reader.onload = (ev) => {
@@ -638,11 +624,7 @@ export default function Editor({
         ref={splitContainerRef}
         className="flex-1 flex overflow-hidden z-10 relative"
       >
-        {/* Preview has no toolbar row, so the note-level controls float over
-            the content instead. h-8 + items-center keeps them on the exact
-            line the toolbar row would occupy, and pb-px mirrors the row's
-            1px border-b so the buttons don't shift half a pixel when
-            switching modes. */}
+        {/* Preview has no toolbar row, so controls float here; h-8 + pb-px match the row's height so they don't shift between modes. */}
         {viewMode === 'preview' && (
           <div className="absolute top-0 right-4 z-20 h-8 pb-px flex items-center">
             {editorActions}
@@ -667,11 +649,8 @@ export default function Editor({
             display: viewMode === 'preview' ? 'none' : undefined,
             width: viewMode === 'split' ? `${splitRatio * 100}%` : undefined,
             flex: viewMode === 'split' ? 'none' : '1',
-            // Only the horizontal inset lives here. Vertical padding must NOT sit
-            // on this (non-scrolling) wrapper — the real scroll viewport is
-            // CodeMirror's .cm-scroller, and a top pad here pushes its top edge
-            // below the toolbar, clipping the first line behind a dead band.
-            // Vertical breathing room is applied inside .cm-content instead.
+            // Horizontal inset only: vertical padding here would push CodeMirror's .cm-scroller (the real
+            // scroll viewport) below the toolbar and clip the first line. Vertical room lives in .cm-content.
             padding: '0 0 0 2rem',
           }}
         >
@@ -679,10 +658,7 @@ export default function Editor({
             <div ref={editorContainerRef} className="h-full" />
           </div>
 
-          {/* Obsidian-style status bar: an opaque strip, not text floating
-              over the prose. The editor pane doesn't scroll (CodeMirror's own
-              .cm-scroller does), so a transparent overlay here would have
-              arbitrary document text drifting behind it as the user scrolls. */}
+          {/* Opaque status bar: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
           <div
             className="absolute bottom-0 left-0 right-0 z-10 h-7 flex items-center justify-end px-4 text-xs font-redaction pointer-events-none"
             style={{
@@ -737,8 +713,7 @@ export default function Editor({
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
             style={viewMode === 'split' ? {
-              // The 1px divider sits outside the percentage split; subtract it
-              // so split preview ends at the same edge as standalone preview.
+              // Subtract the 1px divider so split preview ends at the same edge as standalone preview.
               width: `calc(${(1 - splitRatio) * 100}% - 1px)`,
               flex: 'none',
             } : undefined}
