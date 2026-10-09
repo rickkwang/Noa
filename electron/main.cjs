@@ -179,6 +179,8 @@ function createWindow() {
     // Light-theme default; the renderer re-syncs it via 'window:set-sidebar-translucency'.
     // macOS paints this at the edges during live resize, so a mismatch with the page shows as ghosting.
     backgroundColor: '#FCFCFB',
+    // Shown on first paint, after the theme bootstrap has darkened the page; otherwise the light backdrop flashes on dark launches.
+    show: false,
     titleBarStyle: 'hidden',
     // Equal insets from the top and the left, so the lights sit evenly inside
     // the window's corner; y centres the 14px buttons in the 44px titlebar.
@@ -213,6 +215,12 @@ function createWindow() {
       void shell.openExternal(url);
     }
   });
+
+  // A failed load never emits ready-to-show; show anyway so the window isn't left hidden.
+  win.webContents.once('did-fail-load', () => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  });
+  win.once('ready-to-show', () => win.show());
 
   if (isDev) {
     void win.loadURL('http://127.0.0.1:3000');
