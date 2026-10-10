@@ -1115,6 +1115,29 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   width: 0;
 }
 
+/* Translucent promotion: the editor starts under the column and slides out on the spacer's clock while the glass tint
+   fades in, so without this it ghosts through. Clip whatever of the editor is still under the column: its left
+   W·(1−progress). A transition on the same clock as the spacer's (not a keyframe animation) so a mid-flight reversal
+   gets the same reversing shortening and both stay in step. The preview parks the value at W so promotion starts there.
+   Other insets are open: the lifted tab strip overflows the top. The editor root (Editor, EmptyState or a fallback)
+   is always the element right after the sidebar container. */
+@property --noa-promotion-clip {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+html[data-translucent-sidebar="enabled"] [data-sidebar-container][data-sidebar-preview="true"] + * {
+  --noa-promotion-clip: var(--noa-sidebar-width, 325px);
+}
+html[data-translucent-sidebar="enabled"] .noa-sidebar-promotion-spacer + [data-sidebar-container] + * {
+  --noa-promotion-clip: 0px;
+  clip-path: inset(-100vh -100vw -100vh var(--noa-promotion-clip));
+  transition: --noa-promotion-clip 500ms ease-in-out;
+}
+html[data-translucent-sidebar="enabled"] .noa-sidebar-promotion-spacer[data-sidebar-promotion-closing="true"] + [data-sidebar-container] + * {
+  --noa-promotion-clip: var(--noa-sidebar-width, 325px);
+}
+
 .noa-sidebar-promotion-divider {
   left: var(--noa-sidebar-width, 325px);
 }

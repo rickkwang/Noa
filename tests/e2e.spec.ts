@@ -449,10 +449,9 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
   await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
   const previewShell = page.locator('[data-sidebar-preview-shell="true"]');
   await expect(previewShell).toBeVisible();
-  await expect.poll(() => previewShell.evaluate((layer) => {
-    const appShell = document.querySelector<HTMLElement>('.noa-app-shell');
-    return appShell ? getComputedStyle(layer).backgroundColor === getComputedStyle(appShell).backgroundColor : false;
-  })).toBe(true);
+  // Same floor as the docked sidebar (--bg-sidebar), so promotion has no colour step.
+  await expect.poll(() => previewShell.evaluate((layer) => getComputedStyle(layer).backgroundColor))
+    .toBe('rgb(251, 251, 249)');
   await expect.poll(() => sidebar.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe('rgba(0, 0, 0, 0)');
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
@@ -492,7 +491,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
   await expect(previewShell).toHaveCount(0);
 });
 
-test('dark mode sidebar preview uses the main canvas plane without creating a titlebar seam', async ({ page }) => {
+test('dark mode sidebar preview uses the docked sidebar plane without creating a titlebar seam', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('app-settings', JSON.stringify({ appearance: { theme: 'dark' } }));
     localStorage.setItem('redaction-storage-notice-seen', '1');
@@ -534,7 +533,7 @@ test('dark mode sidebar preview uses the main canvas plane without creating a ti
   expect(palette).toMatchObject({
     sidebarToken: '#2F2F2D',
     primaryToken: '#2A2A28',
-    previewColor: 'rgb(42, 42, 40)',
+    previewColor: 'rgb(47, 47, 45)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
     primaryColor: 'rgb(42, 42, 40)',
     previewBounds: { x: 0, y: 0, height: 720 },
@@ -813,6 +812,8 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
   });
   const settled = 'matrix(1, 0, 0, 1, 325, 0)';
   await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
+  // theme-bootstrap.js paints <html> for the pre-React frame; left in place it hides the native material.
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   await toggle.click();
@@ -829,6 +830,8 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
     const shell = document.querySelector<HTMLElement>('.noa-app-shell')!;
     const veils = new Set<string>();
     const tabs: number[] = [];
+    // Spacer width plus the editor's left clip: the part of the editor still under the column.
+    const covered: number[] = [];
     // Keep sampling past the 520ms window until there are enough points (a starved runner
     // fits few frames); extra samples land on the settled value. hardStop bounds the loop.
     const deadline = performance.now() + 520;
@@ -837,12 +840,19 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
       veils.add(getComputedStyle(shell, '::before').transform);
       const tab = document.querySelector<HTMLElement>('[data-tab-id]');
       if (tab) tabs.push(tab.getBoundingClientRect().x);
+      const spacer = document.querySelector<HTMLElement>('.noa-sidebar-promotion-spacer');
+      const editor = document.querySelector<HTMLElement>('.noa-sidebar-promotion-spacer + [data-sidebar-container] + *');
+      const clip = editor && getComputedStyle(editor).clipPath.match(/ (-?[\d.e-]+)px\)$/);
+      if (spacer && clip) covered.push(spacer.getBoundingClientRect().width + Number(clip[1]));
       await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     }
-    return { veils: [...veils], tabs };
+    return { veils: [...veils], tabs, covered };
   });
 
   expect(promotion.veils).toEqual([settled]);
+  // The glass fades in during the slide, so the editor must stay clipped out from under it on every frame.
+  expect(promotion.covered.length).toBeGreaterThan(8);
+  for (const width of promotion.covered) expect(Math.abs(width - 325)).toBeLessThan(1);
   expect(await veilMotion()).toEqual([]);
   // Monotonic within sub-pixel noise; a regression walked it back 16px.
   const retreat = promotion.tabs.reduce(
