@@ -281,7 +281,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
 
           {/* A stored list is already usable, so only a first-ever read shows progress. */}
           {(error || (loading && systemFonts.length === 0)) && filtered.length > 0 && (
-            <div className="px-3 py-1.5 border-t border-[#2D2D2B]/15 text-[11px] text-[#2D2D2B]/50">
+            <div className="px-3 py-1.5 border-t border-[var(--divider-subtle)] text-[11px] text-[#2D2D2B]/50">
               {error ?? 'Reading installed fonts…'}
             </div>
           )}

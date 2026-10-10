@@ -132,7 +132,7 @@ export default function DataSettings({
         </div>
       )}
       {group === 'backup' && (
-        <div className="border border-[#2D2D2B]/20 bg-[#EFEAE3] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="border border-[var(--divider-subtle)] bg-[#EFEAE3] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
           {LOCAL_DATA_BOUNDARY_COPY}
           <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
         </div>

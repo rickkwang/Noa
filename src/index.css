@@ -265,7 +265,9 @@ body {
    token on the dialog keeps every consumer in there on one value — nothing
    opts in per-border. */
 [data-settings-surface="true"] {
-  --divider-subtle: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  /* Opaque, so every hairline in the dialog resolves to the same colour whatever
+     surface it sits on (cards, nav column, content pane). */
+  --divider-subtle: color-mix(in srgb, var(--text-primary) 9%, var(--bg-secondary));
 }
 
 /* Softer corners throughout the dialog. Restated here rather than edited into
