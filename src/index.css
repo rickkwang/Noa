@@ -1156,3 +1156,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-app-shell[data-sidebar-moving="true"] [data-sidebar-container] {
   pointer-events: none;
 }
+
+/* Properties dates are edited segment by segment, like Obsidian — no calendar popup. */
+.noa-properties input[type="date"]::-webkit-calendar-picker-indicator,
+.noa-properties input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+/* Chrome pads the date fields by default, which nudged dates right of the other values. */
+.noa-properties ::-webkit-datetime-edit,
+.noa-properties ::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}

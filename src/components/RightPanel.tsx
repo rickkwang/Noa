@@ -140,13 +140,14 @@ interface RightPanelProps {
   settings: AppSettings;
   activeNoteId?: string;
   onUpdateNote?: (content: string) => void;
+  onFrontmatterChange?: (rawFrontmatter: string | undefined) => void;
 }
 
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
   openPanes, onTogglePane, onShowOnlyPane, badges, single = false,
   expandedPane, onToggleExpandPane,
-  notes, folders, settings, activeNoteId, onUpdateNote,
+  notes, folders, settings, activeNoteId, onUpdateNote, onFrontmatterChange,
 }: RightPanelProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const [hideIsolated, setHideIsolated] = useState(false);
@@ -351,7 +352,7 @@ export default function RightPanel({
       case 'properties':
         return (
           <PaneCard key={id} {...card}>
-            <PropertiesPanel activeNote={activeNote} onUpdateNote={onUpdateNote} isDark={isDark} />
+            <PropertiesPanel fontSize={settings.editor.fontSize} activeNote={activeNote} notes={notes} onUpdateNote={onUpdateNote} onFrontmatterChange={onFrontmatterChange} isDark={isDark} />
           </PaneCard>
         );
       case 'graph':

@@ -8,6 +8,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Note } from '../../types';
 import { codeDecorations } from './codeDecorations';
 import { buildMinimalReplaceChange } from './contentSync';
+import { hiddenFrontmatter } from './hiddenFrontmatter';
 import { hideTaskMarkers } from './hideTaskMarkers';
 import { inlineTitle, setInlineTitle } from './inlineTitle';
 
@@ -125,6 +126,8 @@ interface UseCodeMirrorOptions {
   editPaneRef: React.RefObject<HTMLDivElement | null>;
   maxWidth: number;
   readOnly?: boolean;
+  /** Element under the inline title that the Properties UI is portalled into. */
+  propertiesSlot?: HTMLElement;
 }
 
 export function useCodeMirror({
@@ -137,6 +140,7 @@ export function useCodeMirror({
   editPaneRef,
   maxWidth,
   readOnly = false,
+  propertiesSlot,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -248,7 +252,8 @@ export function useCodeMirror({
       keymap.of([...historyKeymap, ...defaultKeymap]),
       cmPlaceholder('Start typing...'),
       readOnlyCompartmentRef.current.of(buildReadOnlyExtensions(readOnlyRef.current)),
-      inlineTitle(note?.title || 'Untitled'),
+      inlineTitle(note?.title || 'Untitled', propertiesSlot),
+      hiddenFrontmatter((tr) => tr.annotation(remoteSyncAnnotation) === true),
       EditorView.lineWrapping,
       isDark ? darkTheme : lightTheme,
       widthCompartmentRef.current.of(buildWidthTheme(maxWidthRef.current)),

@@ -71,7 +71,7 @@ interface UseFileSyncResult {
   disconnect: () => Promise<void>;
   retry: () => void;
   reconnect: () => Promise<void>;
-  syncNoteOnUpdate: (id: string, content: string) => void;
+  syncNoteOnUpdate: (id: string, content: string, latest?: Note) => void;
   syncNoteOnMove: (note: Note, nextFolderId: string) => void;
   syncNoteOnRename: (note: Note, newTitle: string) => void;
   syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[], prepared?: VaultPendingOperation) => void;
@@ -859,9 +859,10 @@ export function useFileSync({
   }, [beginDisconnect, refreshStructuralPendingState, resetRetryState]);
 
   const syncNoteOnUpdate = useCallback(
-    (id: string, content: string) => {
+    (id: string, content: string, latest?: Note) => {
       if (!fsHandle) return;
-      const note = notesRef.current.find((n) => n.id === id);
+      // `latest` carries non-content edits (frontmatter) the next render hasn't delivered to notesRef yet.
+      const note = latest ?? notesRef.current.find((n) => n.id === id);
       if (!note) return;
       // Mirror mode: only vault-origin notes write through to disk. Noa-owned
       // notes live purely in IndexedDB and never touch the vault.

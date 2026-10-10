@@ -104,6 +104,7 @@ export default function App() {
     activeNoteId,
     setActiveNoteId,
     handleUpdateNote: _handleUpdateNote,
+    handleUpdateFrontmatter: _handleUpdateFrontmatter,
     handleSaveNote,
     handleRenameNote: _handleRenameNote,
     handleCreateNote: _handleCreateNote,
@@ -264,6 +265,13 @@ export default function App() {
     _handleUpdateNote(id, content);
     syncNoteOnUpdate(id, content);
   }, [_handleUpdateNote, blockVaultCacheWrite, syncNoteOnUpdate]);
+
+  const handleUpdateFrontmatter = useCallback((id: string, rawFrontmatter: string | undefined) => {
+    const note = notesRef.current.find((item) => item.id === id);
+    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
+    const updated = _handleUpdateFrontmatter(id, rawFrontmatter);
+    if (updated) syncNoteOnUpdate(id, updated.content, updated);
+  }, [_handleUpdateFrontmatter, blockVaultCacheWrite, syncNoteOnUpdate]);
 
   const handleRenameNote = useCallback((id: string, newTitle: string) => {
     const note = notesRef.current.find((item) => item.id === id);
@@ -1036,6 +1044,7 @@ export default function App() {
                 folders={folders}
                 onUpdate={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
                 onNoteUpdate={handleSaveNoteGuarded}
+                onFrontmatterChange={(raw) => { if (activeNoteId) handleUpdateFrontmatter(activeNoteId, raw); }}
                 onRename={(title) => { if (activeNoteId) handleRenameNote(activeNoteId, title); }}
                 onClose={() => handleTabClose(activeNoteId)}
                 onNavigateToNoteLegacy={navigateByTitle}
@@ -1190,6 +1199,7 @@ export default function App() {
                   settings={settings}
                   activeNoteId={activeNote?.id}
                   onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
+                  onFrontmatterChange={(raw) => { if (activeNoteId) handleUpdateFrontmatter(activeNoteId, raw); }}
                 />
               </Suspense>
               </ErrorBoundary>

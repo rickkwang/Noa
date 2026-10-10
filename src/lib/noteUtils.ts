@@ -1,4 +1,6 @@
 import { Folder, Note } from '../types';
+import { splitFrontmatter } from './frontmatter';
+import { tagsFromProperties } from './frontmatterProperties';
 
 // Blanks fenced and inline code with equal-length spaces so links/tags inside
 // code don't pollute refs and match indices stay valid. Indented (4-space)
@@ -102,10 +104,12 @@ const TAG_REGEX = new RegExp(
   `(?:^|(?<=\\s))#([${TAG_CHAR}]+(?:\\/[${TAG_CHAR}]+)*)(?![${TAG_CHAR}#\\/])`,
   'g',
 );
+// Body #tags plus the frontmatter `tags` property, which the Properties UI edits.
 export const extractTags = (content: string): string[] => {
-  const sanitized = stripCodeSpans(content);
+  const { rawBlock, body, eol } = splitFrontmatter(content);
+  const sanitized = stripCodeSpans(eol ? body : content);
   const matches = Array.from(sanitized.matchAll(TAG_REGEX));
-  return Array.from(new Set(matches.map(m => m[1])));
+  return Array.from(new Set([...(eol ? tagsFromProperties(rawBlock) : []), ...matches.map(m => m[1])]));
 };
 
 export type InlineRefToken =

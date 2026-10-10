@@ -76,20 +76,6 @@ export function parseFrontmatterBlock(block: string): Record<string, string> {
   return meta;
 }
 
-function yamlValue(v: string): string {
-  // Quote values that contain characters which break simple YAML parsing
-  if (/[:#\n\r"']/.test(v) || v.startsWith(' ') || v.endsWith(' ')) {
-    return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
-  }
-  return v;
-}
-
-export function stringifyFrontmatter(meta: Record<string, string>, body: string): string {
-  const entries = Object.entries(meta).map(([k, v]) => `${k}: ${yamlValue(v)}`).join('\n');
-  if (!entries) return body;
-  return `---\n${entries}\n---\n${body}`;
-}
-
 export function hasFrontmatter(content: string): boolean {
   return /^---\r?\n[\s\S]*?\r?\n---/.test(content);
 }

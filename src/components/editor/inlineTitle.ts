@@ -6,42 +6,45 @@ import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/v
 export const setInlineTitle = StateEffect.define<string>();
 
 class InlineTitleWidget extends WidgetType {
-  constructor(readonly title: string) {
+  constructor(readonly title: string, readonly slot?: HTMLElement) {
     super();
   }
 
   override eq(other: InlineTitleWidget): boolean {
-    return other.title === this.title;
+    return other.title === this.title && other.slot === this.slot;
   }
 
   override toDOM(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'cm-noa-inline-title';
-    el.textContent = this.title;
-    return el;
+    const title = document.createElement('div');
+    title.className = 'cm-noa-inline-title';
+    title.textContent = this.title;
+    if (!this.slot) return title;
+    // The slot is one persistent element React portals the Properties UI into;
+    // re-appending it on a rename moves it rather than losing the portal.
+    const wrapper = document.createElement('div');
+    wrapper.append(title, this.slot);
+    return wrapper;
   }
 }
 
 // side: -1 keeps the widget anchored before any text inserted at position 0.
-const titleDecorations = (title: string): DecorationSet =>
+const titleDecorations = (title: string, slot?: HTMLElement): DecorationSet =>
   Decoration.set([
-    Decoration.widget({ widget: new InlineTitleWidget(title), side: -1, block: true }).range(0),
+    Decoration.widget({ widget: new InlineTitleWidget(title, slot), side: -1, block: true }).range(0),
   ]);
 
-const inlineTitleField = StateField.define<DecorationSet>({
-  create: () => Decoration.none,
-  update: (deco, tr) => {
-    let next = deco.map(tr.changes);
-    for (const effect of tr.effects) {
-      if (effect.is(setInlineTitle)) next = titleDecorations(effect.value);
-    }
-    return next;
-  },
-  provide: (field) => EditorView.decorations.from(field),
-});
-
 // The init value matters on rebuilds (note switch, theme toggle): the rename effect doesn't re-fire there.
-export const inlineTitle = (title: string): Extension => [
-  inlineTitleField,
-  inlineTitleField.init(() => titleDecorations(title)),
-];
+export const inlineTitle = (title: string, slot?: HTMLElement): Extension => {
+  const field = StateField.define<DecorationSet>({
+    create: () => titleDecorations(title, slot),
+    update: (deco, tr) => {
+      let next = deco.map(tr.changes);
+      for (const effect of tr.effects) {
+        if (effect.is(setInlineTitle)) next = titleDecorations(effect.value, slot);
+      }
+      return next;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+  return field;
+};

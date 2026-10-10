@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredVa
 import { createPortal } from 'react-dom';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
+import { useNoteProperties } from '../hooks/useNoteProperties';
 import { attachEdgeFade } from '../lib/edgeFade';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
@@ -16,6 +17,7 @@ import { FindReplacePanel } from './editor/FindReplacePanel';
 import { HistoryPanel } from './editor/HistoryPanel';
 import { MentionDropdown } from './editor/MentionDropdown';
 import { PreviewPane } from './editor/PreviewPane';
+import { PropertiesBlock } from './editor/PropertiesBlock';
 import { SlashCommandDropdown, type SlashCommand } from './editor/SlashCommandDropdown';
 import { TocPanel } from './editor/TocPanel';
 import { useCodeMirror } from './editor/useCodeMirror';
@@ -50,6 +52,8 @@ interface EditorProps {
   folders?: Folder[];
   onUpdate: (content: string) => void;
   onNoteUpdate?: (note: Note, update?: (current: Note) => Note) => void;
+  /** Writes a vault/imported note's out-of-band frontmatter (`note.rawFrontmatter`). */
+  onFrontmatterChange?: (rawFrontmatter: string | undefined) => void;
   onRename?: (title: string) => void;
   onClose?: () => void;
   onNavigateToNoteLegacy: (title: string) => void;
@@ -86,6 +90,7 @@ export default function Editor({
   folders,
   onUpdate,
   onNoteUpdate,
+  onFrontmatterChange,
   onRename,
   onClose,
   onNavigateToNoteLegacy,
@@ -158,6 +163,8 @@ export default function Editor({
   const editPaneRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
+  // Lives under CodeMirror's inline title widget, so Properties sit below the title and scroll with the note.
+  const [propertiesSlot] = useState(() => document.createElement('div'));
 
   const handleNoteUpdate = useCallback((updated: Note, update?: (current: Note) => Note) => {
     onNoteUpdate?.(updated, update);
@@ -194,6 +201,7 @@ export default function Editor({
     onSlashTrigger: setSlashQuery,
     editPaneRef,
     readOnly,
+    propertiesSlot,
   });
 
   useEffect(() => {
@@ -444,6 +452,18 @@ export default function Editor({
     fontFamily: resolveFontFamily(settings.appearance.fontFamily),
   };
 
+  const noteProperties = useNoteProperties(note, allNotes, { onUpdate, onFrontmatterChange });
+
+  // Like Obsidian, the editor shows Properties only once a note has some; the side pane can add the first.
+  const renderProperties = () => noteProperties.frontmatter?.exists && (
+    <PropertiesBlock
+      getSuggestions={noteProperties.getSuggestions}
+      block={noteProperties.frontmatter.block}
+      readOnly={readOnly || !noteProperties.canWrite}
+      onChange={noteProperties.onChange}
+    />
+  );
+
   const contentMaxWidthStyle: React.CSSProperties = {
     maxWidth: `${settings.appearance.maxWidth}px`,
     margin: '0 auto',
@@ -658,6 +678,7 @@ export default function Editor({
           <div className="h-full" style={editorStyle}>
             <div ref={editorContainerRef} className="h-full" />
           </div>
+          {viewMode !== 'preview' && createPortal(renderProperties(), propertiesSlot)}
 
           {/* Opaque status bar: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
           <div
@@ -713,6 +734,7 @@ export default function Editor({
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
+            properties={renderProperties()}
             style={viewMode === 'split' ? {
               // Subtract the 1px divider so split preview ends at the same edge as standalone preview.
               width: `calc(${(1 - splitRatio) * 100}% - 1px)`,

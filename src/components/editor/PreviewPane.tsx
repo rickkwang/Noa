@@ -16,6 +16,7 @@ import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
 import { mapAttachmentReferences, resolveAttachmentPath } from '../../lib/attachmentUtils';
 import { attachEdgeFade } from '../../lib/edgeFade';
+import { splitFrontmatter } from '../../lib/frontmatter';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
 import { stripTaskMarkers } from '../../lib/taskParser';
@@ -265,6 +266,8 @@ interface PreviewPaneProps {
   style?: React.CSSProperties;
   /** PDF export: render as a plain static document — no scroll container, no backlinks. */
   printMode?: boolean;
+  /** Properties UI, rendered under the inline title like the editor's. */
+  properties?: React.ReactNode;
 }
 
 // Three tones, drawn from the app palette (ink / gold / coral) rather than a
@@ -529,7 +532,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
     };
 
     // Step 0: strip %%comments%% at the string level, as Obsidian does before parsing.
-    const withoutComments = mapAttachmentReferences(stripTaskMarkers(note.content).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
+    const withoutComments = mapAttachmentReferences(stripTaskMarkers(splitFrontmatter(note.content).body).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
       const attachment = wiki ? undefined : findAttachment(target);
       return attachment ? `note-attachment://id/${encodeURIComponent(attachment.id)}` : undefined;
     });
@@ -1002,6 +1005,7 @@ export const PreviewPane = React.memo(function PreviewPane({
   objectUrls,
   style,
   printMode,
+  properties,
 }: PreviewPaneProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
@@ -1041,6 +1045,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         >
           {/* Inline title mirrors the editor's title widget; omitted in print output. */}
           {!printMode && <div className="noa-inline-title" role="heading" aria-level={1}>{note.title || 'Untitled'}</div>}
+          {!printMode && properties}
           <NoteMarkdownBody
             note={note}
             allNotes={allNotes}

@@ -264,6 +264,10 @@ describe('extractLinks', () => {
 });
 
 describe('extractTags', () => {
+  it('includes the frontmatter tags property alongside body tags', () => {
+    expect(extractTags('---\ntags:\n  - Skill\n---\nBody #ai')).toEqual(['Skill', 'ai']);
+  });
+
   it('ignores hashtags glued together without whitespace (requires boundary)', () => {
     // A hashtag needs start-of-string or whitespace before it, so "#tag1#tag2" is not split.
     expect(extractTags('#tag1#tag2')).toEqual([]);

@@ -1,174 +1,36 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { parseFrontmatter, parseFrontmatterBlock, stringifyFrontmatter, hasFrontmatter } from '../../lib/frontmatter';
+import React from 'react';
+import { useNoteProperties } from '../../hooks/useNoteProperties';
 import { Note } from '../../types';
-import { Plus, X } from '@/src/lib/icons';
+import { PropertiesBlock } from '../editor/PropertiesBlock';
 
 interface PropertiesPanelProps {
   activeNote?: Note;
+  notes: Note[];
   onUpdateNote?: (content: string) => void;
+  onFrontmatterChange?: (rawFrontmatter: string | undefined) => void;
   isDark?: boolean;
+  /** Editor font size, so properties read at the same size here as under the note title. */
+  fontSize?: number;
 }
 
-const isObsidian = (note?: Note) => (note?.source ?? 'noa') === 'obsidian-import';
+// Same editor as the one under the note title, so both stay in sync and write through the same paths.
+export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatterChange, isDark = false, fontSize }: PropertiesPanelProps) {
+  const { frontmatter, onChange, canWrite, getSuggestions } = useNoteProperties(activeNote, notes, {
+    onUpdate: onUpdateNote,
+    onFrontmatterChange,
+  });
 
-export function PropertiesPanel({ activeNote, onUpdateNote, isDark = false }: PropertiesPanelProps) {
-  const [editedMeta, setEditedMeta] = useState<Record<string, string>>({});
-  const editedMetaRef = useRef(editedMeta);
-  const propBodyRef = useRef('');
-  const [propBody, setPropBody] = useState('');
-  const [newPropKey, setNewPropKey] = useState('');
-  const [newPropValue, setNewPropValue] = useState('');
-  const [addingProp, setAddingProp] = useState(false);
-
-  const noteHasContentFrontmatter = activeNote ? hasFrontmatter(activeNote.content) : false;
-  const noteHasRawFrontmatter = Boolean(activeNote?.rawFrontmatter?.trim());
-  const noteHasFrontmatter = noteHasContentFrontmatter || noteHasRawFrontmatter;
-  // Obsidian-imported notes are always read-only in the properties panel —
-  // their frontmatter is owned by the vault file, not by Noa.
-  const isReadOnlyFrontmatter = (activeNote?.source === 'obsidian-import') || (!noteHasContentFrontmatter && noteHasRawFrontmatter);
-
-  const txtMuted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
-  const labelColor = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
-  const keyColor = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const inputBg = isDark ? 'bg-[#302F2C]' : 'bg-[#EFEAE3]/50';
-  const inputBorder = isDark ? 'border-[rgba(249,249,247,0.15)]' : 'border-[#2D2D2B]/20';
-  const deleteBtn = isDark ? 'text-[rgba(249,249,247,0.3)] hover:text-[#D45555]' : 'text-[#2D2D2B]/30 hover:text-[#D45555]';
-
-  useEffect(() => {
-    let meta: Record<string, string> = {};
-    let body = '';
-    if (activeNote && noteHasContentFrontmatter) {
-      ({ meta, body } = parseFrontmatter(activeNote.content));
-    } else if (activeNote?.rawFrontmatter) {
-      meta = parseFrontmatterBlock(activeNote.rawFrontmatter);
-      body = activeNote.content;
-    }
-    setEditedMeta(meta);
-    setPropBody(body);
-    editedMetaRef.current = meta;
-    propBodyRef.current = body;
-    setAddingProp(false);
-    // Depend on specific fields rather than the activeNote object reference —
-    // the parent re-creates the note object on every keystroke, so including
-    // activeNote would re-init the form on every edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNote?.id, activeNote?.content, activeNote?.rawFrontmatter, noteHasContentFrontmatter]);
-
-  // Keep refs in sync so onBlur always reads the latest values
-  useEffect(() => { editedMetaRef.current = editedMeta; }, [editedMeta]);
-  useEffect(() => { propBodyRef.current = propBody; }, [propBody]);
-
-  if (!activeNote) {
+  if (!activeNote || !frontmatter) {
     return (
       <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
-        <div className={`text-xs font-redaction text-center py-8 ${txtMuted}`}>No note selected</div>
+        <div className={`text-xs font-redaction text-center py-8 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50'}`}>No note selected</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
-      <div className="space-y-1">
-
-        {/* Editable frontmatter from note content (raw --- block) */}
-        {/* Noa notes: always visible so user can add properties; Obsidian: only when frontmatter exists */}
-        {(noteHasFrontmatter || !isObsidian(activeNote)) && (
-          <>
-            <div className={`text-[10px] font-bold uppercase tracking-[0.14em] font-redaction pb-1.5 ${labelColor}`}>
-              {isObsidian(activeNote) ? 'Properties' : 'Frontmatter'}
-            </div>
-            {Object.entries(editedMeta).filter(([key]) => {
-              // Obsidian: hide Noa-internal fields (id, linkRefs, createdAt); show everything else
-              if (isObsidian(activeNote)) return !['id', 'linkRefs', 'createdAt'].includes(key);
-              return true;
-            }).map(([key, value]) => {
-              const isTagField = key === 'tags';
-              const tagList = isTagField ? value.split(',').map(t => t.trim()).filter(Boolean) : [];
-              return (
-              <div key={key} className={`flex gap-2 py-0.5 ${isTagField ? 'items-start' : 'items-center'}`}>
-                {/* Keys are the user's data (`createdBy`, `aliases`), not UI labels, so
-                    they keep their own case — uppercasing turned createdBy into CREATEDBY. */}
-                <div className={`text-xs font-redaction w-20 shrink-0 truncate pt-0.5 ${keyColor}`} title={key}>{key}</div>
-                {isTagField ? (
-                  tagList.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-                      {tagList.map(tag => (
-                        <span key={tag} className="inline-flex items-center rounded-[5px] border border-[#CC7D5E]/20 bg-[#CC7D5E]/[0.08] px-2 py-1 text-[10px] font-redaction font-medium text-[#CC7D5E] leading-none">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : <span className="text-xs font-redaction opacity-30">—</span>
-                ) : isReadOnlyFrontmatter ? (
-                  <div className={`flex-1 text-xs font-redaction break-all min-w-0 ${isDark ? 'text-[rgba(249,249,247,0.6)]' : 'text-[#2D2D2B]/70'}`}>
-                    {value || <span className="opacity-30">—</span>}
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => setEditedMeta(prev => ({ ...prev, [key]: e.target.value }))}
-                      onBlur={() => { if (onUpdateNote) onUpdateNote(stringifyFrontmatter(editedMetaRef.current, propBodyRef.current)); }}
-                      className={`flex-1 ${inputBg} border ${inputBorder} px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] min-w-0 ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}
-                    />
-                    <button
-                      onClick={() => {
-                        const next = { ...editedMetaRef.current };
-                        delete next[key];
-                        setEditedMeta(next);
-                        if (onUpdateNote) onUpdateNote(stringifyFrontmatter(next, propBodyRef.current));
-                      }}
-                      className={`${deleteBtn} active:opacity-70 shrink-0`}
-                    >
-                      <X size={12} />
-                    </button>
-                  </>
-                )}
-              </div>
-              );
-            })}
-            {!isReadOnlyFrontmatter && addingProp ? (
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="text" placeholder="key" value={newPropKey}
-                  onChange={(e) => setNewPropKey(e.target.value)}
-                  className={`w-20 shrink-0 ${inputBg} border border-[#CC7D5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}
-                  autoFocus
-                />
-                <input
-                  type="text" placeholder="value" value={newPropValue}
-                  onChange={(e) => setNewPropValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newPropKey.trim()) {
-                      const next = { ...editedMetaRef.current, [newPropKey.trim()]: newPropValue };
-                      setEditedMeta(next);
-                      if (onUpdateNote) onUpdateNote(stringifyFrontmatter(next, propBodyRef.current));
-                      setNewPropKey(''); setNewPropValue(''); setAddingProp(false);
-                    }
-                    if (e.key === 'Escape') { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }
-                  }}
-                  className={`flex-1 ${inputBg} border border-[#CC7D5E]/50 px-2 py-1 text-xs font-redaction outline-none focus:border-[#CC7D5E] min-w-0 ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}
-                />
-                <button onClick={() => { setAddingProp(false); setNewPropKey(''); setNewPropValue(''); }}
-                  className={`${isDark ? 'text-[rgba(249,249,247,0.3)] hover:text-[rgba(249,249,247,0.7)]' : 'text-[#2D2D2B]/30 hover:text-[#2D2D2B]'} active:opacity-70 shrink-0`}>
-                  <X size={12} />
-                </button>
-              </div>
-            ) : !isReadOnlyFrontmatter ? (
-              <button onClick={() => setAddingProp(true)}
-                className={`flex items-center gap-1 text-xs active:opacity-70 pt-1 ${isDark ? 'text-[rgba(249,249,247,0.4)] hover:text-[rgba(249,249,247,0.8)]' : 'text-[#2D2D2B]/40 hover:text-[#2D2D2B]'}`}>
-                <Plus size={12} /><span className="font-redaction">Add property</span>
-              </button>
-            ) : null}
-          </>
-        )}
-        {isObsidian(activeNote) && !noteHasFrontmatter && (
-          <div className={`text-xs font-redaction py-2 ${isDark ? 'text-[rgba(249,249,247,0.35)]' : 'text-[#2D2D2B]/45'}`}>
-            This note has no frontmatter properties.
-          </div>
-        )}
-      </div>
+    <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
+      <PropertiesBlock compact block={frontmatter.block} readOnly={!canWrite} onChange={onChange} getSuggestions={getSuggestions} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
 import { normalizeAndValidateNotes } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { serializeNoteForVault } from '../lib/fileSystemStorage';
+import { tagsFromProperties } from '../lib/frontmatterProperties';
 import { clearRescuedNotes, mergeRescuedNotes, parkRescuedNotes, peekRescuedNotes, unparkRescuedNote } from '../lib/importRescue';
 import { sortNotesByRecent } from '../lib/noteSort';
 import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
@@ -490,6 +491,25 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       return withRefs;
     });
   }, [debounceSave, syncLinkRefs, sameStringArray]);
+
+  // Vault/imported notes keep frontmatter out of band; the `tags` property owns their tags.
+  const handleUpdateFrontmatter = useCallback((id: string, rawFrontmatter: string | undefined): Note | undefined => {
+    const current = notesRef.current.find((note) => note.id === id);
+    if (!current) return undefined;
+    const patch = {
+      rawFrontmatter,
+      ...(current.source === 'obsidian-import' ? { tags: tagsFromProperties(rawFrontmatter ?? '') } : {}),
+    };
+    const next = markVaultDirty({ ...current, ...patch, updatedAt: new Date().toISOString() }, current);
+    notesRef.current = notesRef.current.map((note) => note.id === id ? next : note);
+    setNotes(prev => prev.map((note) => {
+      if (note.id !== id) return note;
+      const updated = markVaultDirty({ ...note, ...patch, updatedAt: next.updatedAt }, note);
+      debounceSave(updated);
+      return updated;
+    }));
+    return next;
+  }, [debounceSave]);
 
   const handleSaveNote = useCallback((note: Note, update?: (current: Note) => Note) => {
     setNotes(prev => {
@@ -1198,6 +1218,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     recentNoteIds,
     handleUpdateNote,
     handleSaveNote,
+    handleUpdateFrontmatter,
     handleRenameNote,
     handleCreateNote,
     handleMoveNote,
