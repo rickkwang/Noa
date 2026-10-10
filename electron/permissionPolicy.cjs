@@ -12,7 +12,11 @@
 //
 // clipboard-sanitized-write
 //   navigator.clipboard.writeText for the preview pane's copy-code button.
-const ALLOWED_PERMISSIONS = new Set(['fileSystem', 'clipboard-sanitized-write']);
+//
+// local-fonts
+//   queryLocalFonts() for the settings font picker. Denied, it resolves with an empty list
+//   rather than rejecting, so the picker silently offers only the system default.
+const ALLOWED_PERMISSIONS = new Set(['fileSystem', 'clipboard-sanitized-write', 'local-fonts']);
 
 /**
  * @param {string} permission

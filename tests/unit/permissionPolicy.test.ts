@@ -10,6 +10,10 @@ describe('isPermissionAllowed', () => {
     expect(isPermissionAllowed('clipboard-sanitized-write')).toBe(true);
   });
 
+  it('grants local font enumeration for the settings font picker', () => {
+    expect(isPermissionAllowed('local-fonts')).toBe(true);
+  });
+
   it('denies capabilities the renderer never uses', () => {
     for (const permission of [
       'media',

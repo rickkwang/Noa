@@ -23,4 +23,5 @@ export const STORAGE_KEYS = {
   AUTO_BACKUP_LAST_ERROR: 'noa:auto-backup-last-error',
   // Import edits IndexedDB couldn't store; parked in localStorage since that store is independent of IndexedDB.
   RESCUED_IMPORT_EDITS: 'noa:rescued-import-edits',
+  SYSTEM_FONTS: 'noa:system-fonts',
 } as const;

@@ -1,11 +1,22 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { SYSTEM_DEFAULT_FONT, isSafeFontFamilyName, resolveFontFamily } from '../../lib/fontFamily';
 import { Check, ChevronDown, Search } from '@/src/lib/icons';
 
 const SYSTEM_DEFAULT_LABEL = 'System Default';
 
-// Module-level cache: queryLocalFonts() is slow, and the component unmounts on every settings close.
-let cachedSystemFonts: string[] | null = null;
+function readStoredFonts(): string[] | null {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEYS.SYSTEM_FONTS) ?? 'null');
+    return Array.isArray(parsed) && parsed.every((name) => typeof name === 'string') ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// Seeded from the last session so the picker opens with its list already in place.
+let cachedSystemFonts: string[] | null = readStoredFonts();
+let systemFontsRefreshed = false;
 let systemFontsPromise: Promise<string[]> | null = null;
 
 interface LocalFontData {
@@ -13,7 +24,6 @@ interface LocalFontData {
 }
 
 function loadSystemFonts(): Promise<string[]> {
-  if (cachedSystemFonts) return Promise.resolve(cachedSystemFonts);
   if (systemFontsPromise) return systemFontsPromise;
 
   const api = (window as unknown as { queryLocalFonts?: () => Promise<LocalFontData[]> }).queryLocalFonts;
@@ -26,6 +36,8 @@ function loadSystemFonts(): Promise<string[]> {
         .filter(isSafeFontFamilyName)
         .sort((a, b) => a.localeCompare(b));
       cachedSystemFonts = families;
+      systemFontsRefreshed = true;
+      try { localStorage.setItem(STORAGE_KEYS.SYSTEM_FONTS, JSON.stringify(families)); } catch { /* quota exceeded */ }
       return families;
     })
     .finally(() => { systemFontsPromise = null; });
@@ -35,6 +47,7 @@ function loadSystemFonts(): Promise<string[]> {
 /** Exposed for tests; clears the cross-mount enumeration cache. */
 export function resetSystemFontCache() {
   cachedSystemFonts = null;
+  systemFontsRefreshed = false;
   systemFontsPromise = null;
 }
 
@@ -67,7 +80,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
 
   // Enumerate only on open: queryLocalFonts() raises a permission prompt, which shouldn't fire just from viewing the tab.
   const ensureFontsLoaded = useCallback(() => {
-    if (didLoad.current || cachedSystemFonts) return;
+    if (didLoad.current || systemFontsRefreshed) return;
     didLoad.current = true;
     setLoading(true);
     loadSystemFonts()
@@ -266,9 +279,10 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
             )}
           </ul>
 
-          {(loading || error) && filtered.length > 0 && (
+          {/* A stored list is already usable, so only a first-ever read shows progress. */}
+          {(error || (loading && systemFonts.length === 0)) && filtered.length > 0 && (
             <div className="px-3 py-1.5 border-t border-[#2D2D2B]/15 text-[11px] text-[#2D2D2B]/50">
-              {loading ? 'Reading installed fonts…' : error}
+              {error ?? 'Reading installed fonts…'}
             </div>
           )}
         </div>
