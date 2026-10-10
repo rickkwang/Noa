@@ -213,7 +213,7 @@ export const FileNode = React.memo(({
           )}
           {/* The active accent would fight the solid fill the dragged row
               carries, so the icon just inherits while dragging. */}
-          <span className={`mr-2 shrink-0 ${isActive && !isDragging ? 'text-[#CC7D5E]' : ''}`}>
+          <span className={`mr-2 shrink-0 ${isActive && !isDragging ? 'text-[var(--text-primary,#2D2D2B)]' : ''}`}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
               return <RenderIcon size={14} weight="regular" />;

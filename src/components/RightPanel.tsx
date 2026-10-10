@@ -4,6 +4,7 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
 import { buildGraphModel, pruneGraphTagFilter } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
+import { THEME_SURFACES } from '../lib/themePalette';
 import { GlobalTask, Note, Folder, AppSettings } from '../types';
 import GraphView, { TAG_PALETTE, type GraphColorMode } from './GraphView';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
@@ -85,7 +86,7 @@ function PaneCard({
       data-pane={id}
       data-state={state}
       inert={state === 'open' ? undefined : true}
-      className={`noa-pane-card flex flex-col overflow-hidden rounded-[10px] ${isDark ? 'bg-[#313130]' : 'bg-white'}`}
+      className={`noa-pane-card flex flex-col overflow-hidden rounded-[10px] bg-[var(--bg-card,#FFFFFF)]`}
       style={{ order, flexGrow: grow }}
     >
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
@@ -384,7 +385,7 @@ export default function RightPanel({
                       // The same floating surface as the app's popup menus (PaneMenu):
                       // 10px corners, hairline, floating shadow, card colour. The
                       // field is one compact 28px row.
-                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg border border-[var(--divider-subtle)] pl-2 pr-1 font-redaction ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg border border-[var(--divider-subtle)] pl-2 pr-1 font-redaction ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
                         <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40'}`} />
                         <input autoFocus type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                           aria-label="Filter graph nodes" placeholder="Filter nodes…"
@@ -426,7 +427,7 @@ export default function RightPanel({
           >
             <div className="flex-1 min-h-0 flex flex-col">
               {showGraphGuide && (
-                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[#252523] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
+                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
                   <div className={`font-bold uppercase tracking-[0.14em] text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
                   <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
                   <button
@@ -488,13 +489,13 @@ export default function RightPanel({
   };
 
   return (
-    <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'}`}>
+    <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
       {single && (
         <div className="h-10 shrink-0 flex items-center px-2">
           <div
             className="w-full flex items-stretch gap-0.5 rounded-md p-0.5"
             style={{
-              background: isDark ? '#252523' : '#ECEAE6',
+              background: isDark ? THEME_SURFACES.dark.secondary : '#ECEAE6',
               boxShadow: isDark
                 ? 'inset 0 0 0 1px rgba(249,249,247,0.08)'
                 : 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)',
@@ -636,7 +637,7 @@ function GraphInfoPanel({
       {isOpen && (
         <div
           id="noa-graph-connections"
-          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t border-[var(--divider-subtle)] ${isDark ? 'bg-[#313130]' : 'bg-white'}`}
+          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t border-[var(--divider-subtle)] bg-[var(--bg-card,#FFFFFF)]`}
         >
           {/* Open, the toggle rides the drawer's top edge — where the thing
               it closes begins — and stays there while the lists scroll. The

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';
+import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 
 interface ThemeInjectorProps {
@@ -12,23 +13,20 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
+    const surfaces = themeSurfaces(isDark);
+    root.style.setProperty('--bg-primary', surfaces.primary);
+    root.style.setProperty('--bg-secondary', surfaces.secondary);
+    // Opaque sidebar floor; --sidebar-material-color is the separate translucent tint.
+    root.style.setProperty('--bg-sidebar', surfaces.sidebar);
+    root.style.setProperty('--sidebar-material-color', surfaces.sidebarMaterial);
+    root.style.setProperty('--bg-sidebar-raised', surfaces.sidebarRaised);
+    root.style.setProperty('--bg-card', surfaces.card);
 
     if (isDark) {
       root.setAttribute('data-theme', 'dark');
-      root.style.setProperty('--bg-primary', '#2D2D2B');
-      root.style.setProperty('--bg-secondary', '#252523');
-      // Sidebar uses a soft lift above the editor plane. The color keeps the
-      // editor's red-blue spread at 2 (50/50/48 versus 45/45/43), so it reads
-      // as depth rather than as a colour cast.
-      root.style.setProperty('--bg-sidebar', '#323230');
-      // Translucent-sidebar tint over the native `menu` material. Separate from --bg-sidebar (the opaque floor).
-      root.style.setProperty('--sidebar-material-color', '#3B3B39');
       root.style.setProperty('--sidebar-material-tint', '70%');
       // Four stacked layers approximate light falloff; a single shadow reads as a band with a visible edge on dark.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
-      // Nothing reads this today (index.css restates dark row highlights), but it keeps the light/dark
-      // pair symmetric so a future rule doesn't silently take the light #EAE5DE fallback.
-      root.style.setProperty('--bg-sidebar-raised', 'rgba(249,249,247,0.08)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
@@ -39,16 +37,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--control-shadow-ink', '#000000');
     } else {
       root.removeAttribute('data-theme');
-      root.style.setProperty('--bg-primary', '#FCFCFB');
-      root.style.setProperty('--bg-secondary', '#EFEAE3');
-      // Neutral, nudged to 251/251/249 so the sidebar reads as a plane change, not a colour shift (warm paper read as yellow).
-      root.style.setProperty('--bg-sidebar', '#FBFBF9');
-      root.style.setProperty('--sidebar-material-color', '#FAFAF8');
       root.style.setProperty('--sidebar-material-tint', '70%');
       // Light counterpart of the dark stack, at lower weight since light floors don't band.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
-      // Paired row-highlight token: moves with the floor so it stays distinct from it.
-      root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
@@ -69,7 +60,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     // disabled or the platform does not support native sidebar material.
     void window.noaDesktop?.appearance?.setSidebarTranslucency(
       settings.appearance.translucentSidebar,
-      isDark ? '#2D2D2B' : '#FCFCFB',
+      surfaces.primary,
       settings.appearance.theme,
     )
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });

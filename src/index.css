@@ -146,7 +146,7 @@ body {
 .noa-graph-control-surface {
   background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, var(--bg-primary, #FCFCFB));
 }
-/* The mix lands too close to the dark card (#313130); step it up. */
+/* The mix lands too close to the dark card (--bg-card); step it up. */
 [data-theme="dark"] .noa-graph-control-surface {
   background-color: #3D3D3B;
 }
@@ -413,13 +413,13 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 
 /* Semantic sidebar states, opted into explicitly. Hover rules stay !important to beat base-surface utilities. */
 .noa-sidebar-active-surface {
-  background-color: var(--bg-sidebar-raised, #EAE5DE) !important;
+  background-color: var(--bg-sidebar-raised, #ECEBE8) !important;
 }
 .noa-sidebar-hover-surface:hover {
-  background-color: var(--bg-sidebar-raised, #EAE5DE) !important;
+  background-color: var(--bg-sidebar-raised, #ECEBE8) !important;
 }
 .noa-sidebar-hover-surface-subtle:hover {
-  background-color: color-mix(in srgb, var(--bg-sidebar-raised, #EAE5DE) 55%, transparent) !important;
+  background-color: color-mix(in srgb, var(--bg-sidebar-raised, #ECEBE8) 55%, transparent) !important;
 }
 
 /* Dark variants: theme-qualified selectors out-specify the light ones regardless of order. */
@@ -475,7 +475,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* DARK MODE: data-theme="dark" on <html>; [data-theme] selectors for specificity over Tailwind. */
 
 [data-theme="dark"] body {
-  background-color: #2D2D2B;
+  background-color: var(--bg-primary, #2A2A28);
   color: #F9F9F7;
   --panel-divider: var(--divider-subtle, rgba(249,249,247,0.15));
   --shadow-ambient: 0 0 2px 0 rgba(0,0,0,0.18), 0 0 10px 0 rgba(0,0,0,0.22);
@@ -490,16 +490,16 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    `bg-[var(--text-primary,#2D2D2B)]` (keep the fallback: --text-primary is undefined until ThemeInjector runs). */
 
 /* ── Backgrounds ── */
-[data-theme="dark"] .bg-\[\#F9F9F7\]    { background-color: #2D2D2B !important; }
-[data-theme="dark"] .bg-\[\#EFEAE3\]    { background-color: #252523 !important; }
+[data-theme="dark"] .bg-\[\#F9F9F7\]    { background-color: var(--bg-primary) !important; }
+[data-theme="dark"] .bg-\[\#EFEAE3\]    { background-color: var(--bg-secondary) !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]\/30 { background-color: rgba(37,37,35,0.50) !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]\/50 { background-color: rgba(37,37,35,0.70) !important; }
 [data-theme="dark"] .bg-\[\#CC7D5E\]    { background-color: #CC7D5E !important; }
 [data-theme="dark"] .bg-\[\#CC7D5E\]\/10 { background-color: rgba(204,125,94,0.12) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10 { background-color: rgba(249,249,247,0.06) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/20 { background-color: rgba(249,249,247,0.10) !important; }
-[data-theme="dark"] .bg-\[\#F9F9F7\]\/80 { background-color: rgba(45,45,43,0.80) !important; }
-[data-theme="dark"] .bg-\[\#F9F9F7\]\/90 { background-color: rgba(45,45,43,0.90) !important; }
+[data-theme="dark"] .bg-\[\#F9F9F7\]\/80 { background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent) !important; }
+[data-theme="dark"] .bg-\[\#F9F9F7\]\/90 { background-color: color-mix(in srgb, var(--bg-primary) 90%, transparent) !important; }
 
 /* ── Text ── */
 [data-theme="dark"] .text-\[\#2D2D2B\]      { color: #F9F9F7 !important; }
@@ -889,23 +889,39 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    colour utility, so the dark-mode remap can't flatten it. */
 .editor-tab[data-active-tab="true"] {
   background-color: #FFFFFF;
-  box-shadow: 0 0 0 1px var(--divider-subtle, #E6E2DA), 0 1px 2px 0 rgba(45, 45, 43, 0.06);
+  /* Lifted by shadow rather than outlined: a hairline-weight edge plus a soft drop. */
+  box-shadow: 0 0 0 0.5px rgba(45, 45, 43, 0.06), 0 1px 3px 0 rgba(45, 45, 43, 0.12);
 }
 [data-theme="dark"] .editor-tab[data-active-tab="true"] {
-  background-color: color-mix(in srgb, var(--text-primary, #F9F9F7) 7%, var(--bg-primary, #2D2D2B));
-  box-shadow: 0 0 0 1px var(--divider-subtle, rgba(249, 249, 247, 0.15)), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  /* A clearly lighter fill with a faint top-lit edge; on dark the fill, not a drop shadow, carries the lift. */
+  background-color: color-mix(in srgb, var(--text-primary, #F9F9F7) 12%, var(--bg-primary, #2A2A28));
+  box-shadow: inset 0 0.5px 0 0 rgba(249, 249, 247, 0.10), 0 0 0 0.5px rgba(249, 249, 247, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.25);
 }
 .editor-tab[data-active-tab="false"]:hover {
   background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
 }
 /* Dragged tab takes an opaque surface so neighbours' titles don't show through; the extra attribute outranks the hover rule. */
-.editor-tab[data-dragging-tab="true"][data-active-tab] {
+.editor-tab[data-dragging-tab="true"][data-active-tab],
+.editor-tab[data-active-tab]:active:not(:has(button:active)) {
   background-color: #FFFFFF;
-  box-shadow: 0 0 0 1px var(--divider-subtle, #E6E2DA), 0 2px 6px 0 rgba(45, 45, 43, 0.10);
+  box-shadow: 0 0 0 0.5px rgba(45, 45, 43, 0.06), 0 2px 6px -1px rgba(45, 45, 43, 0.14);
 }
-[data-theme="dark"] .editor-tab[data-dragging-tab="true"][data-active-tab] {
-  background-color: color-mix(in srgb, var(--text-primary, #F9F9F7) 7%, var(--bg-primary, #2D2D2B));
-  box-shadow: 0 0 0 1px var(--divider-subtle, rgba(249, 249, 247, 0.15)), 0 2px 6px 0 rgba(0, 0, 0, 0.3);
+/* Picked-up feel from press, not the drag threshold, so the grab answers at once (the close button opts out): a slight scale and a slightly deeper shadow ease in on grab. Kept tight — a wide blur halos on dark
+   and gets clipped by the strip's scroll mask. `scale` is its own property, so it
+   composes with the inline translateX that tracks the pointer (whose inline `transition: none` would kill a transition). */
+.editor-tab[data-dragging-tab="true"],
+.editor-tab[data-active-tab]:active:not(:has(button:active)) {
+  scale: 1.02;
+  cursor: grabbing;
+  animation: noa-tab-lift 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes noa-tab-lift {
+  from { scale: 1; }
+}
+[data-theme="dark"] .editor-tab[data-dragging-tab="true"][data-active-tab],
+[data-theme="dark"] .editor-tab[data-active-tab]:active:not(:has(button:active)) {
+  background-color: color-mix(in srgb, var(--text-primary, #F9F9F7) 12%, var(--bg-primary, #2A2A28));
+  box-shadow: inset 0 0.5px 0 0 rgba(249, 249, 247, 0.12), 0 0 0 0.5px rgba(249, 249, 247, 0.10), 0 2px 5px -1px rgba(0, 0, 0, 0.3);
 }
 
 /* Both animations drive `width` against --noa-tab-w and take the tab out of flex
@@ -977,7 +993,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .editor-tab-enter,
   .editor-tab-exit,
   .tab-fade-in,
-  .slide-down {
+  .slide-down,
+  .noa-confirm-reveal,
+  .editor-tab[data-dragging-tab="true"],
+  .editor-tab[data-active-tab]:active:not(:has(button:active)) {
     animation: none;
   }
   .noa-top-scroll-fade,
@@ -1015,6 +1034,16 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .slide-down {
   animation: slide-down 150ms ease-out both;
+}
+
+/* Sidebar delete confirm: grows open from zero height so the tree below eases down instead of jumping. */
+@keyframes noa-confirm-reveal {
+  from { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+  to   { max-height: 16rem; opacity: 1; }
+}
+.noa-confirm-reveal {
+  overflow: hidden;
+  animation: noa-confirm-reveal 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 /* ── PDF export: hidden portal of a light-themed PreviewPane copy; on print it replaces the app. */

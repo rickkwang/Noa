@@ -5,6 +5,7 @@ import { useIsDark } from '../hooks/useIsDark';
 import { attachEdgeFade } from '../lib/edgeFade';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
+import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { bodyCaretTarget } from './editor/bodyCaret';
@@ -663,7 +664,7 @@ export default function Editor({
             className="absolute bottom-0 left-0 right-0 z-10 h-7 flex items-center justify-end px-4 text-xs font-redaction pointer-events-none"
             style={{
               color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
-              backgroundColor: isDark ? '#2D2D2B' : '#FCFCFB',
+              backgroundColor: themeSurfaces(isDark).primary,
               borderTop: '1px solid var(--divider-subtle, #E6E2DA)',
             }}
           >

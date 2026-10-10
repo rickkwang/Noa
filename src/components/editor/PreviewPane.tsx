@@ -19,6 +19,7 @@ import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
 import { stripTaskMarkers } from '../../lib/taskParser';
+import { themeSurfaces } from '../../lib/themePalette';
 import { Note, Folder, AppSettings } from '../../types';
 import { MermaidBlock } from './MermaidBlock';
 import { canReusePreviewContextNotes } from './previewMemo';
@@ -840,7 +841,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
             >
               {isChecked && (
                 <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3L3.5 5.5L8 1" stroke={isDark ? '#2D2D2B' : '#FCFCFB'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 3L3.5 5.5L8 1" stroke={themeSurfaces(isDark).primary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </span>

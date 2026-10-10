@@ -135,7 +135,7 @@ describe('light theme border tokens', () => {
     expect(indexCss).toMatch(/\.noa-pane-card \{[^}]*0 0 0 1px rgba\(45, 45, 43, 0\.08\),[^}]*0 1px 8px -1px rgba\(45, 45, 43, 0\.17\);/);
     expect(indexCss).not.toMatch(/\.noa-pane-card \{[^}]*var\(--shadow-ambient\)/);
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
-    expect(rightPanel).toContain("background: isDark ? '#252523' : '#ECEAE6'");
+    expect(rightPanel).toContain("background: isDark ? THEME_SURFACES.dark.secondary : '#ECEAE6'");
     expect(rightPanel).toContain(": 'inset 0 0 0 1px var(--divider-subtle, #E6E2DA)'");
     expect(paneTabs).toContain('relative flex items-center justify-center transition-colors');
     expect(paneTabs).toContain('transition-colors flex-1 h-6 rounded-md');
@@ -169,7 +169,7 @@ describe('light theme border tokens', () => {
   it('keeps the tab strip on the editor canvas instead of a separate tinted surface', async () => {
     const editorHeader = await readFile(editorHeaderPath, 'utf8');
 
-    expect(editorHeader).toContain("isDark ? 'bg-[#2D2D2B]' : 'bg-[#F9F9F7]'");
+    expect(editorHeader).toContain("isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'");
   });
 
   it('collapses export and version history into one overflow menu', async () => {

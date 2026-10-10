@@ -5,6 +5,7 @@ import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';
 import { buildGraphModel } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
+import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings } from '../types';
 
 export type GraphColorMode = 'tag' | 'none';
@@ -465,7 +466,7 @@ export default function GraphView({
   }
 
   // The card's own surface (RightPanel's PaneCard), not the page's.
-  const bgColor   = isDark ? '#313130' : '#FFFFFF';
+  const bgColor   = themeSurfaces(isDark).card;
   const linkColor = isDark ? '#8A8070' : '#9A9080';
   const textColor = isDark ? '#F9F9F7' : '#2D2D2B';
 
@@ -869,7 +870,7 @@ export default function GraphView({
               onFocus={() => setHoveredNodeId(String(node.id))}
               onBlur={() => setHoveredNodeId(null)}
               className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:border-[#CC7D5E] focus:px-2 focus:py-1 focus:text-xs focus:font-redaction focus:outline-none ${
-                isDark ? 'focus:bg-[#252523] focus:text-[#F9F9F7]' : 'focus:bg-[#FCFCFB] focus:text-[#2D2D2B]'
+                isDark ? 'focus:bg-[var(--bg-secondary)] focus:text-[#F9F9F7]' : 'focus:bg-[#FCFCFB] focus:text-[#2D2D2B]'
               }`}
             >
               {node.name}

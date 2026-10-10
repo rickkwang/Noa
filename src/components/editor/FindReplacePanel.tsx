@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { THEME_SURFACES } from '../../lib/themePalette';
 import { ChevronDown, ChevronUp, X } from '@/src/lib/icons';
 
 interface FindReplacePanelProps {
@@ -159,7 +160,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
     }
   }, [goNext, goPrev, onClose]);
 
-  const bg = isDark ? '#252523' : '#FCFCFB';
+  const bg = isDark ? THEME_SURFACES.dark.secondary : THEME_SURFACES.light.primary;
   const border = 'var(--divider-subtle, #E6E2DA)';
   const text = isDark ? '#F9F9F7' : '#2D2D2B';
   const inputBg = isDark ? '#302F2C' : '#FBF8F4';

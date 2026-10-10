@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { storage } from '../../lib/storage';
+import { THEME_SURFACES } from '../../lib/themePalette';
 import { NoteSnapshot } from '../../types';
 import { X, RotateCcw, Clock } from '@/src/lib/icons';
 
@@ -61,7 +62,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
     }
   }, [selected, onRestore, noteId]);
 
-  const bg = isDark ? '#252523' : '#FCFCFB';
+  const bg = isDark ? THEME_SURFACES.dark.secondary : THEME_SURFACES.light.primary;
   const border = 'var(--divider-subtle, #E6E2DA)';
   const textPrimary = isDark ? '#F9F9F7' : '#2D2D2B';
   const textMuted = isDark ? 'rgba(249,249,247,0.45)' : 'rgba(45,45,43,0.55)';
@@ -188,7 +189,7 @@ export function HistoryPanel({ noteId, isDark, onRestore, onClose }: HistoryPane
               gap: '0.35rem',
               padding: '0.4rem 0.75rem',
               background: accent,
-              color: isDark ? '#252523' : '#fff',
+              color: isDark ? THEME_SURFACES.dark.secondary : '#fff',
               border: 'none',
               borderRadius: '3px',
               fontSize: '0.72rem',

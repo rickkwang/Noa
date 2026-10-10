@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { THEME_SURFACES } from '../../src/lib/themePalette';
 
 const themeInjectorPath = fileURLToPath(new URL('../../src/components/ThemeInjector.tsx', import.meta.url));
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
@@ -20,8 +21,9 @@ describe('sidebar surface tokens', () => {
       readFile(electronMainPath, 'utf8'),
     ]);
 
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#323230');");
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar', '#FBFBF9');");
+    expect(injector).toContain("root.style.setProperty('--bg-sidebar', surfaces.sidebar);");
+    expect(THEME_SURFACES.dark.sidebar).toBe('#2F2F2D');
+    expect(THEME_SURFACES.light.sidebar).toBe('#FBFBF9');
     // Multi-layer falloff: a single 6px/14px shadow banded visibly on the dark canvas.
     expect(injector).toContain(
       "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');",
@@ -30,9 +32,10 @@ describe('sidebar surface tokens', () => {
       "root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');",
     );
     // Light-only: the solid row highlight must move with the floor (dark uses translucent white).
-    expect(injector).toContain("root.style.setProperty('--bg-sidebar-raised', '#EAE5DE');");
+    expect(injector).toContain("root.style.setProperty('--bg-sidebar-raised', surfaces.sidebarRaised);");
+    expect(THEME_SURFACES.light.sidebarRaised).toBe('#ECEBE8');
     // BrowserWindow backs the whole app, so it must match --bg-primary during startup and resize.
-    expect(injector).toContain("isDark ? '#2D2D2B' : '#FCFCFB'");
+    expect(injector).toContain('const surfaces = themeSurfaces(isDark);');
     expect(electronMain).toContain("backgroundColor: '#FCFCFB'");
   });
 
@@ -88,9 +91,9 @@ describe('sidebar surface tokens', () => {
       readFile(calendarPath, 'utf8'),
     ]);
 
-    expect(css).toMatch(/\.noa-sidebar-active-surface\s*\{[^}]*var\(--bg-sidebar-raised,\s*#EAE5DE\)/);
-    expect(css).toMatch(/\.noa-sidebar-hover-surface:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#EAE5DE\)/);
-    expect(css).toMatch(/\.noa-sidebar-hover-surface-subtle:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#EAE5DE\)/);
+    expect(css).toMatch(/\.noa-sidebar-active-surface\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
+    expect(css).toMatch(/\.noa-sidebar-hover-surface:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
+    expect(css).toMatch(/\.noa-sidebar-hover-surface-subtle:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
     expect(css).not.toContain('.noa-sidebar-surface .bg-\\[\\#EFEAE3\\]');
     expect(css).not.toContain('.noa-sidebar-surface .hover\\:bg-\\[\\#EFEAE3\\]');
 
@@ -154,11 +157,12 @@ describe('sidebar surface tokens', () => {
 
     expect(injector).toContain("root.dataset.translucentSidebar = settings.appearance.translucentSidebar ? 'enabled' : 'disabled';");
     expect(injector).toMatch(
-      /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*isDark \? '#2D2D2B' : '#FCFCFB',\s*settings\.appearance\.theme/,
+      /setSidebarTranslucency\(\s*settings\.appearance\.translucentSidebar,\s*surfaces\.primary,\s*settings\.appearance\.theme/,
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '70%');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#3B3B39');");
-    expect(injector).toContain("root.style.setProperty('--sidebar-material-color', '#FAFAF8');");
+    expect(injector).toContain("root.style.setProperty('--sidebar-material-color', surfaces.sidebarMaterial);");
+    expect(THEME_SURFACES.dark.sidebarMaterial).toBe('#383836');
+    expect(THEME_SURFACES.light.sidebarMaterial).toBe('#FAFAF8');
     // Separator uses the shared divider token; no bespoke colour/shadow vars may return.
     expect(injector).not.toContain('--sidebar-divider-color');
     expect(injector).not.toContain('--sidebar-divider-shadow');

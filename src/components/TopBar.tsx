@@ -1,6 +1,7 @@
 import React, { CSSProperties } from 'react';
 import { TITLEBAR_PANEL_TABS_SLOT_ID, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
+import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 import { PaneMenu } from './rightPanel/PaneMenu';
 import { Search, PanelLeft, PanelRight, X } from '@/src/lib/icons';
@@ -39,7 +40,7 @@ interface TopBarProps {
 
 export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
-  const titlebarBaseColor = isDark ? '#2D2D2B' : '#FCFCFB';
+  const titlebarBaseColor = themeSurfaces(isDark).primary;
   // Dark titlebar uses a bright neutral for "open" — coral reads too loud next to the traffic lights.
   const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
   const actionClass = 'p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer';
