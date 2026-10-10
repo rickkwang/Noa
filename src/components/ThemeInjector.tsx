@@ -14,6 +14,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   useLayoutEffect(() => {
     const root = document.documentElement;
     const surfaces = themeSurfaces(isDark);
+    // theme-bootstrap.js paints <html> opaque for the pre-React frame; once body and the shell
+    // take over it must go, or it covers the native material under the translucent sidebar.
+    root.style.removeProperty('background-color');
     root.style.setProperty('--bg-primary', surfaces.primary);
     root.style.setProperty('--bg-secondary', surfaces.secondary);
     // Opaque sidebar floor; --sidebar-material-color is the separate translucent tint.
