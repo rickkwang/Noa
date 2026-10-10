@@ -87,7 +87,7 @@ function TextValue({ value, readOnly, onCommit }: { value: string; readOnly?: bo
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-[#CC7D5E] underline underline-offset-2"
+              className="noa-property-link text-[#CC7D5E] underline underline-offset-2"
             >
               {value}
             </a>
