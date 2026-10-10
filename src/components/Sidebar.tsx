@@ -712,7 +712,7 @@ export default function Sidebar({
 
       <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} isOpen={isTagsOpen} />
 
-      {/* Calendar and Tags toggle from the footer row; an open panel's toggle takes the accent. */}
+      {/* Calendar and Tags toggle from the footer row; an open panel's toggle shows an accent icon (no persistent fill). */}
       <VaultFooter
         {...vault}
         actions={(

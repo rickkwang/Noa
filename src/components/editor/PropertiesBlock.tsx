@@ -147,13 +147,13 @@ function ListValue({ items, isTags, readOnly, onCommit }: { items: string[]; isT
         <span
           key={item}
           className={isTags
-            ? 'noa-tag inline-flex items-center gap-1 leading-[1.6] !text-[1em]'
+            ? 'noa-tag inline-flex items-center gap-[0.35em] !rounded-full !px-[0.65em] !font-medium leading-[1.7] !text-[1em]'
             : `inline-flex items-center gap-1 rounded bg-[var(--divider-subtle)] px-2 leading-[1.6] ${fg}`}
         >
           {item}
           {!readOnly && (
-            <button type="button" aria-label={`Remove ${item}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onCommit(items.filter((i) => i !== item))} className="opacity-60 hover:opacity-100">
-              <X size="0.9em" />
+            <button type="button" aria-label={`Remove ${item}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onCommit(items.filter((i) => i !== item))} className="flex items-center opacity-45 hover:opacity-100">
+              <X size="0.8em" weight="bold" />
             </button>
           )}
         </span>

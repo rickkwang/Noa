@@ -40,7 +40,7 @@ function syncLabel(status: SyncStatus, lastSyncAt?: string | null): string {
 
 /** Shared by the gear and the Calendar/Tags toggles. Swaps the colour class, not an inline style: ThemeInjector's !important rules would beat it. */
 export const footerIconButton = (active = false) =>
-  `p-1.5 shrink-0 rounded-lg ${active ? 'noa-sidebar-active-surface text-[#2D2D2B]' : 'noa-sidebar-hover-surface text-[#2D2D2B]/70'} hover:text-[#2D2D2B] active:opacity-70 transition-colors cursor-pointer`;
+  `p-1.5 shrink-0 rounded-lg noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} active:opacity-70 transition-colors cursor-pointer`;
 
 const DOT_CLASS: Record<SyncStatus, string> = {
   idle: 'bg-[var(--text-primary,#2D2D2B)]/30',
