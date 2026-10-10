@@ -826,9 +826,7 @@ export default function App() {
             width: isSidebarOpen || isSidebarPreviewOpen || isPromotingSidebarPreview
               ? 'var(--noa-sidebar-width, 325px)'
               : '0px',
-            backgroundColor: isSidebarPreviewOpen
-              ? 'var(--bg-primary, #FCFCFB)'
-              : 'var(--bg-sidebar, #F4F4F2)',
+            backgroundColor: 'var(--bg-sidebar, #F4F4F2)',
             opacity: isSidebarPreviewOpen ? undefined : isSidebarOpen || isPromotingSidebarPreview ? 1 : 0,
             // Promotion eases the preview's elevation on the spacer's clock so it settles into the dock.
             // isSidebarPreviewSettling suppresses the 500ms collapse this surface would otherwise play on dismiss.

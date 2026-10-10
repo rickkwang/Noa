@@ -63,9 +63,7 @@ describe('sidebar surface tokens', () => {
       app.indexOf('data-sidebar-column-surface="true"'),
       app.indexOf('!isFocusMode && <TopBar'),
     );
-    expect(previewSurface).toContain("backgroundColor: isSidebarPreviewOpen");
-    expect(previewSurface).toContain("? 'var(--bg-primary, #FCFCFB)'");
-    expect(previewSurface).toContain(": 'var(--bg-sidebar, #F4F4F2)'");
+    expect(previewSurface).toContain("backgroundColor: 'var(--bg-sidebar, #F4F4F2)'");
     expect(topBar).not.toContain('sidebar-titlebar-surface');
     expect(topBar).not.toContain('backgroundImage: `linear-gradient');
     expect(topBar).not.toMatch(/backgroundColor:\s*['"]#F4F4F2['"]/);
