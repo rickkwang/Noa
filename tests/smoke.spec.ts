@@ -1461,6 +1461,7 @@ async function importBackup(page: import('@playwright/test').Page, folders: unkn
   });
   await page.getByRole('radio', { name: /Overwrite/i }).check();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText(/^Imported \d+ notes/)).toBeVisible();
   await page.getByRole('button', { name: 'Close settings' }).click();
 }
 
