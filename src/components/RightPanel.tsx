@@ -51,6 +51,7 @@ function PaneCard({
   id,
   state,
   order,
+  dragsWindow,
   grow,
   isDark,
   actions,
@@ -62,6 +63,8 @@ function PaneCard({
   id: RightTab;
   state: PaneSlotState;
   order: number;
+  /** Only the top card's header drags the window; the rest sit inside the content. */
+  dragsWindow: boolean;
   /** Share of the column when two cards split it. */
   grow?: number;
   isDark: boolean;
@@ -90,8 +93,8 @@ function PaneCard({
       style={{ order, flexGrow: grow }}
     >
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
-          no-drag as a whole (see App.tsx), so the header restores the window drag strip; its controls opt out. */}
-      <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+          no-drag as a whole (see App.tsx); the top card's header opts back in so the titlebar area stays draggable. */}
+      <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={dragsWindow ? { WebkitAppRegion: 'drag' } as React.CSSProperties : undefined}>
         <h2 className={`mr-auto truncate text-[12.5px] font-medium font-redaction ${isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85'}`}>{title}</h2>
         <div className="flex min-w-0 items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {actions}
@@ -221,6 +224,11 @@ export default function RightPanel({
     [single, openPanes]
   );
   const slots = usePaneSlots(visiblePanes);
+  // The oldest card sits at the top of the column, under the titlebar, so its header is the only one that drags the window.
+  const topPane = useMemo(
+    () => [...visiblePanes].sort((a, b) => slots.orderOf(a) - slots.orderOf(b))[0],
+    [visiblePanes, slots]
+  );
   // Mirrors PaneCard's own header controls.
   const graphToggleClass = `relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
@@ -324,6 +332,7 @@ export default function RightPanel({
       id,
       state,
       order: slots.orderOf(id),
+      dragsWindow: id === topPane,
       grow: splitPair && state === 'open' ? (splitPair[0] === id ? split : 1 - split) : undefined,
       isDark,
       isExpanded: expanded === id,
