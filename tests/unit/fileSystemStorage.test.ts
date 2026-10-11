@@ -82,25 +82,23 @@ describe('fileSystemStorage frontmatter write-back', () => {
     expect(frontmatter).not.toContain('noaSource:');
   });
 
-  it('writes recoverable Noa identity metadata for native notes without existing frontmatter', () => {
+  it('writes only tags for native notes, keeping Noa identity out of the file', () => {
     const note = makeNote({ tags: ['work', 'project/x'] });
     expect(__test__.buildFrontMatter(note)).toBe([
       '---',
-      'id: note-1',
-      'createdAt: "2026-04-09T12:00:00.000Z"',
-      'noaSource: noa',
       'tags:',
       '  - work',
       '  - project/x',
       '---',
       '',
     ].join('\n'));
+    expect(__test__.buildFrontMatter(makeNote())).toBe('');
   });
 
-  it('does not duplicate existing tags when adding native Noa identity metadata', () => {
+  it('strips legacy Noa identity keys from native notes on write-back', () => {
     const note = makeNote({
       tags: ['work'],
-      rawFrontmatter: ['title: Keep me', 'tags:', '  - work'].join('\n'),
+      rawFrontmatter: ['title: Keep me', 'tags:', '  - work', 'id: note-1', 'noaSource: noa'].join('\n'),
     });
 
     expect(__test__.buildFrontMatter(note)).toBe([
@@ -108,9 +106,6 @@ describe('fileSystemStorage frontmatter write-back', () => {
       'title: Keep me',
       'tags:',
       '  - work',
-      'id: note-1',
-      'createdAt: "2026-04-09T12:00:00.000Z"',
-      'noaSource: noa',
       '---',
       '',
     ].join('\n'));

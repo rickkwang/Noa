@@ -157,10 +157,6 @@ function yamlScalar(value: string): string {
   return value;
 }
 
-function frontmatterLine(key: string, value: string): string {
-  return `${key}: ${yamlScalar(value)}`;
-}
-
 function rawFrontmatterHasTopLevelKey(rawBlock: string, key: string): boolean {
   return rawBlock.split('\n').some((line) => line.match(/^([A-Za-z0-9_-]+)\s*:/)?.[1] === key);
 }
@@ -169,16 +165,8 @@ function vaultDiskNoteId(note: Note): string {
   return note.vaultId?.trim() || note.id;
 }
 
-function buildNoaFrontmatterLines(note: Note, includeTags = true): string[] {
-  const lines = [
-    frontmatterLine('id', vaultDiskNoteId(note)),
-    frontmatterLine('createdAt', note.createdAt),
-    'noaSource: noa',
-  ];
-  if (includeTags && note.tags?.length) {
-    lines.push('tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`));
-  }
-  return lines;
+function tagFrontmatterLines(tags: string[]): string[] {
+  return ['tags:', ...tags.map((tag) => `  - ${yamlScalar(tag)}`)];
 }
 
 function stableVaultId(path: string): string {
@@ -209,7 +197,8 @@ function noteCollisionSuffix(noteId: string): string {
  * Rebuild the frontmatter block for writing back to the vault.
  *
  * Strategy: imported notes keep their sanitized Obsidian frontmatter. Native
- * Noa notes always write enough metadata for a Markdown-only restore.
+ * Noa notes write only the user's own keys plus tags — identity lives in
+ * .noa/manifest.json, so the file carries no Noa-specific frontmatter.
  */
 function buildFrontMatter(note: Note): string {
   if ((note.source ?? 'noa') !== 'noa') {
@@ -221,15 +210,16 @@ function buildFrontMatter(note: Note): string {
       return `---${eol}${rawBlock}${eol}---${eol}`;
     }
     if (!note.tags?.length) return '';
-    const lines = ['tags:', ...note.tags.map((tag) => `  - ${yamlScalar(tag)}`)];
-    return `---\n${lines.join('\n')}\n---\n`;
+    return `---\n${tagFrontmatterLines(note.tags).join('\n')}\n---\n`;
   }
 
+  // Legacy Noa files carried id/createdAt/noaSource; strip them on write-back.
   const sanitized = sanitizeRawFrontmatter(note.rawFrontmatter ?? '');
-  const lines = sanitized
-    ? [...sanitized.split('\n'), ...buildNoaFrontmatterLines(note, !rawFrontmatterHasTopLevelKey(sanitized, 'tags'))]
-    : buildNoaFrontmatterLines(note);
-  return `---\n${lines.join('\n')}\n---\n`;
+  const lines = sanitized ? sanitized.split('\n') : [];
+  if (note.tags?.length && !rawFrontmatterHasTopLevelKey(sanitized, 'tags')) {
+    lines.push(...tagFrontmatterLines(note.tags));
+  }
+  return lines.length ? `---\n${lines.join('\n')}\n---\n` : '';
 }
 
 function parseManifestText(text: string): VaultManifest {
@@ -495,11 +485,15 @@ export async function writeNote(
   const preferredIsOwned = preferredOwner?.id === diskNoteId
     || existingManifestEntry?.[0] === preferredPath
     || note.vaultPath === preferredPath;
-  const preferredOccupied = (preferredOwner !== undefined && preferredOwner.id !== diskNoteId)
-    || (!preferredIsOwned && await fileExists(dirHandle, defaultFilename));
-  const filename = preferredOccupied
-    ? `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`
-    : defaultFilename;
+  // Manifest entries are written after their file, so an entry with no file
+  // behind it is stale (deleted outside Noa) and must not force a suffix.
+  const preferredOccupied = !preferredIsOwned && await fileExists(dirHandle, defaultFilename);
+  const suffixedFilename = `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`;
+  const suffixedPath = relativeNotePath(folder?.name, suffixedFilename);
+  // A note already living at its suffixed name stays there; writing the
+  // preferred name would leave the old file behind as a duplicate.
+  const ownsSuffixed = existingManifestEntry?.[0] === suffixedPath || note.vaultPath === suffixedPath;
+  const filename = preferredOccupied || ownsSuffixed ? suffixedFilename : defaultFilename;
 
   const payload = payloadOverride ?? serializeNoteForVault(note);
   const nextPath = relativeNotePath(folder?.name, filename);

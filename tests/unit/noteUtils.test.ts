@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, splitImageSize, tokenizeInlineRefs } from '../../src/lib/noteUtils';
+import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, nextAvailableTitle, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, splitImageSize, tokenizeInlineRefs } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -362,5 +362,13 @@ describe('splitImageSize', () => {
     expect(splitImageSize('diagram|640x480')).toEqual({ alt: 'diagram', width: 640, height: 480 });
     expect(splitImageSize('250')).toEqual({ alt: '', width: 250 });
     expect(splitImageSize('Figure 2')).toEqual({ alt: 'Figure 2' });
+  });
+});
+
+describe('nextAvailableTitle', () => {
+  it('numbers duplicates case-insensitively', () => {
+    expect(nextAvailableTitle('New Note', [])).toBe('New Note');
+    expect(nextAvailableTitle('New Note', ['new note'])).toBe('New Note 1');
+    expect(nextAvailableTitle('New Note', ['New Note', 'New Note 1'])).toBe('New Note 2');
   });
 });

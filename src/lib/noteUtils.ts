@@ -371,3 +371,12 @@ export const getBacklinks = (activeNote: Note | undefined, notes: Note[]): Note[
     n.id !== activeNote.id && (n.linkRefs ?? []).includes(activeNote.id)
   );
 };
+
+/** Unique title: "New Note", "New Note 1", "New Note 2"… (case-insensitive, like macOS filenames). */
+export function nextAvailableTitle(base: string, taken: string[]): string {
+  const used = new Set(taken.map((title) => title.toLowerCase()));
+  if (!used.has(base.toLowerCase())) return base;
+  let n = 1;
+  while (used.has(`${base} ${n}`.toLowerCase())) n += 1;
+  return `${base} ${n}`;
+}

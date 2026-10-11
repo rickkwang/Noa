@@ -1169,6 +1169,33 @@ describe('vault origin marking and write guard', () => {
     expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
   });
 
+  it('ignores a stale manifest entry whose file was deleted outside Noa', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, '.noa/manifest.json', JSON.stringify({
+      version: 1,
+      notes: { 'Sample.md': { id: 'deleted-note', createdAt: '2026-04-09T12:00:00.000Z', source: 'noa' } },
+    }));
+
+    await writeNote(asFsHandle(root), makeNote({ source: 'noa', content: 'body' }), []);
+
+    expect(listPaths(root).filter((path) => path.endsWith('.md'))).toEqual(['Sample.md']);
+  });
+
+  it('keeps writing an existing suffixed file instead of duplicating it at the preferred name', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ id: '0af93cb9-0000-4000-8000-000000000000', source: 'noa', content: 'body' });
+    await writeRawFile(root, '.noa/manifest.json', JSON.stringify({
+      version: 1,
+      notes: { 'Sample_0af93cb9.md': { id: note.id, createdAt: note.createdAt, source: 'noa' } },
+    }));
+    await writeRawFile(root, 'Sample_0af93cb9.md', 'body');
+
+    await writeNote(asFsHandle(root), { ...note, content: 'edited' }, []);
+
+    expect(listPaths(root).filter((path) => path.endsWith('.md'))).toEqual(['Sample_0af93cb9.md']);
+    expect(await readFileText(root, 'Sample_0af93cb9.md')).toBe('edited');
+  });
+
   it('uses vaultId rather than the namespaced cache id for disk identity', async () => {
     const root = createMemRoot();
     const note = makeNote({
@@ -1180,8 +1207,7 @@ describe('vault origin marking and write guard', () => {
 
     await writeNote(asFsHandle(root), note, []);
 
-    expect(await readFileText(root, 'Sample.md')).toContain('id: shared-id');
-    expect(await readFileText(root, 'Sample.md')).not.toContain('id: vault:shared-id');
+    expect(await readFileText(root, 'Sample.md')).toBe('body');
     const manifest = JSON.parse((await readFileText(root, '.noa/manifest.json')) ?? '{}');
     expect(manifest.notes['Sample.md']?.id).toBe('shared-id');
   });

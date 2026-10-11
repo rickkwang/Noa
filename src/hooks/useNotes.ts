@@ -10,7 +10,7 @@ import { serializeNoteForVault } from '../lib/fileSystemStorage';
 import { tagsFromProperties } from '../lib/frontmatterProperties';
 import { clearRescuedNotes, mergeRescuedNotes, parkRescuedNotes, peekRescuedNotes, unparkRescuedNote } from '../lib/importRescue';
 import { sortNotesByRecent } from '../lib/noteSort';
-import { extractLinks, extractTags, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
+import { extractLinks, extractTags, nextAvailableTitle, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { isDescendantPath } from '../lib/pathUtils';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
@@ -585,19 +585,26 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     });
   }, []); // addRecentNoteId / saveRecentNoteIds are module-level pure functions, not reactive
 
-  const handleCreateNote = useCallback((folderId: string, initialContent: string = '', title: string = 'New Note') => {
+  const handleCreateNote = useCallback((folderId: string, initialContent: string = '', title?: string) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
     // A note created inside a vault folder is vault-owned from the start; the
     // caller writes its file through the normal vault update path.
     const atVaultRoot = folderId === VAULT_ROOT_FOLDER_ID;
     const inVault = atVaultRoot || targetFolder?.origin === 'vault';
+    const noteFolder = atVaultRoot ? '' : folderId;
     const newNote: Note = {
       id: crypto.randomUUID(),
-      title,
+      // Vault files are named after the title; number default-titled duplicates
+      // ("New Note 1") instead of letting the writer append an id suffix.
+      // An explicit title (an unresolved [[link]]) is kept exactly, or the link
+      // would never resolve to the note it just created.
+      title: title ?? (inVault
+        ? nextAvailableTitle('New Note', notesRef.current.filter((n) => n.origin === 'vault' && n.folder === noteFolder).map((n) => n.title))
+        : 'New Note'),
       content: initialContent,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      folder: atVaultRoot ? '' : folderId,
+      folder: noteFolder,
       tags: [],
       links: [],
       linkRefs: [],
