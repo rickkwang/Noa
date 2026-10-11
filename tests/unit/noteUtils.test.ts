@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, tokenizeInlineRefs } from '../../src/lib/noteUtils';
+import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, splitImageSize, tokenizeInlineRefs } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -353,5 +353,14 @@ describe('tokenizeInlineRefs', () => {
       { kind: 'text', text: 'issue#12 and ' },
       { kind: 'tag', text: '#项目/子项' },
     ]);
+  });
+});
+
+describe('splitImageSize', () => {
+  it('reads Obsidian image sizes from the alt text and leaves other alts alone', () => {
+    expect(splitImageSize('diagram|300')).toEqual({ alt: 'diagram', width: 300 });
+    expect(splitImageSize('diagram|640x480')).toEqual({ alt: 'diagram', width: 640, height: 480 });
+    expect(splitImageSize('250')).toEqual({ alt: '', width: 250 });
+    expect(splitImageSize('Figure 2')).toEqual({ alt: 'Figure 2' });
   });
 });

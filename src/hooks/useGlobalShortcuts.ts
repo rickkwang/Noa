@@ -58,6 +58,16 @@ export function useGlobalShortcuts({
         return;
       }
 
+      // Obsidian's Quick switcher (Mod+O) and Command palette (Mod+P) map to the same palette.
+      // On macOS only Cmd counts: Ctrl+P is Emacs line-up in CodeMirror's default keymap.
+      // Mod+P is the browser print shortcut, so preventDefault is required.
+      const paletteMod = /Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : (e.metaKey || e.ctrlKey);
+      if (paletteMod && !e.shiftKey && (e.key.toLowerCase() === 'o' || e.key.toLowerCase() === 'p')) {
+        e.preventDefault();
+        onOpenCommandPalette();
+        return;
+      }
+
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         onToggleFocusMode?.();

@@ -18,7 +18,7 @@ import { mapAttachmentReferences, resolveAttachmentPath } from '../../lib/attach
 import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitFrontmatter } from '../../lib/frontmatter';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
-import { buildLinkIndex, getBacklinks, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection } from '../../lib/noteUtils';
+import { buildLinkIndex, getBacklinks, isImageSize, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection, splitImageSize } from '../../lib/noteUtils';
 import { stripTaskMarkers } from '../../lib/taskParser';
 import { themeSurfaces } from '../../lib/themePalette';
 import { Note, Folder, AppSettings } from '../../types';
@@ -75,7 +75,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
   );
 }
 
-function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
+function ZoomableImage({ src, alt, width, height }: { src: string; alt?: string; width?: number; height?: number }) {
   const [zoomed, setZoomed] = useState(false);
   useEffect(() => {
     if (!zoomed) return;
@@ -83,14 +83,16 @@ function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [zoomed]);
+  // height goes in style: Tailwind preflight's `img { height: auto }` overrides the height attribute.
   return (
     <>
       <img
         src={src}
         alt={alt}
+        width={width}
         loading="lazy"
         className="max-w-full"
-        style={{ display: 'block', cursor: 'zoom-in' }}
+        style={{ display: 'block', cursor: 'zoom-in', ...(height ? { height, objectFit: 'contain' } : {}) }}
         onClick={() => setZoomed(true)}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />
@@ -553,8 +555,11 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       // Strip alias: ![[Target|alias]] → Target (tolerate table-escaped \|)
       const pipeIdx = raw.indexOf('|');
       const target = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).replace(/\\+$/, '').trim();
+      const pipeArg = pipeIdx >= 0 ? raw.slice(pipeIdx + 1).trim() : '';
       const att = findAttachment(target);
-      if (att) return `![${target}](note-attachment://id/${encodeURIComponent(att.id)})`;
+      // Image size rides in the alt text as `name|300x200` and is split off by the img component.
+      // The pipe is escaped: a bare "|" would split the row when the embed sits in a GFM table.
+      if (att) return `![${target}${isImageSize(pipeArg) ? `\\|${pipeArg}` : ''}](note-attachment://id/${encodeURIComponent(att.id)})`;
       // Note transclusion: ![[Title]] or ![[Title#Heading]]
       const hashIdx = target.indexOf('#');
       const embedTitle = hashIdx >= 0 ? target.slice(0, hashIdx).trim() : target;
@@ -715,9 +720,11 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           if (!url) {
             return <span className="text-xs italic" style={{ color: isDark ? 'rgba(249,249,247,0.35)' : 'rgba(45,45,43,0.4)' }}>[Loading attachment...]</span>;
           }
-          return <ZoomableImage src={url} alt={alt ?? ''} />;
+          const size = splitImageSize(alt ?? '');
+          return <ZoomableImage src={url} alt={size.alt} width={size.width} height={size.height} />;
         }
-        return <ZoomableImage src={src} alt={alt} />;
+        const size = splitImageSize(alt ?? '');
+        return <ZoomableImage src={src} alt={size.alt} width={size.width} height={size.height} />;
       },
       blockquote: ({ children }) => (
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>

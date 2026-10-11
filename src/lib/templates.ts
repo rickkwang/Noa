@@ -71,15 +71,24 @@ export const builtinTemplates: Template[] = [
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+// String.replace with a string only swaps the first match, so tokens are matched globally.
+const FORMAT_TOKEN = /YYYY|YY|MM|DD|HH|mm/g;
+// Each run of identical letters must be exactly one token: "MMMM" would otherwise read as two "MM".
+const SUPPORTED_RUN = /^(?:YYYY|YY|MM|DD|HH|mm)$/;
+const isSupportedFormat = (format: string): boolean =>
+  (format.match(/([A-Za-z])\1*/g) ?? []).every((run) => SUPPORTED_RUN.test(run));
+
 export function formatDate(dateFormat: string, date?: Date): string {
   const d = date ?? new Date();
-  return dateFormat
-    .replace('YYYY', String(d.getFullYear()))
-    .replace('YY', String(d.getFullYear()).slice(-2))
-    .replace('MM', pad(d.getMonth() + 1))
-    .replace('DD', pad(d.getDate()))
-    .replace('HH', pad(d.getHours()))
-    .replace('mm', pad(d.getMinutes()));
+  const tokens: Record<string, string> = {
+    YYYY: String(d.getFullYear()),
+    YY: String(d.getFullYear()).slice(-2),
+    MM: pad(d.getMonth() + 1),
+    DD: pad(d.getDate()),
+    HH: pad(d.getHours()),
+    mm: pad(d.getMinutes()),
+  };
+  return dateFormat.replace(FORMAT_TOKEN, (token) => tokens[token]);
 }
 
 /**
@@ -96,7 +105,12 @@ export function applyTemplate(template: Template, title: string, dateFormat: str
   tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
   const w1 = new Date(tmp.getFullYear(), 0, 4);
   const weeknum = String(1 + Math.round(((tmp.getTime() - w1.getTime()) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7));
+  // {{date:FORMAT}} and {{time:FORMAT}} override the format for one placeholder. Placeholders
+  // with any other letters (e.g. MMMM) are left exactly as written.
+  const overrideFormat = (placeholder: string, format: string) => (isSupportedFormat(format) ? formatDate(format, now) : placeholder);
   return template.content
+    .replace(/\{\{date:([^}]+)\}\}/g, overrideFormat)
+    .replace(/\{\{time:([^}]+)\}\}/g, overrideFormat)
     .replace(/\{\{date\}\}/g, date)
     .replace(/\{\{title\}\}/g, title)
     .replace(/\{\{time\}\}/g, time)

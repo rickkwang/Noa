@@ -98,6 +98,21 @@ export const sliceHeadingSection = (content: string, heading: string): string | 
   return lines.slice(start, end).join('\n');
 };
 
+// Obsidian image size: `![[img.png|300]]` or `![[img.png|300x200]]`. External
+// images carry the same number in their alt text: `![250](url)`.
+const IMAGE_SIZE_RE = /^\d+(?:x\d+)?$/;
+export const isImageSize = (text: string): boolean => IMAGE_SIZE_RE.test(text);
+
+export const splitImageSize = (alt: string): { alt: string; width?: number; height?: number } => {
+  const match = /(?:^|\|)(\d+)(?:x(\d+))?$/.exec(alt);
+  if (!match) return { alt };
+  return {
+    alt: alt.slice(0, match.index),
+    width: Number(match[1]),
+    height: match[2] ? Number(match[2]) : undefined,
+  };
+};
+
 // CJK Unified Ideographs + Ext-A + Hiragana + Katakana + Hangul Syllables.
 const TAG_CHAR = '\\w\\u3040-\\u309f\\u30a0-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';
 const TAG_REGEX = new RegExp(

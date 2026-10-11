@@ -530,38 +530,37 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       // Match [[Title]], [[Title|alias]], [[Title#heading]], [[Title#^block]]
       // but NOT [[TitlePrefix...]] where Title is only a prefix of the target.
       const escapedOld = oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const renameRegex = new RegExp(`\\[\\[${escapedOld}(?=[\\]|#])`, 'g');
+      // Case-insensitive, like resolveLinkTarget: [[note]] still points at "Note".
+      const renameRegex = new RegExp(`\\[\\[${escapedOld}(?=[\\]|#])`, 'gi');
       const updated = prev.map(n => {
-        if (n.id === id) return markVaultDirty({ ...n, title: newTitle, updatedAt: new Date().toISOString() }, n);
+        const isRenamed = n.id === id;
         // Link-text rewriting is a Noa-owned convenience. Never mutate vault
         // file content as a side effect of a rename: Obsidian owns those files,
         // and cross-domain links are intentionally resolution-only.
-        if (oldNote.origin === 'vault' || n.origin === 'vault') return n;
-        if (n.id !== id && renameRegex.test(n.content)) {
-          // Reset lastIndex because /g regexes retain state between test/exec calls.
-          renameRegex.lastIndex = 0;
-          // Sanitize newTitle so embedded "]]", "|" or "#" cannot break wiki-link syntax.
-          const safeNewTitle = newTitle
-            .replace(/\]\]/g, '] ]')
-            .replace(/\|/g, ' ')
-            .replace(/#/g, ' ');
-          const updatedContent = n.content.replace(renameRegex, `[[${safeNewTitle}`);
-          // For native notes, re-extract links from the rewritten content —
-          // this is the single source of truth. For Obsidian-imported notes we
-          // preserve the existing links array (frontmatter may carry aliases
-          // or hand-maintained link lists that extractLinks would overwrite)
-          // and just swap the old title for the new.
-          const nextLinks = n.source === 'obsidian-import'
-            ? n.links.map(l => l === oldTitle ? safeNewTitle : l)
-            : extractLinks(updatedContent);
-          return {
-            ...n,
-            content: updatedContent,
-            links: nextLinks,
-            updatedAt: new Date().toISOString(),
-          };
+        const rewritesLinks = oldNote.origin !== 'vault' && n.origin !== 'vault' && renameRegex.test(n.content);
+        if (!rewritesLinks) {
+          return isRenamed ? markVaultDirty({ ...n, title: newTitle, updatedAt: new Date().toISOString() }, n) : n;
         }
-        return n;
+        // Reset lastIndex because /g regexes retain state between test/exec calls.
+        renameRegex.lastIndex = 0;
+        // Sanitize newTitle so embedded "]]", "|" or "#" cannot break wiki-link syntax.
+        const safeNewTitle = newTitle
+          .replace(/\]\]/g, '] ]')
+          .replace(/\|/g, ' ')
+          .replace(/#/g, ' ');
+        // A function replacer: "$" in the new title must not be read as a replacement pattern.
+        const updatedContent = n.content.replace(renameRegex, () => `[[${safeNewTitle}`);
+        // For native notes, re-extract links from the rewritten content —
+        // this is the single source of truth. For Obsidian-imported notes we
+        // preserve the existing links array (frontmatter may carry aliases
+        // or hand-maintained link lists that extractLinks would overwrite)
+        // and just swap the old title for the new.
+        const nextLinks = n.source === 'obsidian-import'
+          ? n.links.map(l => l.toLowerCase() === oldTitle.toLowerCase() ? safeNewTitle : l)
+          : extractLinks(updatedContent);
+        const rewritten = { ...n, content: updatedContent, links: nextLinks, updatedAt: new Date().toISOString() };
+        // The renamed note's own [[OldTitle]] self-links follow the rename too, as in Obsidian.
+        return isRenamed ? markVaultDirty({ ...rewritten, title: newTitle }, n) : rewritten;
       });
       // syncLinkRefs separately saves notes whose linkRefs changed.
       const prevById = new Map(prev.map(n => [n.id, n]));
