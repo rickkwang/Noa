@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type MutableRefObject } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { fromStorageError } from '../lib/appErrors';
 import {
@@ -18,6 +18,7 @@ import { storage } from '../lib/storage';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { matchesVaultSyncedExpectation } from '../lib/vaultImportReconciliation';
+import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import {
   AppSettings,
   Attachment,
@@ -47,7 +48,7 @@ function markVaultDirty(note: Note, previous: Note): Note {
   };
 }
 
-export function useNotes(settings?: AppSettings) {
+export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefObject<boolean>) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -584,23 +585,24 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     });
   }, []); // addRecentNoteId / saveRecentNoteIds are module-level pure functions, not reactive
 
-  const handleCreateNote = useCallback((folderId: string, initialContent: string = '') => {
+  const handleCreateNote = useCallback((folderId: string, initialContent: string = '', title: string = 'New Note') => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
-    if (targetFolder?.origin === 'vault') {
-      setSaveError('Creating notes directly inside the connected vault is not available yet.');
-      return undefined;
-    }
+    // A note created inside a vault folder is vault-owned from the start; the
+    // caller writes its file through the normal vault update path.
+    const atVaultRoot = folderId === VAULT_ROOT_FOLDER_ID;
+    const inVault = atVaultRoot || targetFolder?.origin === 'vault';
     const newNote: Note = {
       id: crypto.randomUUID(),
-      title: 'New Note',
+      title,
       content: initialContent,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      folder: folderId,
+      folder: atVaultRoot ? '' : folderId,
       tags: [],
       links: [],
       linkRefs: [],
       source: 'noa',
+      ...(inVault ? { origin: 'vault' as const, vaultDirty: true } : {}),
     };
     setNotes(prev => {
       const next = syncLinkRefs([...prev, newNote], prev);
@@ -613,6 +615,39 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     setActiveNoteIdWithRecent(newNote.id);
     return newNote.id;
   }, [folders, setActiveNoteIdWithRecent, syncLinkRefs]);
+
+  const handleDuplicateNote = useCallback((id: string) => {
+    const source = notesRef.current.find((note) => note.id === id);
+    // A vault row is a live cache of a disk file; a copy would have no file behind it.
+    if (!source || source.origin === 'vault') return undefined;
+    const now = new Date().toISOString();
+    const copy: Note = {
+      id: crypto.randomUUID(),
+      title: `${source.title || 'Untitled'} copy`,
+      content: source.content,
+      createdAt: now,
+      updatedAt: now,
+      folder: source.folder,
+      tags: [...source.tags],
+      links: [...source.links],
+      linkRefs: [],
+      source: source.source,
+      attachments: source.attachments ? [...source.attachments] : undefined,
+      frontmatter: source.frontmatter ? { ...source.frontmatter } : undefined,
+      rawFrontmatter: source.rawFrontmatter,
+      frontmatterEol: source.frontmatterEol,
+    };
+    setNotes(prev => {
+      const next = syncLinkRefs([...prev, copy], prev);
+      const created = next.find((n) => n.id === copy.id) ?? copy;
+      void storage.saveNote(created).catch(() => {
+        setSaveError('Failed to save note. Storage may be full.');
+      });
+      return next;
+    });
+    setActiveNoteIdWithRecent(copy.id);
+    return copy.id;
+  }, [setActiveNoteIdWithRecent, syncLinkRefs]);
 
   const handleMoveNote = useCallback((id: string, folderId: string) => {
     setNotes(prev => {
@@ -783,14 +818,11 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
-    if (parent?.origin === 'vault') {
-      setSaveError('Creating folders directly inside the connected vault is not available yet.');
-      return;
-    }
+    const inVault = parent?.origin === 'vault' || parentFolderId === VAULT_ROOT_FOLDER_ID;
     const desiredPath = parent ? `${parent.name}/New Folder` : 'New Folder';
     const siblingPrefix = parent ? `${parent.name}/` : '';
     const existingNames = new Set(
-      folders.filter((folder) => folder.origin !== 'vault').map((folder) => folder.name),
+      folders.filter((folder) => (folder.origin === 'vault') === inVault).map((folder) => folder.name),
     );
 
     let nextPath = desiredPath;
@@ -801,7 +833,12 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       suffix += 1;
     }
 
-    const newFolder: Folder = { id: crypto.randomUUID(), name: nextPath, source: 'noa' };
+    const newFolder: Folder = {
+      id: crypto.randomUUID(),
+      name: nextPath,
+      source: 'noa',
+      ...(inVault ? { origin: 'vault' as const } : {}),
+    };
     setFolders(prev => [...prev, newFolder]);
     return newFolder.name;
   }, [folders]);
@@ -916,6 +953,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     setFolders,
     setNotes,
     setActiveNoteIdWithRecent,
+    vaultWorkspaceRef,
   });
 
   const handleToggleTask = useCallback((task: GlobalTask): { noteId: string; content: string } | undefined => {
@@ -1220,6 +1258,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     handleUpdateFrontmatter,
     handleRenameNote,
     handleCreateNote,
+    handleDuplicateNote,
     handleMoveNote,
     handleImportNote,
     handleNavigateToNote,
@@ -1228,7 +1267,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,
-    handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string) => { noteId: string; created: boolean } | undefined,
+    handleOpenDailyNote: handleOpenDailyNote as (targetDate?: string, canCreate?: () => boolean) => { noteId: string; created: boolean } | undefined,
     handleToggleTask,
     handleImportData,
     getIsImporting,

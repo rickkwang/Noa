@@ -847,11 +847,12 @@ test('filesystem sync status transitions from syncing to error on retry', async 
   await expectVaultSyncStatus(page, 'error');
   await expect(page.getByText(/Sync error:/i)).toBeVisible();
 
-  // A vault failure makes only vault cache rows read-only. Local Noa work must
-  // remain available while the user decides whether to retry or disconnect.
+  // The connected vault is the only workspace, so while it is read-only a new
+  // note is refused instead of silently landing in the hidden Noa workspace.
   await page.keyboard.press('Escape');
   await page.getByTitle('New note').click();
-  await expect(page.getByTestId('sidebar-file-tree').getByText('New Note', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Vault is the source of truth/i)).toBeVisible();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('New Note', { exact: true })).toHaveCount(0);
 });
 
 test('failed vault write keeps the local edit and retry writes that edit to disk', async ({ page }) => {
@@ -982,7 +983,8 @@ test('vault editor is read-only while a structural operation is pending', async 
   const editor = page.locator('.cm-content').last();
   await expect(editor).toHaveAttribute('contenteditable', 'true');
 
-  await page.getByText('Folder', { exact: true }).dblclick();
+  await page.getByText('Folder', { exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Rename…' }).click();
   const folderName = page.locator('input[value="Folder"]');
   await folderName.fill('Renamed');
   await page.keyboard.press('Enter');
@@ -1503,4 +1505,151 @@ test("opening today's existing daily note focuses it without editing it", async 
   const stored = (await auditStoredNotes(page)).find(note => note.id === 'today') as { content: string; updatedAt?: string } | undefined;
   expect(stored?.content).toBe(content);
   expect(stored?.updatedAt).toBe('2026-01-01T00:00:00Z');
+});
+
+test('sidebar context menu duplicates a note and copies its wiki link', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await page.getByTitle('New note').click();
+  await page.keyboard.press('Escape');
+
+  const tree = page.getByTestId('sidebar-file-tree');
+  const row = tree.locator('[aria-haspopup="menu"]', { hasText: /^New Note$/ });
+  await expect(row).toBeVisible();
+  await row.focus();
+  await page.keyboard.press('ContextMenu');
+  await page.getByRole('menuitem', { name: 'Copy link' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('[[New Note]]');
+
+  await row.focus();
+  await page.keyboard.press('ContextMenu');
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+  await expect(tree.getByText('New Note copy', { exact: true })).toBeVisible();
+});
+
+test('a note created inside a vault folder is written to that folder on disk', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{ path: 'Folder/Existing.md', content: '# Existing' }],
+    };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expectVaultSyncStatus(page, 'ready');
+  await page.keyboard.press('Escape');
+
+  const folderRow = page.getByTestId('sidebar-file-tree').locator('[aria-haspopup="menu"]', { hasText: /^Folder$/ });
+  await folderRow.focus();
+  await page.keyboard.press('ContextMenu');
+  await page.getByRole('menuitem', { name: 'New note' }).click();
+  // A new note moves focus to its title field; let that land before the next row interaction.
+  await expect(page.locator('input:focus')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await expect.poll(() => page.evaluate(() => {
+    const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
+    return read?.('Folder/New Note.md') !== null && read?.('Folder/New Note.md') !== undefined;
+  })).toBe(true);
+
+  // A second note with the same default title must get its own file, not a
+  // false "changed outside Noa" conflict against the first one.
+  await folderRow.focus();
+  await page.keyboard.press('ContextMenu');
+  await page.getByRole('menuitem', { name: 'New note' }).click();
+  // A new note moves focus to its title field; let that land before the next row interaction.
+  await expect(page.locator('input:focus')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('Folder sync failed')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
+    // Existing.md + New Note.md + the collision-suffixed second note.
+    return ['Folder/Existing.md', 'Folder/New Note.md'].every((path) => read?.(path) != null);
+  })).toBe(true);
+
+  await folderRow.focus();
+  await page.keyboard.press('ContextMenu');
+  await page.getByRole('menuitem', { name: 'New folder' }).click();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('New Folder', { exact: true })).toBeVisible();
+  await expect(page.getByText('Folder sync failed')).toHaveCount(0);
+});
+
+test('right-clicking blank sidebar space offers New note and New folder', async ({ page }) => {
+  await page.goto('/');
+  const scroller = page.locator('.noa-sidebar-scroll');
+  const box = await scroller.boundingBox();
+  await scroller.click({ button: 'right', position: { x: 20, y: (box?.height ?? 300) - 10 } });
+  await expect(page.getByRole('menuitem', { name: 'New folder' })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'New folder' }).click();
+  await expect(page.getByTestId('sidebar-file-tree').getByText('New Folder', { exact: true })).toBeVisible();
+});
+
+test('blank-space create lands in the vault root once a vault is connected', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = {
+      rootName: 'mock-vault',
+      files: [{ path: 'Existing.md', content: '# Existing' }],
+    };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expectVaultSyncStatus(page, 'ready');
+  await page.keyboard.press('Escape');
+
+  const scroller = page.locator('.noa-sidebar-scroll');
+  const box = await scroller.boundingBox();
+  await scroller.click({ button: 'right', position: { x: 20, y: (box?.height ?? 300) - 10 } });
+  await page.getByRole('menuitem', { name: 'New note' }).click();
+
+  await expect.poll(() => page.evaluate(() => {
+    const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
+    return read?.('New Note.md') != null;
+  })).toBe(true);
+  await expect(page.getByText('Folder sync failed')).toHaveCount(0);
+});
+
+test('connecting a vault makes it the only workspace and disconnecting restores Noa', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  const tree = page.getByTestId('sidebar-file-tree');
+  await page.getByTitle('New note').click();
+  await page.keyboard.press('Escape');
+  await expect(tree.getByText('New Note', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close New Note tab' })).toBeVisible();
+  const openTabCount = () => page.evaluate(() => {
+    try { return (JSON.parse(localStorage.getItem('redaction-diary-open-tabs') ?? '[]') as string[]).length; } catch { return -1; }
+  });
+  await expect.poll(openTabCount).toBeGreaterThan(0);
+  const tabCountBefore = await openTabCount();
+
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = { rootName: 'mock-vault', files: [{ path: 'Only.md', content: '# Only' }] };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expectVaultSyncStatus(page, 'ready');
+
+  // The Noa note is stored but hidden while the vault is the workspace.
+  await expect(tree.getByText('Only', { exact: true })).toBeVisible();
+  await expect(tree.getByText('New Note', { exact: true })).toHaveCount(0);
+  // Hidden, not closed: the persisted tab list must not be pruned by connecting.
+  await expect.poll(openTabCount).toBe(tabCountBefore);
+
+  await page.getByLabel('Workspace').getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await expect(tree.getByText('New Note', { exact: true })).toBeVisible();
+  await expect(tree.getByText('Only', { exact: true })).toHaveCount(0);
+  await expect.poll(openTabCount).toBe(tabCountBefore);
 });

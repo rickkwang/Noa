@@ -25,6 +25,8 @@ type UseDailyNotesOptions = {
   setFolders: Dispatch<SetStateAction<Folder[]>>;
   setNotes: Dispatch<SetStateAction<Note[]>>;
   setActiveNoteIdWithRecent: (id: string) => void;
+  /** True while a vault is connected: the vault is then the only workspace, so the daily note belongs in it. */
+  vaultWorkspaceRef?: React.MutableRefObject<boolean>;
 };
 
 export function useDailyNotes({
@@ -34,12 +36,13 @@ export function useDailyNotes({
   setFolders,
   setNotes,
   setActiveNoteIdWithRecent,
+  vaultWorkspaceRef,
 }: UseDailyNotesOptions) {
   // Synchronous mutex: double-invocations would each mint a folder UUID before setFolders, duplicating "Daily Notes".
   const creatingRef = useRef(false);
   // Returns the note it opened and whether this call created it, or undefined
   // when a concurrent call already holds the mutex.
-  const handleOpenDailyNote = useCallback((targetDate?: string): { noteId: string; created: boolean } | undefined => {
+  const handleOpenDailyNote = useCallback((targetDate?: string, canCreate?: () => boolean): { noteId: string; created: boolean } | undefined => {
     if (creatingRef.current) return undefined;
     creatingRef.current = true;
     try {
@@ -53,15 +56,20 @@ export function useDailyNotes({
       : builtinTemplates.find((template) => template.id === 'daily')!;
 
     // Read latest folders synchronously — no updater needed.
-    const currentFolders = foldersRef.current.filter(folder => folder.origin !== 'vault');
+    const inVault = vaultWorkspaceRef?.current === true;
+    const currentFolders = foldersRef.current.filter(folder => (folder.origin === 'vault') === inVault);
+    // The remembered id is the Noa workspace's; a vault resolves "Daily Notes" by name.
     let savedId: string | null = null;
-    try { savedId = localStorage.getItem(DAILY_FOLDER_KEY); } catch { /* quota exceeded */ }
+    if (!inVault) {
+      try { savedId = localStorage.getItem(DAILY_FOLDER_KEY); } catch { /* quota exceeded */ }
+    }
     const existingFolder = savedId
       ? (currentFolders.find((folder) => folder.id === savedId) ?? currentFolders.find((folder) => folder.name === 'Daily Notes'))
       : currentFolders.find((folder) => folder.name === 'Daily Notes');
     const isNewFolder = !existingFolder;
-    const dailyFolder = existingFolder ?? { id: crypto.randomUUID(), name: 'Daily Notes' };
-    if (isNewFolder) {
+    const dailyFolder: Folder = existingFolder
+      ?? { id: crypto.randomUUID(), name: 'Daily Notes', ...(inVault ? { origin: 'vault' as const, source: 'noa' as const } : {}) };
+    if (isNewFolder && !inVault) {
       try { localStorage.setItem(DAILY_FOLDER_KEY, dailyFolder.id); } catch { /* quota exceeded */ }
     }
 
@@ -76,6 +84,8 @@ export function useDailyNotes({
       return { noteId: earlyExisting.id, created: false };
     }
 
+    if (canCreate && !canCreate()) return undefined;
+
     // Build the new note — IO happens outside any state updater.
     const newNote: Note = {
       id: crypto.randomUUID(),
@@ -87,6 +97,7 @@ export function useDailyNotes({
       tags: ['daily'],
       links: [],
       linkRefs: [],
+      ...(inVault ? { origin: 'vault' as const, vaultDirty: true, source: 'noa' as const } : {}),
     };
 
     setActiveNoteIdWithRecent(newNote.id);
@@ -108,7 +119,7 @@ export function useDailyNotes({
       // blocked, but future user actions are not.
       queueMicrotask(() => { creatingRef.current = false; });
     }
-  }, [notesRef, setActiveNoteIdWithRecent, setFolders, setNotes, settings?.dailyNotes?.dateFormat, settings?.dailyNotes?.template, foldersRef]);
+  }, [notesRef, setActiveNoteIdWithRecent, setFolders, setNotes, settings?.dailyNotes?.dateFormat, settings?.dailyNotes?.template, foldersRef, vaultWorkspaceRef]);
 
   return { handleOpenDailyNote };
 }

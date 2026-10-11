@@ -1,5 +1,12 @@
 import type { Folder, Note } from '../types';
 
+/**
+ * Create target meaning "the connected vault's root". Vault root has no folder
+ * row (note.folder is ''), so creation needs a name for it that cannot be
+ * mistaken for a Noa folder id.
+ */
+export const VAULT_ROOT_FOLDER_ID = '__vault_root__';
+
 export interface NoaOwnedWorkspace {
   notes: Note[];
   folders: Folder[];

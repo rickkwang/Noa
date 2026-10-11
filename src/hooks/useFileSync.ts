@@ -17,6 +17,8 @@ import {
   resetVaultStatSnapshot,
   replayVaultPendingOperation,
   restorePersistedFsHandle,
+  syncFolderCreate,
+  syncNoteCreate,
   syncFolderDelete,
   syncFolderRename,
   syncNoteMove,
@@ -72,9 +74,11 @@ interface UseFileSyncResult {
   retry: () => void;
   reconnect: () => Promise<void>;
   syncNoteOnUpdate: (id: string, content: string, latest?: Note) => void;
+  syncNoteOnCreate: (note: Note) => void;
   syncNoteOnMove: (note: Note, nextFolderId: string) => void;
   syncNoteOnRename: (note: Note, newTitle: string) => void;
   syncFolderOnRename: (folderId: string, previousName: string, nextFolders: Folder[], prepared?: VaultPendingOperation) => void;
+  syncFolderOnCreate: (folderName: string) => void;
   syncFolderOnDelete: (folder: Folder, prepared?: VaultPendingOperation) => void;
   syncNoteOnDelete: (note: Note, prepared?: VaultPendingOperation) => void;
   /** Transient notice after external vault changes were merged in; auto-clears. */
@@ -996,6 +1000,26 @@ export function useFileSync({
     [fsHandle, runTrackedOperation],
   );
 
+  const syncNoteOnCreate = useCallback(
+    (note: Note) => {
+      if (!fsHandle || note.origin !== 'vault') return;
+      runTrackedOperation(
+        `note:${note.id}`,
+        () => syncNoteCreate(fsHandle, note, foldersRef.current),
+        { id: note.id, content: note.content },
+      );
+    },
+    [fsHandle, runTrackedOperation],
+  );
+
+  const syncFolderOnCreate = useCallback(
+    (folderName: string) => {
+      if (!fsHandle) return;
+      runTrackedOperation(`folder-create:${folderName}`, () => syncFolderCreate(fsHandle, folderName));
+    },
+    [fsHandle, runTrackedOperation],
+  );
+
   return {
     fsHandle,
     syncStatus,
@@ -1022,9 +1046,11 @@ export function useFileSync({
     retry,
     reconnect,
     syncNoteOnUpdate,
+    syncNoteOnCreate,
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
+    syncFolderOnCreate,
     syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,

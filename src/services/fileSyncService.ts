@@ -673,6 +673,22 @@ export async function syncNoteUpdate(
   });
 }
 
+/**
+ * First write of a note created inside a vault folder. It has no file yet, so
+ * the conflict check `syncNoteUpdate` runs against its baseline would read the
+ * absence of a file — or an unrelated "New Note.md" via the title fallback —
+ * as an external edit. `writeNote` picks a collision-safe filename itself.
+ */
+export async function syncNoteCreate(
+  handle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+): Promise<void> {
+  await withVaultLock(async () => {
+    await writeNoteTracked(handle, note, folders);
+  });
+}
+
 export async function syncNoteRename(
   handle: FileSystemDirectoryHandle,
   note: Note,
@@ -797,6 +813,15 @@ export async function syncVaultNoteSnapshot(
     _noteWriteBaselines.delete(note.id);
     return null;
   });
+}
+
+export async function syncFolderCreate(
+  handle: FileSystemDirectoryHandle,
+  folderName: string,
+): Promise<void> {
+  // An empty folder has no note write to materialise it, and a disk-authoritative
+  // scan would drop it, so create the directory explicitly.
+  await withVaultLock(() => createFolderDirectory(handle, folderName));
 }
 
 export async function syncFolderDelete(

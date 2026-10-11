@@ -27,6 +27,7 @@ import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
+import { VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -97,6 +98,8 @@ export default function App() {
   const [pendingTemplateNoteId, setPendingTemplateNoteId] = useState<string | null>(null);
   const waitingForTemplateRef = useRef(false);
   const { settings, updateSettings } = useSettings();
+  // True while a vault is connected; read by the daily-note hook, which runs before useFileSync exists.
+  const vaultWorkspaceRef = useRef(false);
   const {
     notes,
     folders,
@@ -108,6 +111,7 @@ export default function App() {
     handleSaveNote,
     handleRenameNote: _handleRenameNote,
     handleCreateNote: _handleCreateNote,
+    handleDuplicateNote,
     handleMoveNote: _handleMoveNote,
     handleImportNote,
     handleNavigateToNote,
@@ -135,24 +139,11 @@ export default function App() {
     isLoaded,
     isDataReady,
     setWorkspaceName,
-  } = useNotes(settings);
+  } = useNotes(settings, vaultWorkspaceRef);
 
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
-  const {
-    openTabs,
-    enteringTabIds,
-    enteringFromTabIds,
-    closingTabIds,
-    tabLimitWarning,
-    openTabForNote,
-    closeTabById,
-    handleTabClose,
-    handleTabReorder,
-    handleTabEnterComplete,
-    handleTabCloseAnimationComplete,
-  } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId });
 
   const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
   const {
@@ -181,9 +172,11 @@ export default function App() {
     retry,
     reconnect,
     syncNoteOnUpdate,
+    syncNoteOnCreate,
     syncNoteOnMove,
     syncNoteOnRename,
     syncFolderOnRename,
+    syncFolderOnCreate,
     syncFolderOnDelete,
     syncNoteOnDelete,
     externalUpdateNotice,
@@ -198,6 +191,41 @@ export default function App() {
     onVaultNotesSynced: markVaultNotesSynced,
     onVaultNoteBaselineAdvanced: advanceVaultNoteBaseline,
   });
+
+  // One workspace at a time: a connected vault is the whole workspace and Noa's
+  // own notes stay stored but hidden; with no vault, Noa's notes are shown.
+  // Cached vault rows count too, so the view is right before the handle restores.
+  const vaultConnected = Boolean(fsHandle)
+    || notes.some((note) => note.origin === 'vault')
+    || folders.some((folder) => folder.origin === 'vault');
+  vaultWorkspaceRef.current = vaultConnected;
+  const workspaceNotes = useMemo(
+    () => (vaultConnected ? notes.filter((note) => note.origin === 'vault') : notes),
+    [notes, vaultConnected],
+  );
+  const workspaceFolders = useMemo(
+    () => (vaultConnected ? folders.filter((folder) => folder.origin === 'vault') : folders),
+    [folders, vaultConnected],
+  );
+  const {
+    openTabs: allOpenTabs,
+    enteringTabIds,
+    enteringFromTabIds,
+    closingTabIds,
+    tabLimitWarning,
+    openTabForNote,
+    closeTabById,
+    handleTabClose,
+    handleTabReorder,
+    handleTabEnterComplete,
+    handleTabCloseAnimationComplete,
+  } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId });
+  // Tabs of the hidden workspace stay open (and persisted) so they return on disconnect.
+  const openTabs = useMemo(() => {
+    if (!vaultConnected) return allOpenTabs;
+    const visibleIds = new Set(workspaceNotes.map((note) => note.id));
+    return allOpenTabs.filter((tab) => visibleIds.has(tab.id));
+  }, [allOpenTabs, vaultConnected, workspaceNotes]);
 
   // lib/fileSystemStorage's isFileSystemSupported() is off-limits to App.tsx
   // (dependency-cruiser), so probe the picker the same way the rest of the file does.
@@ -291,11 +319,24 @@ export default function App() {
     setEditorFocusRequest(current => current?.requestId === requestId ? null : current);
   }, []);
 
+  const pendingVaultCreateIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = pendingVaultCreateIdRef.current;
+    if (!id) return;
+    const created = notes.find((note) => note.id === id);
+    if (!created) return;
+    pendingVaultCreateIdRef.current = null;
+    syncNoteOnCreate(created);
+  }, [notes, syncNoteOnCreate]);
+
   const handleCreateNote = useCallback((folderId: string, initialContent?: string) => {
     const targetFolder = folders.find((folder) => folder.id === folderId);
-    if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return '';
+    const targetsVault = folderId === VAULT_ROOT_FOLDER_ID || targetFolder?.origin === 'vault';
+    if (blockVaultCacheWrite(targetsVault)) return '';
     const createdId = _handleCreateNote(folderId, initialContent);
-    // New notes remain Noa-owned; only vault-origin notes write through to disk.
+    // Notes created in a Noa folder stay Noa-owned; one created in a vault
+    // folder is vault-origin and its file is written once the row lands in state.
+    if (createdId && targetsVault) pendingVaultCreateIdRef.current = createdId;
     const userTemplates = settings.templates?.userTemplates ?? [];
     if (createdId && userTemplates.length > 0 && !initialContent) {
       waitingForTemplateRef.current = true;
@@ -316,13 +357,22 @@ export default function App() {
   const handleImportNoteGuarded = useCallback((...args: Parameters<typeof handleImportNote>) => {
     const folderId = args[2];
     const targetFolder = folderId ? folders.find((folder) => folder.id === folderId) : undefined;
+    // Imported notes are Noa-owned; with a vault connected they would land in
+    // the hidden workspace, so refuse rather than create something unseen.
+    if (vaultWorkspaceRef.current) {
+      setSaveError('Importing files into the connected vault is not available yet. Disconnect the vault to import into Noa.');
+      return;
+    }
     if (blockVaultCacheWrite(targetFolder?.origin === 'vault')) return;
     handleImportNote(...args);
-  }, [blockVaultCacheWrite, folders, handleImportNote]);
+  }, [blockVaultCacheWrite, folders, handleImportNote, setSaveError]);
 
   const handleOpenDailyNoteGuarded = useCallback((targetDate?: string) => {
     if (!isDataReady) return;
-    const opened = handleOpenDailyNote(targetDate);
+    // Opening an existing daily note is a read; only creating one needs the vault writable.
+    const opened = handleOpenDailyNote(targetDate, () => !blockVaultCacheWrite(vaultWorkspaceRef.current));
+    // A daily note made in the vault workspace is vault-origin; write its file once it lands in state.
+    if (opened?.created && vaultWorkspaceRef.current) pendingVaultCreateIdRef.current = opened.noteId;
     // Only the explicit "today" actions (shortcut, palette, sidebar button)
     // mean "I'm about to write". A calendar click (passes a date) is often just a look back, so it keeps focus.
     if (!opened || targetDate !== undefined) return;
@@ -330,7 +380,7 @@ export default function App() {
     // usable (a space after an empty `- [ ]`). An existing note is focused
     // without being edited: opening it must not bump its modified time.
     requestEditorFocus(opened.noteId, opened.created ? 'slot' : opened.noteId === activeNoteId ? 'keep' : 'open');
-  }, [activeNoteId, handleOpenDailyNote, isDataReady, requestEditorFocus]);
+  }, [activeNoteId, blockVaultCacheWrite, handleOpenDailyNote, isDataReady, requestEditorFocus]);
 
   const handleToggleTaskGuarded = useCallback((task: Parameters<typeof handleToggleTask>[0]) => {
     const note = notesRef.current.find((item) => item.id === task.noteId);
@@ -358,9 +408,11 @@ export default function App() {
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parentFolder = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : undefined;
-    if (blockVaultCacheWrite(parentFolder?.origin === 'vault')) return;
-    _handleCreateFolder(parentFolderId);
-  }, [_handleCreateFolder, blockVaultCacheWrite, folders]);
+    const targetsVault = parentFolderId === VAULT_ROOT_FOLDER_ID || parentFolder?.origin === 'vault';
+    if (blockVaultCacheWrite(targetsVault)) return;
+    const createdName = _handleCreateFolder(parentFolderId);
+    if (createdName && targetsVault) syncFolderOnCreate(createdName);
+  }, [_handleCreateFolder, blockVaultCacheWrite, folders, syncFolderOnCreate]);
 
   const {
     handleDeleteNote,
@@ -616,6 +668,14 @@ export default function App() {
     () => folders.find((f) => f.origin !== 'vault' && (f.source ?? 'noa') === 'noa')?.id ?? 'diary',
     [folders]
   );
+  // Connecting a vault can leave a hidden Noa note active; show the empty state instead of a blank editor.
+  useEffect(() => {
+    if (!vaultConnected || !activeNoteId || !isDataReady) return;
+    const active = notes.find((note) => note.id === activeNoteId);
+    if (active && active.origin !== 'vault') setActiveNoteId('');
+  }, [activeNoteId, isDataReady, notes, setActiveNoteId, vaultConnected]);
+  // Every "new note" entry point creates in the workspace being shown.
+  const defaultCreateFolderId = vaultConnected ? VAULT_ROOT_FOLDER_ID : primaryNoaFolderId;
 
   const handleTabChange = useCallback((id: string) => {
     if (id === activeNoteId) return;
@@ -627,13 +687,13 @@ export default function App() {
   }, [activeNoteId, setActiveNoteId, flushAllPendingSaves]);
 
   const handleNewTab = useCallback(() => {
-    const createdId = handleCreateNote(primaryNoaFolderId);
+    const createdId = handleCreateNote(defaultCreateFolderId);
     if (createdId) openTabForNote(createdId, true);
-  }, [primaryNoaFolderId, handleCreateNote, openTabForNote]);
+  }, [defaultCreateFolderId, handleCreateNote, openTabForNote]);
 
-  const globalTasks = useGlobalTasks(notes);
-  const paneBadges = usePaneBadges(notes, folders, activeNoteId, globalTasks);
-  const activeNote = useMemo(() => activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, notes]);
+  const globalTasks = useGlobalTasks(workspaceNotes);
+  const paneBadges = usePaneBadges(workspaceNotes, workspaceFolders, activeNoteId, globalTasks);
+  const activeNote = useMemo(() => activeNoteId ? workspaceNotes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, workspaceNotes]);
 
   // Orphan activeNoteId (deleted in another window): clear selection and toast, or edits drop silently.
   useEffect(() => {
@@ -653,17 +713,25 @@ export default function App() {
   }, [handleNavigateToNoteById]);
 
   const navigateByTitle = useCallback((title: string) => {
-    const matched = notesRef.current.filter((note) => note.title === title);
+    const inVault = vaultWorkspaceRef.current;
+    // Only the workspace on screen resolves links; the hidden one must not capture a click.
+    const matched = notesRef.current.filter((note) => note.title === title && (!inVault || note.origin === 'vault'));
     if (matched.length === 1) {
       navigateById(matched[0].id);
       return;
     }
     if (matched.length === 0) {
-      handleNavigateToNote(title);
+      if (!inVault) {
+        handleNavigateToNote(title);
+        return;
+      }
+      if (blockVaultCacheWrite(true)) return;
+      const createdId = _handleCreateNote(VAULT_ROOT_FOLDER_ID, '', title);
+      if (createdId) pendingVaultCreateIdRef.current = createdId;
       return;
     }
     setNavigationConflict({ title, noteIds: matched.map((note) => note.id) });
-  }, [handleNavigateToNote, navigateById]);
+  }, [_handleCreateNote, blockVaultCacheWrite, handleNavigateToNote, navigateById]);
 
   const handleRightPanelNavigate = useCallback((id: string, lineIndex?: number) => {
     navigateById(id);
@@ -703,8 +771,8 @@ export default function App() {
   }, [openTabForNote, setActiveNoteId, isMobile, setIsSidebarOpen, flushAllPendingSaves]);
 
   const commandPalette = useCommandPalette({
-    notes,
-    onCreateNote: () => handleCreateNote(primaryNoaFolderId),
+    notes: workspaceNotes,
+    onCreateNote: () => handleCreateNote(defaultCreateFolderId),
     onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenSettings: () => setIsSettingsOpen(true),
     onFocusSearch: focusSearch,
@@ -734,7 +802,7 @@ export default function App() {
     enabled: isDataReady,
     searchQuery,
     searchInputRef,
-    onCreateNote: () => handleCreateNote(primaryNoaFolderId),
+    onCreateNote: () => handleCreateNote(defaultCreateFolderId),
     onOpenDailyNote: handleOpenDailyNoteGuarded,
     onOpenCommandPalette: () => commandPalette.setIsOpen(true),
     onFocusSearch: focusSearch,
@@ -952,8 +1020,8 @@ export default function App() {
           >
             <div className="flex-1 min-h-0 overflow-hidden">
               <Sidebar
-                notes={notes}
-                folders={folders}
+                notes={workspaceNotes}
+                folders={workspaceFolders}
                 tasks={globalTasks}
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
@@ -961,6 +1029,7 @@ export default function App() {
                 onCreateNote={handleSidebarCreateNote}
                 onDeleteNote={handleDeleteNote}
                 onRenameNote={handleRenameNote}
+                onDuplicateNote={handleDuplicateNote}
                 onMoveNote={handleMoveNote}
                 onCreateFolder={handleCreateFolder}
                 onRenameFolder={handleRenameFolder}
@@ -1038,8 +1107,8 @@ export default function App() {
             {activeNoteId ? (
               <Editor
                 note={activeNote}
-                allNotes={notes}
-                folders={folders}
+                allNotes={workspaceNotes}
+                folders={workspaceFolders}
                 onUpdate={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}
                 onNoteUpdate={handleSaveNoteGuarded}
                 onFrontmatterChange={(raw) => { if (activeNoteId) handleUpdateFrontmatter(activeNoteId, raw); }}
@@ -1082,9 +1151,9 @@ export default function App() {
                   <EmptyState
                     scene={settings.appearance.emptyStateScene}
                     theme={settings.appearance.theme}
-                    noteCount={notes.length}
+                    noteCount={workspaceNotes.length}
                     dailyNotesEnabled={settings.corePlugins.dailyNotes}
-                    onNewNote={() => handleCreateNote(primaryNoaFolderId)}
+                    onNewNote={() => handleCreateNote(defaultCreateFolderId)}
                     onTodayNote={() => handleOpenDailyNoteGuarded()}
                     onGoTo={() => commandPalette.setIsOpen(true)}
                   />
@@ -1192,8 +1261,8 @@ export default function App() {
                   single={isMobile}
                   expandedPane={isPaneExpanded ? expandedPane : null}
                   onToggleExpandPane={toggleExpandedPane}
-                  notes={notes}
-                  folders={folders}
+                  notes={workspaceNotes}
+                  folders={workspaceFolders}
                   settings={settings}
                   activeNoteId={activeNote?.id}
                   onUpdateNote={(content) => { if (activeNoteId) handleUpdateNote(activeNoteId, content); }}

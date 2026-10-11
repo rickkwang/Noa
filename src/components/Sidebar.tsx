@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
@@ -7,6 +8,7 @@ import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
+import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import { GlobalTask, Note, Folder as FolderType } from '../types';
 import CalendarPanel from './CalendarPanel';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
@@ -58,6 +60,7 @@ interface SidebarNoteRowProps {
   onSelect: (id: string, multi: boolean) => void;
   onRequestDelete: (id: string, name: string) => void;
   onRename: (id: string, newName: string) => void;
+  onDuplicate: (id: string) => void;
   onDragStart: (kind: 'note' | 'folder', id: string, name: string) => (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }
@@ -65,7 +68,7 @@ interface SidebarNoteRowProps {
 // Memo boundary for note rows: the sidebar re-renders every keystroke, so all callbacks must stay referentially stable.
 const SidebarNoteRow = React.memo(function SidebarNoteRow({
   note, depth, isActive, isSelected, isDragging,
-  onSelect, onRequestDelete, onRename, onDragStart, onDragEnd,
+  onSelect, onRequestDelete, onRename, onDuplicate, onDragStart, onDragEnd,
 }: SidebarNoteRowProps) {
   const displayName = note.title || 'Untitled';
   return (
@@ -77,6 +80,12 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
       onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
       onDelete={() => onRequestDelete(note.id, displayName)}
       onRename={(newName: string) => onRename(note.id, newName)}
+      onDuplicate={note.origin === 'vault' ? undefined : () => onDuplicate(note.id)}
+      onCopyLink={() => {
+        // Same sanitising as rename's link rewrite: these characters would break [[...]] syntax.
+        const target = displayName.replace(/\]\]/g, '] ]').replace(/[|#]/g, ' ');
+        void navigator.clipboard?.writeText(`[[${target}]]`).catch(() => {});
+      }}
       draggable
       onDragStart={onDragStart('note', note.id, displayName)}
       onDragEnd={onDragEnd}
@@ -95,6 +104,7 @@ interface SidebarProps {
   onCreateNote: (folderId: string, initialContent?: string) => void;
   onDeleteNote: (id: string) => void;
   onRenameNote: (id: string, newName: string) => void;
+  onDuplicateNote: (id: string) => void;
   onMoveNote: (id: string, folderId: string) => void;
   onCreateFolder: (parentFolderId?: string) => void;
   onRenameFolder: (id: string, newName: string) => void;
@@ -113,7 +123,7 @@ interface SidebarProps {
 
 export default function Sidebar({
   notes, folders, tasks, searchQuery, activeNoteId,
-  onSelectNote, onCreateNote, onDeleteNote, onRenameNote,
+  onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
   onImportNote, onSearchTag, onSearchQuery, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
@@ -126,6 +136,8 @@ export default function Sidebar({
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const [blankMenu, setBlankMenu] = useState<{ x: number; y: number } | null>(null);
+  const blankMenuRef = useRef<HTMLDivElement>(null);
   const [templateMenuFolderId, setTemplateMenuFolderId] = useState<string | null>(null);
   const isVaultFolder = useCallback((folder: FolderType) => folder.origin === 'vault', []);
 
@@ -196,6 +208,10 @@ export default function Sidebar({
     () => (folders.find((folder) => !isVaultFolder(folder))?.id ?? ''),
     [folders, isVaultFolder]
   );
+  // With a vault connected it is the whole workspace, so every create entry point targets its root.
+  const blankCreateTarget = vault.vaultName || vaultFolders.length > 0 || notes.some((note) => note.origin === 'vault')
+    ? VAULT_ROOT_FOLDER_ID
+    : primaryNoaFolderId;
 
   const renameFolderWithValidation = useCallback((id: string, nextPath: string): string | void => {
     const targetFolder = folders.find((folder) => folder.id === id);
@@ -241,7 +257,6 @@ export default function Sidebar({
   const renderFolderNode = useCallback((node: FolderTreeNode, depth: number, activeId: string, parentPath: string = '') => {
     const leafName = getFolderLeafName(node.folder.name);
     const markFolderTarget = handleDragTarget(node.folder.id, node.folder.id);
-    const canCreateInsideFolder = !isVaultFolder(node.folder);
     const childNotes = notesByFolderId.get(node.folder.id) || [];
     const hasChildren = node.children.length > 0 || childNotes.length > 0;
     const nextPath = parentPath ? `${parentPath}/${leafName}` : leafName;
@@ -275,9 +290,9 @@ export default function Sidebar({
         isFolder
         defaultOpen={foldersExpandedByDefault}
           icon={Folder}
-          onAdd={canCreateInsideFolder ? () => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id) : undefined}
-          onAddFolder={canCreateInsideFolder ? () => onCreateFolder(node.folder.id) : undefined}
-          onNewNote={canCreateInsideFolder ? () => onCreateNote(node.folder.id) : undefined}
+          onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
+          onAddFolder={() => onCreateFolder(node.folder.id)}
+          onNewNote={() => onCreateNote(node.folder.id)}
           draggable
           onDragStart={handleDragStartItem('folder', node.folder.id, node.folder.name)}
           onDragEnter={markFolderTarget}
@@ -303,6 +318,7 @@ export default function Sidebar({
               onSelect={handleNoteRowSelect}
               onRequestDelete={handleNoteRowDelete}
               onRename={onRenameNote}
+              onDuplicate={onDuplicateNote}
               onDragStart={handleDragStartItem}
               onDragEnd={handleDragEndItem}
             />
@@ -312,7 +328,21 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, isVaultFolder, notesByFolderId, onCreateFolder, onCreateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
+  }, [draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onDuplicateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
+
+  useEffect(() => {
+    if (!blankMenu) return;
+    blankMenuRef.current?.querySelector('button')?.focus();
+    const close = (event: Event) => {
+      if (!blankMenuRef.current?.contains(event.target as Node)) setBlankMenu(null);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('scroll', close, true);
+    };
+  }, [blankMenu]);
 
   useEffect(() => {
     if (!templateMenuFolderId) return;
@@ -419,7 +449,7 @@ export default function Sidebar({
       {/* Vertical rhythm by centre line: titlebar 22px, this row 60px, first tree row ~98px — two equal 38px steps. */}
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
-          onClick={() => onCreateNote(primaryNoaFolderId)}
+          onClick={() => onCreateNote(blankCreateTarget)}
           className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="New note"
           aria-label="New note"
@@ -427,7 +457,7 @@ export default function Sidebar({
           <SquarePen size={14} />
         </button>
         <button
-          onClick={() => onCreateFolder()}
+          onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
           className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="New folder"
           aria-label="New folder"
@@ -582,8 +612,46 @@ export default function Sidebar({
         </div>
       )}
 
+      {blankMenu && createPortal(
+        <div
+          ref={blankMenuRef}
+          role="menu"
+          aria-label="Sidebar actions"
+          className="fixed z-[90] w-44 rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-redaction noa-floating-panel"
+          style={{ left: blankMenu.x, top: blankMenu.y }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setBlankMenu(null); }}
+        >
+          <button
+            role="menuitem"
+            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]"
+            onClick={() => { setBlankMenu(null); onCreateNote(blankCreateTarget); }}
+          >
+            New note
+          </button>
+          <button
+            role="menuitem"
+            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]"
+            onClick={() => { setBlankMenu(null); onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined); }}
+          >
+            New folder
+          </button>
+        </div>,
+        document.body,
+      )}
+
       {/* Main Content Section */}
-      <div ref={treeScrollRef} className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+      <div
+        ref={treeScrollRef}
+        className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        // Rows stop propagation of their own context menu, so this only sees blank space.
+        onContextMenu={searchQuery ? undefined : (e) => {
+          e.preventDefault();
+          setBlankMenu({
+            x: Math.max(8, Math.min(e.clientX, window.innerWidth - 184)),
+            y: Math.max(8, Math.min(e.clientY, window.innerHeight - 72)),
+          });
+        }}
+      >
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
@@ -654,6 +722,7 @@ export default function Sidebar({
                       onSelect={handleNoteRowSelect}
                       onRequestDelete={handleNoteRowDelete}
                       onRename={onRenameNote}
+                      onDuplicate={onDuplicateNote}
                       onDragStart={handleDragStartItem}
                       onDragEnd={handleDragEndItem}
                     />
@@ -685,6 +754,7 @@ export default function Sidebar({
                           onSelect={handleNoteRowSelect}
                           onRequestDelete={handleNoteRowDelete}
                           onRename={onRenameNote}
+                          onDuplicate={onDuplicateNote}
                           onDragStart={handleDragStartItem}
                           onDragEnd={handleDragEndItem}
                         />

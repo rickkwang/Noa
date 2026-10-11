@@ -19,6 +19,8 @@ export interface FileNodeProps {
   onAdd?: () => void;
   onAddFolder?: () => void;
   onNewNote?: () => void;
+  onDuplicate?: () => void;
+  onCopyLink?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnter?: (e: React.DragEvent) => void;
@@ -75,7 +77,7 @@ export function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
 export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText,
-  onAdd, onAddFolder, onNewNote, draggable, onDragStart, onDragEnter, onDragOver,
+  onAdd, onAddFolder, onNewNote, onDuplicate, onCopyLink, draggable, onDragStart, onDragEnter, onDragOver,
   onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0,
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -109,9 +111,10 @@ export const FileNode = React.memo(({
   }, [menuPosition]);
 
   const openContextMenu = (x: number, y: number) => {
-    if (!onRename && !onDelete && !onNewNote && !onAddFolder) return;
-    const itemCount = Number(!!onNewNote) + Number(!!onAddFolder) + Number(!!onRename) + Number(!!onDelete);
-    const menuHeight = 8 + itemCount * 28 + (onNewNote || onAddFolder ? 9 : 0);
+    if (!onRename && !onDelete && !onNewNote && !onAddFolder && !onDuplicate && !onCopyLink) return;
+    const itemCount = Number(!!onNewNote) + Number(!!onAddFolder) + Number(!!onDuplicate) + Number(!!onCopyLink)
+      + Number(!!onRename) + Number(!!onDelete);
+    const menuHeight = 8 + itemCount * 28 + (onNewNote || onAddFolder ? 9 : 0) + (onDuplicate || onCopyLink ? 9 : 0);
     setMenuPosition({
       x: Math.max(8, Math.min(x, window.innerWidth - 184)),
       y: Math.max(8, Math.min(y, window.innerHeight - menuHeight - 8)),
@@ -191,7 +194,6 @@ export const FileNode = React.memo(({
           if (isFolder) setIsOpen(!isOpen);
           if (onClick) onClick(e);
         }}
-        onDoubleClick={onRename ? (e) => { e.stopPropagation(); startRename(); } : undefined}
         onContextMenu={(e) => {
           if (isEditing) return;
           e.preventDefault();
@@ -296,6 +298,9 @@ export const FileNode = React.memo(({
           {onNewNote && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onNewNote(); }}>New note</button>}
           {onAddFolder && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onAddFolder(); }}>New folder</button>}
           {(onNewNote || onAddFolder) && <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />}
+          {onDuplicate && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onDuplicate(); }}>Duplicate</button>}
+          {onCopyLink && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onCopyLink(); }}>Copy link</button>}
+          {(onDuplicate || onCopyLink) && <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />}
           {onRename && <button role="menuitem" className={menuItemClass} onClick={startRename}>Rename…</button>}
           {onDelete && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onDelete(); }}>Delete</button>}
         </div>,
