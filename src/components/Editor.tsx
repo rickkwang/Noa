@@ -670,9 +670,9 @@ export default function Editor({
         ref={splitContainerRef}
         className="flex-1 flex overflow-hidden z-10 relative"
       >
-        {/* Preview has no toolbar row, so controls float here; h-8 + pb-px match the row's height so they don't shift between modes. */}
+        {/* Preview has no toolbar row, so controls float here; h-7 + pb-px match the row's height so they don't shift between modes. */}
         {viewMode === 'preview' && (
-          <div className="absolute top-0 right-4 z-20 h-8 pb-px flex items-center">
+          <div className="absolute top-0 right-4 z-20 h-7 pb-px flex items-center">
             {editorActions}
           </div>
         )}
@@ -707,13 +707,15 @@ export default function Editor({
           </div>
           {viewMode !== 'preview' && createPortal(renderProperties('edit'), propertiesSlot)}
 
-          {/* Opaque status bar: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
+          {/* Opaque stats card: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
           <div
-            className="absolute bottom-0 left-0 right-0 z-10 h-7 flex items-center justify-end px-4 text-xs font-redaction pointer-events-none"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 h-7 flex items-center px-4 rounded-t-lg text-xs font-redaction pointer-events-none"
             style={{
               color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
               backgroundColor: themeSurfaces(isDark).primary,
               borderTop: '1px solid var(--divider-subtle, #E6E2DA)',
+              borderLeft: '1px solid var(--divider-subtle, #E6E2DA)',
+              borderRight: '1px solid var(--divider-subtle, #E6E2DA)',
             }}
           >
             {stats.words} words · {stats.chars} chars
@@ -745,7 +747,7 @@ export default function Editor({
 
         {viewMode === 'split' && (
           <div
-            className="w-px bg-[var(--divider-subtle)] cursor-col-resize hover:bg-[#CC7D5E]/60 transition-colors shrink-0 select-none"
+            className="noa-split-divider w-px bg-[var(--divider-subtle)] cursor-col-resize shrink-0 select-none"
             onMouseDown={handleDividerMouseDown}
           />
         )}

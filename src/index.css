@@ -114,6 +114,30 @@ body {
 .noa-app-shell:has(.noa-resize-handle[data-edge="right"]:is(:hover, :focus-visible)) [data-sidebar-separator]::after { opacity: 0.7; }
 .noa-app-shell:has(.noa-resize-handle[data-edge="right"][data-dragging="true"]) [data-sidebar-separator]::after { opacity: 1; }
 
+/* Split-editor divider: same neutral gradient as the sidebar resize line. The 4px hit area lives on ::before so the 1px line keeps its layout width. */
+.noa-split-divider { position: relative; }
+.noa-split-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+.noa-split-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    transparent,
+    color-mix(in srgb, var(--text-primary, #2D2D2B) 40%, transparent) 50%,
+    transparent);
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+.noa-split-divider:hover::after { opacity: 0.7; }
+.noa-split-divider:active::after { opacity: 1; }
+
 /* Titlebar hairline animates its left edge only during the sidebar dock motion (opt-in via the shell attribute);
    every other edge move (hover preview, resize drag, promotion) snaps. */
 [data-titlebar="true"]::after {
