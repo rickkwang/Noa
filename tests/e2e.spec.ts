@@ -340,8 +340,8 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
   expect(sidebarToggleBox).not.toBeNull();
   expect(sidebarActionBox).not.toBeNull();
   expect(rightPanelTabBox).not.toBeNull();
-  // 26px tab pill centred on the same line as the 22px search shell.
-  expect(tabBox!.height - searchShellBox!.height).toBe(4);
+  // 26px tab pill centred on the same line as the 26px search shell.
+  expect(tabBox!.height - searchShellBox!.height).toBe(0);
   expect(Math.abs((tabBox!.y + tabBox!.height / 2) - (searchShellBox!.y + searchShellBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs((searchButtonBox!.y + searchButtonBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
   expect(tabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
