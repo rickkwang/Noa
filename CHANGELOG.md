@@ -7,6 +7,26 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.28] - 2026-10-11
+
+### Added
+- Properties sit under the note title, Obsidian-style. Create one by typing `---` at the top of a note or pressing Cmd+;.
+- Connecting a vault makes it the only workspace, and the sidebar gains create and duplicate actions.
+- Expand-all folders sits beside the sort control.
+
+### Changed
+- The word count is a small card at the bottom of the editor.
+- The split divider highlights the way the sidebar resize line does.
+- The search field matches the height of the tab pill.
+- In the right panel, only the top card's header drags the window.
+- The vault section and sidebar footer have tighter padding.
+
+### Fixed
+- Noa's own metadata stays out of vault files, and renames no longer add stray name suffixes.
+- Several Obsidian import gaps are closed: rename, image sizes, templates, and shortcuts.
+- The window appears on first paint, so dark launches no longer flash light.
+- The desktop app lists local fonts again.
+
 ## [1.0.27] - 2026-10-07
 
 ### Added
