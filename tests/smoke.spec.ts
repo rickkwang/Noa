@@ -1653,3 +1653,100 @@ test('connecting a vault makes it the only workspace and disconnecting restores 
   await expect(tree.getByText('Only', { exact: true })).toHaveCount(0);
   await expect.poll(openTabCount).toBe(tabCountBefore);
 });
+
+test('typing --- at the top of a note opens Properties', async ({ page }) => {
+  const marker = `props-${Date.now()}`;
+  await page.goto('/');
+  await createNewNote(page);
+  const editor = page.locator('.cm-content').last();
+  await editor.click();
+  await page.keyboard.type('---');
+  await expect(page.getByPlaceholder('Property name')).toBeFocused();
+  await page.keyboard.type('status');
+  await page.keyboard.press('Enter');
+  await editor.click();
+  await page.keyboard.type(marker);
+  await expect.poll(async () => (await auditStoredNotes(page)).find(note => note.content.includes(marker))?.content)
+    .toMatch(new RegExp(`^---\\nstatus:.*\\n---\\n${marker}$`));
+});
+
+test('abandoning the first property leaves no frontmatter and no dashes', async ({ page }) => {
+  const marker = `noprops-${Date.now()}`;
+  await page.goto('/');
+  await createNewNote(page);
+  const editor = page.locator('.cm-content').last();
+  await editor.click();
+  await page.keyboard.type('---');
+  await expect(page.getByPlaceholder('Property name')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByPlaceholder('Property name')).toHaveCount(0);
+  await editor.click();
+  await page.keyboard.type(marker);
+  await expect.poll(async () => (await auditStoredNotes(page)).some(note => note.content === marker)).toBe(true);
+});
+
+test('--- opens Properties in a vault note and writes plain frontmatter', async ({ page }) => {
+  await installMockDirectoryPicker(page);
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __pickerSeed?: { rootName?: string; files?: Array<{ path: string; content: string }> };
+    }).__pickerSeed = { rootName: 'mock-vault', files: [{ path: 'Existing.md', content: '---\ncourse: x\n---\n# Existing' }] };
+  });
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByRole('button', { name: 'Connect Folder' }).click();
+  await expectVaultSyncStatus(page, 'ready');
+  await page.keyboard.press('Escape');
+
+  await page.getByTitle('New note').click();
+  await page.keyboard.press('Escape');
+  const editor = page.locator('.cm-content').last();
+  await editor.click();
+  await page.keyboard.type('---', { delay: 80 });
+  // Long enough for a focus fight between panes to have closed the input.
+  await page.waitForTimeout(500);
+  const keyInput = page.getByPlaceholder('Property name');
+  await expect(keyInput).toBeFocused();
+  await expect(page.getByRole('option').first()).toHaveText('aliases');
+  await page.keyboard.type('status', { delay: 30 });
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.cm-editor .noa-properties input[placeholder="Empty"]')).toBeFocused();
+  await page.keyboard.type('draft');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile?.('New Note.md'),
+  )).toBe('---\nstatus: draft\n---\n');
+});
+
+test('property name: Enter takes the highlighted suggestion, Shift+Enter the typed text', async ({ page }) => {
+  await page.goto('/');
+  await importBackup(page, [], [{ id: 'board', title: 'Board', content: '---\nmoodboard: x\n---\nbody' }]);
+  await createNewNote(page);
+  const editor = page.locator('.cm-content').last();
+  await editor.click();
+  await page.keyboard.type('---');
+  await expect(page.getByPlaceholder('Property name')).toBeFocused();
+  await page.keyboard.type('mood');
+  await expect(page.getByRole('option').first()).toHaveText('moodboard');
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.type('calm');
+  await page.keyboard.press('Enter');
+
+  await editor.click();
+  await page.keyboard.press('ControlOrMeta+;');
+  await expect(page.getByPlaceholder('Property name')).toBeFocused();
+  await page.keyboard.type('mood');
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await auditStoredNotes(page)).find(note => note.content.includes('mood: calm'))?.content)
+    .toMatch(/^---\nmood: calm\nmoodboard:.*\n---\n/);
+
+  // Keys are case-insensitive: MOOD is the existing mood, not a second property.
+  await editor.click();
+  await page.keyboard.press('ControlOrMeta+;');
+  await expect(page.getByPlaceholder('Property name')).toBeFocused();
+  await page.keyboard.type('MOOD');
+  await page.keyboard.press('Shift+Enter');
+  await page.waitForTimeout(700);
+  expect((await auditStoredNotes(page)).find(note => note.content.includes('mood: calm'))?.content).not.toMatch(/MOOD/);
+});

@@ -191,6 +191,20 @@ export default function Editor({
       ? deferredNote
       : note;
 
+  const noteProperties = useNoteProperties(note, allNotes, { onUpdate, onFrontmatterChange });
+  const [addPropertyRequest, setAddPropertyRequest] = useState(0);
+  const [addingFirstProperty, setAddingFirstProperty] = useState(false);
+  useEffect(() => { setAddingFirstProperty(false); setAddPropertyRequest(0); }, [note?.id]);
+  const handleAddProperty = useCallback((trigger: 'dashes' | 'shortcut') => {
+    if (readOnly || !noteProperties.canWrite || !noteProperties.frontmatter) return false;
+    const exists = noteProperties.frontmatter.exists;
+    // With properties already present, --- is just a horizontal rule in the body.
+    if (trigger === 'dashes' && exists) return false;
+    if (!exists) setAddingFirstProperty(true);
+    setAddPropertyRequest((n) => n + 1);
+    return true;
+  }, [noteProperties.canWrite, noteProperties.frontmatter, readOnly]);
+
   const { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
     maxWidth: settings.appearance.maxWidth,
@@ -202,6 +216,7 @@ export default function Editor({
     editPaneRef,
     readOnly,
     propertiesSlot,
+    onAddProperty: handleAddProperty,
   });
 
   useEffect(() => {
@@ -452,17 +467,27 @@ export default function Editor({
     fontFamily: resolveFontFamily(settings.appearance.fontFamily),
   };
 
-  const noteProperties = useNoteProperties(note, allNotes, { onUpdate, onFrontmatterChange });
-
-  // Like Obsidian, the editor shows Properties only once a note has some; the side pane can add the first.
-  const renderProperties = () => noteProperties.frontmatter?.exists && (
-    <PropertiesBlock
-      getSuggestions={noteProperties.getSuggestions}
-      block={noteProperties.frontmatter.block}
-      readOnly={readOnly || !noteProperties.canWrite}
-      onChange={noteProperties.onChange}
-    />
-  );
+  // The editor shows Properties only once a note has some, or while the first
+  // one is being named (--- / Cmd+;); abandoning that leaves no block.
+  // Only the edit pane takes add requests: in split view the preview renders a
+  // second copy, and two name inputs would steal focus from (and close) each other.
+  const renderProperties = (pane: 'edit' | 'preview') => {
+    const frontmatter = noteProperties.frontmatter;
+    const adding = pane === 'edit' && addingFirstProperty;
+    if (!frontmatter || !(frontmatter.exists || adding)) return null;
+    return (
+      <PropertiesBlock
+        getSuggestions={noteProperties.getSuggestions}
+        block={frontmatter.block}
+        readOnly={readOnly || !noteProperties.canWrite}
+        onChange={noteProperties.onChange}
+        {...(pane === 'edit' ? {
+          addRequest: addPropertyRequest,
+          onAddEnd: () => { setAddingFirstProperty(false); setAddPropertyRequest(0); },
+        } : {})}
+      />
+    );
+  };
 
   const contentMaxWidthStyle: React.CSSProperties = {
     maxWidth: `${settings.appearance.maxWidth}px`,
@@ -672,13 +697,15 @@ export default function Editor({
             flex: viewMode === 'split' ? 'none' : '1',
             // Horizontal inset only: vertical padding here would push CodeMirror's .cm-scroller (the real
             // scroll viewport) below the toolbar and clip the first line. Vertical room lives in .cm-content.
-            padding: '0 0 0 2rem',
+            // 0.375rem of the 2rem inset sits inside .cm-content instead, so Properties rows (whose border
+            // hangs 0.375rem left of the text) aren't clipped by the scroller when the column hugs its edge.
+            padding: '0 0 0 1.625rem',
           }}
         >
           <div className="h-full" style={editorStyle}>
             <div ref={editorContainerRef} className="h-full" />
           </div>
-          {viewMode !== 'preview' && createPortal(renderProperties(), propertiesSlot)}
+          {viewMode !== 'preview' && createPortal(renderProperties('edit'), propertiesSlot)}
 
           {/* Opaque status bar: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
           <div
@@ -734,7 +761,7 @@ export default function Editor({
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
-            properties={renderProperties()}
+            properties={renderProperties('preview')}
             style={viewMode === 'split' ? {
               // Subtract the 1px divider so split preview ends at the same edge as standalone preview.
               width: `calc(${(1 - splitRatio) * 100}% - 1px)`,

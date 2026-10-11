@@ -44,7 +44,10 @@ export function useNoteProperties(note: Note | undefined, allNotes: Note[], { on
   const allNotesRef = useRef(allNotes);
   allNotesRef.current = allNotes;
   const getSuggestions = useCallback(() => {
-    const byKey = new Map<string, FrontmatterProperty>();
+    // Built-in properties lead the list even before any note uses them.
+    const byKey = new Map<string, FrontmatterProperty>(
+      ['aliases', 'cssclasses', 'tags'].map((key) => [key, { key, value: [], editable: true }]),
+    );
     for (const item of allNotesRef.current) {
       const block = item.content.startsWith('---') ? splitFrontmatter(item.content).rawBlock : item.rawFrontmatter;
       if (!block) continue;

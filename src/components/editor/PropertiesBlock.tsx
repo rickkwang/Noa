@@ -12,6 +12,10 @@ interface PropertiesBlockProps {
   getSuggestions?: () => FrontmatterProperty[];
   /** Narrow side-pane layout: tighter key column, no heading (the pane has its own). */
   compact?: boolean;
+  /** Bumped to open the property-name input (`---` at the top of a note, Cmd+;). */
+  addRequest?: number;
+  /** The property-name input closed, whether or not a property was added. */
+  onAddEnd?: () => void;
 }
 
 type PropertyKind = 'tags' | 'list' | 'date' | 'datetime' | 'checkbox' | 'text';
@@ -64,9 +68,9 @@ const isComposing = (e: React.KeyboardEvent) => e.nativeEvent.isComposing || e.k
 
 const URL_RE = /^https?:\/\/\S+$/;
 
-function TextValue({ value, readOnly, onCommit }: { value: string; readOnly?: boolean; onCommit: (v: string) => void }) {
+function TextValue({ value, readOnly, autoFocus, onCommit }: { value: string; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(autoFocus && !readOnly));
   useEffect(() => setDraft(value), [value]);
 
   // At rest the value wraps in full (an input would clip it at the column edge);
@@ -118,12 +122,13 @@ function TextValue({ value, readOnly, onCommit }: { value: string; readOnly?: bo
 
 // Edited in place segment by segment, as in Obsidian: no picker (hidden in index.css).
 // Commits on blur so typing a year doesn't write intermediate values like 0002.
-function DateValue({ value, withTime, readOnly, onCommit }: { value: string; withTime: boolean; readOnly?: boolean; onCommit: (v: string) => void }) {
+function DateValue({ value, withTime, readOnly, autoFocus, onCommit }: { value: string; withTime: boolean; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (
     <input
       type={withTime ? 'datetime-local' : 'date'}
+      autoFocus={autoFocus}
       value={draft}
       readOnly={readOnly}
       onChange={(e) => setDraft(e.target.value)}
@@ -134,7 +139,7 @@ function DateValue({ value, withTime, readOnly, onCommit }: { value: string; wit
   );
 }
 
-function ListValue({ items, isTags, readOnly, onCommit }: { items: string[]; isTags: boolean; readOnly?: boolean; onCommit: (v: string[]) => void }) {
+function ListValue({ items, isTags, readOnly, autoFocus, onCommit }: { items: string[]; isTags: boolean; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string[]) => void }) {
   const [draft, setDraft] = useState('');
   const add = () => {
     const next = draft.split(',').map((s) => s.trim().replace(isTags ? /^#/ : /^$/, '')).filter(Boolean);
@@ -161,6 +166,7 @@ function ListValue({ items, isTags, readOnly, onCommit }: { items: string[]; isT
       {!readOnly && (
         <input
           type="text"
+          autoFocus={autoFocus}
           value={draft}
           placeholder={items.length ? '' : 'Empty'}
           onChange={(e) => setDraft(e.target.value)}
@@ -177,13 +183,13 @@ function ListValue({ items, isTags, readOnly, onCommit }: { items: string[]; isT
   );
 }
 
-function PropertyValueEditor({ prop, readOnly, onCommit }: { prop: FrontmatterProperty; readOnly?: boolean; onCommit: (v: PropertyValue) => void }) {
+function PropertyValueEditor({ prop, readOnly, autoFocus, onCommit }: { prop: FrontmatterProperty; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: PropertyValue) => void }) {
   if (!prop.editable) {
     return <div className={`${valueBox} whitespace-pre-wrap break-all opacity-60 ${fg}`} title="Edit this property in the note source">{prop.value as string}</div>;
   }
   const kind = kindOf(prop);
   if (kind === 'tags' || kind === 'list') {
-    return <ListValue items={prop.value as string[]} isTags={kind === 'tags'} readOnly={readOnly} onCommit={onCommit} />;
+    return <ListValue items={prop.value as string[]} isTags={kind === 'tags'} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
   }
   const value = prop.value as string;
   if (kind === 'checkbox') {
@@ -200,36 +206,49 @@ function PropertyValueEditor({ prop, readOnly, onCommit }: { prop: FrontmatterPr
     );
   }
   if (kind === 'date' || kind === 'datetime') {
-    return <DateValue value={value} withTime={kind === 'datetime'} readOnly={readOnly} onCommit={onCommit} />;
+    return <DateValue value={value} withTime={kind === 'datetime'} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
   }
-  return <TextValue value={value} readOnly={readOnly} onCommit={onCommit} />;
+  return <TextValue value={value} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
 }
 
-export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestions, compact = false }: PropertiesBlockProps) {
+export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestions, compact = false, addRequest, onAddEnd }: PropertiesBlockProps) {
   const grid = compact ? 'grid grid-cols-[6.5rem_1fr]' : 'grid grid-cols-[9rem_1fr]';
   const properties = useMemo(() => parseProperties(block), [block]);
   const [adding, setAdding] = useState(false);
   const [newKey, setNewKey] = useState('');
-  const [highlight, setHighlight] = useState(-1);
+  // The first suggestion starts highlighted, so Enter picks it.
+  const [highlight, setHighlight] = useState(0);
+  useEffect(() => { if (addRequest && !readOnly) setAdding(true); }, [addRequest, readOnly]);
+  // Naming a property moves straight on to its value.
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusKey && properties.some((p) => p.key === focusKey)) setFocusKey(null);
+  }, [focusKey, properties]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- snapshot once per Add property, not per keystroke
   const suggestions = useMemo(() => (adding && getSuggestions ? getSuggestions() : []), [adding]);
 
+  // Keys compare case-insensitively: `Tags` and `tags` are one property.
+  const usedKeys = useMemo(() => new Set(properties.map((p) => p.key.toLowerCase())), [properties]);
+  const hasKey = (key: string) => usedKeys.has(key.toLowerCase());
+
   const matches = useMemo(() => {
     const query = newKey.trim().toLowerCase();
-    return suggestions.filter((s) => !properties.some((p) => p.key === s.key) && s.key.toLowerCase().includes(query));
-  }, [newKey, properties, suggestions]);
+    return suggestions.filter((s) => !usedKeys.has(s.key.toLowerCase()) && s.key.toLowerCase().includes(query));
+  }, [newKey, usedKeys, suggestions]);
 
-  const closeAdding = () => { setAdding(false); setNewKey(''); setHighlight(-1); };
+  const closeAdding = () => { setAdding(false); setNewKey(''); setHighlight(0); onAddEnd?.(); };
 
   const addKey = (rawKey: string) => {
     const key = rawKey.trim().replace(/:$/, '');
     closeAdding();
-    if (!key || properties.some((p) => p.key === key)) return;
+    if (!key || hasKey(key)) return;
+    setFocusKey(key);
     onChange(setProperty(block, key, emptyValueFor(key, suggestions.find((s) => s.key === key))));
   };
 
   return (
-    <div className={`noa-properties font-redaction leading-normal text-[0.875em] ${compact ? 'px-1.5' : 'pt-1 pb-3'}`} style={style}>
+    // The 2rem bottom margin keeps the note body visibly apart from its properties.
+    <div className={`noa-properties font-redaction leading-normal text-[0.875em] ${compact ? 'px-1.5' : 'py-2 mb-8'}`} style={style}>
       {!compact && <div className={`font-semibold pb-1 ${fg}`}>Properties</div>}
       {properties.map((prop) => {
         const Icon = KIND_ICON[prop.editable ? kindOf(prop) : 'text'];
@@ -241,7 +260,7 @@ export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestio
             </div>
             <div className="flex items-start min-w-0">
               <div className="flex-1 min-w-0">
-                <PropertyValueEditor prop={prop} readOnly={readOnly} onCommit={(value) => onChange(setProperty(block, prop.key, value))} />
+                <PropertyValueEditor prop={prop} readOnly={readOnly} autoFocus={prop.key === focusKey} onCommit={(value) => onChange(setProperty(block, prop.key, value))} />
               </div>
               {!readOnly && (
                 <button
@@ -267,7 +286,7 @@ export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestio
                 type="text"
                 value={newKey}
                 placeholder="Property name"
-                onChange={(e) => { setNewKey(e.target.value); setHighlight(-1); }}
+                onChange={(e) => { setNewKey(e.target.value); setHighlight(0); }}
                 onBlur={() => addKey(newKey)}
                 onKeyDown={(e) => {
                   if (isComposing(e)) return;
@@ -277,7 +296,12 @@ export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestio
                     const step = e.key === 'ArrowDown' ? 1 : -1;
                     setHighlight((h) => (h + step + matches.length) % matches.length);
                   }
-                  if (e.key === 'Enter') addKey(highlight >= 0 && matches[highlight] ? matches[highlight].key : newKey);
+                  if (e.key === 'Enter') {
+                    // Enter takes the highlighted suggestion; Shift+Enter keeps the text as typed.
+                    // A name typed in full still wins over a longer suggestion that merely contains it.
+                    const exact = matches.find((m) => m.key.toLowerCase() === newKey.trim().toLowerCase());
+                    addKey(e.shiftKey ? newKey : exact?.key ?? matches[highlight]?.key ?? newKey);
+                  }
                   if (e.key === 'Escape') closeAdding();
                 }}
                 className={`${inputBase} !px-0 placeholder:opacity-30`}

@@ -31,7 +31,7 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
 // Warm dark palette: bg #2D2D2B, text #F9F9F7, accent #CC7D5E
 const darkTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#F9F9F7' },
-  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
+  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
@@ -70,7 +70,7 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
 
 const lightTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'transparent', color: '#2D2D2B' },
-  '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0' },
+  '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit' },
@@ -128,6 +128,8 @@ interface UseCodeMirrorOptions {
   readOnly?: boolean;
   /** Element under the inline title that the Properties UI is portalled into. */
   propertiesSlot?: HTMLElement;
+  /** Opens the Properties name input; returns false when the note can't take a property right now. */
+  onAddProperty?: (trigger: 'dashes' | 'shortcut') => boolean;
 }
 
 export function useCodeMirror({
@@ -141,6 +143,7 @@ export function useCodeMirror({
   maxWidth,
   readOnly = false,
   propertiesSlot,
+  onAddProperty,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -163,6 +166,8 @@ export function useCodeMirror({
   useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
   useEffect(() => { onMentionTriggerRef.current = onMentionTrigger; }, [onMentionTrigger]);
   useEffect(() => { onSlashTriggerRef.current = onSlashTrigger; }, [onSlashTrigger]);
+  const onAddPropertyRef = useRef(onAddProperty);
+  useEffect(() => { onAddPropertyRef.current = onAddProperty; }, [onAddProperty]);
 
   // Build CodeMirror instance — recreate only when note id or dark mode changes
   useEffect(() => {
@@ -230,6 +235,8 @@ export function useCodeMirror({
       { key: 'Mod-b', run: (view) => applyInlineFormat(view, '**', '**', 'bold text') },
       { key: 'Mod-i', run: (view) => applyInlineFormat(view, '*', '*', 'italic text') },
       { key: 'Mod-e', run: (view) => applyInlineFormat(view, '`', '`', 'code') },
+      // Add a property to the current note.
+      { key: 'Mod-;', run: () => onAddPropertyRef.current?.('shortcut') ?? false },
       {
         key: 'Mod-Shift-x',
         run: (view) => {
@@ -241,8 +248,20 @@ export function useCodeMirror({
       },
     ]);
 
+    // Typing --- as the note's first line opens Properties instead of leaving a
+    // horizontal rule.
+    const dashesToProperties = EditorView.inputHandler.of((view, from, to, text) => {
+      const { doc } = view.state;
+      if (text !== '-' || from !== 2 || to !== 2 || doc.sliceString(0, 2) !== '--') return false;
+      if (doc.length > 2 && doc.sliceString(2, 3) !== '\n') return false;
+      if (!onAddPropertyRef.current?.('dashes')) return false;
+      view.dispatch({ changes: { from: 0, to: 2 } });
+      return true;
+    });
+
     const extensions = [
       markdown(),
+      dashesToProperties,
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
       hideTaskMarkers,
       codeDecorations,
