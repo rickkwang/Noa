@@ -1723,9 +1723,21 @@ test('--- opens Properties in a vault note and writes plain frontmatter', async 
   await expect(page.locator('.cm-editor .noa-properties input[placeholder="Empty"]')).toBeFocused();
   await page.keyboard.type('draft');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() =>
-    (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile?.('New Note.md'),
-  )).toBe('---\nstatus: draft\n---\n');
+  try {
+    await expect.poll(() => page.evaluate(() =>
+      (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile?.('New Note.md'),
+    )).toBe('---\nstatus: draft\n---\n');
+  } catch (error) {
+    console.log('VAULT_FAILURE_STATE', JSON.stringify({
+      notes: await auditStoredNotes(page),
+      ui: await page.evaluate(() => ({
+        body: document.body.innerText,
+        focused: document.activeElement?.outerHTML,
+        inputs: [...document.querySelectorAll('input')].map(input => ({ value: input.value, placeholder: input.placeholder })),
+      })),
+    }));
+    throw error;
+  }
 });
 
 test('property name: Enter takes the highlighted suggestion, Shift+Enter the typed text', async ({ page }) => {

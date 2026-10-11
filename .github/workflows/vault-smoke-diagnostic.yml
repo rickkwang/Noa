@@ -1,0 +1,19 @@
+name: vault-smoke-diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/smoke.spec.ts --grep 'opens Properties in a vault note' --workers=1 --repeat-each=3
