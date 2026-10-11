@@ -182,7 +182,13 @@ async function installMockDirectoryPicker(
     class MockFileHandle {
       kind = 'file' as const;
       name: string;
-      content = '';
+      lastModified = Date.now();
+      private text = '';
+      get content() { return this.text; }
+      set content(value: string) {
+        this.text = value;
+        this.lastModified = Math.max(Date.now(), this.lastModified + 1);
+      }
       mimeType = '';
       binaryBase64: string | null = null;
 
@@ -199,7 +205,7 @@ async function installMockDirectoryPicker(
           ? Uint8Array.from(atob(this.binaryBase64), (char) => char.charCodeAt(0))
           : this.content;
         return new File([binary], this.name, {
-          lastModified: Date.now(),
+          lastModified: this.lastModified,
           type: this.mimeType,
         });
       }
@@ -1511,6 +1517,7 @@ test('sidebar context menu duplicates a note and copies its wiki link', async ({
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
   await page.getByTitle('New note').click();
+  await expect(page.locator('input:focus')).toHaveValue('New Note');
   await page.keyboard.press('Escape');
 
   const tree = page.getByTestId('sidebar-file-tree');
@@ -1700,6 +1707,7 @@ test('--- opens Properties in a vault note and writes plain frontmatter', async 
   await page.keyboard.press('Escape');
 
   await page.getByTitle('New note').click();
+  await expect(page.locator('input:focus')).toHaveValue('New Note');
   await page.keyboard.press('Escape');
   const editor = page.locator('.cm-content').last();
   await editor.click();
