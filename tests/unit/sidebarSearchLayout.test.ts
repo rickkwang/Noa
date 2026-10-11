@@ -66,7 +66,7 @@ describe('sidebar search result layout', () => {
 
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
-    expect(vaultSection).toContain('className="mx-1.5 pl-2 pr-2 pt-3 pb-2.5"');
+    expect(vaultSection).toContain('className={`mx-1.5 pl-2 pr-2 pb-3 ${');
     expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 2}px`");
   });
 

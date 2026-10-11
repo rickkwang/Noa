@@ -464,17 +464,6 @@ export default function Sidebar({
         >
           <FolderPlus size={16} />
         </button>
-        <button
-          onClick={() => {
-            setFoldersExpandedByDefault((value) => !value);
-            setFolderTreeResetKey((value) => value + 1);
-          }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
-          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
-          aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
-        >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
-        </button>
         {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
@@ -496,6 +485,17 @@ export default function Sidebar({
           aria-label="Open random note"
         >
           <Dices size={14.5} />
+        </button>
+        <button
+          onClick={() => {
+            setFoldersExpandedByDefault((value) => !value);
+            setFolderTreeResetKey((value) => value + 1);
+          }}
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
+          aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
+        >
+          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
@@ -732,7 +732,8 @@ export default function Sidebar({
                 {/* Connected vault section — ownership is origin, not import provenance. */}
                 {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
-                    <div className="mx-1.5 pl-2 pr-2 pt-3 pb-2.5">
+                    {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
+                    <div className={`mx-1.5 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction">Obsidian Vault</span>
                     </div>
                     <div

@@ -103,7 +103,7 @@ export function VaultFooter({
 
   return (
     <div
-      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t pl-1.5 pr-1 py-1"
+      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t pl-1.5 pr-1 pt-1.5 pb-2"
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       {isOpen && (
