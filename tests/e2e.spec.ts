@@ -871,11 +871,11 @@ test('promoting the preview opens the dock gap without sweeping the veil or walk
 });
 
 test('Escape closes the sidebar preview and returns focus to its toggle', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('app-sidebar-open', 'false'));
   await page.goto('/');
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
-  await toggle.click();
-  await page.mouse.move(700, 400);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.hover();
   await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
 
@@ -888,6 +888,7 @@ test('Escape closes the sidebar preview and returns focus to its toggle', async 
 });
 
 test('the sidebar preview closes even when its exit transition never fires', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('app-sidebar-open', 'false'));
   await page.goto('/');
   // Exit must not depend on transitionend, which CSS may never dispatch (e.g. hover then Escape
   // in one flush). Removing the transition reproduces that state; without a fallback the
@@ -895,8 +896,7 @@ test('the sidebar preview closes even when its exit transition never fires', asy
   await page.addStyleTag({ content: '.noa-sidebar-preview-motion { transition: none !important; }' });
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
-  await toggle.click();
-  await page.mouse.move(700, 400);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.hover();
   await expect(page.locator('[data-sidebar-preview="true"]')).toBeVisible();
 

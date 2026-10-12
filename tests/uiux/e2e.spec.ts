@@ -92,7 +92,10 @@ test(`simultaneous notices do not overlap (${theme}, ${width}px)`, async ({ page
   await page.evaluate(() => {
     const put = IDBObjectStore.prototype.put;
     IDBObjectStore.prototype.put = function (...args) {
-      if (this.name === 'notes') throw new DOMException('Test quota exhausted', 'QuotaExceededError');
+      if (this.name === 'notes') {
+        IDBObjectStore.prototype.put = put;
+        throw new DOMException('Test quota exhausted', 'QuotaExceededError');
+      }
       return put.apply(this, args);
     };
   });
