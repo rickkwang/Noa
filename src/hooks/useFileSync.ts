@@ -41,8 +41,6 @@ interface UseFileSyncOptions {
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
-  activeNoteId: string;
-  ensureInitialNote: () => void;
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[], mode?: 'workspace' | 'vault') => Promise<void>;
   onVaultNotesSynced: (expectations: VaultSyncedNoteExpectation[]) => void;
   onVaultNoteBaselineAdvanced: (id: string, baselineText: string) => void | Promise<void>;
@@ -179,8 +177,6 @@ export function useFileSync({
   notes,
   folders,
   workspaceName,
-  activeNoteId,
-  ensureInitialNote,
   onImportData,
   onVaultNotesSynced,
   onVaultNoteBaselineAdvanced,
@@ -663,9 +659,6 @@ export function useFileSync({
     void restorePersistedFsHandle().then(async (handle) => {
       if (!bootstrapToken.current) return;
       if (!handle) {
-        if (!activeNoteId) {
-          ensureInitialNote();
-        }
         setSyncStatus('idle');
         setNeedsReauth(false);
         setAutoRetryExhausted(false);
@@ -688,8 +681,6 @@ export function useFileSync({
       if (generation === retryGeneration.current && !disconnectingRef.current) recordFailure(error);
     });
   }, [
-    activeNoteId,
-    ensureInitialNote,
     isLoaded,
     recordFailure,
     recordSuccess,

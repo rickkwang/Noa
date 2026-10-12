@@ -27,7 +27,7 @@ import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
-import { VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
+import { hasVaultRows, VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -156,8 +156,6 @@ export default function App() {
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
-
-  const ensureInitialNote = useCallback(() => handleOpenDailyNote(), [handleOpenDailyNote]);
   const {
     fsHandle,
     syncStatus,
@@ -197,8 +195,6 @@ export default function App() {
     notes,
     folders,
     workspaceName,
-    activeNoteId,
-    ensureInitialNote,
     onImportData: handleImportData,
     onVaultNotesSynced: markVaultNotesSynced,
     onVaultNoteBaselineAdvanced: advanceVaultNoteBaseline,
@@ -207,9 +203,7 @@ export default function App() {
   // One workspace at a time: a connected vault is the whole workspace and Noa's
   // own notes stay stored but hidden; with no vault, Noa's notes are shown.
   // Cached vault rows count too, so the view is right before the handle restores.
-  const vaultConnected = Boolean(fsHandle)
-    || notes.some((note) => note.origin === 'vault')
-    || folders.some((folder) => folder.origin === 'vault');
+  const vaultConnected = Boolean(fsHandle) || hasVaultRows(notes, folders);
   vaultWorkspaceRef.current = vaultConnected;
   const workspaceNotes = useMemo(
     () => (vaultConnected ? notes.filter((note) => note.origin === 'vault') : notes),
@@ -710,13 +704,14 @@ export default function App() {
   const activeNote = useMemo(() => activeNoteId ? workspaceNotes.find(n => n.id === activeNoteId) : undefined, [activeNoteId, workspaceNotes]);
 
   // Orphan activeNoteId (deleted in another window): clear selection and toast, or edits drop silently.
+  // Look in every note, not the workspace: a Noa note hidden behind a vault is not lost, and the effect above clears it quietly.
   useEffect(() => {
     if (!isLoaded) return;
-    if (activeNoteId && !activeNote) {
+    if (activeNoteId && !notes.some((note) => note.id === activeNoteId)) {
       setSaveError('The active note was removed. Recent input was not saved.');
       setActiveNoteId('');
     }
-  }, [isLoaded, activeNoteId, activeNote, setActiveNoteId, setSaveError]);
+  }, [isLoaded, activeNoteId, notes, setActiveNoteId, setSaveError]);
   const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
 
   // Read notes via ref so these callbacks stay referentially stable across

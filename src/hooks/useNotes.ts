@@ -13,12 +13,12 @@ import { sortNotesByRecent } from '../lib/noteSort';
 import { extractLinks, extractTags, nextAvailableTitle, recomputeLinkRefsForNotes, recomputeLinkRefsForSubset } from '../lib/noteUtils';
 import { isDescendantPath } from '../lib/pathUtils';
 import { addRecentNoteId, loadRecentNoteIds, saveRecentNoteIds } from '../lib/recentNotes';
-import { lsGet, lsSet } from '../lib/safeLocalStorage';
+import { lsGet, lsGetJson, lsSet } from '../lib/safeLocalStorage';
 import { storage } from '../lib/storage';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { matchesVaultSyncedExpectation } from '../lib/vaultImportReconciliation';
-import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
+import { pickInitialActiveNoteId, VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import {
   AppSettings,
   Attachment,
@@ -33,6 +33,12 @@ import { useNoteImport, type LoadErrorState } from './useNoteImport';
 
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
+
+/** useTabs persists the strip; null when it never has (or the value is unreadable). */
+function readSavedOpenTabIds(): string[] | null {
+  const ids = lsGetJson<unknown>(STORAGE_KEYS.OPEN_TABS);
+  return Array.isArray(ids) && ids.every((id) => typeof id === 'string') ? ids : null;
+}
 
 function markVaultDirty(note: Note, previous: Note): Note {
   if (note.origin !== 'vault') return note;
@@ -343,11 +349,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
           if (rescued.length > 0) clearRescuedNotes();
           const sorted = sortNotesByRecent(withRefs);
           setNotes(sorted);
-          const lastActiveId = lsGet(LAST_ACTIVE_NOTE_KEY);
-          const initialActiveId = lastActiveId && sorted.some((n) => n.id === lastActiveId)
-            ? lastActiveId
-            : sorted[0].id;
-          setActiveNoteId(initialActiveId);
+          setActiveNoteId(pickInitialActiveNoteId(sorted, loadedFolders, lsGet(LAST_ACTIVE_NOTE_KEY), readSavedOpenTabIds()));
         } else if (savedFolders !== null) {
           setNotes([]);
           setActiveNoteId('');
