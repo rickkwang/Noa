@@ -37,6 +37,17 @@ if [ "$targets_main" = "0" ]; then
   exit 0
 fi
 
+if [ "$(node -p 'process.versions.node.split(".")[0]')" != "22" ] && command -v brew >/dev/null 2>&1; then
+  node22_prefix=$(brew --prefix node@22)
+  PATH="$node22_prefix/bin:$PATH"
+  export PATH
+fi
+if [ "$(node -p 'process.versions.node.split(".")[0]')" != "22" ]; then
+  echo "pre-push: Node 22 is required to match CI. Activate Node 22 and retry." >&2
+  exit 1
+fi
+echo "pre-push: using Node $(node --version)"
+
 run() {
   echo "pre-push: $*"
   if ! "$@"; then
@@ -51,8 +62,8 @@ run() {
 # skipping e2e, because e2e is where the drift this hook exists for actually
 # happened. A gate that cannot run is a gate that gets bypassed every time.
 smoke_config=""
-if ! node -e 'const {chromium}=require("@playwright/test");const fs=require("node:fs");process.exit(fs.existsSync(chromium.executablePath())?0:1)' 2>/dev/null; then
-  echo "pre-push: bundled Chromium is missing — running e2e against installed Chrome"
+if ! node -e 'const {chromium}=require("@playwright/test");chromium.launch().then(browser=>browser.close()).catch(()=>process.exit(1))' 2>/dev/null; then
+  echo "pre-push: bundled Chromium cannot start — running e2e against installed Chrome"
   smoke_config="--config=playwright.chrome.config.ts"
 fi
 
@@ -60,6 +71,6 @@ run npm run lint
 run npm run test:unit
 run npm run check:structure
 run npm run build:budget
-run npx playwright test $smoke_config
+run env CI=1 npx playwright test $smoke_config --workers=1
 
 echo "pre-push: all checks passed"

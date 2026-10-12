@@ -4,6 +4,10 @@ Thanks for helping improve Noa.
 
 ## Development setup
 
+Use Node 22, matching CI (`nvm use` reads `.nvmrc`). With Homebrew, install
+`node@22` and use `export PATH="$(brew --prefix node@22)/bin:$PATH"` in the
+terminal where you work on Noa.
+
 1. Install dependencies with `npm install`.
 2. Start the app with `npm run dev` (Vite on :3000).
 3. Use `npm run lint` to type-check and lint before committing.
@@ -24,6 +28,11 @@ pre-push hook runs the same checks CI runs:
 ```
 lint → test:unit → check:structure → build:budget → playwright
 ```
+
+The hook uses Node 22 (selecting Homebrew's `node@22` when needed) and runs
+Playwright in CI mode with one worker, matching the macOS release runner.
+It verifies that bundled Chromium can start before using the existing Chrome
+fallback.
 
 A push that fails the hook does not leave the machine. Fix the failure and
 push again; `NOA_SKIP_PREPUSH=1 git push` bypasses the hook for emergencies.
