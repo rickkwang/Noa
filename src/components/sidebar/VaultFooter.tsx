@@ -209,14 +209,16 @@ export function VaultFooter({
       <button
         data-vault-btn
         onClick={() => setIsOpen(v => !v)}
-        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-1.5 pr-3.5 py-1 text-[11px] font-redaction text-[#2D2D2B]/60 hover:text-[#2D2D2B] transition-colors cursor-pointer"
+        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-[7px] pr-3.5 py-1 text-[11px] font-redaction text-[#2D2D2B]/60 hover:text-[#2D2D2B] transition-colors cursor-pointer"
         title={vaultName ? `${label} · vault: ${vaultName} (${syncError || status})` : `${label} · no vault connected`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
-        {/* size/margin match the Calendar + Tags headers above, so all
-            three icons land on the same 12px rail. */}
-        <ChevronsUpDown size={11} className="mr-1.5 shrink-0" />
+        {/* A 14px slot on the folder-row icon rail; the label starts where
+            folder names do. The glyph stays small inside it. */}
+        <span className="mr-2 flex w-3.5 shrink-0 justify-center" aria-hidden>
+          <ChevronsUpDown size={11} />
+        </span>
         <span className="truncate">{label}</span>
         {/* Inline vertical-align:middle centres on the x-height; a flex child would centre on the line box and read ~1.5px high. */}
         {vaultName && (
