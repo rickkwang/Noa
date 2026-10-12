@@ -32,7 +32,19 @@ import { VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
-const EmptyState = lazy(() => import('./components/emptyState/EmptyState'));
+// lazy() suspends on its first render even when the chunk is cached, and React
+// then holds the fallback ~300ms before revealing. Once warmed (idle effect
+// below), hand it a thenable that resolves synchronously so the scene is
+// simply there when the last tab closes.
+type EmptyStateModule = typeof import('./components/emptyState/EmptyState');
+let emptyStateModule: EmptyStateModule | undefined;
+const loadEmptyState = () => import('./components/emptyState/EmptyState').then((mod) => (emptyStateModule = mod));
+const EmptyState = lazy(() => {
+  const ready = emptyStateModule;
+  return ready
+    ? ({ then: (resolve: (mod: EmptyStateModule) => void) => resolve(ready) } as unknown as Promise<EmptyStateModule>)
+    : loadEmptyState();
+});
 const CommandPaletteDialog = lazy(() => import('./components/CommandPaletteDialog'));
 const NavigationConflictDialog = lazy(() => import('./components/NavigationConflictDialog'));
 const TemplatePickerDialog = lazy(() => import('./components/TemplatePickerDialog'));
@@ -643,13 +655,15 @@ export default function App() {
   // Warm the lazy settings chunk while idle so the first open doesn't spend a
   // beat fetching it before anything renders (its Suspense fallback is null).
   // The right panel rides along, so the idle mount below (when it was
-  // restored closed) finds its chunk already fetched.
+  // restored closed) finds its chunk already fetched. The empty-state scene
+  // too (see loadEmptyState).
   useEffect(() => {
     if (typeof window.requestIdleCallback !== 'function') return;
     const id = window.requestIdleCallback(
       () => {
         void import('./components/settings/SettingsModal');
         void import('./components/RightPanel');
+        void loadEmptyState();
       },
       { timeout: 5000 }
     );
