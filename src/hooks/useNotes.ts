@@ -611,6 +611,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       source: 'noa',
       ...(inVault ? { origin: 'vault' as const, vaultDirty: true } : {}),
     };
+    if (inVault) newNote.vaultBaseText = serializeNoteForVault(newNote);
     setNotes(prev => {
       const next = syncLinkRefs([...prev, newNote], prev);
       const created = next.find((n) => n.id === newNote.id) ?? newNote;

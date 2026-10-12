@@ -175,7 +175,7 @@ async function installMockDirectoryPicker(
 ) {
   await page.addInitScript(async () => {
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const syncMode = { failReads: false, failWrites: false, failWriteNames: [] as string[] };
+    const syncMode = { failReads: false, failWrites: false, failWriteNames: [] as string[], nextWriteDelayMs: 0 };
     (window as typeof window & { __syncMode?: typeof syncMode }).__syncMode = syncMode;
     (window as typeof window & { __pickerInvoked?: boolean }).__pickerInvoked = false;
 
@@ -211,7 +211,9 @@ async function installMockDirectoryPicker(
       }
 
       async createWritable() {
-        await delay(40);
+        const nextWriteDelayMs = syncMode.nextWriteDelayMs;
+        syncMode.nextWriteDelayMs = 0;
+        await delay(40 + nextWriteDelayMs);
         if (syncMode.failWrites || syncMode.failWriteNames.includes(this.name)) {
           throw new DOMException('blocked', 'NotAllowedError');
         }
@@ -1707,6 +1709,9 @@ test('--- opens Properties in a vault note and writes plain frontmatter', async 
   await expectVaultSyncStatus(page, 'ready');
   await page.keyboard.press('Escape');
 
+  await page.evaluate(() => {
+    (window as unknown as { __syncMode: { nextWriteDelayMs: number } }).__syncMode.nextWriteDelayMs = 2500;
+  });
   await page.getByTitle('New note').click();
   await expect(page.locator('input:focus')).toHaveValue('New Note');
   await page.keyboard.press('Escape');
@@ -1723,21 +1728,9 @@ test('--- opens Properties in a vault note and writes plain frontmatter', async 
   await expect(page.locator('.cm-editor .noa-properties input[placeholder="Empty"]')).toBeFocused();
   await page.keyboard.type('draft');
   await page.keyboard.press('Enter');
-  try {
-    await expect.poll(() => page.evaluate(() =>
-      (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile?.('New Note.md'),
-    )).toBe('---\nstatus: draft\n---\n');
-  } catch (error) {
-    console.log('VAULT_FAILURE_STATE', JSON.stringify({
-      notes: await auditStoredNotes(page),
-      ui: await page.evaluate(() => ({
-        body: document.body.innerText,
-        focused: document.activeElement?.outerHTML,
-        inputs: [...document.querySelectorAll('input')].map(input => ({ value: input.value, placeholder: input.placeholder })),
-      })),
-    }));
-    throw error;
-  }
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile?.('New Note.md'),
+  )).toBe('---\nstatus: draft\n---\n');
 });
 
 test('property name: Enter takes the highlighted suggestion, Shift+Enter the typed text', async ({ page }) => {
