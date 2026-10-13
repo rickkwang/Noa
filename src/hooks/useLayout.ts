@@ -85,13 +85,10 @@ export function useLayout() {
   // The phone drawer has room for one card, so its tab strip replaces rather
   // than toggles.
   const showOnlyPane = useCallback((id: RightTab) => setOpenPanes([id]), []);
-  const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>(() => {
-    const saved = lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE);
-    const valid = ['edit', 'preview', 'split'] as const;
-    return saved !== null && (valid as readonly string[]).includes(saved)
-      ? (saved as 'edit' | 'preview' | 'split')
-      : 'split';
-  });
+  // Split was removed; a saved 'split' (or anything unrecognised) opens the editable view.
+  const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview'>(() =>
+    lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE) === 'preview' ? 'preview' : 'edit'
+  );
 
   // Each panel floors the shared responsive maximum at its own default, or it opens narrower than declared and jumps on first resize.
   const clampSidebarWidth = useCallback(

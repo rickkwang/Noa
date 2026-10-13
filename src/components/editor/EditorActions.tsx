@@ -1,12 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Eye, Edit2, Columns, Upload } from '@/src/lib/icons';
+import { Eye, Edit2, Upload } from '@/src/lib/icons';
 
 interface EditorActionsProps {
   isDark: boolean;
-  viewMode: 'edit' | 'preview' | 'split';
-  setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
-  /** False on phone widths, where two panes cannot both be readable. */
-  allowSplit?: boolean;
+  viewMode: 'edit' | 'preview';
+  setViewMode: (mode: 'edit' | 'preview') => void;
   onExportMd: () => void;
   onExportHtml: () => void;
   onExportPdf: () => void;
@@ -23,7 +21,6 @@ export function EditorActions({
   isDark,
   viewMode,
   setViewMode,
-  allowSplit = true,
   onExportMd,
   onExportHtml,
   onExportPdf,
@@ -49,11 +46,10 @@ export function EditorActions({
     };
   }, [menuOpen]);
 
-  const nextViewMode = viewMode === 'edit' ? (allowSplit ? 'split' : 'preview') : viewMode === 'split' ? 'preview' : 'edit';
-  const nextViewModeLabel = nextViewMode === 'edit' ? 'edit' : nextViewMode === 'split' ? 'split' : 'preview';
+  const nextViewMode = viewMode === 'edit' ? 'preview' : 'edit';
   // Show the destination rather than the already-active mode: a lone icon then
-  // visibly changes on every click, making the three-step cycle legible.
-  const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;
+  // visibly changes on every click.
+  const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : Eye;
 
   // Same row as the titlebar's panel menu (PaneMenu): every popup menu in the
   // app shares one shape — 10px panel, 4px inset, 28px rounded rows.
@@ -68,8 +64,8 @@ export function EditorActions({
         className={`p-1 rounded-md active:opacity-70 transition-colors cursor-pointer ${
           isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
         }`}
-        title={`Switch to ${nextViewModeLabel} view`}
-        aria-label={`Switch to ${nextViewModeLabel} view`}
+        title={`Switch to ${nextViewMode} view`}
+        aria-label={`Switch to ${nextViewMode} view`}
         aria-description={`Current view: ${viewMode}`}
       >
         <NextViewModeIcon size={14} />

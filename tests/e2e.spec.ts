@@ -209,7 +209,8 @@ test('new note flow creates and persists a note', async ({ page }) => {
 
 test('search returns a note by title and content', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+  // The default view is Live Preview, where the title is the editor's inline title rather than a heading.
+  await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toBeVisible();
   await page.getByTitle('Search notes').click();
   await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
   await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
@@ -251,13 +252,13 @@ test('search result cards keep visible scroll chrome without changing horizontal
 test('clicking a search result opens that note', async ({ page }) => {
   const marker = `e2e-search-nav-${Date.now()}`;
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+  await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toBeVisible();
 
   // Leave the Welcome note so navigating back to it is observable.
   await page.getByTitle('New note').click();
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`# ${marker}`);
-  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toHaveCount(0);
+  await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toHaveCount(0);
 
   await page.getByTitle('Search notes').click();
   await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
@@ -267,7 +268,7 @@ test('clicking a search result opens that note', async ({ page }) => {
   const resultRow = page.getByTestId('search-result').first();
   await expect(resultRow).toBeVisible();
   await resultRow.click();
-  await expect(page.getByRole('heading', { name: 'Welcome to Noa' })).toBeVisible();
+  await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toBeVisible();
 });
 
 test('search survives focus leaving the search field', async ({ page }) => {
@@ -1192,10 +1193,20 @@ test('Cmd+F exits focus mode and focuses the mounted search input', async ({ pag
 test('cyclic view control exposes the current editor mode', async ({ page }) => {
   await page.goto('/');
 
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: split');
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
   await modeButton.click();
   await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
+});
+
+test('Cmd+E toggles between Live Preview and reading view', async ({ page }) => {
+  await page.goto('/');
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
+  await page.keyboard.press('ControlOrMeta+e');
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
+  await page.keyboard.press('ControlOrMeta+e');
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
 });
 
 test('the title bar draws no baseline, with or without a note open', async ({ page }) => {
@@ -1295,60 +1306,6 @@ test('a second tab opened mid-entrance does not cut the first tab\'s animation',
   await expect(page.locator('[data-tab-id]')).toHaveCount(3);
 });
 
-test('split preview aligns its scrollbar with the standalone preview edge', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();
-
-  const gap = await page.evaluate(() => {
-    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
-    const splitPane = preview.parentElement!;
-    return splitPane.getBoundingClientRect().right - preview.getBoundingClientRect().right;
-  });
-
-  expect(gap).toBe(0);
-});
-
-test('split panes share the same top fade while standalone edit remains unmasked', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.noa-split-editor-mask .cm-editor').waitFor();
-  await page.locator('.noa-selectable.flex-1.overflow-y-auto').waitFor();
-
-  const readMasks = () => page.evaluate(() => {
-    const edit = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-editor')!;
-    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
-    return {
-      edit: getComputedStyle(edit).maskImage,
-      preview: getComputedStyle(preview).maskImage,
-    };
-  });
-
-  // At rest the mask is solid in both panes.
-  const restMasks = await readMasks();
-  expect(restMasks.edit).toBe(restMasks.preview);
-  expect(restMasks.edit).not.toContain('48px');
-
-  // Once content scrolls under the strip, both panes get the same 48px fade (poll past the 180ms transition).
-  await page.evaluate(() => {
-    const scroller = document.querySelector<HTMLElement>('.noa-split-editor-mask .cm-scroller')!;
-    scroller.scrollTop = 100;
-    const preview = document.querySelector<HTMLElement>('.noa-selectable.flex-1.overflow-y-auto')!;
-    preview.scrollTop = 100;
-  });
-  await expect.poll(async () => (await readMasks()).edit).toContain('48px');
-  const scrolledMasks = await readMasks();
-  expect(scrolledMasks.edit).toBe(scrolledMasks.preview);
-  // A solid right-edge mask layer keeps the scrollbar thumb out of the fade.
-  for (const mask of Object.values(scrolledMasks)) {
-    expect(mask.match(/linear-gradient/g)).toHaveLength(2);
-  }
-
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
-  await modeButton.click();
-  await modeButton.click();
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
-  expect(await page.locator('.cm-editor').evaluate((element) => getComputedStyle(element).maskImage)).toBe('none');
-});
-
 test('scrollbar thumbs keep a balanced inset on every edge', async ({ page }) => {
   await page.goto('/');
 
@@ -1415,6 +1372,7 @@ test('app chrome prevents accidental text selection while content remains select
   expect(await userSelect(editorContent)).toBe('text');
   await editorContent.evaluate((element) => element.setAttribute('contenteditable', 'false'));
   expect(await userSelect(editorContent)).toBe('text');
+  await page.getByRole('button', { name: 'Switch to preview view' }).click();
   expect(await userSelect(page.locator('.noa-selectable').first())).toBe('text');
 
   await page.getByTitle('Settings').click();
@@ -1710,7 +1668,9 @@ test('appearance settings persist after a full reload', async ({ page }) => {
   await expect(fontOptions).toHaveCount(3);
   await expect(fontOptions.filter({ hasText: 'Georgia' })).toHaveCount(1);
 
+  // The list filters on Enter, so typing alone doesn't reshuffle rows under the cursor.
   await page.getByRole('combobox', { name: 'Search fonts' }).fill('georg');
+  await page.keyboard.press('Enter');
   await expect(fontOptions).toHaveCount(1);
   await fontOptions.first().click();
 
@@ -2019,19 +1979,21 @@ test('settings keeps primary controls inside the dialog at narrower widths', asy
   expect(themeSelectBox.x + themeSelectBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
 });
 
-test('split preview remounts with the current note after every sidebar switch', async ({ page }) => {
+test('preview remounts with the current note after every sidebar switch', async ({ page }) => {
   // Regression: the preview once stayed blank after a switch when React's deferred value
   // never committed. It must reappear showing the switched-to note.
   await page.goto('/');
   // Dismiss the storage notice that overlays content.
   await page.getByRole('button', { name: 'Got it' }).click();
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
   const preview = page.locator('.prose').last();
-  await expect(preview).toBeVisible();
 
   const marker = `switch-${Date.now()}`;
   await page.getByTitle('New note').click();
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(marker);
+  await modeButton.click();
+  await expect(preview).toBeVisible();
   await expect(preview).toContainText(marker);
 
   // Switch via the tab strip (same transition the sidebar drives).

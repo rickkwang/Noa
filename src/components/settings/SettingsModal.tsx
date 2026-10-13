@@ -20,8 +20,8 @@ interface SettingsModalProps {
   initialTab?: SettingsTab;
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
-  editorViewMode: 'edit' | 'preview' | 'split';
-  setEditorViewMode: (mode: 'edit' | 'preview' | 'split') => void;
+  editorViewMode: 'edit' | 'preview';
+  setEditorViewMode: (mode: 'edit' | 'preview') => void;
   notes: Note[];
   folders: Folder[];
   workspaceName: string;

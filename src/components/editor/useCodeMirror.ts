@@ -1,5 +1,5 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
 import { EditorView, keymap, ViewUpdate, placeholder as cmPlaceholder } from '@codemirror/view';
@@ -11,6 +11,7 @@ import { buildMinimalReplaceChange } from './contentSync';
 import { hiddenFrontmatter } from './hiddenFrontmatter';
 import { hideTaskMarkers } from './hideTaskMarkers';
 import { inlineTitle, setInlineTitle } from './inlineTitle';
+import { followLinkOnClick, livePreview, type OpenableLink } from './livePreview';
 
 // Marks external content syncs so they stay out of the user's undo history.
 const remoteSyncAnnotation = Annotation.define<boolean>();
@@ -42,6 +43,12 @@ const darkTheme = EditorView.theme({
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
   '.cm-inline-code': { background: 'rgba(204,125,94,0.07)', borderRadius: '4px', padding: '0.05em 0.3em' },
+  '.cm-lp-quote': { borderLeft: '3px solid rgba(249,249,247,0.2)', paddingLeft: '0.9em' },
+  '.cm-lp-wikilink': { color: '#CC7D5E', textDecoration: 'underline' },
+  '.cm-lp-bullet': { display: 'inline-block', width: '1.4em', textAlign: 'center', color: 'rgba(249,249,247,0.6)' },
+  '.cm-lp-hr': { display: 'block', borderTop: '1px solid rgba(249,249,247,0.14)', margin: '0.9em 0' },
+  '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid rgba(249,249,247,0.45)', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
+  '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
   '.cm-cursor': { borderLeftColor: '#F9F9F7' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.38)' },
@@ -79,6 +86,12 @@ const lightTheme = EditorView.theme({
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
   '.cm-inline-code': { background: 'rgba(204,125,94,0.14)', borderRadius: '4px', padding: '0.05em 0.3em' },
+  '.cm-lp-quote': { borderLeft: '3px solid #2D2D2B33', paddingLeft: '0.9em' },
+  '.cm-lp-wikilink': { color: '#CC7D5E', textDecoration: 'underline' },
+  '.cm-lp-bullet': { display: 'inline-block', width: '1.4em', textAlign: 'center', color: '#2D2D2B99' },
+  '.cm-lp-hr': { display: 'block', borderTop: '1px solid #2D2D2B24', margin: '0.9em 0' },
+  '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid #2D2D2B73', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
+  '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
   '.cm-cursor': { borderLeftColor: '#2D2D2B' },
   '.cm-selectionBackground': { backgroundColor: '#CC7D5E40' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: '#CC7D5E60' },
@@ -130,6 +143,8 @@ interface UseCodeMirrorOptions {
   propertiesSlot?: HTMLElement;
   /** Opens the Properties name input; returns false when the note can't take a property right now. */
   onAddProperty?: (trigger: 'dashes' | 'shortcut') => boolean;
+  /** Cmd/Ctrl+click target in Live Preview; the editor never navigates by itself. */
+  onOpenLink?: (link: OpenableLink) => void;
 }
 
 export function useCodeMirror({
@@ -144,6 +159,7 @@ export function useCodeMirror({
   readOnly = false,
   propertiesSlot,
   onAddProperty,
+  onOpenLink,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -168,6 +184,8 @@ export function useCodeMirror({
   useEffect(() => { onSlashTriggerRef.current = onSlashTrigger; }, [onSlashTrigger]);
   const onAddPropertyRef = useRef(onAddProperty);
   useEffect(() => { onAddPropertyRef.current = onAddProperty; }, [onAddProperty]);
+  const onOpenLinkRef = useRef(onOpenLink);
+  useEffect(() => { onOpenLinkRef.current = onOpenLink; }, [onOpenLink]);
 
   // Build CodeMirror instance — recreate only when note id or dark mode changes
   useEffect(() => {
@@ -232,9 +250,10 @@ export function useCodeMirror({
           return true;
         },
       },
+      // Mod-E toggles the view in the window handler; swallowing it here keeps CodeMirror's Ctrl-E line-end from firing on Windows/Linux.
+      { key: 'Mod-e', run: () => true },
       { key: 'Mod-b', run: (view) => applyInlineFormat(view, '**', '**', 'bold text') },
       { key: 'Mod-i', run: (view) => applyInlineFormat(view, '*', '*', 'italic text') },
-      { key: 'Mod-e', run: (view) => applyInlineFormat(view, '`', '`', 'code') },
       // Add a property to the current note.
       { key: 'Mod-;', run: () => onAddPropertyRef.current?.('shortcut') ?? false },
       {
@@ -260,11 +279,14 @@ export function useCodeMirror({
     });
 
     const extensions = [
-      markdown(),
+      // GFM base: task items and ~~strike~~ must parse as markup, as they do in the Reading view (remark-gfm).
+      markdown({ base: markdownLanguage }),
       dashesToProperties,
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
       hideTaskMarkers,
       codeDecorations,
+      livePreview,
+      followLinkOnClick(() => onOpenLinkRef.current),
       updateListener,
       insertMentionKeymap,
       history(),

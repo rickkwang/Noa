@@ -20,7 +20,6 @@ import {
   Circle as PhCircle,
   Clock as PhClock,
   Code as PhCode,
-  Columns as PhColumns,
   Copy as PhCopy,
   Database as PhDatabase,
   DiceFive,
@@ -117,7 +116,6 @@ export const ChevronUp = icon(CaretUp);
 export const Circle = icon(PhCircle);
 export const Clock = icon(PhClock);
 export const Code = icon(PhCode);
-export const Columns = icon(PhColumns);
 export const Copy = icon(PhCopy);
 export const Database = icon(PhDatabase);
 export const Dices = icon(DiceFive);

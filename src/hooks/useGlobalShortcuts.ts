@@ -13,6 +13,7 @@ interface UseGlobalShortcutsOptions {
   onToggleFocusMode?: () => void;
   isFocusMode?: boolean;
   onExitFocusMode?: () => void;
+  onToggleViewMode?: () => void;
 }
 
 export function useGlobalShortcuts({
@@ -28,6 +29,7 @@ export function useGlobalShortcuts({
   onToggleFocusMode,
   isFocusMode,
   onExitFocusMode,
+  onToggleViewMode,
 }: UseGlobalShortcutsOptions): void {
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
@@ -79,6 +81,13 @@ export function useGlobalShortcuts({
         onFocusSearch();
       }
 
+      // macOS only Cmd: Ctrl+E is line-end in CodeMirror's default keymap there.
+      const viewToggleMod = /Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
+      if (viewToggleMod && !e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        onToggleViewMode?.();
+      }
+
       if (e.key === 'Escape') {
         if (isFocusMode) {
           onExitFocusMode?.();
@@ -93,5 +102,5 @@ export function useGlobalShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, isFocusMode, searchInputRef]);
+  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, onToggleViewMode, isFocusMode, searchInputRef]);
 }

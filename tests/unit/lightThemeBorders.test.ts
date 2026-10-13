@@ -123,7 +123,7 @@ describe('light theme border tokens', () => {
     expect(previewPane).not.toContain("var(--border-strong, #AAA397)");
     // The fade ramp scales off --noa-fade-top (written by lib/edgeFade), so it has no height until the note scrolls.
     expect(previewPane).toContain('noa-top-scroll-fade');
-    expect(indexCss).toContain('.noa-top-scroll-fade,');
+    expect(indexCss).toContain('.noa-top-scroll-fade {');
     expect(indexCss).toContain('calc(var(--noa-fade-top, 0) *');
     expect(rightPanel).not.toContain("border-[#2D2D2B]/90 bg-[#F9F9F7]");
     expect(rightPanel).not.toContain("border-[#2D2D2B]}`");
@@ -202,15 +202,13 @@ describe('light theme border tokens', () => {
     expect(editorHeader).toContain("const noDragRegion: React.CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };");
     expect(editorHeader).toContain('style={noDragRegion}');
 
-    // Phone widths drop split from the cycle (allowSplit={false}).
-    expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? (allowSplit ? 'split' : 'preview') : viewMode === 'split' ? 'preview' : 'edit';");
+    expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? 'preview' : 'edit';");
     expect(editorActions).toContain('onClick={() => setViewMode(nextViewMode)}');
-    expect(editorActions).toContain('aria-label={`Switch to ${nextViewModeLabel} view`}');
-    expect(editorActions).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : nextViewMode === 'split' ? Columns : Eye;");
+    expect(editorActions).toContain('aria-label={`Switch to ${nextViewMode} view`}');
+    expect(editorActions).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : Eye;");
     expect(editorActions).toContain('<NextViewModeIcon size={14} />');
     expect(editorActions).not.toContain('<ViewModeIcon size={14} />');
     expect(editorActions).not.toContain('aria-label="Edit only"');
-    expect(editorActions).not.toContain('aria-label="Split view"');
     expect(editorActions).not.toContain('aria-label="Preview only"');
   });
 

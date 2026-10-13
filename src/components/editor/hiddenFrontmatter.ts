@@ -6,7 +6,7 @@ import { splitFrontmatter } from '../../lib/frontmatter';
 // inline title, so its source lines are hidden and protected from typing.
 const FRONTMATTER_SCAN_LIMIT = 20_000;
 
-function frontmatterEnd(state: EditorState): number | null {
+export function frontmatterEnd(state: EditorState): number | null {
   if (state.doc.sliceString(0, 3) !== '---') return null;
   // Runs on every keystroke: scan only the head of the doc, not the whole note.
   // A frontmatter block longer than this simply stays visible as source.

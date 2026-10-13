@@ -39,8 +39,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
   return (
     <div style={{ position: 'relative' }}>
       {/* Match the editor's fenced-code treatment (.cm-code-line in
-          useCodeMirror.ts): coral tint + coral left rule, same in both panes
-          of split view. */}
+          useCodeMirror.ts): coral tint + coral left rule. */}
       <pre
         ref={preRef}
         style={{
@@ -265,7 +264,6 @@ interface PreviewPaneProps {
   editorStyle: React.CSSProperties;
   contentMaxWidthStyle: React.CSSProperties;
   objectUrls?: Map<string, string>;
-  style?: React.CSSProperties;
   /** PDF export: render as a plain static document — no scroll container, no backlinks. */
   printMode?: boolean;
   /** Properties UI, rendered under the inline title like the editor's. */
@@ -1010,7 +1008,6 @@ export const PreviewPane = React.memo(function PreviewPane({
   editorStyle,
   contentMaxWidthStyle,
   objectUrls,
-  style,
   printMode,
   properties,
 }: PreviewPaneProps) {
@@ -1036,10 +1033,7 @@ export const PreviewPane = React.memo(function PreviewPane({
     <div
       ref={scrollRef}
       className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
-      style={printMode ? style : {
-        paddingRight: '2rem',
-        ...style,
-      }}
+      style={printMode ? undefined : { paddingRight: '2rem' }}
     >
       <div className="flex-1">
         <div

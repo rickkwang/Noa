@@ -143,10 +143,10 @@ async function waitForAttachmentPersisted(page: import('@playwright/test').Page,
   );
 }
 
-type EditorMode = 'edit' | 'split' | 'preview';
+type EditorMode = 'edit' | 'preview';
 
 async function ensureEditorMode(page: import('@playwright/test').Page, targetMode: EditorMode) {
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|split|preview) view/ });
+  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
   await expect(modeButton).toBeVisible();
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (await modeButton.getAttribute('aria-description') === `Current view: ${targetMode}`) return;
@@ -1426,8 +1426,7 @@ test('phone width gives the editor the screen and keeps the right panel an overl
   await page.goto('/');
   const editor = page.locator('.cm-editor').first();
   await expect(editor).toBeVisible();
-  // Split is shown as edit here; before, split plus an in-flow right panel
-  // left the editor 78px wide.
+  // Before, the in-flow right panel squeezed the editor to 78px wide.
   await expect(page.locator('.noa-top-scroll-fade')).toHaveCount(0);
   expect((await editor.boundingBox())!.width).toBeGreaterThan(300);
   await expect(page.getByRole('button', { name: 'Switch to preview view' })).toBeVisible();

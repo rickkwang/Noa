@@ -820,6 +820,7 @@ export default function App() {
     onToggleFocusMode: toggleFocusMode,
     isFocusMode,
     onExitFocusMode: exitFocusMode,
+    onToggleViewMode: () => setEditorViewMode((mode) => (mode === 'edit' ? 'preview' : 'edit')),
   });
 
   if (!isLoaded) {
@@ -1125,11 +1126,8 @@ export default function App() {
                 onClose={() => handleTabClose(activeNoteId)}
                 onNavigateToNoteLegacy={navigateByTitle}
                 onNavigateToNoteById={navigateById}
-                // Two panes cannot both be readable at phone width. Split is
-                // shown as edit there without overwriting the saved choice.
-                viewMode={isMobile && editorViewMode === 'split' ? 'edit' : editorViewMode}
+                viewMode={editorViewMode}
                 setViewMode={setEditorViewMode}
-                allowSplit={!isMobile}
                 settings={settings}
                 tabs={openTabs}
                 enteringTabIds={enteringTabIds}

@@ -370,7 +370,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
 
 ## Features
 
-- **Markdown editor** — Edit, Preview, or Split view
+- **Markdown editor** — Live Preview editing, or Preview (reading view)
 - **Wiki links** — Type \`[[Note Title]]\` to link notes
 - **Tasks** — Use \`- [ ] task\` syntax, track in right panel
 - **Tags** — Use \`#tag\` in notes, browse in sidebar

@@ -17,13 +17,12 @@ interface WritingSettingsProps {
   group: 'general' | 'notes';
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
-  editorViewMode: 'edit' | 'preview' | 'split';
-  setEditorViewMode: (mode: 'edit' | 'preview' | 'split') => void;
+  editorViewMode: 'edit' | 'preview';
+  setEditorViewMode: (mode: 'edit' | 'preview') => void;
 }
 
 const VIEW_MODE_OPTIONS = [
   { value: 'edit', label: 'Edit' },
-  { value: 'split', label: 'Split' },
   { value: 'preview', label: 'Preview' },
 ] as const;
 

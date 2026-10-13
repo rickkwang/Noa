@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
 import { useNoteProperties } from '../hooks/useNoteProperties';
-import { attachEdgeFade } from '../lib/edgeFade';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
+import { buildLinkIndex, parseMarkdownLinkTarget, resolveLinkTarget } from '../lib/noteUtils';
 import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
@@ -20,6 +20,7 @@ import { PreviewPane } from './editor/PreviewPane';
 import { PropertiesBlock } from './editor/PropertiesBlock';
 import { SlashCommandDropdown, type SlashCommand } from './editor/SlashCommandDropdown';
 import { TocPanel } from './editor/TocPanel';
+import { type OpenableLink } from './editor/livePreview';
 import { useCodeMirror } from './editor/useCodeMirror';
 
 const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -59,9 +60,8 @@ interface EditorProps {
   onNavigateToNoteLegacy: (title: string) => void;
   onNavigateToNoteById: (id: string) => void;
   onRestoreSnapshot?: (snapshot: NoteSnapshot) => Promise<void>;
-  viewMode: 'edit' | 'preview' | 'split';
-  setViewMode: (mode: 'edit' | 'preview' | 'split') => void;
-  allowSplit?: boolean;
+  viewMode: 'edit' | 'preview';
+  setViewMode: (mode: 'edit' | 'preview') => void;
   settings: AppSettings;
   tabs?: EditorTab[];
   enteringTabIds?: string[];
@@ -118,7 +118,6 @@ export default function Editor({
   onLineJumpHandled,
   focusRequest,
   onFocusRequestHandled,
-  allowSplit = true,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -129,35 +128,6 @@ export default function Editor({
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [printNote, setPrintNote] = useState<Note | null>(null);
-  const [splitRatio, setSplitRatio] = useState(0.5);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const dragCleanupRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => () => { dragCleanupRef.current?.(); }, []);
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    const container = splitContainerRef.current;
-    if (!container) return;
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDragging.current) return;
-      const rect = container.getBoundingClientRect();
-      const ratio = Math.min(Math.max((ev.clientX - rect.left) / rect.width, 0.2), 0.8);
-      setSplitRatio(ratio);
-    };
-    const cleanup = () => {
-      isDragging.current = false;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', cleanup);
-      dragCleanupRef.current = null;
-    };
-    dragCleanupRef.current = cleanup;
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', cleanup);
-  }, []);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editPaneRef = useRef<HTMLDivElement>(null);
@@ -205,6 +175,20 @@ export default function Editor({
     return true;
   }, [noteProperties.canWrite, noteProperties.frontmatter, readOnly]);
 
+  // Built on click, not per render: allNotes changes on every keystroke and the index is only needed here.
+  const handleOpenLink = useCallback((link: OpenableLink) => {
+    // Same resolution as the Reading view: external links leave the app, notes resolve by title or path.
+    if (link.kind === 'url' && /^(https?|mailto):/i.test(link.href)) {
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const title = link.kind === 'wiki' ? link.target.split('#')[0].trim() : parseMarkdownLinkTarget(link.href);
+    if (!title) return;
+    const targetId = resolveLinkTarget(title, buildLinkIndex(allNotes, folders ?? []), note?.folder ?? '');
+    if (targetId) onNavigateToNoteById(targetId);
+    else if (link.kind === 'wiki') onNavigateToNoteLegacy(title);
+  }, [allNotes, folders, note?.folder, onNavigateToNoteById, onNavigateToNoteLegacy]);
+
   const { editorViewRef, insertFormatting, jumpToLine, insertMention, insertSlashCommand } = useCodeMirror({
     containerRef: editorContainerRef,
     maxWidth: settings.appearance.maxWidth,
@@ -217,6 +201,7 @@ export default function Editor({
     readOnly,
     propertiesSlot,
     onAddProperty: handleAddProperty,
+    onOpenLink: handleOpenLink,
   });
 
   useEffect(() => {
@@ -230,17 +215,6 @@ export default function Editor({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
-
-  // Split mode fades the CodeMirror pane's top edge like the preview's. The EditorView is recreated
-  // on note/theme change, so the listener re-attaches on those deps and the fade state lives on the pane.
-  useEffect(() => {
-    if (viewMode !== 'split') return;
-    const pane = editPaneRef.current;
-    const scroller = pane?.querySelector<HTMLElement>('.cm-scroller');
-    if (!pane || !scroller) return;
-    const fade = attachEdgeFade(scroller, { target: pane });
-    return () => fade.dispose();
-  }, [viewMode, note?.id, isDark]);
 
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
   useEffect(() => {
@@ -469,8 +443,7 @@ export default function Editor({
 
   // The editor shows Properties only once a note has some, or while the first
   // one is being named (--- / Cmd+;); abandoning that leaves no block.
-  // Only the edit pane takes add requests: in split view the preview renders a
-  // second copy, and two name inputs would steal focus from (and close) each other.
+  // Only the edit pane takes add requests: the reading view's copy is read-only and must not show the name input.
   const renderProperties = (pane: 'edit' | 'preview') => {
     const frontmatter = noteProperties.frontmatter;
     const adding = pane === 'edit' && addingFirstProperty;
@@ -592,7 +565,6 @@ export default function Editor({
       isDark={isDark}
       viewMode={viewMode}
       setViewMode={setViewMode}
-      allowSplit={allowSplit}
       onExportMd={() => exportNoteAsMd(note)}
       onExportHtml={() => exportNoteAsHtml(note)}
       onExportPdf={() => setPrintNote(note)}
@@ -667,7 +639,6 @@ export default function Editor({
       )}
 
       <div
-        ref={splitContainerRef}
         className="flex-1 flex overflow-hidden z-10 relative"
       >
         {/* Preview has no toolbar row, so controls float here; h-7 + pb-px match the row's height so they don't shift between modes. */}
@@ -690,11 +661,10 @@ export default function Editor({
         {/* Edit Pane — always mounted to preserve undo history */}
         <div
           ref={editPaneRef}
-          className={viewMode === 'split' ? 'noa-split-editor-mask overflow-y-auto relative' : 'overflow-y-auto relative'}
+          className="overflow-y-auto relative"
           style={{
             display: viewMode === 'preview' ? 'none' : undefined,
-            width: viewMode === 'split' ? `${splitRatio * 100}%` : undefined,
-            flex: viewMode === 'split' ? 'none' : '1',
+            flex: '1',
             // Horizontal inset only: vertical padding here would push CodeMirror's .cm-scroller (the real
             // scroll viewport) below the toolbar and clip the first line. Vertical room lives in .cm-content.
             // 0.375rem of the 2rem inset sits inside .cm-content instead, so Properties rows (whose border
@@ -745,14 +715,7 @@ export default function Editor({
           )}
         </div>
 
-        {viewMode === 'split' && (
-          <div
-            className="noa-split-divider w-px bg-[var(--divider-subtle)] cursor-col-resize shrink-0 select-none"
-            onMouseDown={handleDividerMouseDown}
-          />
-        )}
-
-        {viewMode !== 'edit' && previewNote && (
+        {viewMode === 'preview' && previewNote && (
           <PreviewPane
             note={previewNote}
             allNotes={deferredAllNotes}
@@ -764,11 +727,6 @@ export default function Editor({
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
             properties={renderProperties('preview')}
-            style={viewMode === 'split' ? {
-              // Subtract the 1px divider so split preview ends at the same edge as standalone preview.
-              width: `calc(${(1 - splitRatio) * 100}% - 1px)`,
-              flex: 'none',
-            } : undefined}
           />
         )}
       </div>
