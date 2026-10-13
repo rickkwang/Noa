@@ -231,7 +231,7 @@ export default function WritingSettings({ group, settings, updateSettings, edito
             // caption stranded above a separate button.
             <button
               onClick={openNew}
-              className={`w-full rounded border border-dashed border-[var(--border-strong)] px-3 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[#EFEAE3] hover:text-[#2D2D2B] active:opacity-70 ${
+              className={`w-full rounded border border-dashed border-[var(--border-strong)] px-3 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#2D2D2B] active:opacity-70 ${
                 userTemplates.length === 0 ? 'flex flex-col items-center gap-1 py-6' : 'py-2'
               }`}
             >

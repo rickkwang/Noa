@@ -21,14 +21,14 @@ export function EditorToolbar({
     <div className="h-7 border-b flex items-center px-4 shrink-0 bg-[#F9F9F7] z-10 font-redaction gap-2 text-[#2D2D2B]/70 relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
       <button
         onClick={() => onInsertFormatting('**', '**')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors shrink-0"
         title="Bold"
       >
         <Bold size={14} />
       </button>
       <button
         onClick={() => onInsertFormatting('*', '*')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors shrink-0"
         title="Italic"
       >
         <Italic size={14} />
@@ -36,14 +36,14 @@ export function EditorToolbar({
       <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
       <button
         onClick={() => onInsertFormatting('- ')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors shrink-0"
         title="List"
       >
         <List size={14} />
       </button>
       <button
         onClick={() => onInsertFormatting('- [ ] ')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors shrink-0"
         title="Task List"
       >
         <CheckSquare size={14} />
@@ -51,14 +51,14 @@ export function EditorToolbar({
       <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
       <button
         onClick={() => onInsertFormatting('`', '`')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors shrink-0"
         title="Inline Code"
       >
         <Code size={14} />
       </button>
       <button
         onClick={() => onInsertFormatting('\n```\n', '\n```\n')}
-        className="p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 active:opacity-70 transition-colors text-xs font-bold shrink-0"
+        className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70 transition-colors text-xs font-bold shrink-0"
         title="Code Block"
       >
         {'</>'}
@@ -68,7 +68,7 @@ export function EditorToolbar({
           <div className="w-px h-4 bg-[var(--divider-subtle)] mx-1 shrink-0" />
           <button
             onClick={onToggleToc}
-            className={`p-1 hover:text-[#CC7D5E] hover:bg-[#EFEAE3]/50 transition-colors shrink-0 ${isTocOpen ? 'text-[#CC7D5E]' : ''}`}
+            className={`p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors shrink-0 ${isTocOpen ? 'text-[#CC7D5E]' : ''}`}
             title="Outline"
           >
             <AlignLeft size={14} />

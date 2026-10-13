@@ -36,7 +36,7 @@ export default function NavigationConflictDialog({
               <button
                 key={id}
                 onClick={() => onSelect(id)}
-                className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[#EFEAE3]/40"
+                className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
               >
                 <div className="text-sm font-bold text-[#2D2D2B] truncate">{note.title}</div>
                 <div className="text-xs text-[#2D2D2B]/60 mt-0.5">
@@ -49,7 +49,7 @@ export default function NavigationConflictDialog({
         <div className="border-t border-[var(--divider-subtle)] px-4 py-2 flex justify-end">
           <button
             onClick={onClose}
-            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-[3px] px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B] hover:bg-[#EFEAE3]"
+            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-[3px] px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
           >
             Cancel
           </button>

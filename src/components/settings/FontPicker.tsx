@@ -16,7 +16,6 @@ function readStoredFonts(): string[] | null {
 
 // Seeded from the last session so the picker opens with its list already in place.
 let cachedSystemFonts: string[] | null = readStoredFonts();
-let systemFontsRefreshed = false;
 let systemFontsPromise: Promise<string[]> | null = null;
 
 interface LocalFontData {
@@ -36,7 +35,6 @@ function loadSystemFonts(): Promise<string[]> {
         .filter(isSafeFontFamilyName)
         .sort((a, b) => a.localeCompare(b));
       cachedSystemFonts = families;
-      systemFontsRefreshed = true;
       try { localStorage.setItem(STORAGE_KEYS.SYSTEM_FONTS, JSON.stringify(families)); } catch { /* quota exceeded */ }
       return families;
     })
@@ -47,7 +45,6 @@ function loadSystemFonts(): Promise<string[]> {
 /** Exposed for tests; clears the cross-mount enumeration cache. */
 export function resetSystemFontCache() {
   cachedSystemFonts = null;
-  systemFontsRefreshed = false;
   systemFontsPromise = null;
 }
 
@@ -64,6 +61,8 @@ interface FontPickerProps {
 export default function FontPicker({ value, onChange }: FontPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  // The list is filtered by `filter`, which only changes on Enter, so typing doesn't reshuffle the rows under the cursor.
+  const [filter, setFilter] = useState('');
   const [systemFonts, setSystemFonts] = useState<string[]>(() => cachedSystemFonts ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +79,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
 
   // Enumerate only on open: queryLocalFonts() raises a permission prompt, which shouldn't fire just from viewing the tab.
   const ensureFontsLoaded = useCallback(() => {
-    if (didLoad.current || systemFontsRefreshed) return;
+    if (didLoad.current || cachedSystemFonts) return;
     didLoad.current = true;
     setLoading(true);
     loadSystemFonts()
@@ -107,10 +106,10 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
   }, [systemFonts, value]);
 
   const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = filter.trim().toLowerCase();
     if (!needle) return options;
     return options.filter((option) => option.label.toLowerCase().includes(needle));
-  }, [options, query]);
+  }, [options, filter]);
 
   // Keep the highlight on the selected row when the list opens, and inside
   // bounds as filtering shrinks it.
@@ -153,6 +152,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
   const openPicker = useCallback(() => {
     ensureFontsLoaded();
     setQuery('');
+    setFilter('');
     setOpen(true);
   }, [ensureFontsLoaded]);
 
@@ -181,6 +181,12 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
+      // First Enter applies the typed query; once applied, Enter picks the highlighted font.
+      if (query.trim() !== filter.trim()) {
+        setFilter(query);
+        setActiveIndex(0);
+        return;
+      }
       const option = filtered[activeIndex];
       if (option) select(option.value);
       return;
@@ -203,7 +209,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
   const currentLabel = value === SYSTEM_DEFAULT_FONT ? SYSTEM_DEFAULT_LABEL : value;
 
   return (
-    <div ref={rootRef} className="relative w-full max-w-xs">
+    <div ref={rootRef} className="relative inline-block max-w-xs">
       <button
         ref={triggerRef}
         type="button"
@@ -213,14 +219,14 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
         aria-controls={open ? listboxId : undefined}
         onClick={() => (open ? closePicker(false) : openPicker())}
         onKeyDown={onTriggerKeyDown}
-        className="w-full flex items-center bg-[#F9F9F7] border border-[#2D2D2B] rounded-[3px] pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none focus:border-[#CC7D5E] relative"
+        className={`flex items-center max-w-full border border-[#2D2D2B] rounded-[3px] pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none relative hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] ${open ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'bg-[var(--bg-primary,#F9F9F7)]'}`}
       >
-        <span className="truncate">{currentLabel}</span>
+        <span className="min-w-0 truncate">{currentLabel}</span>
         <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] noa-floating-panel overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 w-64 z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] noa-floating-panel overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--divider-subtle)]">
             <Search size={13} className="shrink-0 text-[var(--text-secondary)]" />
             <input
@@ -234,7 +240,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
               aria-activedescendant={filtered[activeIndex] ? `${baseId}-option-${activeIndex}` : undefined}
               role="combobox"
               aria-expanded
-              onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
+              onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onSearchKeyDown}
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-secondary)]"
             />
@@ -262,7 +268,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
                     // Select on click, not pointerdown, which would race the outside-click listener.
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => select(option.value)}
-                    className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[#CC7D5E]/10' : ''}`}
+                    className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : ''}`}
                     style={{ fontFamily: resolveFontFamily(option.value) }}
                   >
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>

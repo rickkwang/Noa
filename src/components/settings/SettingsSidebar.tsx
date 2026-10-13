@@ -118,7 +118,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               key={`${entry.tab}-${entry.label}`}
               type="button"
               onClick={() => reveal(entry)}
-              className="rounded-[3px] px-2.5 py-1.5 text-left transition-colors hover:bg-[#EFEAE3]"
+              className="rounded-[3px] px-2.5 py-1.5 text-left transition-colors hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
             >
               <span className="block text-sm font-medium leading-snug">{entry.label}</span>
               <span className="block text-[11px] text-[var(--text-secondary)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
@@ -158,8 +158,8 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               // background fill already answers "did my click register".
               className={`flex min-w-[9.5rem] items-center space-x-2.5 px-2.5 py-2 rounded-[3px] text-left transition-colors text-sm font-medium md:min-w-0 md:w-full ${
                 activeTab === tab.id
-                  ? 'bg-[#EFEAE3] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
-                  : 'hover:bg-[#EFEAE3]/50'
+                  ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
+                  : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
               }`}
             >
               <tab.icon size={16} />

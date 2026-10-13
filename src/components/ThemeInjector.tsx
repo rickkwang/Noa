@@ -105,7 +105,6 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
 
       .border-\\[\\#CC7D5E\\]      { border-color: var(--accent-color) !important; }
       .hover\\:border-\\[\\#CC7D5E\\]:hover  { border-color: var(--accent-color) !important; }
-      .focus\\:border-\\[\\#CC7D5E\\]:focus  { border-color: var(--accent-color) !important; }
       .border-\\[\\#CC7D5E\\]\\/50 { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent) !important; }
       .border-\\[\\#CC7D5E\\]\\/60 { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent) !important; }
 

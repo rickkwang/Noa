@@ -80,7 +80,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
                 onClick={() => palette.run(item.action)}
                 // onMouseMove, not onMouseEnter, so scrolling under a resting pointer doesn't steal the arrow-key highlight.
                 onMouseMove={() => { if (index !== palette.selectedIndex) palette.setSelectedIndex(index); }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md font-redaction ${index === palette.selectedIndex ? 'bg-[#EFEAE3]' : ''}`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md font-redaction ${index === palette.selectedIndex ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : ''}`}
               >
                 {item.label}
               </button>

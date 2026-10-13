@@ -54,7 +54,7 @@ export default function RecoveryDialog({ message, onRetry, onImportBackup, onRes
           <button
             ref={retryButtonRef}
             onClick={onRetry}
-            className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[3px] hover:bg-[#EFEAE3]"
+            className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[3px] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
           >
             Retry Read
           </button>
