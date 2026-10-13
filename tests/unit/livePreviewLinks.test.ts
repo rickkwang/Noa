@@ -19,9 +19,25 @@ describe('linkAt (Cmd/Ctrl+click targets)', () => {
     expect(linkAtNeedle('a [t](https://example.com) b', '[t]')).toEqual({ kind: 'url', href: 'https://example.com' });
   });
 
-  it('returns null for plain text, wikilinks inside code, and reference links', () => {
+  it('resolves bare URLs and autolinks', () => {
+    expect(linkAtNeedle('see https://bare.example.com now', 'https')).toEqual({ kind: 'url', href: 'https://bare.example.com' });
+    expect(linkAtNeedle('see <https://auto.example.com> now', 'https')).toEqual({ kind: 'url', href: 'https://auto.example.com' });
+  });
+
+  it('resolves reference links through their definition', () => {
+    const doc = '[docs][1] here\n\n[1]: https://example.com/docs';
+    expect(linkAtNeedle(doc, '[docs]')).toEqual({ kind: 'url', href: 'https://example.com/docs' });
+  });
+
+  it('resolves heading anchors, both wikilink and markdown forms', () => {
+    expect(linkAtNeedle('jump [[#Setup Steps]] here', '[[#')).toEqual({ kind: 'anchor', anchor: 'Setup Steps' });
+    expect(linkAtNeedle('jump [s](#setup-steps) here', '[s]')).toEqual({ kind: 'anchor', anchor: 'setup-steps' });
+  });
+
+  it('returns null for plain text, wikilinks inside code, reference links without a definition, and footnotes', () => {
     expect(linkAtNeedle('plain words here', 'plain')).toBeNull();
     expect(linkAtNeedle('`[[Note]]` text', '[[Note')).toBeNull();
     expect(linkAtNeedle('[ref][id]', '[ref]')).toBeNull();
+    expect(linkAtNeedle('a note[^1] here\n\n[^1]: text', '[^1]')).toBeNull();
   });
 });

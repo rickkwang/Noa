@@ -25,7 +25,7 @@ export interface SettingsIndexEntry {
  */
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   // General
-  { tab: 'general', section: 'Editor', label: 'View Mode', keywords: 'edit preview live reading layout' },
+  { tab: 'general', section: 'Editor', label: 'Default editing mode', keywords: 'view edit preview live reading layout' },
   { tab: 'general', section: 'Search', label: 'Fuzzy Search', keywords: 'approximate typo partial matching' },
   { tab: 'general', section: 'Search', label: 'Case Sensitive', keywords: 'uppercase lowercase matching' },
   { tab: 'general', section: 'Keyboard Shortcuts', label: 'Keyboard Shortcuts', keywords: 'hotkey hotkeys key bindings keyboard cmd ctrl' },

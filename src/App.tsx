@@ -26,6 +26,7 @@ import { useSettings } from './hooks/useSettings';
 import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
+import { headingLineIndex } from './lib/noteUtils';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { hasVaultRows, VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 
@@ -716,8 +717,16 @@ export default function App() {
 
   // Read notes via ref so these callbacks stay referentially stable across
   // keystrokes — they feed memoized children (Sidebar rows, TasksPanel).
-  const navigateById = useCallback((id: string) => {
-    if (!notesRef.current.some((note) => note.id === id)) return;
+  // With an anchor, the view lands on the heading's line. The view mode is left alone, so a Reading-view
+  // link stays in Reading view (the Editor scrolls there) and the default mode is not overwritten.
+  const navigateById = useCallback((id: string, anchor?: string) => {
+    const target = notesRef.current.find((note) => note.id === id);
+    if (!target) return;
+    const lineIndex = anchor ? headingLineIndex(target.content, anchor) : null;
+    if (lineIndex !== null) {
+      editorLineJumpRequestIdRef.current += 1;
+      setEditorLineJumpRequest({ noteId: id, lineIndex, requestId: editorLineJumpRequestIdRef.current });
+    }
     handleNavigateToNoteById(id);
   }, [handleNavigateToNoteById]);
 

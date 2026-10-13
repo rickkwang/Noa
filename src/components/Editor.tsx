@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
 import { useNoteProperties } from '../hooks/useNoteProperties';
+import { findNoteAttachment } from '../lib/attachmentUtils';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
-import { buildLinkIndex, parseMarkdownLinkTarget, resolveLinkTarget } from '../lib/noteUtils';
+import { buildLinkIndex, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget } from '../lib/noteUtils';
 import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
@@ -15,12 +16,12 @@ import { EditorHeader } from './editor/EditorHeader';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { FindReplacePanel } from './editor/FindReplacePanel';
 import { HistoryPanel } from './editor/HistoryPanel';
+import { type OpenableLink } from './editor/livePreview';
 import { MentionDropdown } from './editor/MentionDropdown';
 import { PreviewPane } from './editor/PreviewPane';
 import { PropertiesBlock } from './editor/PropertiesBlock';
 import { SlashCommandDropdown, type SlashCommand } from './editor/SlashCommandDropdown';
 import { TocPanel } from './editor/TocPanel';
-import { type OpenableLink } from './editor/livePreview';
 import { useCodeMirror } from './editor/useCodeMirror';
 
 const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -58,7 +59,7 @@ interface EditorProps {
   onRename?: (title: string) => void;
   onClose?: () => void;
   onNavigateToNoteLegacy: (title: string) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, anchor?: string) => void;
   onRestoreSnapshot?: (snapshot: NoteSnapshot) => Promise<void>;
   viewMode: 'edit' | 'preview';
   setViewMode: (mode: 'edit' | 'preview') => void;
@@ -175,8 +176,20 @@ export default function Editor({
     return true;
   }, [noteProperties.canWrite, noteProperties.frontmatter, readOnly]);
 
+  // Image references resolve to the attachment's object URL. Depends on the attachment list, not the note, so typing doesn't redraw images.
+  const attachments = note?.attachments;
+  const vaultPath = note?.vaultPath;
+  const resolveImage = useCallback(
+    (target: string) => {
+      const attachment = findNoteAttachment({ attachments, vaultPath }, target);
+      return attachment ? objectUrls.get(attachment.id) : undefined;
+    },
+    [attachments, vaultPath, objectUrls],
+  );
   // Built on click, not per render: allNotes changes on every keystroke and the index is only needed here.
   const handleOpenLink = useCallback((link: OpenableLink) => {
+    // Heading anchors are handled inside the editor, where the live document is.
+    if (link.kind === 'anchor') return;
     // Same resolution as the Reading view: external links leave the app, notes resolve by title or path.
     if (link.kind === 'url' && /^(https?|mailto):/i.test(link.href)) {
       window.open(link.href, '_blank', 'noopener,noreferrer');
@@ -185,7 +198,8 @@ export default function Editor({
     const title = link.kind === 'wiki' ? link.target.split('#')[0].trim() : parseMarkdownLinkTarget(link.href);
     if (!title) return;
     const targetId = resolveLinkTarget(title, buildLinkIndex(allNotes, folders ?? []), note?.folder ?? '');
-    if (targetId) onNavigateToNoteById(targetId);
+    const anchor = link.kind === 'wiki' ? link.target.split('#')[1]?.trim() : parseMarkdownLinkAnchor(link.href) ?? undefined;
+    if (targetId) onNavigateToNoteById(targetId, anchor || undefined);
     else if (link.kind === 'wiki') onNavigateToNoteLegacy(title);
   }, [allNotes, folders, note?.folder, onNavigateToNoteById, onNavigateToNoteLegacy]);
 
@@ -202,6 +216,7 @@ export default function Editor({
     propertiesSlot,
     onAddProperty: handleAddProperty,
     onOpenLink: handleOpenLink,
+    resolveImage,
   });
 
   useEffect(() => {
@@ -726,6 +741,8 @@ export default function Editor({
             editorStyle={editorStyle}
             contentMaxWidthStyle={contentMaxWidthStyle}
             objectUrls={objectUrls}
+            lineJumpRequest={lineJumpRequest}
+            onLineJumpHandled={onLineJumpHandled}
             properties={renderProperties('preview')}
           />
         )}

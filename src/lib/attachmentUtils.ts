@@ -107,3 +107,14 @@ export function resolveAttachmentPath(target: string, notePath: string, paths: R
   const matches = [...paths].filter(path => path.split('/').pop() === target);
   return matches.length === 1 ? matches[0] : undefined;
 }
+
+// Resolves an image or embed reference to one of the note's attachments. Pasted screenshots all share a
+// name like image.png, so an ambiguous name falls back to the basename rather than going missing.
+export function findNoteAttachment(note: Pick<Note, 'attachments' | 'vaultPath'>, ref: string): Attachment | undefined {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(ref)) return undefined;
+  const paths = new Set((note.attachments ?? []).flatMap(a => a.vaultPath ? [a.vaultPath] : []));
+  const path = resolveAttachmentPath(ref, note.vaultPath ?? '', paths);
+  if (path) return note.attachments?.find(a => a.vaultPath === path);
+  const basename = ref.split('/').pop() ?? ref;
+  return note.attachments?.find(a => a.filename === ref || a.filename === basename);
+}

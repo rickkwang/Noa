@@ -14,11 +14,11 @@ import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
-import { mapAttachmentReferences, resolveAttachmentPath } from '../../lib/attachmentUtils';
+import { findNoteAttachment, mapAttachmentReferences } from '../../lib/attachmentUtils';
 import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitFrontmatter } from '../../lib/frontmatter';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
-import { buildLinkIndex, getBacklinks, isImageSize, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection, splitImageSize } from '../../lib/noteUtils';
+import { buildLinkIndex, getBacklinks, headingSlug, isImageSize, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection, splitImageSize } from '../../lib/noteUtils';
 import { stripTaskMarkers } from '../../lib/taskParser';
 import { themeSurfaces } from '../../lib/themePalette';
 import { Note, Folder, AppSettings } from '../../types';
@@ -221,6 +221,24 @@ function remarkEmptyTask() {
 
 // Module-level so every <Markdown> render (and MarkdownChunk's memo) sees the
 // same plugin identities.
+// Headings carry the slug of their text, so in-note anchors ([[#Heading]], [text](#heading)) can scroll to them.
+const HEADING_COMPONENTS = Object.fromEntries(
+  [1, 2, 3, 4, 5, 6].map((level) => [
+    `h${level}`,
+    ({ children, ...props }: { children?: React.ReactNode }) =>
+      React.createElement(`h${level}`, { ...props, id: headingSlug(extractTextFromNode(children)) }, children),
+  ]),
+) as Components;
+
+// Wikilink anchors are percent-encoded in the link href; a malformed escape is kept as written.
+function decodeAnchor(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkEmptyTask, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
 const REHYPE_PLUGINS: MarkdownOptions['rehypePlugins'] = [rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]];
 
@@ -260,7 +278,7 @@ interface PreviewPaneProps {
   folders?: Folder[];
   settings: AppSettings;
   onNavigateToNoteLegacy: (title: string) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, anchor?: string) => void;
   editorStyle: React.CSSProperties;
   contentMaxWidthStyle: React.CSSProperties;
   objectUrls?: Map<string, string>;
@@ -268,6 +286,9 @@ interface PreviewPaneProps {
   printMode?: boolean;
   /** Properties UI, rendered under the inline title like the editor's. */
   properties?: React.ReactNode;
+  /** A pending [[Note#Heading]] jump; the Reading view scrolls to that heading and clears it. */
+  lineJumpRequest?: { noteId: string; lineIndex: number; requestId: number } | null;
+  onLineJumpHandled?: (requestId: number) => void;
 }
 
 // Three tones, drawn from the app palette (ink / gold / coral) rather than a
@@ -485,7 +506,7 @@ interface NoteMarkdownBodyProps {
   isDark: boolean;
   objectUrls?: Map<string, string>;
   onNavigateToNoteLegacy: (title: string) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, anchor?: string) => void;
   /** Scroll container for in-document anchors; embeds fall back to document. */
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   /** Embed nesting depth: 0 for the top-level note. */
@@ -520,16 +541,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   const linkIndex = useMemo(() => buildLinkIndex(componentNotes, folders ?? []), [componentNotes, folders]);
 
   const previewMarkdown = useMemo(() => {
-    const paths = new Set((note.attachments ?? []).flatMap(a => a.vaultPath ? [a.vaultPath] : []));
-    const findAttachment = (ref: string) => {
-      if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(ref)) return undefined;
-      const path = resolveAttachmentPath(ref, note.vaultPath ?? '', paths);
-      if (path) return note.attachments?.find(a => a.vaultPath === path);
-      // Pasted screenshots all share a name like image.png; an ambiguous name
-      // must still render something rather than every copy going missing.
-      const basename = ref.split('/').pop() ?? ref;
-      return note.attachments?.find((a) => a.filename === ref || a.filename === basename);
-    };
+    const findAttachment = (ref: string) => findNoteAttachment({ attachments: note.attachments, vaultPath: note.vaultPath }, ref);
 
     // Step 0: strip %%comments%% at the string level, as Obsidian does before parsing.
     const withoutComments = mapAttachmentReferences(stripTaskMarkers(splitFrontmatter(note.content).body).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
@@ -609,11 +621,21 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       a: ({ href, children, ...props }) => {
         if (href?.startsWith('note-internal://id/')) {
           // Strip any #heading / #^block anchor — note resolution only needs the id.
-          const noteId = href.replace('note-internal://id/', '').split('#')[0];
+          const [noteId, rawAnchor = ''] = href.replace('note-internal://id/', '').split('#');
+          const anchor = decodeAnchor(rawAnchor);
           return (
             <span
               className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer underline underline-offset-2 font-bold`}
-              onClick={() => onNavigateToNoteById(noteId)}
+              onClick={() => {
+                // A heading in this note scrolls the reading view; the editor is not switched to.
+                if (noteId === note.id && anchor) {
+                  const root = scrollContainerRef?.current ?? document;
+                  const slug = headingSlug(anchor);
+                  if (slug) root.querySelector(`#${CSS.escape(slug)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  return;
+                }
+                onNavigateToNoteById(noteId, anchor || undefined);
+              }}
             >
               {children}
             </span>
@@ -641,7 +663,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
             return (
               <span
                 className="text-[#CC7D5E] cursor-pointer underline underline-offset-2 font-bold"
-                onClick={() => onNavigateToNoteById(mdTargetId)}
+                onClick={() => onNavigateToNoteById(mdTargetId, parseMarkdownLinkAnchor(href ?? '') ?? undefined)}
               >
                 {children}
               </span>
@@ -666,7 +688,11 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
                 e.preventDefault();
                 const id = decodeURIComponent(href.slice(1));
                 const root = scrollContainerRef?.current ?? document;
-                const el = id ? root.querySelector(`#${CSS.escape(id)}`) : null;
+                // Heading ids are slugs, so [t](#Setup) falls back to the slug; footnote ids match as written.
+                const slug = headingSlug(id);
+                const el = id
+                  ? root.querySelector(`#${CSS.escape(id)}`) ?? (slug ? root.querySelector(`#${CSS.escape(slug)}`) : null)
+                  : null;
                 el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
               {...props}
@@ -724,6 +750,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         const size = splitImageSize(alt ?? '');
         return <ZoomableImage src={src} alt={size.alt} width={size.width} height={size.height} />;
       },
+      ...HEADING_COMPONENTS,
       blockquote: ({ children }) => (
         <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
       ),
@@ -858,7 +885,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         );
       },
     };
-  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, componentNotes, folders, linkIndex, note.folder, depth, visitedIds, scrollContainerRef]);
+  }, [isDark, objectUrls, onNavigateToNoteById, onNavigateToNoteLegacy, componentNotes, folders, linkIndex, note.id, note.folder, depth, visitedIds, scrollContainerRef]);
 
   // Chunk only the top-level note: embeds render inside a <span> (see
   // NoteEmbed), where block wrappers would be invalid, and embedded sections
@@ -895,7 +922,7 @@ interface NoteEmbedProps {
   folders?: Folder[];
   isDark: boolean;
   onNavigateToNoteLegacy: (title: string) => void;
-  onNavigateToNoteById: (id: string) => void;
+  onNavigateToNoteById: (id: string, anchor?: string) => void;
   depth: number;
   visitedIds: ReadonlySet<string>;
 }
@@ -1010,6 +1037,8 @@ export const PreviewPane = React.memo(function PreviewPane({
   objectUrls,
   printMode,
   properties,
+  lineJumpRequest,
+  onLineJumpHandled,
 }: PreviewPaneProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDark = useIsDark(settings.appearance.theme);
@@ -1028,6 +1057,16 @@ export const PreviewPane = React.memo(function PreviewPane({
     const fade = attachEdgeFade(el);
     return () => fade.dispose();
   }, [printMode]);
+
+  // Runs once the note's headings are in the DOM. The Editor mounts the pane a frame after a note switch,
+  // so the heading cannot be looked up from the Editor's own effect.
+  useEffect(() => {
+    if (!lineJumpRequest || lineJumpRequest.noteId !== note.id) return;
+    const heading = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(note.content.split('\n')[lineJumpRequest.lineIndex] ?? '')?.[1];
+    const slug = heading ? headingSlug(heading) : '';
+    if (slug) scrollRef.current?.querySelector(`#${CSS.escape(slug)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    onLineJumpHandled?.(lineJumpRequest.requestId);
+  }, [lineJumpRequest, note.content, note.id, onLineJumpHandled]);
 
   return (
     <div

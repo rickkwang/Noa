@@ -1,7 +1,9 @@
 import { syntaxTree } from '@codemirror/language';
-import { EditorState, Range, SelectionRange } from '@codemirror/state';
+import { EditorState, Range, SelectionRange, StateEffect } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
+import { decodeLinkPath, splitImageSize, TAG_REGEX } from '../../lib/noteUtils';
 import { frontmatterEnd } from './hiddenFrontmatter';
+import { CheckboxWidget, horizontalRule, ImageWidget, InlineMathWidget, bullet } from './livePreviewWidgets';
 
 type SyntaxNode = ReturnType<typeof syntaxTree>['topNode'];
 
@@ -9,53 +11,35 @@ type SyntaxNode = ReturnType<typeof syntaxTree>['topNode'];
 // on the lines and spans the selection is not in, so the rendered form is what you see while typing.
 // Saves always persist the source, so nothing here can change stored content.
 
+export interface LivePreviewContext {
+  isDark: () => boolean;
+  /** Object URL for an image reference, or undefined when the reference is not an attachment. */
+  resolveImage: (target: string, wiki: boolean) => string | undefined;
+}
+
+// Dispatched when something outside the document changes what a widget shows (attachment URLs arriving).
+export const livePreviewRefresh = StateEffect.define<null>();
+
 const hideMarkup = Decoration.replace({});
 const quoteLine = Decoration.line({ class: 'cm-lp-quote' });
+const calloutLine = Decoration.line({ class: 'cm-lp-callout' });
+const linkText = Decoration.mark({ class: 'cm-lp-link' });
 const wikiLinkText = Decoration.mark({ class: 'cm-lp-wikilink' });
+const highlightText = Decoration.mark({ class: 'cm-lp-highlight' });
+const tagText = Decoration.mark({ class: 'cm-lp-tag' });
+const footnoteText = Decoration.mark({ class: 'cm-lp-footnote' });
+const calloutTitle = Decoration.mark({ class: 'cm-lp-callout-title' });
 
-class HorizontalRuleWidget extends WidgetType {
-  eq() { return true; }
-  toDOM() {
-    const el = document.createElement('span');
-    el.className = 'cm-lp-hr';
-    return el;
-  }
-}
-
-class BulletWidget extends WidgetType {
-  eq() { return true; }
-  toDOM() {
-    const el = document.createElement('span');
-    el.className = 'cm-lp-bullet';
-    el.textContent = '•';
-    return el;
-  }
-}
-
-class CheckboxWidget extends WidgetType {
-  constructor(readonly pos: number, readonly checked: boolean) { super(); }
-  eq(other: CheckboxWidget) { return other.pos === this.pos && other.checked === this.checked; }
-  toDOM(view: EditorView) {
-    const el = document.createElement('span');
-    el.className = this.checked ? 'cm-lp-checkbox cm-lp-checkbox-checked' : 'cm-lp-checkbox';
-    el.setAttribute('role', 'checkbox');
-    el.setAttribute('aria-checked', String(this.checked));
-    // mousedown, not click: a click would first move the caret into the hidden markup.
-    el.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      if (view.state.readOnly) return;
-      // Only the space or x inside "[ ]" changes; the rest of the line is untouched.
-      view.dispatch({ changes: { from: this.pos + 1, to: this.pos + 2, insert: this.checked ? ' ' : 'x' } });
-    });
-    return el;
-  }
-}
-
-const horizontalRule = new HorizontalRuleWidget();
-const bullet = new BulletWidget();
-
-// [[Target]] and [[Target|Alias]]. The lookbehind leaves embeds (![[file]]) as source.
+// [[Target]] and [[Target|Alias]]. The lookbehind leaves embeds (![[file]]) to EMBED.
 const WIKILINK = /(?<!!)\[\[([^[\]\n|]+)(?:\|([^[\]\n]+))?\]\]/g;
+const EMBED = /!\[\[([^[\]\n|]+)(?:\|([^[\]\n]+))?\]\]/g;
+const IMAGE_FILE = /\.(?:png|jpe?g|gif|webp|svg|avif|bmp)$/i;
+const HIGHLIGHT = /==([^=\n]+?)==/g;
+const FOOTNOTE_REF = /\[\^([^\]\s]+)\](?!:)/g;
+// $x$ with no space just inside the delimiters, and no digit right after the closing $ (so prices stay text).
+const INLINE_MATH = /(?<![\\$])\$(?![\s$])([^$\n]*?[^\s$\\])\$(?![\d$])/g;
+// Only at the start of a quote line: "> [!note]", not "> see [!note]".
+const CALLOUT_MARKER = /(?<=^\s*>\s*)\[![A-Za-z-]+\][+-]?/;
 const CODE_NODES = new Set(['InlineCode', 'FencedCode', 'CodeBlock', 'CodeText']);
 const INLINE_MARKS: Record<string, string> = {
   Emphasis: 'EmphasisMark',
@@ -80,7 +64,54 @@ function isInCode(state: EditorState, pos: number): boolean {
   return false;
 }
 
-function build(view: EditorView, bodyStart: number): { decorations: DecorationSet; atomic: DecorationSet } {
+const normalizeLabel = (label: string) => label.trim().replace(/\s+/g, ' ').toLowerCase();
+
+// Reference definitions, `[label]: url`. The first definition of a label wins, as in CommonMark.
+// Cached per document: the plugin rebuilds on every cursor move, and a document never changes in place.
+const definitionsByDoc = new WeakMap<EditorState['doc'], Map<string, string>>();
+export function linkDefinitions(doc: EditorState['doc']): Map<string, string> {
+  const cached = definitionsByDoc.get(doc);
+  if (cached) return cached;
+  const defs = new Map<string, string>();
+  for (let n = 1; n <= doc.lines; n++) {
+    const match = /^ {0,3}\[([^\]]+)\]:\s*<?([^\s>]+)>?/.exec(doc.line(n).text);
+    if (!match || match[1].startsWith('^')) continue;
+    const key = normalizeLabel(match[1]);
+    if (!defs.has(key)) defs.set(key, match[2]);
+  }
+  definitionsByDoc.set(doc, defs);
+  return defs;
+}
+
+// Markdown `$$` blocks: a `$$` line opens one, the next `$$` line closes it, or a single `$$…$$` line.
+// Lines inside code are not math.
+export function mathBlocks(state: EditorState, bodyStart: number): { from: number; to: number; tex: string }[] {
+  const { doc } = state;
+  const blocks: { from: number; to: number; tex: string }[] = [];
+  let open: number | null = null;
+  for (let n = 1; n <= doc.lines; n++) {
+    const line = doc.line(n);
+    if (line.from < bodyStart) continue;
+    const text = line.text.trim();
+    if (open === null) {
+      if (text === '$$' && !isInCode(state, line.from)) {
+        open = n;
+        continue;
+      }
+      const single = /^\$\$(.+)\$\$$/.exec(text);
+      if (single && !isInCode(state, line.from)) blocks.push({ from: line.from, to: line.to, tex: single[1] });
+    } else if (text === '$$') {
+      const start = doc.line(open);
+      if (line.from - 1 > start.to) {
+        blocks.push({ from: start.from, to: line.to, tex: doc.sliceString(start.to + 1, line.from - 1) });
+      }
+      open = null;
+    }
+  }
+  return blocks;
+}
+
+function build(view: EditorView, bodyStart: number, context: LivePreviewContext): { decorations: DecorationSet; atomic: DecorationSet } {
   const { state } = view;
   const { doc, selection } = state;
   if (view.visibleRanges.length === 0) return { decorations: Decoration.none, atomic: Decoration.none };
@@ -90,16 +121,26 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
   const all: Range<Decoration>[] = [];
   const atomic: Range<Decoration>[] = [];
   const hide = (start: number, end: number) => {
-    // A replace decoration may not cross a line break when supplied by a plugin (CodeMirror throws), e.g. a multi-line link title.
-    if (end <= start || doc.lineAt(start).number !== doc.lineAt(end).number) return;
-    const deco = hideMarkup.range(start, end);
-    all.push(deco);
-    atomic.push(deco);
+    if (end <= start) return;
+    // A plugin-supplied replace may not cross a line break (CodeMirror throws), so a multi-line range is hidden line by line.
+    for (let n = doc.lineAt(start).number; n <= doc.lineAt(end).number; n++) {
+      const line = doc.line(n);
+      const s = Math.max(start, line.from);
+      const e = Math.min(end, line.to);
+      if (e <= s) continue;
+      const deco = hideMarkup.range(s, e);
+      all.push(deco);
+      atomic.push(deco);
+    }
   };
-  const replaceWith = (start: number, end: number, widget: WidgetType) => {
+  // Math and images stay non-atomic: the cursor can step into them, which is how their source is revealed.
+  const replaceWith = (start: number, end: number, widget: WidgetType, stepInto = false) => {
     const deco = Decoration.replace({ widget }).range(start, end);
     all.push(deco);
-    atomic.push(deco);
+    if (!stepInto) atomic.push(deco);
+  };
+  const mark = (start: number, end: number, deco: Decoration) => {
+    if (end > start) all.push(deco.range(start, end));
   };
 
   // Block markup reveals per line: the line the cursor (or any part of the selection) sits on.
@@ -111,6 +152,25 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
   const touchesSpan = (start: number, end: number) =>
     selection.ranges.some((r: SelectionRange) => r.from < end && r.to > start);
   const trailingSpace = (end: number) => (doc.sliceString(end, end + 1) === ' ' ? 1 : 0);
+
+  const defs = linkDefinitions(doc);
+  const mathLines = mathBlocks(state, bodyStart);
+  const inMathBlock = (line: { from: number; to: number }) =>
+    mathLines.some((block) => line.from >= block.from && line.to <= block.to);
+  // A `src` that resolves to something displayable: a web image, or an attachment's object URL.
+  const imageSource = (src: string, wiki: boolean) =>
+    /^https?:\/\//i.test(src) ? src : context.resolveImage(src, wiki);
+
+  // The label a reference or shortcut link looks up: `[text][label]`, `[label][]`, or `[text]`.
+  const referenceLabel = (node: SyntaxNode): string | null => {
+    const [labelNode] = childrenNamed(node, ['LinkLabel']);
+    if (labelNode) {
+      const inner = doc.sliceString(labelNode.from + 1, labelNode.to - 1);
+      if (inner.trim()) return normalizeLabel(inner);
+    }
+    const [open, close] = childrenNamed(node, ['LinkMark']);
+    return open && close ? normalizeLabel(doc.sliceString(open.to, close.from)) : null;
+  };
 
   syntaxTree(state).iterate({
     from,
@@ -125,19 +185,58 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
         if (mark) hide(mark.from, mark.to + trailingSpace(mark.to));
       } else if (name in INLINE_MARKS) {
         if (touchesSpan(node.from, node.to)) return;
-        for (const mark of childrenNamed(node.node, [INLINE_MARKS[name]])) hide(mark.from, mark.to);
+        for (const markNode of childrenNamed(node.node, [INLINE_MARKS[name]])) hide(markNode.from, markNode.to);
       } else if (name === 'Link') {
-        // Inline links only ([text](url)). Reference and shortcut links keep their source.
-        if (childrenNamed(node.node, ['URL']).length === 0 || touchesSpan(node.from, node.to)) return;
-        for (const child of childrenNamed(node.node, LINK_MARKUP)) hide(child.from, child.to);
+        if (childrenNamed(node.node, ['URL']).length > 0) {
+          // Inline link: [text](url). Its label is styled by the highlight style; the syntax is hidden off the cursor.
+          if (touchesSpan(node.from, node.to)) return;
+          for (const child of childrenNamed(node.node, LINK_MARKUP)) hide(child.from, child.to);
+          return;
+        }
+        // Reference or shortcut link: a link only when its label has a definition. Footnote refs are handled below.
+        const label = referenceLabel(node.node);
+        if (!label || !defs.has(label)) return;
+        mark(node.from, node.to, linkText);
+        if (touchesSpan(node.from, node.to)) return;
+        for (const child of childrenNamed(node.node, ['LinkMark', 'LinkLabel'])) hide(child.from, child.to);
+      } else if (name === 'Autolink') {
+        // <https://example.com>: the angle brackets hide off the cursor.
+        mark(node.from, node.to, linkText);
+        if (touchesSpan(node.from, node.to)) return;
+        for (const child of childrenNamed(node.node, ['LinkMark'])) hide(child.from, child.to);
+      } else if (name === 'URL') {
+        // A bare URL is a link too; URLs inside a link, image or autolink belong to that node.
+        const parent = node.node.parent?.name;
+        if (parent !== 'Link' && parent !== 'Image' && parent !== 'Autolink') mark(node.from, node.to, linkText);
+      } else if (name === 'Image') {
+        const [url] = childrenNamed(node.node, ['URL']);
+        // An image split across lines stays as source: a plugin replace may not cover a line break.
+        if (!url || touchesSpan(node.from, node.to) || doc.lineAt(node.from).number !== doc.lineAt(node.to).number) return;
+        const [open, close] = childrenNamed(node.node, ['LinkMark']);
+        const alt = open && close ? doc.sliceString(open.to, close.from) : '';
+        // Same destination handling as the Reading view: angle brackets dropped, percent escapes decoded for local files.
+        const raw = doc.sliceString(url.from, url.to).replace(/^<|>$/g, '');
+        const src = imageSource(/^https?:\/\//i.test(raw) ? raw : decodeLinkPath(raw), false);
+        if (src) replaceWith(node.from, node.to, new ImageWidget(src, alt), true);
       } else if (name === 'Blockquote') {
         const startLine = doc.lineAt(Math.max(node.from, from)).number;
         const endLine = doc.lineAt(Math.min(node.to, to)).number;
-        for (let n = startLine; n <= endLine; n++) all.push(quoteLine.range(doc.line(n).from));
-        for (const mark of childrenNamed(node.node, ['QuoteMark'])) {
-          if (touchesLine(mark.from)) continue;
-          hide(mark.from, mark.to + trailingSpace(mark.to));
+        const first = doc.lineAt(node.from);
+        const callout = CALLOUT_MARKER.exec(first.text);
+        for (let n = startLine; n <= endLine; n++) {
+          all.push((callout ? calloutLine : quoteLine).range(doc.line(n).from));
         }
+        if (callout && callout.index !== undefined) {
+          const markerFrom = first.from + callout.index;
+          const markerTo = markerFrom + callout[0].length;
+          if (!touchesLine(first.from)) hide(markerFrom, markerTo + trailingSpace(markerTo));
+          const titleFrom = markerTo + trailingSpace(markerTo);
+          mark(Math.min(titleFrom, first.to), first.to, calloutTitle);
+        }
+      } else if (name === 'QuoteMark') {
+        // Lazy continuation lines keep their ">" inside the paragraph, not directly under the blockquote.
+        if (touchesLine(node.from)) return;
+        hide(node.from, node.to + trailingSpace(node.to));
       } else if (name === 'ListItem') {
         const [listMark] = childrenNamed(node.node, ['ListMark']);
         if (!listMark || touchesLine(listMark.from)) return;
@@ -158,13 +257,15 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
     },
   });
 
-  // [[wikilinks]] are plain text to the Markdown parser, so they are matched line by line.
+  // Plain-text syntax the GFM parser does not produce (wikilinks, embeds, highlights, tags, footnotes, math) is matched line by line.
   const firstLine = doc.lineAt(Math.max(from, bodyStart)).number;
   const lastLine = doc.lineAt(to).number;
   for (let n = firstLine; n <= lastLine; n++) {
     const line = doc.line(n);
+    if (inMathBlock(line)) continue;
+
     for (const match of line.text.matchAll(WIKILINK)) {
-      const start = line.from + match.index;
+      const start = line.from + (match.index ?? 0);
       const end = start + match[0].length;
       if (isInCode(state, start)) continue;
       const [, target, alias] = match;
@@ -177,6 +278,53 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
       }
       all.push(wikiLinkText.range(textFrom, textTo));
     }
+
+    for (const match of line.text.matchAll(EMBED)) {
+      const start = line.from + (match.index ?? 0);
+      const end = start + match[0].length;
+      if (isInCode(state, start) || touchesSpan(start, end)) continue;
+      const [, target, size] = match;
+      if (!IMAGE_FILE.test(target)) continue;
+      const src = imageSource(target, true);
+      if (!src) continue;
+      const { width } = splitImageSize(size ?? '');
+      replaceWith(start, end, new ImageWidget(src, target, width), true);
+    }
+
+    for (const match of line.text.matchAll(HIGHLIGHT)) {
+      const start = line.from + (match.index ?? 0);
+      const end = start + match[0].length;
+      if (isInCode(state, start)) continue;
+      mark(start + 2, end - 2, highlightText);
+      if (!touchesSpan(start, end)) {
+        hide(start, start + 2);
+        hide(end - 2, end);
+      }
+    }
+
+    for (const match of line.text.matchAll(FOOTNOTE_REF)) {
+      const start = line.from + (match.index ?? 0);
+      const end = start + match[0].length;
+      if (isInCode(state, start)) continue;
+      mark(start + 2, end - 1, footnoteText);
+      if (!touchesSpan(start, end)) {
+        hide(start, start + 2);
+        hide(end - 1, end);
+      }
+    }
+
+    for (const match of line.text.matchAll(TAG_REGEX)) {
+      const start = line.from + (match.index ?? 0);
+      if (isInCode(state, start)) continue;
+      mark(start, start + match[0].length, tagText);
+    }
+
+    for (const match of line.text.matchAll(INLINE_MATH)) {
+      const start = line.from + (match.index ?? 0);
+      const end = start + match[0].length;
+      if (isInCode(state, start) || touchesSpan(start, end)) continue;
+      replaceWith(start, end, new InlineMathWidget(match[1]), true);
+    }
   }
 
   return {
@@ -185,7 +333,7 @@ function build(view: EditorView, bodyStart: number): { decorations: DecorationSe
   };
 }
 
-export const livePreview = ViewPlugin.fromClass(
+export const livePreview = (getContext: () => LivePreviewContext) => ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
     atomic: DecorationSet;
@@ -193,12 +341,13 @@ export const livePreview = ViewPlugin.fromClass(
     bodyStart: number;
     constructor(view: EditorView) {
       this.bodyStart = frontmatterEnd(view.state) ?? 0;
-      ({ decorations: this.decorations, atomic: this.atomic } = build(view, this.bodyStart));
+      ({ decorations: this.decorations, atomic: this.atomic } = build(view, this.bodyStart, getContext()));
     }
     update(update: ViewUpdate) {
       if (update.docChanged) this.bodyStart = frontmatterEnd(update.state) ?? 0;
-      if (update.docChanged || update.viewportChanged || update.selectionSet) {
-        ({ decorations: this.decorations, atomic: this.atomic } = build(update.view, this.bodyStart));
+      const refresh = update.transactions.some((tr) => tr.effects.some((e) => e.is(livePreviewRefresh)));
+      if (update.docChanged || update.viewportChanged || update.selectionSet || refresh) {
+        ({ decorations: this.decorations, atomic: this.atomic } = build(update.view, this.bodyStart, getContext()));
       }
     }
   },
@@ -209,23 +358,53 @@ export const livePreview = ViewPlugin.fromClass(
   },
 );
 
-export type OpenableLink = { kind: 'wiki'; target: string } | { kind: 'url'; href: string };
+export type OpenableLink =
+  | { kind: 'wiki'; target: string }
+  | { kind: 'url'; href: string }
+  | { kind: 'anchor'; anchor: string };
 
-// The link under a position, resolved the way the Reading view resolves it: wikilinks by text, inline links by the syntax tree.
+// The link under a position, resolved the way the Reading view resolves it: wikilinks by text, inline and
+// reference links by the syntax tree and their definitions, bare URLs and autolinks by their text.
 export function linkAt(state: EditorState, pos: number): OpenableLink | null {
   const line = state.doc.lineAt(pos);
   for (const match of line.text.matchAll(WIKILINK)) {
-    const start = line.from + match.index;
+    const start = line.from + (match.index ?? 0);
     const end = start + match[0].length;
     if (pos < start || pos > end) continue;
-    return isInCode(state, start) ? null : { kind: 'wiki', target: match[1] };
+    if (isInCode(state, start)) return null;
+    const target = match[1];
+    return target.startsWith('#') ? { kind: 'anchor', anchor: target.slice(1).trim() } : { kind: 'wiki', target };
   }
   for (let node: SyntaxNode | null = syntaxTree(state).resolveInner(pos, 1); node; node = node.parent) {
-    if (node.name !== 'Link') continue;
-    const [url] = childrenNamed(node, ['URL']);
-    return url ? { kind: 'url', href: state.doc.sliceString(url.from, url.to) } : null;
+    if (node.name === 'URL' && node.parent?.name !== 'Link' && node.parent?.name !== 'Image') {
+      return hrefLink(state.doc.sliceString(node.from, node.to));
+    }
+    if (node.name === 'Link') {
+      const [url] = childrenNamed(node, ['URL']);
+      if (url) return hrefLink(state.doc.sliceString(url.from, url.to));
+      const [labelNode] = childrenNamed(node, ['LinkLabel']);
+      const inner = labelNode ? state.doc.sliceString(labelNode.from + 1, labelNode.to - 1) : '';
+      const label = inner.trim() ? normalizeLabel(inner) : normalizeLabel(state.doc.sliceString(node.from + 1, node.to - 1).replace(/\[[^\]]*\]$/, ''));
+      const href = linkDefinitions(state.doc).get(label);
+      return href ? hrefLink(href) : null;
+    }
+    if (node.name === 'Autolink') {
+      const [url] = childrenNamed(node, ['URL']);
+      return url ? hrefLink(state.doc.sliceString(url.from, url.to)) : null;
+    }
   }
   return null;
+}
+
+function hrefLink(href: string): OpenableLink {
+  if (!href.startsWith('#')) return { kind: 'url', href };
+  let anchor = href.slice(1);
+  try {
+    anchor = decodeURIComponent(anchor);
+  } catch {
+    // A malformed escape is kept as written.
+  }
+  return { kind: 'anchor', anchor };
 }
 
 // Cmd (Ctrl off macOS) + click follows a link in place, as in Obsidian; a plain click still places the caret.

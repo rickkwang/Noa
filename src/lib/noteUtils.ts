@@ -115,7 +115,7 @@ export const splitImageSize = (alt: string): { alt: string; width?: number; heig
 
 // CJK Unified Ideographs + Ext-A + Hiragana + Katakana + Hangul Syllables.
 const TAG_CHAR = '\\w\\u3040-\\u309f\\u30a0-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';
-const TAG_REGEX = new RegExp(
+export const TAG_REGEX = new RegExp(
   `(?:^|(?<=\\s))#([${TAG_CHAR}]+(?:\\/[${TAG_CHAR}]+)*)(?![${TAG_CHAR}#\\/])`,
   'g',
 );
@@ -380,3 +380,43 @@ export function nextAvailableTitle(base: string, taken: string[]): string {
   while (used.has(`${base} ${n}`.toLowerCase())) n += 1;
   return `${base} ${n}`;
 }
+
+// Heading anchors: `[[#Setup]]` and `[text](#setup)` match a heading by its text or by its slug, ignoring case.
+export const headingSlug = (text: string): string =>
+  text.trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-');
+
+export const headingMatches = (text: string, anchor: string): boolean =>
+  text.trim().toLowerCase() === anchor.trim().toLowerCase() || headingSlug(text) === headingSlug(anchor);
+
+// Line index of the first ATX heading the anchor names. Frontmatter and lines inside fenced code are not headings.
+export const headingLineIndex = (content: string, anchor: string): number | null => {
+  const lines = content.split('\n');
+  const { body } = splitFrontmatter(content);
+  const firstBodyLine = content.slice(0, content.length - body.length).split('\n').length - 1;
+  let fence: string | null = null;
+  for (let i = firstBodyLine; i < lines.length; i++) {
+    const line = lines[i];
+    const opener = /^\s*(`{3,}|~{3,})/.exec(line)?.[1];
+    if (fence) {
+      // A fence closes with the same character, at least as long as the opener.
+      const t = line.trim();
+      const ch = fence[0];
+      if (t.length >= fence.length && [...t].every((c) => c === ch)) fence = null;
+      continue;
+    }
+    if (opener) {
+      fence = opener;
+      continue;
+    }
+    const match = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
+    if (match && headingMatches(match[1], anchor)) return i;
+  }
+  return null;
+};
+
+// The #anchor of a markdown note link, decoded; null when the link names no heading.
+export const parseMarkdownLinkAnchor = (rawHref: string): string | null => {
+  const hash = rawHref.indexOf('#');
+  const anchor = hash < 0 ? '' : decodeLinkPath(rawHref.slice(hash + 1).replace(/>$/, '')).trim();
+  return anchor || null;
+};

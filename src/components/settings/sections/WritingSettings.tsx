@@ -22,8 +22,8 @@ interface WritingSettingsProps {
 }
 
 const VIEW_MODE_OPTIONS = [
-  { value: 'edit', label: 'Edit' },
-  { value: 'preview', label: 'Preview' },
+  { value: 'edit', label: 'Live Preview' },
+  { value: 'preview', label: 'Reading view' },
 ] as const;
 
 export default function WritingSettings({ group, settings, updateSettings, editorViewMode, setEditorViewMode }: WritingSettingsProps) {
@@ -103,9 +103,9 @@ export default function WritingSettings({ group, settings, updateSettings, edito
     <div className="space-y-8">
       {group === 'general' && (
         <SettingSection title="Editor" description="How the editor behaves while you write.">
-          <SettingItem label="View Mode" description="The view the editor opens in. Restored when Noa opens.">
+          <SettingItem label="Default editing mode" description="The view notes open in. Live Preview edits with formatting shown; Reading view is read-only.">
             <SegmentedControl
-              ariaLabel="Editor view mode"
+              ariaLabel="Default editing mode"
               value={editorViewMode}
               options={VIEW_MODE_OPTIONS}
               onChange={setEditorViewMode}

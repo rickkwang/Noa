@@ -1,20 +1,26 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { Annotation, Compartment, EditorState, Transaction } from '@codemirror/state';
 import { EditorView, keymap, ViewUpdate, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { useEffect, useRef, useCallback } from 'react';
+import { headingMatches } from '../../lib/noteUtils';
 import { Note } from '../../types';
 import { codeDecorations } from './codeDecorations';
 import { buildMinimalReplaceChange } from './contentSync';
-import { hiddenFrontmatter } from './hiddenFrontmatter';
+import { frontmatterEnd, hiddenFrontmatter } from './hiddenFrontmatter';
 import { hideTaskMarkers } from './hideTaskMarkers';
 import { inlineTitle, setInlineTitle } from './inlineTitle';
-import { followLinkOnClick, livePreview, type OpenableLink } from './livePreview';
+import { followLinkOnClick, livePreview, livePreviewRefresh, type LivePreviewContext, type OpenableLink } from './livePreview';
+import { livePreviewBlocks } from './livePreviewBlocks';
+import { livePreviewFolding } from './livePreviewFold';
 
 // Marks external content syncs so they stay out of the user's undo history.
 const remoteSyncAnnotation = Annotation.define<boolean>();
+
+// A bulleted, numbered or task line; Tab nests these.
+const LIST_LINE = /^\s*(?:[-*+]|\d+[.)])\s/;
 
 // Module-level pure function — no stale closure risk
 function applyInlineFormat(view: EditorView, before: string, after: string, placeholder: string): boolean {
@@ -37,7 +43,8 @@ const darkTheme = EditorView.theme({
   '&.cm-focused': { outline: 'none !important' },
   // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
   // inherits — without this the Line Height setting never reaches edit mode.
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit' },
+  // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
+  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.06)', borderLeft: '2px solid rgba(204,125,94,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
@@ -49,11 +56,28 @@ const darkTheme = EditorView.theme({
   '.cm-lp-hr': { display: 'block', borderTop: '1px solid rgba(249,249,247,0.14)', margin: '0.9em 0' },
   '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid rgba(249,249,247,0.45)', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
   '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
+  '.cm-lp-link': { color: '#CC7D5E', textDecoration: 'underline' },
+  '.cm-lp-highlight': { backgroundColor: 'rgba(204,125,94,0.25)', borderRadius: '2px', padding: '0 2px' },
+  '.cm-lp-tag': { color: '#CC7D5E' },
+  '.cm-lp-footnote': { color: '#CC7D5E', fontSize: '0.75em', verticalAlign: 'super', fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-callout': { backgroundColor: 'rgba(249,249,247,0.04)', borderLeft: '3px solid rgba(204,125,94,0.6)', paddingLeft: '0.9em' },
+  '.cm-lp-callout-title': { fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-image': { display: 'block', margin: '0.5em 0' },
+  '.cm-lp-image img': { display: 'block', maxWidth: '100%', height: 'auto', borderRadius: '4px' },
+  '.cm-lp-block': { display: 'block', margin: '0.6em 0', overflowX: 'auto' },
+  '.cm-lp-math-block': { textAlign: 'center' },
+  '.cm-lp-mermaid': { textAlign: 'center' },
+  '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
+  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid rgba(249,249,247,0.14)', padding: '0.3em 0.6em', textAlign: 'left' },
+  '.cm-lp-table th': { fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-fold': { color: 'rgba(249,249,247,0.45)', cursor: 'pointer', opacity: '0', userSelect: 'none' },
+  '.cm-lp-fold-closed': { opacity: '1' },
+  '.cm-gutterElement:hover .cm-lp-fold': { opacity: '1' },
   '.cm-cursor': { borderLeftColor: '#F9F9F7' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.38)' },
   '.cm-activeLine': { backgroundColor: 'rgba(249,249,247,0.03)' },
-  '.cm-gutters': { display: 'none' },
+  '.cm-gutters': { position: 'absolute', left: '0', top: '0', bottom: '0', width: '1.25rem', backgroundColor: 'transparent', border: 'none' },
   '.cm-placeholder': { color: 'rgba(249,249,247,0.28)' },
 }, { dark: true });
 
@@ -80,7 +104,8 @@ const lightTheme = EditorView.theme({
   '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit' },
+  // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
+  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.09)', borderLeft: '2px solid rgba(204,125,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
@@ -92,11 +117,28 @@ const lightTheme = EditorView.theme({
   '.cm-lp-hr': { display: 'block', borderTop: '1px solid #2D2D2B24', margin: '0.9em 0' },
   '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid #2D2D2B73', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
   '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
+  '.cm-lp-link': { color: '#CC7D5E', textDecoration: 'underline' },
+  '.cm-lp-highlight': { backgroundColor: 'rgba(204,125,94,0.25)', borderRadius: '2px', padding: '0 2px' },
+  '.cm-lp-tag': { color: '#CC7D5E' },
+  '.cm-lp-footnote': { color: '#CC7D5E', fontSize: '0.75em', verticalAlign: 'super', fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-callout': { backgroundColor: 'rgba(45,45,43,0.04)', borderLeft: '3px solid rgba(204,125,94,0.6)', paddingLeft: '0.9em' },
+  '.cm-lp-callout-title': { fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-image': { display: 'block', margin: '0.5em 0' },
+  '.cm-lp-image img': { display: 'block', maxWidth: '100%', height: 'auto', borderRadius: '4px' },
+  '.cm-lp-block': { display: 'block', margin: '0.6em 0', overflowX: 'auto' },
+  '.cm-lp-math-block': { textAlign: 'center' },
+  '.cm-lp-mermaid': { textAlign: 'center' },
+  '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
+  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid #2D2D2B24', padding: '0.3em 0.6em', textAlign: 'left' },
+  '.cm-lp-table th': { fontWeight: 'var(--font-weight-content-bold)' },
+  '.cm-lp-fold': { color: '#2D2D2B73', cursor: 'pointer', opacity: '0', userSelect: 'none' },
+  '.cm-lp-fold-closed': { opacity: '1' },
+  '.cm-gutterElement:hover .cm-lp-fold': { opacity: '1' },
   '.cm-cursor': { borderLeftColor: '#2D2D2B' },
   '.cm-selectionBackground': { backgroundColor: '#CC7D5E40' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: '#CC7D5E60' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
-  '.cm-gutters': { display: 'none' },
+  '.cm-gutters': { position: 'absolute', left: '0', top: '0', bottom: '0', width: '1.25rem', backgroundColor: 'transparent', border: 'none' },
   '.cm-placeholder': { color: '#2D2D2B50' },
 });
 
@@ -145,6 +187,8 @@ interface UseCodeMirrorOptions {
   onAddProperty?: (trigger: 'dashes' | 'shortcut') => boolean;
   /** Cmd/Ctrl+click target in Live Preview; the editor never navigates by itself. */
   onOpenLink?: (link: OpenableLink) => void;
+  /** Object URL for an image reference in the note; changes re-draw Live Preview images. */
+  resolveImage?: (target: string, wiki: boolean) => string | undefined;
 }
 
 export function useCodeMirror({
@@ -160,6 +204,7 @@ export function useCodeMirror({
   propertiesSlot,
   onAddProperty,
   onOpenLink,
+  resolveImage,
 }: UseCodeMirrorOptions) {
   const editorViewRef = useRef<EditorView | null>(null);
   const savedCursorRef = useRef<number>(0);
@@ -186,6 +231,40 @@ export function useCodeMirror({
   useEffect(() => { onAddPropertyRef.current = onAddProperty; }, [onAddProperty]);
   const onOpenLinkRef = useRef(onOpenLink);
   useEffect(() => { onOpenLinkRef.current = onOpenLink; }, [onOpenLink]);
+  // Read by the Live Preview widgets at draw time, so they follow the latest theme and attachments.
+  const isDarkRef = useRef(isDark);
+  useEffect(() => { isDarkRef.current = isDark; }, [isDark]);
+  const resolveImageRef = useRef(resolveImage);
+  useEffect(() => { resolveImageRef.current = resolveImage; }, [resolveImage]);
+  const livePreviewContext = useRef<LivePreviewContext>({
+    isDark: () => isDarkRef.current,
+    resolveImage: (target, wiki) => resolveImageRef.current?.(target, wiki),
+  }).current;
+  const getLivePreviewContext = () => livePreviewContext;
+
+  // Scrolls to the first heading the anchor names, as Obsidian does; the cursor lands on the heading line.
+  const jumpToHeading = useCallback((anchor: string) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+    let target = -1;
+    // Frontmatter lines (a YAML "# comment") are not headings, as in headingLineIndex.
+    const bodyStart = frontmatterEnd(view.state) ?? 0;
+    syntaxTree(view.state).iterate({
+      enter: (node) => {
+        if (target >= 0 || node.from < bodyStart || !node.name.startsWith('ATXHeading')) return;
+        const line = view.state.doc.lineAt(node.from);
+        if (headingMatches(line.text.replace(/^#+\s*/, '').replace(/\s+#+\s*$/, ''), anchor)) target = line.from;
+      },
+    });
+    if (target < 0) return;
+    view.dispatch({ selection: { anchor: target }, scrollIntoView: true });
+    view.focus();
+  }, []);
+
+  const followLink = (link: OpenableLink) => {
+    if (link.kind === 'anchor') jumpToHeading(link.anchor);
+    else onOpenLinkRef.current?.(link);
+  };
 
   // Build CodeMirror instance — recreate only when note id or dark mode changes
   useEffect(() => {
@@ -246,7 +325,23 @@ export function useCodeMirror({
       {
         key: 'Tab',
         run: (view) => {
-          view.dispatch(view.state.replaceSelection('  '));
+          // On a list line Tab nests the item by two spaces; elsewhere it inserts two spaces, as before.
+          const line = view.state.doc.lineAt(view.state.selection.main.from);
+          if (LIST_LINE.test(line.text)) {
+            view.dispatch({ changes: { from: line.from, insert: '  ' } });
+          } else {
+            view.dispatch(view.state.replaceSelection('  '));
+          }
+          return true;
+        },
+      },
+      {
+        key: 'Shift-Tab',
+        run: (view) => {
+          const line = view.state.doc.lineAt(view.state.selection.main.from);
+          const indent = /^ {1,2}/.exec(line.text);
+          if (!LIST_LINE.test(line.text) || !indent) return false;
+          view.dispatch({ changes: { from: line.from, to: line.from + indent[0].length } });
           return true;
         },
       },
@@ -285,8 +380,10 @@ export function useCodeMirror({
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
       hideTaskMarkers,
       codeDecorations,
-      livePreview,
-      followLinkOnClick(() => onOpenLinkRef.current),
+      livePreview(getLivePreviewContext),
+      livePreviewBlocks(getLivePreviewContext),
+      livePreviewFolding,
+      followLinkOnClick(() => followLink),
       updateListener,
       insertMentionKeymap,
       history(),
@@ -339,6 +436,11 @@ export function useCodeMirror({
     // note?.content is omitted on purpose: content changes dispatch below instead of rebuilding (which would drop cursor + undo history).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id, isDark]);
+
+  // Attachment URLs arrive after the editor is built; ask Live Preview to draw the images again.
+  useEffect(() => {
+    editorViewRef.current?.dispatch({ effects: livePreviewRefresh.of(null) });
+  }, [resolveImage]);
 
   // Dynamically update content max-width without rebuilding the editor
   useEffect(() => {
