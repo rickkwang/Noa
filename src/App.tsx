@@ -510,6 +510,7 @@ export default function App() {
     openPanes,
     togglePane,
     showOnlyPane,
+    swapPanes,
     expandedPane,
     toggleExpandedPane,
     isDraggingSidebar,
@@ -1190,6 +1191,7 @@ export default function App() {
 
         {/* Right Panel — always rendered for slide animation */}
         <div
+          data-noa-right-panel-shell
           // Exactly one position class: `relative` + `absolute` together let Tailwind's source order keep the overlay in flow.
           // Desktop lifts over the 44px titlebar; expanded goes out of flow over the editor (stays below the titlebar when the sidebar is closed).
           className={`flex justify-end shrink-0 min-h-0 overflow-hidden ${
@@ -1274,6 +1276,7 @@ export default function App() {
                   activeNote={activeNote}
                   openPanes={openPanes}
                   onTogglePane={togglePane}
+                  onSwapPanes={swapPanes}
                   onShowOnlyPane={showOnlyPane}
                   badges={paneBadges}
                   single={isMobile}

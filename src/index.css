@@ -909,6 +909,31 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   mask-repeat: no-repeat, no-repeat;
 }
 
+/* Card move handle (RightPanel): hidden until hovered, 20% ink on hover, full ink while held. Mirrors Claude Code's tiles. */
+.noa-pane-move-pill {
+  background: color-mix(in srgb, var(--text-primary, #2D2D2B) 20%, transparent);
+  opacity: 0;
+  transition: opacity var(--dur-snap) var(--ease-out);
+}
+.noa-pane-move-handle:hover .noa-pane-move-pill,
+.noa-pane-move-handle:focus-visible .noa-pane-move-pill {
+  opacity: 1;
+}
+.noa-pane-move-handle[data-active] .noa-pane-move-pill {
+  background: var(--text-primary, #2D2D2B);
+  opacity: 1;
+}
+[data-pane-move-drag="true"],
+[data-pane-move-drag="true"] * {
+  cursor: move !important;
+  user-select: none;
+}
+/* A held card follows the pointer out of the column, over the editor, so the column stops clipping while it moves. */
+[data-pane-move-drag="true"] [data-noa-right-panel-shell],
+[data-pane-move-drag="true"] [data-noa-right-panel-content] {
+  overflow: visible;
+}
+
 /* Long names fade out over the last 24px instead of ending in an ellipsis. Takes the remaining row width,
    so a name that fits never reaches the ramp. */
 .noa-fade-truncate {

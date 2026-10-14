@@ -85,6 +85,8 @@ export function useLayout() {
   // The phone drawer has room for one card, so its tab strip replaces rather
   // than toggles.
   const showOnlyPane = useCallback((id: RightTab) => setOpenPanes([id]), []);
+  // Dragging a card by its handle swaps the column's two cards; the order persists with the set.
+  const swapPanes = useCallback(() => setOpenPanes((panes) => (panes.length === 2 ? [panes[1], panes[0]] : panes)), []);
   // Split was removed; a saved 'split' (or anything unrecognised) opens the editable view.
   // The default is what the app starts in. The current view is session state: switching views or jumping
   // to a heading or task does not change the default.
@@ -363,6 +365,7 @@ export function useLayout() {
     openPanes,
     togglePane,
     showOnlyPane,
+    swapPanes,
     expandedPane,
     toggleExpandedPane,
     isRightPanelWide,

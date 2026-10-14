@@ -1,4 +1,5 @@
 import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { RIGHT_TABS, RIGHT_TAB_LABELS, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
@@ -25,23 +26,80 @@ type PaneSlotState = 'open' | 'minimized' | 'hidden';
  *
  * Cards render in a fixed DOM order and are placed with CSS `order`, so the
  * graph can stay mounted while closed without pinning where it reappears.
- * `order` is the sequence in which cards were opened: the newest always lands
- * at the bottom. Nothing is animated — a card is there or it is not.
+ * `order` follows `open`: a newly opened card lands at the bottom, and
+ * dragging a card by its handle reorders `open` itself.
  */
 function usePaneSlots(open: readonly RightTab[]) {
-  const sequenceRef = useRef(0);
-  const orderRef = useRef(new Map<RightTab, number>());
-
-  for (const id of [...orderRef.current.keys()]) {
-    if (!open.includes(id)) orderRef.current.delete(id);
-  }
-  for (const id of open) {
-    if (!orderRef.current.has(id)) orderRef.current.set(id, ++sequenceRef.current);
-  }
-
   return {
     isOpen: (id: RightTab) => open.includes(id),
-    orderOf: (id: RightTab) => orderRef.current.get(id) ?? 0,
+    orderOf: (id: RightTab) => open.indexOf(id) + 1,
+  };
+}
+
+// Card move, measured on Claude Code's tiles: the drag starts after 3px, the held card then follows the pointer
+// on both axes, and the other card yields once the pointer crosses its centre. Yielding, release and Escape all
+// ride one critically damped spring (ω ≈ 22/s: ~90% of the way in 200ms, at rest by ~450ms).
+const PANE_MOVE_THRESHOLD = 3;
+const PANE_MOVE_SPRING = 22;
+
+/** Drives an element's translate with a critically damped spring; retargeting mid-flight keeps its velocity. */
+function createSpring(el: HTMLElement, reduceMotion: boolean) {
+  let x = 0, y = 0, vx = 0, vy = 0, tx = 0, ty = 0;
+  let frame: number | null = null;
+  let last = 0;
+  let onRest: (() => void) | null = null;
+  const apply = () => {
+    el.style.transform = x === 0 && y === 0 ? '' : `translate(${x}px, ${y}px)`;
+  };
+  const settle = () => {
+    x = tx; y = ty; vx = 0; vy = 0;
+    apply();
+    frame = null;
+    const done = onRest;
+    onRest = null;
+    done?.();
+  };
+  const step = (now: number) => {
+    const dt = Math.min((now - last) / 1000, 1 / 30);
+    last = now;
+    const w = PANE_MOVE_SPRING;
+    vx += (w * w * (tx - x) - 2 * w * vx) * dt;
+    vy += (w * w * (ty - y) - 2 * w * vy) * dt;
+    x += vx * dt;
+    y += vy * dt;
+    if (Math.abs(tx - x) < 0.5 && Math.abs(ty - y) < 0.5 && Math.abs(vx) < 10 && Math.abs(vy) < 10) {
+      settle();
+      return;
+    }
+    apply();
+    frame = requestAnimationFrame(step);
+  };
+  return {
+    /** Pins the element to an offset with no motion (pointer tracking). */
+    set(nx: number, ny: number) {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
+      x = tx = nx; y = ty = ny; vx = 0; vy = 0;
+      apply();
+    },
+    to(nx: number, ny: number, done?: () => void) {
+      tx = nx; ty = ny;
+      onRest = done ?? null;
+      if (reduceMotion) {
+        if (frame !== null) cancelAnimationFrame(frame);
+        settle();
+        return;
+      }
+      if (frame === null) {
+        last = performance.now();
+        frame = requestAnimationFrame(step);
+      }
+    },
+    stop() {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
+      onRest = null;
+    },
   };
 }
 
@@ -58,6 +116,8 @@ function PaneCard({
   isExpanded,
   onToggleExpand,
   onClose,
+  onMovePointerDown,
+  isMoving = false,
   children,
 }: {
   id: RightTab;
@@ -74,6 +134,9 @@ function PaneCard({
   onToggleExpand?: () => void;
   /** Absent in the phone drawer, where the tab strip is the only switch. */
   onClose?: () => void;
+  /** Present only while two cards share the column, so there is somewhere to move to. */
+  onMovePointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  isMoving?: boolean;
   children: React.ReactNode;
 }) {
   const title = RIGHT_TAB_LABELS[id];
@@ -89,9 +152,22 @@ function PaneCard({
       data-pane={id}
       data-state={state}
       inert={state === 'open' ? undefined : true}
-      className={`noa-pane-card flex flex-col overflow-hidden rounded-panel bg-[var(--bg-card,#FFFFFF)]`}
+      className={`noa-pane-card relative flex flex-col overflow-hidden rounded-panel bg-[var(--bg-card,#FFFFFF)] ${isMoving ? 'z-20' : ''}`}
       style={{ order, flexGrow: grow }}
     >
+      {onMovePointerDown && (
+        // Hover target spans the header's top edge; the 32×3 pill inside is the visible affordance.
+        <button
+          type="button"
+          aria-label="Move panel"
+          onPointerDown={onMovePointerDown}
+          className="noa-pane-move-handle absolute left-1/2 top-0 z-10 flex h-4 w-11 -translate-x-1/2 cursor-move touch-none items-center justify-center outline-none"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          data-active={isMoving || undefined}
+        >
+          <span className="noa-pane-move-pill h-[3px] w-8 rounded-full" />
+        </button>
+      )}
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
           no-drag as a whole (see App.tsx); the top card's header opts back in so the titlebar area stays draggable. */}
       <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={dragsWindow ? { WebkitAppRegion: 'drag' } as React.CSSProperties : undefined}>
@@ -127,9 +203,11 @@ interface RightPanelProps {
   onToggleTask: (task: GlobalTask) => void;
   onNavigateToNoteById: (id: string, lineIndex?: number) => void;
   activeNote?: Note;
-  /** Cards in the column, oldest first. */
+  /** Cards in the column, top first. */
   openPanes: readonly RightTab[];
   onTogglePane: (tab: RightPanelTab) => void;
+  /** Swaps the two cards in the column. */
+  onSwapPanes: () => void;
   /** Phone drawer: replace the single visible card. */
   onShowOnlyPane: (tab: RightPanelTab) => void;
   badges: PaneBadges;
@@ -148,7 +226,7 @@ interface RightPanelProps {
 
 export default function RightPanel({
   tasks, onToggleTask, onNavigateToNoteById, activeNote,
-  openPanes, onTogglePane, onShowOnlyPane, badges, single = false,
+  openPanes, onTogglePane, onSwapPanes, onShowOnlyPane, badges, single = false,
   expandedPane, onToggleExpandPane,
   notes, folders, settings, activeNoteId, onUpdateNote, onFrontmatterChange,
 }: RightPanelProps) {
@@ -335,6 +413,116 @@ export default function RightPanel({
     handle.addEventListener('pointercancel', end);
   };
 
+  // Moving a card writes transforms straight to the two cards per pointer event, like the split drag,
+  // and commits the new order to state only on release.
+  const [movingPane, setMovingPane] = useState<RightTab | null>(null);
+  // Tears down an in-flight move if the panel unmounts mid-drag or mid-settle, so the document-level
+  // cursor/overflow override and the Escape listener don't outlive it.
+  const moveCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => moveCleanupRef.current?.(), []);
+  const handleMovePointerDown = (id: RightTab) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    const column = cardsRef.current;
+    // movingPane stays set until the settle commits; a grab during it would read mid-animation positions.
+    if (!column || !splitPair || event.button !== 0 || movingPane !== null) return;
+    const otherId = splitPair[0] === id ? splitPair[1] : splitPair[0];
+    const held = column.querySelector<HTMLElement>(`[data-pane="${id}"]`);
+    const other = column.querySelector<HTMLElement>(`[data-pane="${otherId}"]`);
+    if (!held || !other) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const heldRect = held.getBoundingClientRect();
+    const otherRect = other.getBoundingClientRect();
+    const heldIsUpper = splitPair[0] === id;
+    // Where each card would sit after a swap, relative to where it sits now. Each card keeps its own height.
+    const gap = heldIsUpper ? otherRect.top - heldRect.bottom : heldRect.top - otherRect.bottom;
+    const heldShift = heldIsUpper ? otherRect.height + gap : -(otherRect.height + gap);
+    const otherShift = heldIsUpper ? -(heldRect.height + gap) : heldRect.height + gap;
+    const otherCentre = otherRect.top + otherRect.height / 2;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const heldSpring = createSpring(held, reduceMotion);
+    const otherSpring = createSpring(other, reduceMotion);
+    let started = false;
+    let swapped = false;
+    let finished = false;
+
+    const detach = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', release);
+      handle.removeEventListener('pointercancel', abort);
+      handle.removeEventListener('lostpointercapture', abort);
+      document.removeEventListener('keydown', escape, true);
+    };
+    moveCleanupRef.current = () => {
+      detach();
+      heldSpring.stop();
+      otherSpring.stop();
+      document.documentElement.removeAttribute('data-pane-move-drag');
+    };
+
+    const move = (e: PointerEvent) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!started) {
+        if (Math.hypot(dx, dy) < PANE_MOVE_THRESHOLD) return;
+        started = true;
+        setMovingPane(id);
+        document.documentElement.setAttribute('data-pane-move-drag', 'true');
+      }
+      heldSpring.set(dx, dy);
+      const nextSwapped = heldIsUpper ? e.clientY > otherCentre : e.clientY < otherCentre;
+      if (nextSwapped !== swapped) {
+        swapped = nextSwapped;
+        otherSpring.to(0, swapped ? otherShift : 0);
+      }
+    };
+    const finish = (commit: boolean) => {
+      if (finished) return;
+      finished = true;
+      detach();
+      if (!started) {
+        moveCleanupRef.current = null;
+        return;
+      }
+      const doSwap = commit && swapped;
+      if (!doSwap) otherSpring.to(0, 0);
+      // Settle the held card into its slot, then swap the order in state and drop the transforms in one commit.
+      heldSpring.to(0, doSwap ? heldShift : 0, () => {
+        otherSpring.stop();
+        flushSync(() => {
+          if (doSwap) {
+            onSwapPanes();
+            const nextSplit = 1 - split;
+            setSplit(nextSplit);
+            try { localStorage.setItem(STORAGE_KEYS.PANE_SPLIT, String(nextSplit)); } catch { /* quota exceeded */ }
+          }
+          setMovingPane(null);
+        });
+        held.style.transform = '';
+        other.style.transform = '';
+        document.documentElement.removeAttribute('data-pane-move-drag');
+        moveCleanupRef.current = null;
+      });
+    };
+    const release = () => finish(true);
+    const abort = () => finish(false);
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !started) return;
+      e.preventDefault();
+      e.stopPropagation();
+      finish(false);
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', release);
+    handle.addEventListener('pointercancel', abort);
+    // Capture can drop without a pointerup (the button re-rendering away, the OS taking the pointer); treat it as a cancel.
+    handle.addEventListener('lostpointercapture', abort);
+    document.addEventListener('keydown', escape, true);
+  };
+
   const slotState = (id: RightTab): PaneSlotState | null => {
     if (slots.isOpen(id)) return expanded !== null && expanded !== id ? 'minimized' : 'open';
     if (id === 'graph' && hasVisitedGraph) return 'hidden';
@@ -354,6 +542,8 @@ export default function RightPanel({
       isExpanded: expanded === id,
       onToggleExpand: single ? undefined : () => onToggleExpandPane(id),
       onClose: single ? undefined : () => onTogglePane(id),
+      onMovePointerDown: splitPair && state === 'open' ? handleMovePointerDown(id) : undefined,
+      isMoving: movingPane === id,
     };
     switch (id) {
       case 'tasks':

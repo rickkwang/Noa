@@ -660,6 +660,30 @@ test('the title-bar panel menu switches right-column cards on and off', async ({
   await expect(menuButton).toHaveAttribute('data-panel-open', 'true');
 });
 
+test('dragging a card by its move handle swaps the two cards and keeps the order', async ({ page }) => {
+  await page.goto('/');
+  const menuButton = page.getByRole('button', { name: 'Panels' });
+  await menuButton.click();
+  await page.getByRole('menuitemcheckbox', { name: 'Backlinks', exact: true }).click();
+  const tasks = page.locator('[data-pane="tasks"]');
+  const backlinks = page.locator('[data-pane="backlinks"]');
+  const top = async (card: typeof tasks) => (await card.boundingBox())!.y;
+  expect(await top(tasks)).toBeLessThan(await top(backlinks));
+
+  const handle = (await tasks.getByRole('button', { name: 'Move panel' }).boundingBox())!;
+  const lower = (await backlinks.boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2, lower.y + lower.height, { steps: 10 });
+  await page.mouse.up();
+
+  // The swap commits after the settle animation; transforms alone already show the new order before that.
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('app-right-panes'))).toBe('["backlinks","tasks"]');
+  expect(await top(backlinks)).toBeLessThan(await top(tasks));
+  await page.reload();
+  await expect.poll(async () => (await top(backlinks)) < (await top(tasks))).toBe(true);
+});
+
 test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();
