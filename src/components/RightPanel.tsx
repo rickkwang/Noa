@@ -601,7 +601,7 @@ export default function RightPanel({
                       // The same floating surface as the app's popup menus (PaneMenu):
                       // 10px corners, hairline, floating shadow, card colour. The
                       // field is one compact 28px row.
-                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg border border-[var(--divider-subtle)] pl-2 pr-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
+                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg pl-2 pr-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
                         <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40'}`} />
                         <input autoFocus type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                           aria-label="Filter graph nodes" placeholder="Filter nodes…"
@@ -868,7 +868,7 @@ function GraphInfoPanel({
       {isOpen && (
         <div
           id="noa-graph-connections"
-          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t border-[var(--divider-subtle)] bg-[var(--bg-card,#FFFFFF)]`}
+          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t-[0.5px] border-[var(--divider-subtle)] bg-[var(--bg-card,#FFFFFF)]`}
         >
           {/* Open, the toggle rides the drawer's top edge — where the thing
               it closes begins — and stays there while the lists scroll. The
@@ -1114,7 +1114,7 @@ function GraphFilterPanel({
   );
   const formatMultiplier = (v: number) => `${v.toFixed(1)}×`;
   return (
-    <div className="mx-3 mb-2 space-y-4 border-b border-[var(--divider-subtle)] pb-4 pt-2 shrink-0">
+    <div className="mx-3 mb-2 space-y-4 border-b-[0.5px] border-[var(--divider-subtle)] pb-4 pt-2 shrink-0">
       <GraphDrawerSection title="Filters" isDark={isDark}>
         <div className="flex items-center gap-2">
           <span className={labelCls}>Depth</span>

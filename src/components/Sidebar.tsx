@@ -265,7 +265,7 @@ export default function Sidebar({
         {templateMenuFolderId === node.folder.id && (
           <div
             data-template-menu
-            className="absolute right-0 top-7 z-50 min-w-[168px] rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+            className="absolute right-0 top-7 z-50 min-w-[168px] rounded-panel bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
           >
             {builtinTemplates.map(t => {
               const TemplateIcon = templateMenuIcons[t.id] ?? FileText;
@@ -617,7 +617,7 @@ export default function Sidebar({
           ref={blankMenuRef}
           role="menu"
           aria-label="Sidebar actions"
-          className="fixed z-[90] w-44 rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
+          className="fixed z-[90] w-44 rounded-panel bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
           style={{ left: blankMenu.x, top: blankMenu.y }}
           onKeyDown={(e) => { if (e.key === 'Escape') setBlankMenu(null); }}
         >

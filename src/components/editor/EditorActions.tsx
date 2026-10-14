@@ -91,7 +91,7 @@ export function EditorActions({
         {menuOpen && (
           <div
             role="menu"
-            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-panel font-ui noa-floating-panel border border-[var(--divider-subtle)] ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-panel font-ui noa-floating-panel ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
           >
             {onToggleHistory && (
               <>
@@ -102,7 +102,7 @@ export function EditorActions({
                 >
                   Version History
                 </button>
-                <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />
+                <div className="mx-1 my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
               </>
             )}
             <button role="menuitem" onClick={() => { onExportMd(); setMenuOpen(false); }} className={itemClass}>

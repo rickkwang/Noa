@@ -93,7 +93,7 @@ describe('sidebar search result layout', () => {
   it('uses a subtle semantic branch line and one resting text weight for folders and notes', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain('border-l border-[var(--divider-subtle)]');
+    expect(fileNode).toContain('border-l-[0.5px] border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
     // 425 vs 400 is not visibly different; rows keep one resting weight and active is marked by background alone.
     expect(fileNode).not.toContain("font-bold");

@@ -79,7 +79,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
   return (
     // Top divider only while the body is mounted — see CalendarPanel's rule.
     <div
-      className={`noa-sidebar-section-surface flex shrink-0 relative flex-col ${isBodyMounted ? 'border-t' : ''}`}
+      className={`noa-sidebar-section-surface flex shrink-0 relative flex-col ${isBodyMounted ? 'border-t-[0.5px]' : ''}`}
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       {isTagsOpen && (

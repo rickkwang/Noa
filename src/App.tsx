@@ -889,7 +889,8 @@ export default function App() {
             left: isPromotingSidebarPreview
               ? undefined
               : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '0px',
-            width: '1px',
+            // Claude Code's sidebar edge is a half-pixel hairline.
+            width: '0.5px',
             backgroundColor: 'var(--divider-subtle, #E6E2DA)',
             opacity: isSidebarOpen ? 1 : 0,
             // Direct toggle follows the sidebar edge; during preview promotion it stays fixed and fades in with the shadow.
@@ -1297,7 +1298,7 @@ export default function App() {
       </div>
       <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-ui">
         {saveError && (
-          <div role="alert" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+          <div role="alert" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[#2D2D2B] mb-1">Action failed</div>
             <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
             <button
@@ -1309,13 +1310,13 @@ export default function App() {
           </div>
         )}
         {externalUpdateNotice && (
-          <div role="status" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+          <div role="status" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder updated</div>
             <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
           </div>
         )}
         {fsSyncError && fsHandle && (
-          <div role="alert" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+          <div role="alert" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder sync failed</div>
             <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
               {needsReauth
@@ -1345,7 +1346,7 @@ export default function App() {
           </div>
         )}
         {showStorageNotice && !showVaultOnboarding && (
-          <div className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
+          <div className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[#2D2D2B] mb-1">Local storage only</div>
             <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
               {LOCAL_DATA_BOUNDARY_COPY}

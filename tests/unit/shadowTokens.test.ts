@@ -8,9 +8,9 @@ describe('shadow tokens', () => {
   it('defines both tokens in light mode and redefines them in dark mode', async () => {
     const styles = await readFile(stylesPath, 'utf8');
     expect(styles).toContain('--shadow-elevated: 0 0 2px 0 rgba(45,45,43,0.05), 0 0 14px -3px rgba(45,45,43,0.10)');
-    expect(styles).toContain('--shadow-floating: 0 2px 4px 0 rgba(45,45,43,0.07), 0 6px 16px 0 rgba(45,45,43,0.08)');
+    expect(styles).toContain('--shadow-floating: 0 0 0 1px rgba(11,11,11,0.10), 0 8px 24px 0 rgba(0,0,0,0.12), 0 2px 6px 0 rgba(0,0,0,0.08)');
     expect(styles).toContain('--shadow-elevated: 0 0 2px 0 rgba(0,0,0,0.20), 0 0 16px -4px rgba(0,0,0,0.30)');
-    expect(styles).toContain('--shadow-floating: 0 2px 4px 0 rgba(0,0,0,0.30), 0 6px 16px 0 rgba(0,0,0,0.40)');
+    expect(styles).toContain('--shadow-floating: 0 0 0 1px rgba(249,249,247,0.08), 0 8px 24px 0 rgba(0,0,0,0.45), 0 2px 6px 0 rgba(0,0,0,0.30)');
   });
 
   it('utility classes consume the tokens rather than raw shadow values', async () => {

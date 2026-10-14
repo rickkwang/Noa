@@ -23,7 +23,7 @@ const historyPanelPath = fileURLToPath(new URL('../../src/components/editor/Hist
 const graphViewPath = fileURLToPath(new URL('../../src/components/GraphView.tsx', import.meta.url));
 
 describe('light theme border tokens', () => {
-  it('uses one translucent divider recipe across both themes and primary separators', async () => {
+  it('uses a translucent divider in both themes: Claude Code ink at 10% in light, 8% of the text colour in dark', async () => {
     const [themeInjector, editorHeader, topBar, previewPane] = await Promise.all([
       readFile(themeInjectorPath, 'utf8'),
       readFile(editorHeaderPath, 'utf8'),
@@ -31,11 +31,11 @@ describe('light theme border tokens', () => {
       readFile(previewPanePath, 'utf8'),
     ]);
 
-    const sharedDividerRecipe = "root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');";
-    expect(themeInjector.split(sharedDividerRecipe)).toHaveLength(3);
+    expect(themeInjector).toContain("root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');");
+    expect(themeInjector).toContain("root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');");
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', '#E6E2DA');");
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');");
-    expect(editorHeader).toContain('editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)]');
+    expect(editorHeader).toContain('editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 bg-[var(--divider-subtle)]');
     expect(previewPane).toContain("const borderColor = 'var(--divider-subtle, #E6E2DA)';");
   });
 
@@ -53,8 +53,8 @@ describe('light theme border tokens', () => {
     expect(themeInjector).not.toContain('.hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-strong) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
-    expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
-    expect(rightPanel).toContain('border-b border-[var(--divider-subtle)] pb-4 pt-2');
+    expect(editorToolbar).toContain('w-[0.5px] h-4 bg-[var(--divider-subtle)]');
+    expect(rightPanel).toContain('border-b-[0.5px] border-[var(--divider-subtle)] pb-4 pt-2');
   });
 
   it('scopes all ordinary settings-panel borders to the divider token', async () => {
@@ -99,8 +99,8 @@ describe('light theme border tokens', () => {
     ]);
 
     expect(source).toContain("root.style.setProperty('--border-default', 'var(--divider-subtle)');");
-    expect(source).toContain("root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');");
-    expect(source).toContain("root.style.setProperty('--border-strong', '#E6E2DA');");
+    expect(source).toContain("root.style.setProperty('--border-strong', 'color-mix(in srgb, var(--text-primary) 16%, transparent)');");
+    expect(source).toContain("root.style.setProperty('--border-strong', 'rgba(11,11,11,0.20)');");
     expect(source).not.toContain("root.style.setProperty('--border-strong', 'var(--divider-subtle)');");
     expect(source).not.toContain("root.style.setProperty('--border-primary', '#2D2D2B');");
     expect(source).toContain("root.style.setProperty('--control-shadow-ink', '#000000');");

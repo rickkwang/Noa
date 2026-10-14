@@ -480,7 +480,7 @@ export function EditorHeader({
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-px shrink-0 bg-[var(--divider-subtle)] mx-0.5 ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        className={`editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 bg-[var(--divider-subtle)] mx-0.5 ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
                         aria-hidden="true"
                         style={tabDrag && idx !== sourceIndex ? { transform: `translateX(${shift}px)`, transition: 'transform 150ms ease-out' } : undefined}
                       />

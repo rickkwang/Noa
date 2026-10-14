@@ -19,7 +19,7 @@ describe('structural divider tokens', () => {
     expect(themeInjector).toContain("root.style.setProperty('--border-default', 'var(--divider-subtle)');");
     expect(globalStyles).toContain('.border-\\[\\#2D2D2B\\]      { border-color: var(--border-default) !important; }');
     expect(themeInjector).not.toContain('.border-\\\\[\\\\#2D2D2B\\\\]\\\\/15 { border-color: var(--divider-subtle) !important; }');
-    expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
+    expect(editorToolbar).toContain('w-[0.5px] h-4 bg-[var(--divider-subtle)]');
     expect(previewPane).toContain("const borderColor = 'var(--divider-subtle, #E6E2DA)';");
     expect(previewPane).not.toContain("isDark ? 'rgba(249,249,247,0.5)' : 'var(--divider-subtle, #E6E2DA)'");
   });

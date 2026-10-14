@@ -31,10 +31,10 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
         aria-label="Command palette"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="outline-none w-full max-w-xl border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden"
+        className="outline-none w-full max-w-xl bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-[var(--divider-subtle)] px-4 py-3">
+        <div className="border-b-[0.5px] border-[var(--divider-subtle)] px-4 py-3">
           <input
             ref={palette.inputRef}
             type="text"

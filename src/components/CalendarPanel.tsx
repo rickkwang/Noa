@@ -239,7 +239,7 @@ export default function CalendarPanel({
     // its own only while its body is mounted (open, or easing closed). A closed
     // panel is zero-height, so its line would stack on the footer's.
     <div
-      className={`noa-sidebar-section-surface shrink-0 ${isBodyMounted ? 'border-t' : ''}`}
+      className={`noa-sidebar-section-surface shrink-0 ${isBodyMounted ? 'border-t-[0.5px]' : ''}`}
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       <div className="noa-sidebar-collapse" data-open={isOpen ? 'true' : undefined}>

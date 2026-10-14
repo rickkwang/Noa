@@ -118,8 +118,9 @@ body {
   /* Shadows: ambient = in-flow cards, elevated = raised graph panels, floating = dropdowns/toasts, dialog = modal dialogs. Floating and dialog stack a tight contact layer over a soft spread. */
   --shadow-ambient: 0 0 2px 0 rgba(45,45,43,0.04), 0 0 10px 0 rgba(45,45,43,0.05);
   --shadow-elevated: 0 0 2px 0 rgba(45,45,43,0.05), 0 0 14px -3px rgba(45,45,43,0.10);
-  --shadow-floating: 0 2px 4px 0 rgba(45,45,43,0.07), 0 6px 16px 0 rgba(45,45,43,0.08);
-  --shadow-dialog: 0 4px 8px 0 rgba(45,45,43,0.08), 0 12px 28px -2px rgba(45,45,43,0.10);
+  /* Floating surfaces draw their edge as a 1px ring in the shadow (Claude Code's menus), not a border. */
+  --shadow-floating: 0 0 0 1px rgba(11,11,11,0.10), 0 8px 24px 0 rgba(0,0,0,0.12), 0 2px 6px 0 rgba(0,0,0,0.08);
+  --shadow-dialog: 0 0 0 1px rgba(11,11,11,0.10), 0 4px 8px 0 rgba(45,45,43,0.08), 0 12px 28px -2px rgba(45,45,43,0.10);
 }
 
 .noa-app-shell {
@@ -331,7 +332,10 @@ body {
    opts in per-border. */
 [data-settings-surface="true"] {
   /* Opaque, so every hairline in the dialog resolves to the same colour whatever
-     surface it sits on (cards, nav column, content pane). */
+     surface it sits on (cards, nav column, content pane). Light matches the global 10% ink. */
+  --divider-subtle: color-mix(in srgb, #0b0b0b 10%, var(--bg-secondary));
+}
+[data-theme="dark"] [data-settings-surface="true"] {
   --divider-subtle: color-mix(in srgb, var(--text-primary) 9%, var(--bg-secondary));
 }
 
@@ -428,6 +432,12 @@ html.noa-vt-image-closing::view-transition-new(root) {
 @media (prefers-reduced-motion: reduce) {
   .cm-line.noa-landed-line { animation-duration: 1ms; }
   .noa-hint-in { animation: none; }
+}
+
+/* Inline code gets Claude Code's half-pixel hairline (an inset ring, so it adds no width). */
+.prose :not(pre) > code,
+.cm-inline-code {
+  box-shadow: inset 0 0 0 0.5px var(--divider-subtle);
 }
 
 /* Track uses a low ink wash: a palette step disappears in one theme or the other. */
@@ -606,8 +616,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   --panel-divider: var(--divider-subtle, rgba(249,249,247,0.15));
   --shadow-ambient: 0 0 2px 0 rgba(0,0,0,0.18), 0 0 10px 0 rgba(0,0,0,0.22);
   --shadow-elevated: 0 0 2px 0 rgba(0,0,0,0.20), 0 0 16px -4px rgba(0,0,0,0.30);
-  --shadow-floating: 0 2px 4px 0 rgba(0,0,0,0.30), 0 6px 16px 0 rgba(0,0,0,0.40);
-  --shadow-dialog: 0 4px 8px 0 rgba(0,0,0,0.35), 0 12px 28px -2px rgba(0,0,0,0.50);
+  --shadow-floating: 0 0 0 1px rgba(249,249,247,0.08), 0 8px 24px 0 rgba(0,0,0,0.45), 0 2px 6px 0 rgba(0,0,0,0.30);
+  --shadow-dialog: 0 0 0 1px rgba(249,249,247,0.08), 0 4px 8px 0 rgba(0,0,0,0.35), 0 12px 28px -2px rgba(0,0,0,0.50);
 }
 
 /* ── Dark-mode colour remap ──

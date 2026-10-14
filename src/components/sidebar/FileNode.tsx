@@ -276,7 +276,7 @@ export const FileNode = React.memo(({
           ref={menuRef}
           role="menu"
           aria-label={`${name} actions`}
-          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
+          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-panel bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
           style={{ left: menuPosition.x, top: menuPosition.y }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setMenuPosition(null);
@@ -297,10 +297,10 @@ export const FileNode = React.memo(({
         >
           {onNewNote && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onNewNote(); }}>New note</button>}
           {onAddFolder && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onAddFolder(); }}>New folder</button>}
-          {(onNewNote || onAddFolder) && <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />}
+          {(onNewNote || onAddFolder) && <div className="mx-1 my-1 h-[0.5px] bg-[var(--divider-subtle)]" />}
           {onDuplicate && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onDuplicate(); }}>Duplicate</button>}
           {onCopyLink && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onCopyLink(); }}>Copy link</button>}
-          {(onDuplicate || onCopyLink) && <div className="mx-1 my-1 h-px bg-[var(--divider-subtle)]" />}
+          {(onDuplicate || onCopyLink) && <div className="mx-1 my-1 h-[0.5px] bg-[var(--divider-subtle)]" />}
           {onRename && <button role="menuitem" className={menuItemClass} onClick={startRename}>Rename…</button>}
           {onDelete && <button role="menuitem" className={menuItemClass} onClick={() => { setMenuPosition(null); onDelete(); }}>Delete</button>}
         </div>,
@@ -323,7 +323,7 @@ export const FileNode = React.memo(({
             marginLeft: depth === 0 ? '19.5px' : '14.5px',
           }}
         >
-          <div className="overflow-hidden border-l border-[var(--divider-subtle)]">
+          <div className="overflow-hidden border-l-[0.5px] border-[var(--divider-subtle)]">
             {children}
           </div>
         </div>

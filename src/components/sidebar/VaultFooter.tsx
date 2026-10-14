@@ -103,14 +103,14 @@ export function VaultFooter({
 
   return (
     <div
-      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t pl-1.5 pr-1 pt-1.5 pb-2"
+      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t-[0.5px] pl-1.5 pr-1 pt-1.5 pb-2"
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       {isOpen && (
         <div
           data-vault-menu
           role="menu"
-          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-panel bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
         >
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">
@@ -145,7 +145,7 @@ export function VaultFooter({
                 <span className="ml-auto shrink-0 text-micro uppercase tracking-wide text-[var(--sidebar-text-muted,#7B7974)]">Workspace</span>
               </div>
 
-              <div className="my-1 h-px bg-[var(--divider-subtle)]" />
+              <div className="my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
 
               {vaultName ? (
                 <>
@@ -195,7 +195,7 @@ export function VaultFooter({
                 </>
               )}
 
-              <div className="my-1 h-px bg-[var(--divider-subtle)]" />
+              <div className="my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
 
               <button role="menuitem" className={itemClass} onClick={() => run(onOpenWorkspaceSettings)}>
                 <Settings size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />

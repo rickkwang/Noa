@@ -37,7 +37,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--sidebar-text-muted', '#9C9B96');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
-      root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');
+      root.style.setProperty('--border-strong', 'color-mix(in srgb, var(--text-primary) 16%, transparent)');
       root.style.setProperty('--border-primary', 'var(--divider-subtle)');
       root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
       root.style.setProperty('--control-shadow-ink', '#000000');
@@ -50,9 +50,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
       root.style.setProperty('--sidebar-text', '#4A4947');
       root.style.setProperty('--sidebar-text-muted', '#7B7974');
-      root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
+      // Claude Code's --cds-border / --cds-border-strong: near-black at 10% / 20%.
+      root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
-      root.style.setProperty('--border-strong', '#E6E2DA');
+      root.style.setProperty('--border-strong', 'rgba(11,11,11,0.20)');
       root.style.setProperty('--border-primary', 'var(--border-default)');
       root.style.setProperty('--panel-divider', 'var(--divider-subtle)');
       root.style.setProperty('--control-shadow-ink', '#E6E2DA');
