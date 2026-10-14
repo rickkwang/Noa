@@ -132,7 +132,7 @@ describe('light theme border tokens', () => {
     expect(rightPanel).toContain('flex-1 min-h-0 flex flex-col px-2 pb-2');
     expect(rightPanel).not.toContain('noa-elevated-panel');
     // Card shadow must fit the 8px gutter, so it is not the 10px-blur ambient one.
-    expect(indexCss).toMatch(/\.noa-pane-card \{[^}]*0 0 0 1px rgba\(45, 45, 43, 0\.08\),[^}]*0 1px 8px -1px rgba\(45, 45, 43, 0\.17\);/);
+    expect(indexCss).toMatch(/\.noa-pane-card \{[^}]*0 0 0 1px rgba\(11, 11, 11, 0\.10\),[^}]*0 2px 8px 0 rgba\(11, 11, 11, 0\.08\);/);
     expect(indexCss).not.toMatch(/\.noa-pane-card \{[^}]*var\(--shadow-ambient\)/);
     expect(rightPanel).toContain('w-full flex items-stretch gap-0.5 rounded-md p-0.5');
     expect(rightPanel).toContain("background: isDark ? THEME_SURFACES.dark.secondary : '#ECEAE6'");

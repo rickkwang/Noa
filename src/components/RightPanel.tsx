@@ -95,7 +95,7 @@ function PaneCard({
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
           no-drag as a whole (see App.tsx); the top card's header opts back in so the titlebar area stays draggable. */}
       <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={dragsWindow ? { WebkitAppRegion: 'drag' } as React.CSSProperties : undefined}>
-        <h2 className={`mr-auto truncate text-body font-medium font-ui ${isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85'}`}>{title}</h2>
+        <h2 className={`mr-auto truncate text-body font-medium font-ui text-[var(--sidebar-text,#4A4947)]`}>{title}</h2>
         <div className="flex min-w-0 items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {actions}
         {onToggleExpand && (
@@ -365,19 +365,19 @@ export default function RightPanel({
       case 'backlinks':
         return (
           <PaneCard key={id} {...card}>
-            <BacklinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+            <BacklinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} />
           </PaneCard>
         );
       case 'outgoing':
         return (
           <PaneCard key={id} {...card}>
-            <OutgoingLinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} isDark={isDark} />
+            <OutgoingLinksPanel activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} />
           </PaneCard>
         );
       case 'properties':
         return (
           <PaneCard key={id} {...card}>
-            <PropertiesPanel fontSize={settings.editor.fontSize} activeNote={activeNote} notes={notes} onUpdateNote={onUpdateNote} onFrontmatterChange={onFrontmatterChange} isDark={isDark} />
+            <PropertiesPanel fontSize={settings.editor.fontSize} activeNote={activeNote} notes={notes} onUpdateNote={onUpdateNote} onFrontmatterChange={onFrontmatterChange} />
           </PaneCard>
         );
       case 'graph':

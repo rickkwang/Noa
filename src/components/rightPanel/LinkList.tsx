@@ -12,17 +12,16 @@ export function linkSubtitle(note: Note, folders?: Folder[]): string {
 }
 
 // Must match PropertiesPanel's "no note" state. Distinct from "a real note with zero links" (the header shows 0).
-export function LinkNoNoteState({ isDark }: { isDark?: boolean }) {
-  const muted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
-  return <div className={`text-xs font-ui text-center py-8 ${muted}`}>No note selected</div>;
+export function LinkNoNoteState() {
+  return <div className="text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#7B7974)]">No note selected</div>;
 }
 
-export function LinkSectionHeader({ label, count, isDark }: { label: string; count: number; isDark?: boolean }) {
-  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+export function LinkSectionHeader({ label, count }: { label: string; count: number }) {
+  // Sentence-case label with its count beside it: same size as the card title, quieter only by colour.
   return (
-    <div className="flex items-baseline justify-between px-2 pb-1.5">
-      <span className={`text-micro font-bold uppercase tracking-[0.14em] ${muted}`}>{label}</span>
-      <span className={`text-micro tabular-nums ${muted}`}>{count}</span>
+    <div className="flex items-baseline gap-1.5 px-2 pb-1.5 text-body text-[var(--sidebar-text-muted,#7B7974)]">
+      <span>{label}</span>
+      <span className="tabular-nums">{count}</span>
     </div>
   );
 }
@@ -33,29 +32,24 @@ export function LinkRow({
   icon: Icon,
   onClick,
   dimmed = false,
-  isDark,
 }: {
   title: string;
   subtitle?: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   onClick?: () => void;
   dimmed?: boolean;
-  isDark?: boolean;
 }) {
-  const titleColor = dimmed
-    ? (isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50')
-    : (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]');
-  const subtitleColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
+  const titleColor = dimmed ? 'text-[var(--sidebar-text-muted,#7B7974)]' : 'text-[var(--text-primary,#2D2D2B)]';
+  const subtitleColor = 'text-[var(--sidebar-text-muted,#7B7974)]';
   // Matches the app-wide hover convention (--bg-sidebar-raised, as noa-sidebar-hover-surface uses).
-  const hover = onClick
-    ? (isDark ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]')
-    : '';
+  // Hover only lifts the surface; the title keeps its colour.
+  const hover = onClick ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : '';
 
   const body = (
     <>
       <span className="flex items-center gap-1.5">
         <Icon size={13} className={`shrink-0 ${subtitleColor}`} />
-        <span className={`truncate text-body leading-5 ${titleColor} ${onClick ? 'group-hover:text-[#CC7D5E]' : ''} transition-colors`}>
+        <span className={`truncate text-body leading-5 ${titleColor}`}>
           {title}
         </span>
       </span>

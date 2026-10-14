@@ -9,19 +9,18 @@ interface BacklinksPanelProps {
   notes: Note[];
   folders?: Folder[];
   onNavigateToNoteById: (id: string) => void;
-  isDark?: boolean;
 }
 
-export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteById, isDark = false }: BacklinksPanelProps) {
+export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteById }: BacklinksPanelProps) {
   const backlinks = useMemo(() => getBacklinks(activeNote, notes), [activeNote, notes]);
 
   return (
     <div className="flex-1 overflow-y-auto noa-panel-scroll px-1 pb-3 pt-2 font-ui">
       {!activeNote ? (
-        <LinkNoNoteState isDark={isDark} />
+        <LinkNoNoteState />
       ) : (
         <>
-          <LinkSectionHeader label="Linked from" count={backlinks.length} isDark={isDark} />
+          <LinkSectionHeader label="Linked from" count={backlinks.length} />
           {backlinks.length > 0 && (
             <div className="space-y-px">
               {backlinks.map(note => (
@@ -31,7 +30,6 @@ export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteByI
                   title={note.title}
                   subtitle={linkSubtitle(note, folders)}
                   onClick={() => onNavigateToNoteById(note.id)}
-                  isDark={isDark}
                 />
               ))}
             </div>
