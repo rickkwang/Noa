@@ -12,7 +12,7 @@
       root.style.backgroundColor = '#262624';
     } else {
       root.style.setProperty('--bg-primary', '#FCFCFB');
-      root.style.setProperty('--bg-secondary', '#EFEAE3');
+      root.style.setProperty('--bg-secondary', '#F9F9F7');
       root.style.backgroundColor = '#FCFCFB';
     }
   } catch {

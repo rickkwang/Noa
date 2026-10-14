@@ -889,7 +889,7 @@ export default function App() {
             left: isPromotingSidebarPreview
               ? undefined
               : isSidebarOpen ? 'var(--noa-sidebar-width, 325px)' : '0px',
-            // Claude Code's sidebar edge is a half-pixel hairline.
+            // The sidebar edge is a half-pixel hairline.
             width: '0.5px',
             backgroundColor: 'var(--divider-subtle, #E6E2DA)',
             opacity: isSidebarOpen ? 1 : 0,

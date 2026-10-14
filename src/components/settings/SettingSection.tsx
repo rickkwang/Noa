@@ -9,7 +9,7 @@ interface SettingSectionProps {
   id?: string;
 }
 
-// Claude Code's settings: a 15px semibold heading, then the rows straight on the page, no card around them.
+// A 15px semibold heading, then the rows straight on the page, no card around them.
 export default function SettingSection({ title, description, children, id }: SettingSectionProps) {
   return (
     <section id={id}>

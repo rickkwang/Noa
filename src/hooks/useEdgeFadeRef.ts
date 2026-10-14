@@ -28,7 +28,7 @@ export function useEdgeFadeRef<T extends HTMLElement>() {
   const cleanupRef = useRef<(() => void) | null>(null);
   return useCallback((el: T | null) => {
     cleanupRef.current?.();
-    // Claude Code's .scroll-fade-y reaches full strength over its 28px ramp length.
+    // Reaches full strength over the 28px ramp length of .noa-edge-fade-y.
     cleanupRef.current = el ? attachObservedEdgeFade(el, { travel: 28 }) : null;
   }, []);
 }

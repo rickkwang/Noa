@@ -5,7 +5,8 @@
 export const THEME_SURFACES = {
   light: {
     primary: '#FCFCFB',
-    secondary: '#EFEAE3',
+    // Neutral floor; was a beige that tinted the settings hairlines mixed from it.
+    secondary: '#F9F9F7',
     // Neutral, nudged to 251/251/249 so the sidebar reads as a plane change, not a colour shift.
     sidebar: '#FBFBF9',
     sidebarMaterial: '#FAFAF8',
@@ -23,8 +24,8 @@ export const THEME_SURFACES = {
     // Translucent-sidebar tint over the native `menu` material.
     sidebarMaterial: '#343432',
     sidebarRaised: 'rgba(249,249,247,0.08)',
-    // One step above primary, as primary is one above secondary (30 → 38 → 46): Claude Code's dark ramp lightens
-    // evenly with elevation. Lifted overall so the floor never reaches its near-black.
+    // One step above primary, as primary is one above secondary (30 → 38 → 46): the dark ramp lightens
+    // evenly with elevation, and stays well clear of near-black.
     card: '#2E2E2C',
   },
 } as const;

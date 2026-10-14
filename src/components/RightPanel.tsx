@@ -36,7 +36,7 @@ function usePaneSlots(open: readonly RightTab[]) {
   };
 }
 
-// Card move, measured on Claude Code's tiles: the drag starts after 3px, the held card then follows the pointer
+// Card move: the drag starts after 3px, the held card then follows the pointer
 // on both axes, and the other card yields once the pointer crosses its centre. Yielding, release and Escape all
 // ride one critically damped spring (ω ≈ 22/s: ~90% of the way in 200ms, at rest by ~450ms).
 const PANE_MOVE_THRESHOLD = 3;

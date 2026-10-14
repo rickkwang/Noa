@@ -38,12 +38,12 @@
   --dur-snap: 120ms;
   --dur-base: 200ms;
   --dur-slow: 450ms;
-  /* Claude's button spring (--cds-btn-spring): overshoots ~9% and settles. Used for a press releasing. */
+  /* Button spring: overshoots ~9% and settles. Used for a press releasing. */
   --spring-press: linear(0, .2459, .6526, .9468, 1.0764, 1.0915, 1.0585, 1.0219, .9993, .9914, .9921, .9957, .9988, 1.0004, 1);
 }
 
-/* Press feedback, Claude's .cds-btn-squish: sink to .975 fast on press, spring back on release. Claude applies the
-   same .975 to icon and text buttons alike, and none to full-width list rows, so neither does Noa. */
+/* Press feedback: sink to .975 fast on press, spring back on release. The
+   same .975 applies to icon and text buttons alike; full-width list rows get none. */
 .noa-press {
   /* Unlayered, so it outranks Tailwind's transition-* utilities; restate their colour/opacity fades. */
   --noa-press-fades: color 120ms var(--ease-out), background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), opacity 120ms var(--ease-out);
@@ -118,7 +118,7 @@ body {
   /* Shadows: ambient = in-flow cards, elevated = raised graph panels, floating = dropdowns/toasts, dialog = modal dialogs. Floating and dialog stack a tight contact layer over a soft spread. */
   --shadow-ambient: 0 0 2px 0 rgba(45,45,43,0.04), 0 0 10px 0 rgba(45,45,43,0.05);
   --shadow-elevated: 0 0 2px 0 rgba(45,45,43,0.05), 0 0 14px -3px rgba(45,45,43,0.10);
-  /* Floating surfaces draw their edge as a 1px ring in the shadow (Claude Code's menus), not a border. */
+  /* Floating surfaces draw their edge as a 1px ring in the shadow not a border. */
   --shadow-floating: 0 0 0 1px rgba(11,11,11,0.10), 0 8px 24px 0 rgba(0,0,0,0.12), 0 2px 6px 0 rgba(0,0,0,0.08);
   --shadow-dialog: 0 0 0 1px rgba(11,11,11,0.10), 0 4px 8px 0 rgba(45,45,43,0.08), 0 12px 28px -2px rgba(45,45,43,0.10);
 }
@@ -293,10 +293,9 @@ body {
   mask-image: linear-gradient(to right, var(--noa-fade-ramp));
 }
 
-/* Right-panel card bodies, Claude Code's .scroll-fade-y: both vertical edges dissolve over 28px with its seven-step
+/* Right-panel card bodies: both vertical edges dissolve over 28px with a seven-step
    ramp (5/15/30/50/70/85% opacity at 15/30/45/60/75/87% of the length). Each edge grows in over the first 28px of
-   scroll and is gone at rest (lib/edgeFade, travel 28). The 6px solid strip keeps Noa's scrollbar opaque (Claude
-   hides its scrollbar here); it must match ::-webkit-scrollbar. */
+   scroll and is gone at rest (lib/edgeFade, travel 28). The 6px solid strip keeps the scrollbar opaque; it must match ::-webkit-scrollbar. */
 .noa-edge-fade-y {
   --noa-fade-ramp:
     rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
@@ -339,7 +338,7 @@ body {
   --divider-subtle: color-mix(in srgb, var(--text-primary) 9%, var(--bg-secondary));
 }
 
-/* Claude Code's settings dialog, measured: fills are ink washes (5% hover, 10% selected), rows are split by a 5%
+/* Settings dialog: fills are ink washes (5% hover, 10% selected), rows are split by a 5%
    rule, secondary text is #52514E and descriptions #898782; fields are a half-white well with a 1px inset ring. */
 [data-settings-surface="true"] {
   --settings-fill-hover: rgba(11,11,11,0.05);
@@ -362,7 +361,7 @@ body {
   --settings-switch-off: color-mix(in srgb, var(--text-primary) 18%, transparent);
 }
 
-/* Dialog: Claude's 12px card with a 1px ring and two soft layers. */
+/* Dialog: a 12px card with a 1px ring and two soft layers. */
 .noa-settings-dialog {
   box-shadow: 0 0 0 1px rgba(11,11,11,0.10), 0 1px 2px 0 rgba(11,11,11,0.06), 0 2px 8px 0 rgba(11,11,11,0.08);
 }
@@ -419,7 +418,7 @@ body {
   }
 }
 
-/* Claude Code's [data-landed]: the line a jump (task, backlink, outline) landed on washes out from the accent
+/* Landed-line flash: the line a jump (task, backlink, outline) landed on washes out from the accent
    over 1.6s. Fades on its own; landedLine.ts drops the decoration after the same span. */
 .cm-line.noa-landed-line {
   animation: noa-landed 1600ms ease-out;
@@ -430,7 +429,7 @@ body {
   100% { background-color: transparent; }
 }
 
-/* Claude Code's epitaxy-hint-fade-in, for quiet status text (empty states) as it appears. */
+/* Hint fade-in, for quiet status text (empty states) as it appears. */
 .noa-hint-in {
   animation: noa-hint-in 400ms cubic-bezier(0.215, 0.61, 0.355, 1);
 }
@@ -440,7 +439,7 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Image preview open/close (ZoomableImage): Claude Code's chat-image-preview view transition. The thumbnail grows
+/* Image preview open/close (ZoomableImage): a view transition. The thumbnail grows
    into the viewer; old/new don't crossfade, and the thumbnail snapshot is hidden on the way in. */
 ::view-transition-group(noa-image-preview) {
   animation-duration: 350ms;
@@ -474,7 +473,7 @@ html.noa-vt-image-closing::view-transition-new(root) {
   .noa-hint-in { animation: none; }
 }
 
-/* Inline code gets Claude Code's half-pixel hairline (an inset ring, so it adds no width). */
+/* Inline code gets a half-pixel hairline (an inset ring, so it adds no width). */
 .prose :not(pre) > code,
 .cm-inline-code {
   box-shadow: inset 0 0 0 0.5px var(--divider-subtle);
@@ -1070,7 +1069,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   mask-repeat: no-repeat, no-repeat;
 }
 
-/* Card move handle (RightPanel): hidden until hovered, 20% ink on hover, full ink while held. Mirrors Claude Code's tiles. */
+/* Card move handle (RightPanel): hidden until hovered, 20% ink on hover, full ink while held. */
 .noa-pane-move-pill {
   background: color-mix(in srgb, var(--text-primary, #2D2D2B) 20%, transparent);
   opacity: 0;

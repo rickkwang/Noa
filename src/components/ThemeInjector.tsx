@@ -30,7 +30,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--sidebar-material-tint', '70%');
       // Four stacked layers approximate light falloff; a single shadow reads as a band with a visible edge on dark.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
-      // Claude Code's dark text tiers are solid steps of one warm ramp, primary held off pure white (#F0EFEC).
+      // Dark text tiers are solid steps of one warm ramp, primary held off pure white (#F0EFEC).
       root.style.setProperty('--text-primary', '#F0EFEC');
       root.style.setProperty('--text-secondary', '#9C9B96');
       // Solid sidebar text tiers (primary is --text-primary): alpha text over the translucent material washes out.
@@ -48,10 +48,11 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // Light counterpart of the dark stack, at lower weight since light floors don't band.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
       root.style.setProperty('--text-primary', '#2D2D2B');
-      root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
+      // Solid, as in dark: a muted tier (#898781) that the old 55% ink approximated on the page.
+      root.style.setProperty('--text-secondary', '#898781');
       root.style.setProperty('--sidebar-text', '#4A4947');
       root.style.setProperty('--sidebar-text-muted', '#7B7974');
-      // Claude Code's --cds-border / --cds-border-strong: near-black at 10% / 20%.
+      // Hairlines: near-black at 10%, strong at 20%.
       root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', 'rgba(11,11,11,0.20)');

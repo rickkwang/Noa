@@ -21,7 +21,7 @@ export const landedLine = StateField.define<DecorationSet>({
 
 const clearTimers = new WeakMap<EditorView, number>();
 
-/** Flashes the line a jump landed on, so the eye finds it after the scroll (Claude Code's `[data-landed]`). */
+/** Flashes the line a jump landed on, so the eye finds it after the scroll. */
 export function markLandedLine(view: EditorView, lineFrom: number): void {
   window.clearTimeout(clearTimers.get(view));
   // Clear first so a second jump to the same line restarts the animation on a fresh element.

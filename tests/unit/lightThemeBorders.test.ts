@@ -23,7 +23,7 @@ const historyPanelPath = fileURLToPath(new URL('../../src/components/editor/Hist
 const graphViewPath = fileURLToPath(new URL('../../src/components/GraphView.tsx', import.meta.url));
 
 describe('light theme border tokens', () => {
-  it('uses a translucent divider in both themes: Claude Code ink at 10% in light, 8% of the text colour in dark', async () => {
+  it('uses a translucent divider in both themes: near-black at 10% in light, 8% of the text colour in dark', async () => {
     const [themeInjector, editorHeader, topBar, previewPane] = await Promise.all([
       readFile(themeInjectorPath, 'utf8'),
       readFile(editorHeaderPath, 'utf8'),
@@ -67,7 +67,7 @@ describe('light theme border tokens', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    // Claude Code's layout: the dialog edge is a ring (noa-settings-dialog), rows sit on the page with a 5% rule, no section card.
+    // The dialog edge is a ring (noa-settings-dialog), rows sit on the page with a 5% rule, no section card.
     expect(settingsModal).toContain('noa-settings-dialog');
     expect(settingsModal).not.toContain('rounded overflow-hidden');
     expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
