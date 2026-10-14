@@ -27,6 +27,18 @@
   --text-body: 13px;
 }
 
+/* Motion: feedback (hover, menus, reveals) eases out; layout moves keep their own 500ms ease-in-out clocks.
+   Bare `transition-*` utilities pick up the defaults. `static` emits every token even when no utility uses it,
+   since inline styles read var(--ease-out) and var(--dur-*) directly. */
+@theme static {
+  --ease-out: cubic-bezier(.165, .84, .44, 1);
+  --default-transition-timing-function: var(--ease-out);
+  --default-transition-duration: 120ms;
+  --dur-fast: 60ms;
+  --dur-snap: 120ms;
+  --dur-base: 200ms;
+}
+
 /* Content bold (`**strong**`, headings, inline title) in preview and CodeMirror. Kept off @theme so chrome gets no `font-*` utility. */
 :root { --font-weight-content-bold: 600; }
 

@@ -210,7 +210,7 @@ export const FileNode = React.memo(({
         <div className="flex items-center overflow-hidden flex-1">
           {isFolder && showFolderChevron && (
             <span className="w-4 flex justify-center mr-1 shrink-0">
-              <ChevronRight size={14} style={{ transition: 'transform 200ms ease-in-out', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
+              <ChevronRight size={14} style={{ transition: 'transform var(--dur-base) var(--ease-out)', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
             </span>
           )}
           {/* The active accent would fight the solid fill the dragged row
@@ -313,7 +313,7 @@ export const FileNode = React.memo(({
       )}
       {isFolder && children && (
         <div
-          className="transition-[grid-template-rows] duration-200 ease-in-out"
+          className="transition-[grid-template-rows] duration-200 ease-out"
           style={{
             display: 'grid',
             gridTemplateRows: isOpen ? '1fr' : '0fr',
