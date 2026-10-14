@@ -48,8 +48,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // Light counterpart of the dark stack, at lower weight since light floors don't band.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
       root.style.setProperty('--text-primary', '#2D2D2B');
-      // Solid, as in dark: a muted tier (#898781) that the old 55% ink approximated on the page.
-      root.style.setProperty('--text-secondary', '#898781');
+      // Solid, as in dark; one muted tier with the sidebar's (#7B7974).
+      root.style.setProperty('--text-secondary', '#7B7974');
       root.style.setProperty('--sidebar-text', '#4A4947');
       root.style.setProperty('--sidebar-text-muted', '#7B7974');
       // Hairlines: near-black at 10%, strong at 20%.
