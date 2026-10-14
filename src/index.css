@@ -9,6 +9,12 @@
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
+  /* Corner radius tiers. Pair with Tailwind's rounded-md (6px, controls) and rounded-lg (8px, rows).
+     Nested surfaces use outer radius minus the inner padding, e.g. a 10px menu with p-1 holds 6px items. */
+  --radius-chip: 3px;
+  --radius-panel: 10px;
+  --radius-dialog: 14px;
+
   /* Chrome `font-bold` is calibrated to 450 (old bundled 400-only face used synthetic bold; system fonts draw real weights).
      Content bold (`**strong**`, headings) uses --font-weight-content-bold below. */
   --font-weight-bold: 450;
@@ -259,10 +265,11 @@ body {
 
 /* Softer corners throughout the dialog. Restated here rather than edited into
    ~60 utility classes across a dozen section files: the radii come in exactly
-   two sizes (3px controls, 4px cards), so scoping the two utilities keeps the
+   two sizes (3px chips, 4px cards), so scoping the two utilities keeps the
    dialog on one curve and leaves the app's squarer language untouched.
    rounded-full is a different class and stays circular. */
-[data-settings-surface="true"] .rounded-\[3px\] {
+[data-settings-surface="true"] .rounded-\[3px\],
+[data-settings-surface="true"] .rounded-chip {
   border-radius: 6px;
 }
 
@@ -857,10 +864,24 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   margin-right: -6px;
 }
 
-/* Soft top/bottom edge fade on the sidebar list, using a non-linear alpha ramp so the cut-off doesn't read as a hard line. */
+/* Top edge of the sidebar list. Driven by --noa-fade-top (lib/edgeFade, attached in Sidebar). At rest the
+   ramp collapses to zero height, so the first row is not dimmed until the list scrolls.
+   The right-edge solid strip keeps the scrollbar opaque; its 6px must match ::-webkit-scrollbar. */
 .noa-sidebar-scroll-fade {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,.18) 4px, rgba(0,0,0,.64) 8px, #000 16px, #000 calc(100% - 16px), rgba(0,0,0,.64) calc(100% - 8px), rgba(0,0,0,.18) calc(100% - 4px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,.18) 4px, rgba(0,0,0,.64) 8px, #000 16px, #000 calc(100% - 16px), rgba(0,0,0,.64) calc(100% - 8px), rgba(0,0,0,.18) calc(100% - 4px), transparent 100%);
+  --noa-fade-ramp:
+    rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
+    rgb(0 0 0 / 0.16) calc(var(--noa-fade-top, 0) * 4px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 8px),
+    rgb(0 0 0 / 0.84) calc(var(--noa-fade-top, 0) * 12px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 16px);
+  -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
+  mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
+  -webkit-mask-size: 100% 100%, 6px 100%;
+  mask-size: 100% 100%, 6px 100%;
+  -webkit-mask-position: top left, top right;
+  mask-position: top left, top right;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
 }
 
 /* Same pull-back for the right panel's tab bodies (keeps hover bands symmetric). Keep 6px equal to ::-webkit-scrollbar width. */

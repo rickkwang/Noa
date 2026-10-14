@@ -2,12 +2,12 @@ import React from 'react';
 
 // One button language for the settings dialog, so sections don't drift in height or disabled opacity.
 // `regular` for a setting's own action, `compact` for actions nested in smaller containers.
-// Radius is the literal `rounded-[3px]` on purpose: index.css restates it as 6px inside [data-settings-surface].
+// Radius is the literal `rounded-chip` on purpose: index.css restates it as 6px inside [data-settings-surface].
 export type SettingsButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 export type SettingsButtonSize = 'regular' | 'compact';
 
 const BASE =
-  'inline-flex items-center justify-center font-bold border rounded-[3px] transition-colors ' +
+  'inline-flex items-center justify-center font-bold border rounded-chip transition-colors ' +
   'active:opacity-70 disabled:opacity-60 disabled:pointer-events-none';
 
 const SIZES: Record<SettingsButtonSize, string> = {

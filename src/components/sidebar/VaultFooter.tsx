@@ -110,7 +110,7 @@ export function VaultFooter({
         <div
           data-vault-menu
           role="menu"
-          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
         >
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">

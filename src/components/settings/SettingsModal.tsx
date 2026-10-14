@@ -244,7 +244,7 @@ export default function SettingsModal({
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="relative w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[14px] overflow-hidden flex flex-col font-ui transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
+        className="relative w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-dialog overflow-hidden flex flex-col font-ui transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
@@ -254,7 +254,7 @@ export default function SettingsModal({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="absolute right-3 top-3 z-10 p-1 rounded-[3px] border border-transparent text-[var(--text-secondary)] transition-colors hover:bg-[#D45555] hover:text-white"
+          className="absolute right-3 top-3 z-10 p-1 rounded-chip border border-transparent text-[var(--text-secondary)] transition-colors hover:bg-[#D45555] hover:text-white"
         >
           <X size={18} />
         </button>

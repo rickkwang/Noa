@@ -153,7 +153,7 @@ export default function WorkspaceSection({
                 : `Sync status: ${syncStatusLabel}.`}
             </p>
             {fsSyncError && (
-              <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-[3px] px-2 py-1">
+              <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-chip px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

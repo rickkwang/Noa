@@ -102,7 +102,7 @@ export default function AutoBackupSection({
       </SettingItem>
 
       {status === 'needs-reauth' && hasBackupHandle && (
-        <div className="px-3 py-2 border border-[#EC9A3C] bg-[#EC9A3C]/10 rounded-[3px] flex items-center justify-between gap-3 text-xs">
+        <div className="px-3 py-2 border border-[#EC9A3C] bg-[#EC9A3C]/10 rounded-chip flex items-center justify-between gap-3 text-xs">
           <span className="text-[#74491A] flex items-center gap-1.5">
             <AlertTriangle size={12} /> Folder permission was revoked.
           </span>
@@ -113,13 +113,13 @@ export default function AutoBackupSection({
       )}
 
       {status === 'error' && error && !bannerDismissed && (
-        <div className="px-3 py-2 border border-[#D45555]/60 bg-[#D45555]/10 rounded-[3px] flex items-center gap-1.5 text-xs text-[#A93B3B]">
+        <div className="px-3 py-2 border border-[#D45555]/60 bg-[#D45555]/10 rounded-chip flex items-center gap-1.5 text-xs text-[#A93B3B]">
           <AlertTriangle size={12} /> {error}
         </div>
       )}
 
       {status === 'success' && !bannerDismissed && (
-        <div className="px-3 py-2 border border-[#37876B] bg-[#37876B]/10 rounded-[3px] flex items-center gap-1.5 text-xs text-[#2C6E57]">
+        <div className="px-3 py-2 border border-[#37876B] bg-[#37876B]/10 rounded-chip flex items-center gap-1.5 text-xs text-[#2C6E57]">
           <CheckCircle2 size={12} /> Backup written · {formatRelative(lastAutoBackupAt)}
         </div>
       )}

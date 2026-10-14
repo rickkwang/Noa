@@ -89,7 +89,7 @@ function PaneCard({
       data-pane={id}
       data-state={state}
       inert={state === 'open' ? undefined : true}
-      className={`noa-pane-card flex flex-col overflow-hidden rounded-[10px] bg-[var(--bg-card,#FFFFFF)]`}
+      className={`noa-pane-card flex flex-col overflow-hidden rounded-panel bg-[var(--bg-card,#FFFFFF)]`}
       style={{ order, flexGrow: grow }}
     >
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is

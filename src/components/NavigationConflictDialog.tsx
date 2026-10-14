@@ -21,7 +21,7 @@ export default function NavigationConflictDialog({
   const { dialogRef, onKeyDown } = useDialogKeyboard(onClose);
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-[var(--divider-subtle)] px-4 py-3 bg-[var(--bg-sidebar-raised,#ECEBE8)]">
           <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
           <div className="text-sm text-[#2D2D2B] mt-1">
@@ -49,7 +49,7 @@ export default function NavigationConflictDialog({
         <div className="border-t border-[var(--divider-subtle)] px-4 py-2 flex justify-end">
           <button
             onClick={onClose}
-            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-[3px] px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
+            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-chip px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
           >
             Cancel
           </button>

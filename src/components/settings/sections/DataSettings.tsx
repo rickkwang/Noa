@@ -120,7 +120,7 @@ export default function DataSettings({
   return (
     <div className="space-y-8">
       {isWorking && (
-        <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-[3px] px-3 py-2 font-ui text-sm text-[#2D2D2B] flex items-center gap-2">
+        <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-chip px-3 py-2 font-ui text-sm text-[#2D2D2B] flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-full border border-[#2D2D2B] border-t-transparent animate-spin shrink-0" />
           <span>
             {transfer.importingData
@@ -132,7 +132,7 @@ export default function DataSettings({
         </div>
       )}
       {group === 'backup' && (
-        <div className="border border-[var(--divider-subtle)] bg-[var(--bg-sidebar-raised,#ECEBE8)] rounded-[3px] px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="border border-[var(--divider-subtle)] bg-[var(--bg-sidebar-raised,#ECEBE8)] rounded-chip px-3 py-2 text-xs text-[#2D2D2B]/70">
           {LOCAL_DATA_BOUNDARY_COPY}
           <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
         </div>
@@ -220,7 +220,7 @@ export default function DataSettings({
       {message && (
         <div
           ref={messageRef}
-          className={`border rounded-[3px] p-3 flex items-center justify-between font-ui text-sm ${
+          className={`border rounded-chip p-3 flex items-center justify-between font-ui text-sm ${
             message.type === 'success'
               ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2B]'
               : 'border-[#D45555]/60 bg-[#D45555]/10 text-[#A93B3B]'

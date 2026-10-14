@@ -276,7 +276,7 @@ export const FileNode = React.memo(({
           ref={menuRef}
           role="menu"
           aria-label={`${name} actions`}
-          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
+          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-panel border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
           style={{ left: menuPosition.x, top: menuPosition.y }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setMenuPosition(null);

@@ -82,7 +82,7 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[10px] p-1 noa-floating-panel font-ui w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-panel p-1 noa-floating-panel font-ui w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: slashQuery.y, left: slashQuery.x }}
     >
       <div className="flex h-6 items-center px-2 text-[11px] text-[#2D2D2B]/50">

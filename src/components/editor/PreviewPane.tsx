@@ -1116,7 +1116,7 @@ export const PreviewPane = React.memo(function PreviewPane({
               {backlinks.map((backlink) => (
                 <div
                   key={backlink.id}
-                  className="noa-ambient-panel rounded-[10px] px-3 py-2 cursor-pointer transition-colors group"
+                  className="noa-ambient-panel rounded-panel px-3 py-2 cursor-pointer transition-colors group"
                   style={{
                     // The ambient shadow already draws the card's edge, so the
                     // hairline only needs to keep it from dissolving into the

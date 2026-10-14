@@ -20,7 +20,7 @@ export default function TemplatePickerDialog({
   const allTemplates = [...builtinTemplates, ...userTemplates];
   return (
     <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-[var(--divider-subtle)] px-4 py-3 bg-[var(--bg-sidebar-raised,#ECEBE8)] flex items-center justify-between">
           <div>
             <div className="text-sm text-[#2D2D2B] font-bold">Choose template</div>

@@ -15,7 +15,7 @@ describe('sidebar search result layout', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(source).toContain('className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
+    expect(source).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
     expect(source).not.toContain('[scrollbar-gutter:stable]');
     expect(source).toContain('p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2');
     expect(styles).not.toContain('scrollbar-width: none;');
@@ -95,8 +95,8 @@ describe('sidebar search result layout', () => {
 
     expect(fileNode).toContain('border-l border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
-    // 425 vs 400 is not visibly different; only the active row steps up in weight.
-    expect(fileNode).toContain("isActive ? 'font-bold' : ''");
+    // 425 vs 400 is not visibly different; rows keep one resting weight and active is marked by background alone.
+    expect(fileNode).not.toContain("font-bold");
     expect(fileNode).not.toContain("font-[425]");
     expect(fileNode).not.toContain("isFolder ? 'font-medium' : ''");
   });
@@ -143,7 +143,7 @@ describe('sidebar search result layout', () => {
     expect(app).toContain('className="flex-1 min-h-0 overflow-hidden"');
     // Guards the height chain (h-full + min-h-0 + flex-col), not the class list's leading position.
     expect(sidebar).toMatch(/className="[^"]*\bw-full h-full min-h-0 flex flex-col/);
-    expect(sidebar).toContain('className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
+    expect(sidebar).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
     expect(rightPanel).toContain('className={`w-full h-full min-h-0 flex flex-col');
   });
 });

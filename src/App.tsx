@@ -910,7 +910,7 @@ export default function App() {
           onMouseEnter={isSidebarPreviewOpen ? cancelSidebarPreviewClose : undefined}
           onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
           onTransitionEnd={finishSidebarPreviewExit}
-          className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-[14px]' : isPromotingSidebarPreview ? 'pointer-events-none z-40' : 'pointer-events-none z-10'}`}
+          className={`absolute inset-y-0 left-0 overflow-hidden ${isSidebarPreviewOpen ? 'noa-sidebar-preview-shell noa-sidebar-preview-motion z-40 rounded-r-dialog' : isPromotingSidebarPreview ? 'pointer-events-none z-40' : 'pointer-events-none z-10'}`}
           style={{
             width: isSidebarOpen || isSidebarPreviewOpen || isPromotingSidebarPreview
               ? 'var(--noa-sidebar-width, 325px)'
@@ -995,7 +995,7 @@ export default function App() {
           onMouseLeave={isSidebarPreviewOpen ? scheduleSidebarPreviewClose : undefined}
           onTransitionEnd={finishSidebarDockMotion}
           onTransitionCancel={finishSidebarDockMotion}
-          className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-[14px]' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
+          className={`flex shrink-0 overflow-hidden ${isMobile ? 'noa-sidebar-surface absolute inset-y-0 left-0 z-40 shadow-xl' : isSidebarPreviewOpen ? 'noa-sidebar-preview-motion absolute inset-y-0 z-50 rounded-br-dialog' : isPromotingSidebarPreview ? 'absolute inset-y-0 left-0 z-50' : 'relative z-20'}`}
           style={{
             // Docked sidebar never moves: its width is the mask, clipping a fixed-width child at the left edge.
             width: isMobile
