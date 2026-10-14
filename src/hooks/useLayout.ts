@@ -86,9 +86,17 @@ export function useLayout() {
   // than toggles.
   const showOnlyPane = useCallback((id: RightTab) => setOpenPanes([id]), []);
   // Split was removed; a saved 'split' (or anything unrecognised) opens the editable view.
-  const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview'>(() =>
-    lsGet(STORAGE_KEYS.EDITOR_VIEW_MODE) === 'preview' ? 'preview' : 'edit'
+  // The default is what the app starts in. The current view is session state: switching views or jumping
+  // to a heading or task does not change the default.
+  const [defaultViewMode, setDefaultViewMode] = useState<'edit' | 'preview'>(() =>
+    lsGet(STORAGE_KEYS.DEFAULT_EDITOR_VIEW_MODE) === 'preview' ? 'preview' : 'edit'
   );
+  const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview'>(defaultViewMode);
+  // Picking a default in Settings is explicit, so the open view switches to it too.
+  const chooseDefaultViewMode = useCallback((mode: 'edit' | 'preview') => {
+    setDefaultViewMode(mode);
+    setEditorViewMode(mode);
+  }, []);
 
   // Each panel floors the shared responsive maximum at its own default, or it opens narrower than declared and jumps on first resize.
   const clampSidebarWidth = useCallback(
@@ -339,8 +347,8 @@ export function useLayout() {
     lsSet(STORAGE_KEYS.SIDEBAR_OPEN, String(isSidebarOpen));
     lsSet(STORAGE_KEYS.RIGHT_PANEL_OPEN, String(isRightPanelOpen));
     lsSet(STORAGE_KEYS.RIGHT_PANES, JSON.stringify(openPanes));
-    lsSet(STORAGE_KEYS.EDITOR_VIEW_MODE, editorViewMode);
-  }, [isSidebarOpen, isRightPanelOpen, openPanes, editorViewMode]);
+    lsSet(STORAGE_KEYS.DEFAULT_EDITOR_VIEW_MODE, defaultViewMode);
+  }, [isSidebarOpen, isRightPanelOpen, openPanes, defaultViewMode]);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
   const toggleFocusMode = useCallback(() => setIsFocusMode(v => !v), []);
@@ -368,6 +376,8 @@ export function useLayout() {
     nudgeRightPanelWidth,
     editorViewMode,
     setEditorViewMode,
+    defaultViewMode,
+    setDefaultViewMode: chooseDefaultViewMode,
     isFocusMode,
     toggleFocusMode,
     exitFocusMode,

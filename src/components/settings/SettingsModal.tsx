@@ -20,8 +20,8 @@ interface SettingsModalProps {
   initialTab?: SettingsTab;
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
-  editorViewMode: 'edit' | 'preview';
-  setEditorViewMode: (mode: 'edit' | 'preview') => void;
+  defaultViewMode: 'edit' | 'preview';
+  setDefaultViewMode: (mode: 'edit' | 'preview') => void;
   notes: Note[];
   folders: Folder[];
   workspaceName: string;
@@ -42,8 +42,8 @@ export default function SettingsModal({
   initialTab,
   settings,
   updateSettings,
-  editorViewMode,
-  setEditorViewMode,
+  defaultViewMode,
+  setDefaultViewMode,
   notes,
   folders,
   workspaceName,
@@ -280,8 +280,8 @@ export default function SettingsModal({
                   group={activeTab}
                   settings={settings}
                   updateSettings={updateSettings}
-                  editorViewMode={editorViewMode}
-                  setEditorViewMode={setEditorViewMode}
+                  defaultViewMode={defaultViewMode}
+                  setDefaultViewMode={setDefaultViewMode}
                 />
                 {activeTab === 'general' && (
                 <SettingSection id={settingAnchorId('Keyboard Shortcuts')} title="Keyboard Shortcuts" description="Shortcuts work anywhere in the app, including while typing.">

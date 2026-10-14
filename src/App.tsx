@@ -522,6 +522,8 @@ export default function App() {
     nudgeRightPanelWidth,
     editorViewMode,
     setEditorViewMode,
+    defaultViewMode,
+    setDefaultViewMode,
     isFocusMode,
     toggleFocusMode,
     exitFocusMode,
@@ -1369,8 +1371,8 @@ export default function App() {
             initialTab={settingsInitialTab}
             settings={settings}
             updateSettings={updateSettings}
-            editorViewMode={editorViewMode}
-            setEditorViewMode={setEditorViewMode}
+            defaultViewMode={defaultViewMode}
+            setDefaultViewMode={setDefaultViewMode}
             notes={notes}
             folders={folders}
             workspaceName={workspaceName}

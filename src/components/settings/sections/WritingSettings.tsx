@@ -17,8 +17,8 @@ interface WritingSettingsProps {
   group: 'general' | 'notes';
   settings: AppSettings;
   updateSettings: (updater: (prev: AppSettings) => AppSettings) => void;
-  editorViewMode: 'edit' | 'preview';
-  setEditorViewMode: (mode: 'edit' | 'preview') => void;
+  defaultViewMode: 'edit' | 'preview';
+  setDefaultViewMode: (mode: 'edit' | 'preview') => void;
 }
 
 const VIEW_MODE_OPTIONS = [
@@ -26,7 +26,7 @@ const VIEW_MODE_OPTIONS = [
   { value: 'preview', label: 'Reading view' },
 ] as const;
 
-export default function WritingSettings({ group, settings, updateSettings, editorViewMode, setEditorViewMode }: WritingSettingsProps) {
+export default function WritingSettings({ group, settings, updateSettings, defaultViewMode, setDefaultViewMode }: WritingSettingsProps) {
   const userTemplates = settings.templates?.userTemplates ?? [];
 
   // Editing state: null = not editing, 'new' = creating, string = editing existing id
@@ -103,12 +103,12 @@ export default function WritingSettings({ group, settings, updateSettings, edito
     <div className="space-y-8">
       {group === 'general' && (
         <SettingSection title="Editor" description="How the editor behaves while you write.">
-          <SettingItem label="Default editing mode" description="The view notes open in. Live Preview edits with formatting shown; Reading view is read-only.">
+          <SettingItem label="Default editing mode" description="The view the app starts in. Live Preview edits with formatting shown; Reading view is read-only. Switching views while you work does not change it.">
             <SegmentedControl
               ariaLabel="Default editing mode"
-              value={editorViewMode}
+              value={defaultViewMode}
               options={VIEW_MODE_OPTIONS}
-              onChange={setEditorViewMode}
+              onChange={setDefaultViewMode}
             />
           </SettingItem>
         </SettingSection>
