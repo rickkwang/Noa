@@ -230,7 +230,7 @@ export default function SettingsModal({
   return (
     <div
       data-settings-backdrop="true"
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 transition-opacity duration-150"
+      className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
       style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0)' }}
       onMouseDown={(e) => { pressStartedOnBackdrop.current = e.target === e.currentTarget; }}
       onClick={(e) => {
