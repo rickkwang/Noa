@@ -684,6 +684,47 @@ test('dragging a card by its move handle swaps the two cards and keeps the order
   await expect.poll(async () => (await top(backlinks)) < (await top(tasks))).toBe(true);
 });
 
+test('image viewer zooms around the pointer, ignores sub-4px jitter, and closes on click', async ({ page }) => {
+  // 400×300 solid PNG served from a fake origin, so the preview has a real image to open.
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#4a90d9"/></svg>';
+  await page.route('https://img.test/pic.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: svg }));
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type('![pic](https://img.test/pic.svg)');
+  await ensurePreviewMode(page);
+  await page.locator('.prose img[alt="pic"]').last().click();
+
+  const viewer = page.getByRole('dialog', { name: 'pic' });
+  const image = viewer.locator('img');
+  await expect(image).toBeVisible();
+  const before = (await image.boundingBox())!;
+
+  // Zoom at a point left of centre: that point stays under the pointer, so the image grows rightwards.
+  const px = before.x + before.width * 0.25;
+  const py = before.y + before.height / 2;
+  await page.mouse.move(px, py);
+  await page.mouse.wheel(0, -300);
+  await expect.poll(async () => (await image.boundingBox())!.width).toBeGreaterThan(before.width * 1.5);
+  const after = (await image.boundingBox())!;
+  const fractionUnderPointer = (px - after.x) / after.width;
+  expect(Math.abs(fractionUnderPointer - 0.25)).toBeLessThan(0.02);
+
+  // Past 4px it pans the zoomed image and the viewer stays open.
+  await page.mouse.down();
+  await page.mouse.move(px + 40, py, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await image.boundingBox())!.x).toBeGreaterThan(after.x + 30);
+  await page.waitForTimeout(300);
+  await expect(viewer).toBeVisible();
+
+  // A 2px wobble while pressed is a click, not a pan: it closes rather than moving the image.
+  await page.mouse.down();
+  await page.mouse.move(px + 42, py + 1);
+  await page.mouse.up();
+  await expect(viewer).toHaveCount(0);
+});
+
 test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();

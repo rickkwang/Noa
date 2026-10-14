@@ -2,7 +2,6 @@ import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
 import type { ListItem, Root, Text, Parent, RootContent } from 'mdast';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import type { Components, Options as MarkdownOptions } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -22,6 +21,7 @@ import { buildLinkIndex, getBacklinks, headingSlug, isImageSize, parseMarkdownLi
 import { stripTaskMarkers } from '../../lib/taskParser';
 import { themeSurfaces } from '../../lib/themePalette';
 import { Note, Folder, AppSettings } from '../../types';
+import { ImageViewer } from './ImageViewer';
 import { MermaidBlock } from './MermaidBlock';
 import { canReusePreviewContextNotes } from './previewMemo';
 import { Copy, Check, FileText } from '@/src/lib/icons';
@@ -76,12 +76,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
 
 function ZoomableImage({ src, alt, width, height }: { src: string; alt?: string; width?: number; height?: number }) {
   const [zoomed, setZoomed] = useState(false);
-  useEffect(() => {
-    if (!zoomed) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [zoomed]);
+  const close = useCallback(() => setZoomed(false), []);
   // height goes in style: Tailwind preflight's `img { height: auto }` overrides the height attribute.
   return (
     <>
@@ -95,25 +90,7 @@ function ZoomableImage({ src, alt, width, height }: { src: string; alt?: string;
         onClick={() => setZoomed(true)}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />
-      {zoomed && createPortal(
-        <div
-          onClick={() => setZoomed(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.85)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'zoom-out',
-            padding: '2rem',
-          }}
-        >
-          <img src={src} alt={alt} style={{ maxWidth: '95%', maxHeight: '95%', objectFit: 'contain' }} />
-        </div>,
-        document.body
-      )}
+      {zoomed && <ImageViewer src={src} alt={alt} onClose={close} />}
     </>
   );
 }
