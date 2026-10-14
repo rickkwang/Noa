@@ -12,6 +12,7 @@ import { buildMinimalReplaceChange } from './contentSync';
 import { frontmatterEnd, hiddenFrontmatter } from './hiddenFrontmatter';
 import { hideTaskMarkers } from './hideTaskMarkers';
 import { inlineTitle, setInlineTitle } from './inlineTitle';
+import { landedLine, markLandedLine } from './landedLine';
 import { followLinkOnClick, livePreview, livePreviewRefresh, type LivePreviewContext, type OpenableLink } from './livePreview';
 import { livePreviewBlocks } from './livePreviewBlocks';
 import { livePreviewFolding } from './livePreviewFold';
@@ -380,6 +381,7 @@ export function useCodeMirror({
       syntaxHighlighting(isDark ? darkMarkdownHighlightStyle : markdownHighlightStyle),
       hideTaskMarkers,
       codeDecorations,
+      landedLine,
       livePreview(getLivePreviewContext),
       livePreviewBlocks(getLivePreviewContext),
       livePreviewFolding,
@@ -501,6 +503,7 @@ export function useCodeMirror({
     if (!view) return;
     const line = view.state.doc.line(lineIndex + 1);
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+    markLandedLine(view, line.from);
     view.focus();
   }, []);
 

@@ -695,7 +695,7 @@ export default function Sidebar({
                   </div>
                 ))}
                 {searchResults.length === 0 && (
-                  <div className="text-[var(--sidebar-text-muted,#7B7974)] px-2 py-4 font-ui text-sm text-center">
+                  <div className="noa-hint-in text-[var(--sidebar-text-muted,#7B7974)] px-2 py-4 font-ui text-sm text-center">
                     No matches found
                   </div>
                 )}

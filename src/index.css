@@ -375,6 +375,61 @@ body {
   }
 }
 
+/* Claude Code's [data-landed]: the line a jump (task, backlink, outline) landed on washes out from the accent
+   over 1.6s. Fades on its own; landedLine.ts drops the decoration after the same span. */
+.cm-line.noa-landed-line {
+  animation: noa-landed 1600ms ease-out;
+}
+
+@keyframes noa-landed {
+  0% { background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* Claude Code's epitaxy-hint-fade-in, for quiet status text (empty states) as it appears. */
+.noa-hint-in {
+  animation: noa-hint-in 400ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+@keyframes noa-hint-in {
+  0% { opacity: 0.4; transform: translateY(1px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Image preview open/close (ZoomableImage): Claude Code's chat-image-preview view transition. The thumbnail grows
+   into the viewer; old/new don't crossfade, and the thumbnail snapshot is hidden on the way in. */
+::view-transition-group(noa-image-preview) {
+  animation-duration: 350ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+html.noa-vt-image-closing::view-transition-group(noa-image-preview) {
+  animation-duration: 250ms;
+}
+::view-transition-old(noa-image-preview),
+::view-transition-new(noa-image-preview) {
+  mix-blend-mode: normal;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  animation: none;
+}
+html:not(.noa-vt-image-closing)::view-transition-old(noa-image-preview) {
+  display: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 350ms;
+}
+html.noa-vt-image-closing::view-transition-old(root),
+html.noa-vt-image-closing::view-transition-new(root) {
+  animation-duration: 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-line.noa-landed-line { animation-duration: 1ms; }
+  .noa-hint-in { animation: none; }
+}
+
 /* Track uses a low ink wash: a palette step disappears in one theme or the other. */
 .noa-segmented-track {
   background-color: rgba(45, 45, 43, 0.07);
@@ -847,17 +902,17 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* ── Scrollbar: no !important (it would beat the fade keyframes). Use background-color, never the shorthand,
    which resets background-clip and undoes the thumb's transparent-border inset. */
 @keyframes scrollbar-fadeout-dark {
-  from { background-color: rgba(249,249,247,0.22); }
-  to   { background-color: rgba(249,249,247,0); }
+  from { background-color: rgba(225,224,217,0.35); }
+  to   { background-color: rgba(225,224,217,0); }
 }
 @keyframes scrollbar-fadein-dark {
-  from { background-color: rgba(249,249,247,0); }
-  to   { background-color: rgba(249,249,247,0.22); }
+  from { background-color: rgba(225,224,217,0); }
+  to   { background-color: rgba(225,224,217,0.35); }
 }
-[data-theme="dark"] ::-webkit-scrollbar-thumb       { background-color: rgba(249,249,247,0); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background-color: rgba(249,249,247,0.40); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb       { background-color: rgba(225,224,217,0); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background-color: rgba(225,224,217,0.5); }
 [data-theme="dark"] .is-scrolling::-webkit-scrollbar-thumb {
-  background-color: rgba(249,249,247,0.22);
+  background-color: rgba(225,224,217,0.35);
   animation: scrollbar-fadein-dark 0.15s ease;
 }
 [data-theme="dark"] .is-scrolling-out::-webkit-scrollbar-thumb {
@@ -1014,25 +1069,25 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 ::-webkit-scrollbar-corner { background: transparent; }
 
 @keyframes scrollbar-fadeout {
-  from { background-color: rgba(45, 45, 43, 0.25); }
-  to   { background-color: rgba(45, 45, 43, 0); }
+  from { background-color: rgba(30, 30, 29, 0.35); }
+  to   { background-color: rgba(30, 30, 29, 0); }
 }
 @keyframes scrollbar-fadein {
-  from { background-color: rgba(45, 45, 43, 0); }
-  to   { background-color: rgba(45, 45, 43, 0.25); }
+  from { background-color: rgba(30, 30, 29, 0); }
+  to   { background-color: rgba(30, 30, 29, 0.35); }
 }
 /* Transparent border + padding-box clip centres the thumb (webkit scrollbars have no margin). */
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(45, 45, 43, 0);
+  background-color: rgba(30, 30, 29, 0);
   background-clip: padding-box;
   border: 1px solid transparent;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(45, 45, 43, 0.5);
+  background-color: rgba(30, 30, 29, 0.5);
 }
 .is-scrolling::-webkit-scrollbar-thumb {
-  background-color: rgba(45, 45, 43, 0.25);
+  background-color: rgba(30, 30, 29, 0.35);
   animation: scrollbar-fadein 0.15s ease;
 }
 .is-scrolling-out::-webkit-scrollbar-thumb {

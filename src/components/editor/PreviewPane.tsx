@@ -2,6 +2,7 @@ import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
 import type { ListItem, Root, Text, Parent, RootContent } from 'mdast';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import type { Components, Options as MarkdownOptions } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -76,18 +77,38 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
 
 function ZoomableImage({ src, alt, width, height }: { src: string; alt?: string; width?: number; height?: number }) {
   const [zoomed, setZoomed] = useState(false);
-  const close = useCallback(() => setZoomed(false), []);
+  const thumbRef = useRef<HTMLImageElement>(null);
+  // The thumbnail grows into the viewer and shrinks back (index.css, noa-image-preview). Only one element may hold
+  // the name at a time, and several thumbnails can be on the page, so the thumbnail carries it only while it morphs.
+  const morph = useCallback((open: boolean) => {
+    const thumb = thumbRef.current;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!thumb || !document.startViewTransition || reduce) { setZoomed(open); return; }
+    const root = document.documentElement;
+    root.classList.toggle('noa-vt-image-closing', !open);
+    if (open) thumb.style.viewTransitionName = 'noa-image-preview';
+    const transition = document.startViewTransition(() => {
+      thumb.style.viewTransitionName = open ? '' : 'noa-image-preview';
+      flushSync(() => setZoomed(open));
+    });
+    void transition.finished.finally(() => {
+      thumb.style.viewTransitionName = '';
+      root.classList.remove('noa-vt-image-closing');
+    });
+  }, []);
+  const close = useCallback(() => morph(false), [morph]);
   // height goes in style: Tailwind preflight's `img { height: auto }` overrides the height attribute.
   return (
     <>
       <img
+        ref={thumbRef}
         src={src}
         alt={alt}
         width={width}
         loading="lazy"
         className="max-w-full"
         style={{ display: 'block', cursor: 'zoom-in', ...(height ? { height, objectFit: 'contain' } : {}) }}
-        onClick={() => setZoomed(true)}
+        onClick={() => morph(true)}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />
       {zoomed && <ImageViewer src={src} alt={alt} onClose={close} />}

@@ -174,7 +174,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   return (
     <div ref={fadeRef} className={`flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-3 pb-4 pt-2 font-ui ${txt}`}>
       {tasks.length === 0 && (
-        <div className={`text-center mt-10 text-sm ${dim}`}>
+        <div className={`noa-hint-in text-center mt-10 text-sm ${dim}`}>
           No tasks found.<br />Add &quot;- [ ] task&quot; in any note!
         </div>
       )}
@@ -226,7 +226,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
       )}
 
       {filteredActiveTasks.length === 0 && activeTasks.length > 0 && (
-        <div className={`text-center mt-6 text-sm ${dim}`}>No tasks match the current filter.</div>
+        <div className={`noa-hint-in text-center mt-6 text-sm ${dim}`}>No tasks match the current filter.</div>
       )}
 
       {/* ─── Active task rows ────────────────────────────────────────── */}

@@ -693,7 +693,17 @@ test('image viewer zooms around the pointer, ignores sub-4px jitter, and closes 
   await page.locator('.cm-content').last().click();
   await page.keyboard.type('![pic](https://img.test/pic.svg)');
   await ensurePreviewMode(page);
+  // The thumbnail grows into the viewer through a view transition; input reaches the page once it finishes.
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((cb: () => void) => {
+      const transition = start(cb);
+      (window as unknown as { vt: Promise<void> }).vt = transition.finished;
+      return transition;
+    }) as typeof document.startViewTransition;
+  });
   await page.locator('.prose img[alt="pic"]').last().click();
+  expect(await page.evaluate(() => (window as unknown as { vt?: Promise<void> }).vt?.then(() => true))).toBe(true);
 
   const viewer = page.getByRole('dialog', { name: 'pic' });
   const image = viewer.locator('img');
@@ -723,6 +733,21 @@ test('image viewer zooms around the pointer, ignores sub-4px jitter, and closes 
   await page.mouse.move(px + 42, py + 1);
   await page.mouse.up();
   await expect(viewer).toHaveCount(0);
+});
+
+test('jumping to a task flashes the line it lands on, then clears', async ({ page }) => {
+  const marker = `landme-${Date.now()}`;
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`intro\n\n- [ ] ${marker}`);
+  const row = page.locator('[data-pane="tasks"]').getByText(marker);
+  await row.hover();
+  await page.locator('[data-pane="tasks"]').getByRole('button', { name: /^Open source note/ }).click();
+  const landed = page.locator('.cm-line.noa-landed-line');
+  await expect(landed).toHaveCount(1);
+  await expect(landed).toContainText(marker);
+  await expect(landed).toHaveCount(0, { timeout: 3000 });
 });
 
 test('vault import entry is labeled as migration', async ({ page }) => {

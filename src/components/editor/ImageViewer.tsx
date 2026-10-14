@@ -148,6 +148,7 @@ export function ImageViewer({ src, alt, onClose }: { src: string; alt?: string; 
         style={{
           transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
           transition: animate ? 'transform var(--dur-base) var(--ease-out)' : 'none',
+          viewTransitionName: 'noa-image-preview',
         }}
       />
     </div>,

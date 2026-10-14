@@ -13,7 +13,7 @@ export function linkSubtitle(note: Note, folders?: Folder[]): string {
 
 // Must match PropertiesPanel's "no note" state. Distinct from "a real note with zero links" (the header shows 0).
 export function LinkNoNoteState() {
-  return <div className="text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#7B7974)]">No note selected</div>;
+  return <div className="noa-hint-in text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#7B7974)]">No note selected</div>;
 }
 
 export function LinkSectionHeader({ label, count }: { label: string; count: number }) {
