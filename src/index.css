@@ -292,6 +292,37 @@ body {
   mask-image: linear-gradient(to right, var(--noa-fade-ramp));
 }
 
+/* Right-panel card bodies, Claude Code's .scroll-fade-y: both vertical edges dissolve over 28px with its seven-step
+   ramp (5/15/30/50/70/85% opacity at 15/30/45/60/75/87% of the length). Each edge grows in over the first 28px of
+   scroll and is gone at rest (lib/edgeFade, travel 28). The 6px solid strip keeps Noa's scrollbar opaque (Claude
+   hides its scrollbar here); it must match ::-webkit-scrollbar. */
+.noa-edge-fade-y {
+  --noa-fade-ramp:
+    rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
+    rgb(0 0 0 / 0.05) calc(var(--noa-fade-top, 0) * 4.2px),
+    rgb(0 0 0 / 0.15) calc(var(--noa-fade-top, 0) * 8.4px),
+    rgb(0 0 0 / 0.3) calc(var(--noa-fade-top, 0) * 12.6px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 16.8px),
+    rgb(0 0 0 / 0.7) calc(var(--noa-fade-top, 0) * 21.0px),
+    rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 24.36px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 28px),
+    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-bottom, 0) * 28px),
+    rgb(0 0 0 / 0.85) calc(100% - var(--noa-fade-bottom, 0) * 24.36px),
+    rgb(0 0 0 / 0.7) calc(100% - var(--noa-fade-bottom, 0) * 21.0px),
+    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-bottom, 0) * 16.8px),
+    rgb(0 0 0 / 0.3) calc(100% - var(--noa-fade-bottom, 0) * 12.6px),
+    rgb(0 0 0 / 0.15) calc(100% - var(--noa-fade-bottom, 0) * 8.4px),
+    rgb(0 0 0 / 0.05) calc(100% - var(--noa-fade-bottom, 0) * 4.2px),
+    rgb(0 0 0 / 0) calc(100% - var(--noa-fade-bottom, 0) * 0px);
+  -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
+  mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
+  -webkit-mask-size: 100% 100%, 6px 100%;
+  mask-size: 100% 100%, 6px 100%;
+  -webkit-mask-position: top left, top right;
+  mask-position: top left, top right;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+}
 
 /* Inside the settings dialog the shared 8% divider is too faint to read: its
    rules and card borders sit on a panel the eye is scanning for structure, not

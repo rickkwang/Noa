@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { useNoteProperties } from '../../hooks/useNoteProperties';
 import { Note } from '../../types';
 import { PropertiesBlock } from '../editor/PropertiesBlock';
@@ -14,6 +15,7 @@ interface PropertiesPanelProps {
 
 // Same editor as the one under the note title, so both stay in sync and write through the same paths.
 export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatterChange, fontSize }: PropertiesPanelProps) {
+  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   const { frontmatter, onChange, canWrite, getSuggestions } = useNoteProperties(activeNote, notes, {
     onUpdate: onUpdateNote,
     onFrontmatterChange,
@@ -28,7 +30,7 @@ export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatter
   }
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
+    <div ref={fadeRef} className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-3 pb-3 pt-2" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
       <PropertiesBlock compact block={frontmatter.block} readOnly={!canWrite} onChange={onChange} getSuggestions={getSuggestions} />
     </div>
   );

@@ -1,7 +1,7 @@
 /**
  * Shared driver for every scroll-edge fade (preview/editor leading edge, tab
  * strip overflow, sidebar toolbar seam). Strength is continuous — distance from
- * the edge in units of FADE_TRAVEL_PX, clamped 0→1 — so an edge dissolves as
+ * the edge in units of FADE_TRAVEL_PX (or the caller's `travel`), clamped 0→1 — so an edge dissolves as
  * content moves in rather than switching in one frame. Surfaces read it from a
  * CSS variable; at 0 every surface shows "no fade".
  *
@@ -21,6 +21,8 @@ export interface EdgeFadeOptions {
   /** Where the variables land. Defaults to the scroller; pass an ancestor when
    *  the faded element is not the scrolling one. */
   target?: HTMLElement;
+  /** Scroll distance over which an edge reaches full strength. Defaults to FADE_TRAVEL_PX. */
+  travel?: number;
 }
 
 export interface EdgeFadeHandle {
@@ -40,7 +42,7 @@ export function attachEdgeFade(
   scroller: HTMLElement,
   options: EdgeFadeOptions = {}
 ): EdgeFadeHandle {
-  const { axis = 'y', end = false, target = scroller } = options;
+  const { axis = 'y', end = false, target = scroller, travel: fadeTravel = FADE_TRAVEL_PX } = options;
   const vars = FADE_VARS[axis];
   let frame = 0;
 
@@ -51,9 +53,9 @@ export function attachEdgeFade(
       axis === 'y'
         ? scroller.scrollHeight - scroller.clientHeight
         : scroller.scrollWidth - scroller.clientWidth;
-    target.style.setProperty(vars.start, clamp01(position / FADE_TRAVEL_PX).toFixed(3));
+    target.style.setProperty(vars.start, clamp01(position / fadeTravel).toFixed(3));
     if (end) {
-      target.style.setProperty(vars.end, clamp01((travel - position) / FADE_TRAVEL_PX).toFixed(3));
+      target.style.setProperty(vars.end, clamp01((travel - position) / fadeTravel).toFixed(3));
     }
   };
 

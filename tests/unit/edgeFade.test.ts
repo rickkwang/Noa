@@ -75,6 +75,20 @@ describe('attachEdgeFade', () => {
     expect(el.style.props['--noa-fade-top']).toBe('1.000');
   });
 
+  it('reaches full strength over a caller-set travel, on both edges', () => {
+    const { el, fire } = fakeScroller();
+    attachEdgeFade(el as unknown as HTMLElement, { end: true, travel: 28 });
+
+    el.scrollTop = 14;
+    fire(); flush();
+    expect(el.style.props['--noa-fade-top']).toBe('0.500');
+
+    el.scrollTop = 500 - 7;
+    fire(); flush();
+    expect(el.style.props['--noa-fade-top']).toBe('1.000');
+    expect(el.style.props['--noa-fade-bottom']).toBe('0.250');
+  });
+
   it('clamps the rubber-band overscroll that macOS reports as a negative offset', () => {
     const { el, fire } = fakeScroller();
     attachEdgeFade(el as unknown as HTMLElement);

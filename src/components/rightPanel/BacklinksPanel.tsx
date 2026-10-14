@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { getBacklinks } from '../../lib/noteUtils';
 import { Folder, Note } from '../../types';
 import { LinkNoNoteState, LinkRow, LinkSectionHeader, linkSubtitle } from './LinkList';
@@ -12,10 +13,11 @@ interface BacklinksPanelProps {
 }
 
 export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteById }: BacklinksPanelProps) {
+  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   const backlinks = useMemo(() => getBacklinks(activeNote, notes), [activeNote, notes]);
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-1 pb-3 pt-2 font-ui">
+    <div ref={fadeRef} className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-1 pb-3 pt-2 font-ui">
       {!activeNote ? (
         <LinkNoNoteState />
       ) : (
