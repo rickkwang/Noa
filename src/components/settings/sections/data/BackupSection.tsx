@@ -55,7 +55,7 @@ export default function BackupSection({
       </div>
       {showStorage && storageEstimate && (
         <div className="pb-2 space-y-1">
-          <div className="text-xs text-[#2D2D2B]/60 font-redaction">
+          <div className="text-xs text-[#2D2D2B]/60 font-ui">
             Storage used: {formatBytes(storageEstimate.usageBytes)} / ~{formatBytes(storageEstimate.quotaBytes)} (estimated)
           </div>
           <div className="h-1 w-full bg-[#2D2D2B]/10 rounded-full overflow-hidden">
@@ -68,7 +68,7 @@ export default function BackupSection({
             />
           </div>
           {storageEstimate.ratio > 0.8 && (
-            <p className="text-xs text-[#D9862B] font-redaction">
+            <p className="text-xs text-[#D9862B] font-ui">
               Storage is over 80% full. Consider exporting and clearing old data.
             </p>
           )}

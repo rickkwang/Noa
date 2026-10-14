@@ -272,7 +272,7 @@ export default function Sidebar({
               return (
                 <button
                   key={t.id}
-                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-[13px] font-redaction text-[#2D2D2B]/90 transition-colors"
+                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-[13px] font-ui text-[#2D2D2B]/90 transition-colors"
                   onClick={() => {
                     onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                     setTemplateMenuFolderId(null);
@@ -324,7 +324,7 @@ export default function Sidebar({
             />
           ))}
           {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
-          {!hasChildren && <div className="text-[#2D2D2B]/50 py-1 font-redaction" style={{ paddingLeft: '22px' }}>Empty</div>}
+          {!hasChildren && <div className="text-[#2D2D2B]/50 py-1 font-ui" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -440,7 +440,7 @@ export default function Sidebar({
     >
       {isDragOver && (
         <div className="absolute inset-0 bg-[#CC7D5E]/10 border-2 border-dashed border-[#CC7D5E] z-50 flex items-center justify-center pointer-events-none">
-          <div className="noa-floating-panel bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] font-redaction font-bold text-[#CC7D5E] flex items-center">
+          <div className="noa-floating-panel bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] font-ui font-bold text-[#CC7D5E] flex items-center">
             <Plus size={16} className="mr-2" />
             Drop files to import
           </div>
@@ -512,7 +512,7 @@ export default function Sidebar({
       </div>
 
       {pendingDelete && (
-        <div className="noa-confirm-reveal bg-[#CC7D5E]/10 px-3 py-2.5 flex flex-col gap-2 font-redaction shrink-0 z-10">
+        <div className="noa-confirm-reveal bg-[#CC7D5E]/10 px-3 py-2.5 flex flex-col gap-2 font-ui shrink-0 z-10">
           <p className="text-xs leading-relaxed text-[#2D2D2B]">
             Delete "<span className="font-semibold">{pendingDelete.name}</span>"?{' '}
             {pendingDelete.type === 'folder'
@@ -569,7 +569,7 @@ export default function Sidebar({
 
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
-        <div className="bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-redaction">
+        <div className="bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-ui">
           <span className="text-xs text-[#2D2D2B]/70">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
@@ -617,7 +617,7 @@ export default function Sidebar({
           ref={blankMenuRef}
           role="menu"
           aria-label="Sidebar actions"
-          className="fixed z-[90] w-44 rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-redaction noa-floating-panel"
+          className="fixed z-[90] w-44 rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
           style={{ left: blankMenu.x, top: blankMenu.y }}
           onKeyDown={(e) => { if (e.key === 'Escape') setBlankMenu(null); }}
         >
@@ -642,7 +642,7 @@ export default function Sidebar({
       {/* Main Content Section */}
       <div
         ref={treeScrollRef}
-        className="noa-sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
         // Rows stop propagation of their own context menu, so this only sees blank space.
         onContextMenu={searchQuery ? undefined : (e) => {
           e.preventDefault();
@@ -655,7 +655,7 @@ export default function Sidebar({
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
-                <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-redaction uppercase tracking-wider flex items-center justify-between">
+                <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-ui uppercase tracking-wider flex items-center justify-between">
                   <span>Search Results ({searchResults.length})</span>
                   {onClearSearch && (
                     <button
@@ -674,19 +674,19 @@ export default function Sidebar({
                     className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
-                    <div className="font-bold font-redaction text-sm text-[#2D2D2B] mb-1 flex items-center">
+                    <div className="font-bold font-ui text-sm text-[#2D2D2B] mb-1 flex items-center">
                       <FileText size={12} className="mr-1.5 text-[#CC7D5E] shrink-0" />
                       <span className="truncate">
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
-                    <div className="text-xs text-[#2D2D2B]/70 font-redaction leading-relaxed break-words line-clamp-2">
+                    <div className="text-xs text-[#2D2D2B]/70 font-ui leading-relaxed break-words line-clamp-2">
                       <HighlightedText text={result.contentSnippet} />
                     </div>
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {result.note.tags.map(tag => (
-                          <span key={tag} className="text-[10px] font-redaction text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
+                          <span key={tag} className="text-[10px] font-ui text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
                             #{tag}
                           </span>
                         ))}
@@ -695,7 +695,7 @@ export default function Sidebar({
                   </div>
                 ))}
                 {searchResults.length === 0 && (
-                  <div className="text-[#2D2D2B]/50 px-2 py-4 font-redaction text-sm text-center">
+                  <div className="text-[#2D2D2B]/50 px-2 py-4 font-ui text-sm text-center">
                     No matches found
                   </div>
                 )}
@@ -734,7 +734,7 @@ export default function Sidebar({
                   <>
                     {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
                     <div className={`mx-1.5 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-redaction">Obsidian Vault</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-ui">Obsidian Vault</span>
                     </div>
                     <div
                       onDragEnter={markVaultRootTarget}

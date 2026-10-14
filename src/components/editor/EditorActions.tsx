@@ -91,7 +91,7 @@ export function EditorActions({
         {menuOpen && (
           <div
             role="menu"
-            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-[10px] font-redaction noa-floating-panel border border-[var(--divider-subtle)] ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-[10px] font-ui noa-floating-panel border border-[var(--divider-subtle)] ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
           >
             {onToggleHistory && (
               <>

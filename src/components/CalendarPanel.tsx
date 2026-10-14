@@ -249,7 +249,7 @@ export default function CalendarPanel({
               {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
               {activeRange && (
                 // Neutral ink: the range is already tinted in the grid; a second accent here competed with it.
-                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-[11.5px] font-redaction">
+                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-[11.5px] font-ui">
                   <span className="truncate font-medium text-[var(--text-primary,#2D2D2B)]">
                     {activeRange.start === activeRange.end
                       ? shortDate(activeRange.start)
@@ -272,7 +272,7 @@ export default function CalendarPanel({
                   onClick={goToToday}
                   title="Jump to today"
                   aria-label="Jump to today"
-                  className={`px-2 py-1 rounded-md text-xs font-medium font-redaction transition-colors cursor-pointer noa-sidebar-hover-surface ${isViewingToday ? 'text-[#2D2D2B]/80' : 'text-[#CC7D5E]'}`}
+                  className={`px-2 py-1 rounded-md text-xs font-medium font-ui transition-colors cursor-pointer noa-sidebar-hover-surface ${isViewingToday ? 'text-[#2D2D2B]/80' : 'text-[#CC7D5E]'}`}
                 >
                   <span className="font-semibold">{monthName}</span>
                   <span className="ml-1 text-[#2D2D2B]/40">{year}</span>
@@ -308,7 +308,7 @@ export default function CalendarPanel({
                   const inRange = !!activeRange && dateStr >= activeRange.start && dateStr <= activeRange.end;
                   const isRangeEdge = !!activeRange && (dateStr === activeRange.start || dateStr === activeRange.end);
 
-                  let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-redaction rounded-md transition-colors cursor-pointer ';
+                  let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-ui rounded-md transition-colors cursor-pointer ';
                   if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
                   else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
                   // Only the range edges take accent ink; tinting every day drowned out today's marker.
@@ -371,7 +371,7 @@ export default function CalendarPanel({
               </div>
 
               {/* Segmented control: one track, the selected preset lifts out of it like the tag filter field. px-3 aligns with the text rows. */}
-              <div className="flex items-center gap-2 px-3 pb-3 text-[11px] font-redaction">
+              <div className="flex items-center gap-2 px-3 pb-3 text-[11px] font-ui">
                 <div className="noa-segmented-track relative flex flex-1 items-center rounded-lg p-0.5" role="group" aria-label="Date range presets">
                   {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
                   <span

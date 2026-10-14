@@ -64,7 +64,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
               }
             }}
             placeholder="Type a command or note title..."
-            className="w-full bg-transparent text-sm font-redaction outline-none placeholder:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]"
+            className="w-full bg-transparent text-sm font-ui outline-none placeholder:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]"
           />
         </div>
         <div id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
@@ -80,7 +80,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
                 onClick={() => palette.run(item.action)}
                 // onMouseMove, not onMouseEnter, so scrolling under a resting pointer doesn't steal the arrow-key highlight.
                 onMouseMove={() => { if (index !== palette.selectedIndex) palette.setSelectedIndex(index); }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md font-redaction ${index === palette.selectedIndex ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : ''}`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md font-ui ${index === palette.selectedIndex ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : ''}`}
               >
                 {item.label}
               </button>

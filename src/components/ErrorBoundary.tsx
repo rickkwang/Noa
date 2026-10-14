@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
       return (
-        <div className="flex flex-col items-center justify-center h-full w-full bg-[#F9F9F7] text-[#2D2D2B] font-redaction p-8 text-center">
+        <div className="flex flex-col items-center justify-center h-full w-full bg-[#F9F9F7] text-[#2D2D2B] font-ui p-8 text-center">
           <AlertTriangle size={48} className="text-[#D45555] mb-4" />
           <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
           <p className="text-sm text-[#2D2D2B]/70 mb-4 max-w-md">

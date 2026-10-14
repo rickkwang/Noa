@@ -45,7 +45,7 @@ export default function RecoveryDialog({ message, onRetry, onImportBackup, onRes
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4"
     >
-      <div className="w-full max-w-xl bg-[#F9F9F7] border border-[var(--divider-subtle)] noa-floating-panel p-4 font-redaction space-y-3 slide-down rounded-[14px]">
+      <div className="w-full max-w-xl bg-[#F9F9F7] border border-[var(--divider-subtle)] noa-floating-panel p-4 font-ui space-y-3 slide-down rounded-[14px]">
         <h3 id="recovery-dialog-title" className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
         <p id="recovery-dialog-message" className="text-sm text-[#2D2D2B]/80">{message}</p>
         <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>

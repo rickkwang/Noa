@@ -7,7 +7,7 @@
  * won't resolve the platform UI face (`.AppleSystemUIFont`) by name, so that
  * name silently renders a different face.
  *
- * Keep SYSTEM_FONT_STACK in sync with `--font-redaction` in `src/index.css`,
+ * Keep SYSTEM_FONT_STACK in sync with `--font-ui` in `src/index.css`,
  * which paints before this module runs.
  */
 

@@ -119,7 +119,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       .prose-pre\\:text-\\[\\#2D2D2B\\] pre      { color: var(--text-primary) !important; }
       .prose-code\\:text-\\[\\#CC7D5E\\] code    { color: var(--accent-color) !important; }
 
-      .font-redaction { font-family: ${fontFamilyStyle} !important; }
+      .font-ui { font-family: ${fontFamilyStyle} !important; }
       body {
         background-color: var(--bg-primary);
         color: var(--text-primary);

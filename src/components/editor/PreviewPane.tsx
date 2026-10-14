@@ -1107,7 +1107,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         // item itself: auto cross-axis margins cancel `align-self: stretch`,
         // which would collapse the item to fit-content.
         <div className="mt-24 w-full">
-          <div className="pt-4 font-redaction" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)', ...contentMaxWidthStyle }}>
+          <div className="pt-4 font-ui" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)', ...contentMaxWidthStyle }}>
             <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
               <span>{backlinks.length}</span>
               <span>Linked Mentions</span>

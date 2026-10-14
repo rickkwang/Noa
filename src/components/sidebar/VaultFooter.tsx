@@ -94,7 +94,7 @@ export function VaultFooter({
 
   const label = workspaceName.trim() || 'Workspace';
   const status = syncLabel(syncStatus, lastSyncAt);
-  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2.5 w-full rounded-md px-2 h-7 shrink-0 text-left text-[13px] font-redaction text-[#2D2D2B]/90 transition-colors disabled:opacity-40 disabled:pointer-events-none';
+  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2.5 w-full rounded-md px-2 h-7 shrink-0 text-left text-[13px] font-ui text-[#2D2D2B]/90 transition-colors disabled:opacity-40 disabled:pointer-events-none';
 
   const run = (action?: () => void) => {
     setIsOpen(false);
@@ -114,7 +114,7 @@ export function VaultFooter({
         >
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">
-              <p className="text-xs font-redaction text-[#2D2D2B] leading-relaxed">
+              <p className="text-xs font-ui text-[#2D2D2B] leading-relaxed">
                 Disconnect <span className="font-bold">{vaultName}</span> first, then pick the next folder?
                 Its notes and folders leave the workspace and their tabs close — the files on
                 disk are untouched. Cancelling the picker leaves you with no vault until you reconnect.
@@ -122,14 +122,14 @@ export function VaultFooter({
               <div className="flex items-center gap-1.5">
                 <button
                   role="menuitem"
-                  className="flex-1 rounded-md px-2 py-1 text-xs font-redaction font-bold bg-[#CC7D5E] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
+                  className="flex-1 rounded-md px-2 py-1 text-xs font-ui font-bold bg-[#CC7D5E] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
                   onClick={() => run(onSwitchVault)}
                 >
                   Continue
                 </button>
                 <button
                   role="menuitem"
-                  className="noa-sidebar-hover-surface flex-1 rounded-md px-2 py-1 text-xs font-redaction text-[#2D2D2B] transition-colors"
+                  className="noa-sidebar-hover-surface flex-1 rounded-md px-2 py-1 text-xs font-ui text-[#2D2D2B] transition-colors"
                   onClick={() => setConfirmSwitch(false)}
                 >
                   Cancel
@@ -139,7 +139,7 @@ export function VaultFooter({
           ) : (
             <>
               {/* Workspace and vault coexist: the workspace is always present, the vault is an optional mirrored folder. */}
-              <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-[13px] font-redaction text-[#2D2D2B]/90">
+              <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-[13px] font-ui text-[#2D2D2B]/90">
                 <Check size={13} className="shrink-0 text-[#2D2D2B]/50" />
                 <span className="truncate">{label}</span>
                 <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-[#2D2D2B]/50">Workspace</span>
@@ -150,11 +150,11 @@ export function VaultFooter({
               {vaultName ? (
                 <>
                   <div className="px-2 pt-0.5 pb-1.5">
-                    <div className="flex items-center gap-2 text-xs font-redaction text-[#2D2D2B]">
+                    <div className="flex items-center gap-2 text-xs font-ui text-[#2D2D2B]">
                       <HardDrive size={13} className="shrink-0 text-[#2D2D2B]/50" />
                       <span className="truncate">{vaultName}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 pl-[21px] text-[10px] font-redaction text-[#2D2D2B]/60">
+                    <div className="mt-1 flex items-center gap-1.5 pl-[21px] text-[10px] font-ui text-[#2D2D2B]/60">
                       <span className="shrink-0">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${DOT_CLASS[syncStatus]}`} />
                       </span>
@@ -182,7 +182,7 @@ export function VaultFooter({
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-redaction text-[#2D2D2B]/60">
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-ui text-[#2D2D2B]/60">
                     <Unlink size={13} className="shrink-0" />
                     <span className="truncate">No vault connected</span>
                   </div>
@@ -209,7 +209,7 @@ export function VaultFooter({
       <button
         data-vault-btn
         onClick={() => setIsOpen(v => !v)}
-        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-[7px] pr-3.5 py-1 text-[11px] font-redaction text-[#2D2D2B]/60 hover:text-[#2D2D2B] transition-colors cursor-pointer"
+        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-[7px] pr-3.5 py-1 text-[11px] font-ui text-[#2D2D2B]/60 hover:text-[#2D2D2B] transition-colors cursor-pointer"
         title={vaultName ? `${label} · vault: ${vaultName} (${syncError || status})` : `${label} · no vault connected`}
         aria-haspopup="menu"
         aria-expanded={isOpen}

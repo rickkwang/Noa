@@ -35,7 +35,7 @@ export default function AppUpdateSettings() {
       )}
 
       <SettingItem label="Current Version" description={isDesktop ? 'Version reported by the desktop runtime.' : 'Version of the web app currently loaded.'}>
-        <span className="text-sm font-medium font-redaction tabular-nums">{displayVersion}</span>
+        <span className="text-sm font-medium font-ui tabular-nums">{displayVersion}</span>
       </SettingItem>
 
       <SettingItem label="Update Status" description="Updates are downloaded and installed inside the app." stacked>

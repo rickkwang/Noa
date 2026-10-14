@@ -14,7 +14,7 @@ export function linkSubtitle(note: Note, folders?: Folder[]): string {
 // Must match PropertiesPanel's "no note" state. Distinct from "a real note with zero links" (the header shows 0).
 export function LinkNoNoteState({ isDark }: { isDark?: boolean }) {
   const muted = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/50';
-  return <div className={`text-xs font-redaction text-center py-8 ${muted}`}>No note selected</div>;
+  return <div className={`text-xs font-ui text-center py-8 ${muted}`}>No note selected</div>;
 }
 
 export function LinkSectionHeader({ label, count, isDark }: { label: string; count: number; isDark?: boolean }) {

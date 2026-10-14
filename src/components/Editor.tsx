@@ -543,7 +543,7 @@ export default function Editor({
 
   if (!note) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#F9F9F7] font-redaction select-none">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#F9F9F7] font-ui select-none">
         <div className="flex flex-col gap-8 w-56">
           {/* Wordmark */}
           <div className="flex flex-col gap-1">
@@ -647,7 +647,7 @@ export default function Editor({
       )}
 
       {(imageError || attachmentLoadError) && (
-        <div className="px-4 py-1.5 bg-[#D45555]/10 border-b border-[#D45555]/60 text-[#A93B3B] text-xs font-redaction flex items-center justify-between shrink-0 z-20">
+        <div className="px-4 py-1.5 bg-[#D45555]/10 border-b border-[#D45555]/60 text-[#A93B3B] text-xs font-ui flex items-center justify-between shrink-0 z-20">
           <span>{imageError || attachmentLoadError}</span>
           <button onClick={() => setImageError(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
         </div>
@@ -694,7 +694,7 @@ export default function Editor({
 
           {/* Opaque stats card: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 h-7 flex items-center px-4 rounded-t-lg text-xs font-redaction pointer-events-none"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 h-7 flex items-center px-4 rounded-t-lg text-xs font-ui pointer-events-none"
             style={{
               color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
               backgroundColor: themeSurfaces(isDark).primary,

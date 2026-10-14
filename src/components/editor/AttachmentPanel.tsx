@@ -97,7 +97,7 @@ export function AttachmentPanel({
           <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileInput} />
         </div>
         {error && (
-          <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-redaction flex items-center justify-between">
+          <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-ui flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
           </div>
@@ -144,14 +144,14 @@ export function AttachmentPanel({
 
       {/* Error banner */}
       {error && (
-        <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-redaction flex items-center justify-between">
+        <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-ui flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
         </div>
       )}
 
       {mutationsDisabled && mutationsDisabledReason && (
-        <p className="px-4 pb-1 text-[10px] text-[#2D2D2B]/50 font-redaction">
+        <p className="px-4 pb-1 text-[10px] text-[#2D2D2B]/50 font-ui">
           {mutationsDisabledReason}
         </p>
       )}
@@ -160,7 +160,7 @@ export function AttachmentPanel({
       {isOpen && (
         <div className="px-4 pb-2 space-y-0.5">
           {attachments.length === 0 ? (
-            <div className="text-xs text-[#2D2D2B]/30 font-redaction py-1">
+            <div className="text-xs text-[#2D2D2B]/30 font-ui py-1">
               Drag files here, or click "+ Add" to upload images.
             </div>
           ) : (
@@ -173,7 +173,7 @@ export function AttachmentPanel({
                   <button
                   disabled={readOnly}
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-redaction text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
+                  className="flex-1 text-left text-xs font-ui text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}

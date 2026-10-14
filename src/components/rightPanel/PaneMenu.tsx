@@ -112,7 +112,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
         <div
           role="menu"
           aria-label="Panels"
-          className={`noa-pane-menu noa-floating-panel absolute right-0 top-full z-50 mt-1.5 w-48 rounded-[10px] border border-[var(--divider-subtle)] p-1 font-redaction ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+          className={`noa-pane-menu noa-floating-panel absolute right-0 top-full z-50 mt-1.5 w-48 rounded-[10px] border border-[var(--divider-subtle)] p-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
         >
           {PANE_TABS.map((tab) => {
             const isActive = activePanes.includes(tab.id);

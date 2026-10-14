@@ -148,7 +148,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
     onChange: (v: T) => void
   ) {
     return (
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] font-bold font-redaction">
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] font-bold font-ui">
         <span className={`shrink-0 w-[58px] ${dimmer}`}>{label}</span>
         <div className="flex items-center gap-1 flex-wrap">
           {options.map((opt) => (
@@ -170,7 +170,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   }
 
   return (
-    <div className={`flex-1 overflow-y-auto noa-panel-scroll px-3 pb-4 pt-2 font-redaction ${txt}`}>
+    <div className={`flex-1 overflow-y-auto noa-panel-scroll px-3 pb-4 pt-2 font-ui ${txt}`}>
       {tasks.length === 0 && (
         <div className={`text-center mt-10 text-sm ${dim}`}>
           No tasks found.<br />Add &quot;- [ ] task&quot; in any note!
@@ -268,7 +268,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           })}
           {filteredActiveTasks.length > activePageSize && (
             <button onClick={() => setActivePageSize(s => s + TASKS_PAGE_SIZE)}
-              className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
+              className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
               Show more ({filteredActiveTasks.length - activePageSize} remaining)
             </button>
           )}
@@ -323,7 +323,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             })}
             {completedTasks.length > completedPageSize && (
               <button onClick={() => setCompletedPageSize(s => s + TASKS_PAGE_SIZE)}
-                className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-redaction ${showMoreBtn}`}>
+                className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
                 Show more ({completedTasks.length - completedPageSize} remaining)
               </button>
             )}

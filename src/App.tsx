@@ -862,7 +862,7 @@ export default function App() {
     <div
       inert={loadError ? true : undefined}
       aria-hidden={loadError ? true : undefined}
-      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-redaction overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
+      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-ui overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
       data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}
       data-layout-motion={!isMobile && isSidebarMoving ? 'true' : undefined}
       data-sidebar-moving={!isMobile && isSidebarMoving ? 'true' : undefined}
@@ -1292,7 +1292,7 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-redaction">
+      <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-ui">
         {saveError && (
           <div role="alert" className="pointer-events-auto border border-[var(--divider-subtle)] bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[#2D2D2B] mb-1">Action failed</div>
@@ -1428,7 +1428,7 @@ export default function App() {
       {isFocusMode && (
         <button
           onClick={exitFocusMode}
-          className="fixed top-3 right-4 z-50 text-[#2D2D2B]/40 hover:text-[#2D2D2B] text-xs font-redaction px-2 py-1 border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 bg-[#F9F9F7]/80 backdrop-blur-sm active:opacity-70 transition-opacity"
+          className="fixed top-3 right-4 z-50 text-[#2D2D2B]/40 hover:text-[#2D2D2B] text-xs font-ui px-2 py-1 border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 bg-[#F9F9F7]/80 backdrop-blur-sm active:opacity-70 transition-opacity"
           title="Exit focus mode (Esc)"
         >
           Esc
@@ -1438,7 +1438,7 @@ export default function App() {
         // Token pair, not the literal one: `bg-[#2D2D2B]` is not remapped, so
         // in dark mode it lands on the identically-coloured app background and
         // the toast disappears.
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] text-xs px-3 py-1.5 font-redaction pointer-events-none">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] text-xs px-3 py-1.5 font-ui pointer-events-none">
           A tab was closed to make room (max 20 tabs)
         </div>
       )}

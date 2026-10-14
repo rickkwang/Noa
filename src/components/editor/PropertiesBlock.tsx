@@ -248,7 +248,7 @@ export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestio
 
   return (
     // The 2rem bottom margin keeps the note body visibly apart from its properties.
-    <div className={`noa-properties font-redaction leading-normal text-[0.875em] ${compact ? 'px-1.5' : 'py-2 mb-8'}`} style={style}>
+    <div className={`noa-properties font-ui leading-normal text-[0.875em] ${compact ? 'px-1.5' : 'py-2 mb-8'}`} style={style}>
       {!compact && <div className={`font-semibold pb-1 ${fg}`}>Properties</div>}
       {properties.map((prop) => {
         const Icon = KIND_ICON[prop.editable ? kindOf(prop) : 'text'];

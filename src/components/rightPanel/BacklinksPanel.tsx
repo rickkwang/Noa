@@ -16,7 +16,7 @@ export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteByI
   const backlinks = useMemo(() => getBacklinks(activeNote, notes), [activeNote, notes]);
 
   return (
-    <div className="flex-1 overflow-y-auto noa-panel-scroll px-1 pb-3 pt-2 font-redaction">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll px-1 pb-3 pt-2 font-ui">
       {!activeNote ? (
         <LinkNoNoteState isDark={isDark} />
       ) : (

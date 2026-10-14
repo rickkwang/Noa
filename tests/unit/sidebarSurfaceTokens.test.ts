@@ -123,7 +123,7 @@ describe('sidebar surface tokens', () => {
     expect(calendar).toContain('w-8 h-8');
     expect(calendar).toContain('bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20');
     expect(calendar).toContain('bg-[#CC7D5E] text-white');
-    expect(calendar).toContain('text-xs font-medium font-redaction');
+    expect(calendar).toContain('text-xs font-medium font-ui');
     // Kept at /75 (not /60): at /60 the numerals matched the weekday header's weight and the grid read flat.
     expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/75';");
     expect(calendar).toContain('text-[#2D2D2B]/50');

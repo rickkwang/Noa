@@ -162,7 +162,7 @@ export const FileNode = React.memo(({
        target to `.nav-folder` for exactly this reason; the handlers stop
        propagation, so the innermost folder under the cursor wins. */
     <div
-      className={`font-redaction mb-px noa-sidebar-tree-item ${isFolder && isDropTarget ? 'noa-sidebar-drop-branch' : ''}`}
+      className={`font-ui mb-px noa-sidebar-tree-item ${isFolder && isDropTarget ? 'noa-sidebar-drop-branch' : ''}`}
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -231,11 +231,11 @@ export const FileNode = React.memo(({
               }}
               onBlur={handleRenameSubmit}
               onKeyDown={handleKeyDown}
-              className="bg-transparent border-b border-[#2D2D2B] outline-none w-full text-[#2D2D2B] font-redaction"
+              className="bg-transparent border-b border-[#2D2D2B] outline-none w-full text-[#2D2D2B] font-ui"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className={`truncate ${isActive ? 'font-bold' : ''}`}>
+            <span className="truncate">
               {name}
             </span>
           )}
@@ -276,7 +276,7 @@ export const FileNode = React.memo(({
           ref={menuRef}
           role="menu"
           aria-label={`${name} actions`}
-          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-redaction noa-floating-panel"
+          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-[10px] border border-[var(--divider-subtle)] bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
           style={{ left: menuPosition.x, top: menuPosition.y }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setMenuPosition(null);
@@ -307,7 +307,7 @@ export const FileNode = React.memo(({
         document.body,
       )}
       {isEditing && renameError && (
-        <div className="px-2 pt-1 text-[10px] text-[#C24444] font-redaction leading-snug">
+        <div className="px-2 pt-1 text-[10px] text-[#C24444] font-ui leading-snug">
           {renameError}
         </div>
       )}

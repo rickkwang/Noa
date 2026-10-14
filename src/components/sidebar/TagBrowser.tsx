@@ -91,7 +91,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
       <div className="noa-sidebar-collapse" data-open={isTagsOpen ? 'true' : undefined}>
         <div inert={!isTagsOpen ? true : undefined}>
           {isBodyMounted && (
-            <div className="flex flex-col font-redaction" style={{ height: bodyHeight }}>
+            <div className="flex flex-col font-ui" style={{ height: bodyHeight }}>
               {tagCount > 0 && (
                 <div className="shrink-0 overflow-y-hidden px-1 pt-2.5 pb-1.5" style={{ scrollbarGutter: 'stable both-edges' }}>
                   {/* Same both-edges gutter as the list below: field and rows share edges, and left/right insets match. */}

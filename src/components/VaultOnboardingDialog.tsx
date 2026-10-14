@@ -14,7 +14,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
   const { dialogRef, onKeyDown } = useDialogKeyboard(() => { if (!connecting) onDismiss(); });
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Connect a Markdown folder" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden font-redaction">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Connect a Markdown folder" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden font-ui">
         <div className="px-5 pt-5 pb-4">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_6%,transparent)] text-[#2D2D2B]/70">

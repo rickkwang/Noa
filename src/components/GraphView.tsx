@@ -725,7 +725,7 @@ export default function GraphView({
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
       {overPerfThreshold && !perfBannerDismissed && (
-        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-redaction flex items-center justify-between gap-2">
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-ui flex items-center justify-between gap-2">
           <span>Graph contains {graphData.nodes.length} nodes and may render slowly.</span>
           <span className="flex items-center gap-2 shrink-0">
             {onEnableHideIsolated && (
@@ -911,14 +911,14 @@ export default function GraphView({
       {graphData.nodes.length === 0 && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center pointer-events-none">
           {/* 70% is the contrast floor for 12px text on these surfaces. */}
-          <p className={`text-xs font-redaction ${isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'}`}>
+          <p className={`text-xs font-ui ${isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'}`}>
             {notes.length === 0 ? 'No notes to graph yet' : 'No notes match the current filters'}
           </p>
           {notes.length > 0 && onClearFilters && (
             <button
               type="button"
               onClick={onClearFilters}
-              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-[10px] font-redaction transition-colors hover:text-[#CC7D5E] ${
+              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-[10px] font-ui transition-colors hover:text-[#CC7D5E] ${
                 isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'
               }`}
             >
@@ -939,7 +939,7 @@ export default function GraphView({
               onClick={() => onNavigateToNoteById(String(node.id))}
               onFocus={() => setHoveredNodeId(String(node.id))}
               onBlur={() => setHoveredNodeId(null)}
-              className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:px-2 focus:py-1 focus:text-xs focus:font-redaction focus:outline-none ${
+              className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:px-2 focus:py-1 focus:text-xs focus:font-ui focus:outline-none ${
                 isDark ? 'focus:bg-[var(--bg-secondary)] focus:text-[#F9F9F7]' : 'focus:bg-[#FCFCFB] focus:text-[#2D2D2B]'
               }`}
             >

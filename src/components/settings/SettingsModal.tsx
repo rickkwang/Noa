@@ -244,7 +244,7 @@ export default function SettingsModal({
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="relative w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[14px] overflow-hidden flex flex-col font-redaction transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
+        className="relative w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-[14px] overflow-hidden flex flex-col font-ui transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
@@ -285,7 +285,7 @@ export default function SettingsModal({
                 />
                 {activeTab === 'general' && (
                 <SettingSection id={settingAnchorId('Keyboard Shortcuts')} title="Keyboard Shortcuts" description="Shortcuts work anywhere in the app, including while typing.">
-                  <table className="w-full text-xs font-redaction">
+                  <table className="w-full text-xs font-ui">
                     <caption className="sr-only">Keyboard shortcuts</caption>
                     <tbody>
                       {[

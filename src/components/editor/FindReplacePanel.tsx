@@ -169,7 +169,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
 
   return (
     <div
-      className="shrink-0 border-b font-redaction text-xs"
+      className="shrink-0 border-b font-ui text-xs"
       style={{ background: bg, borderColor: border, color: text }}
     >
       {/* Find row */}
@@ -191,7 +191,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
           onChange={e => { setFindText(e.target.value); setCurrentIndex(0); }}
           onKeyDown={handleKeyDown}
           placeholder="Find…"
-          className="flex-1 min-w-0 outline-none px-2 py-0.5 text-xs font-redaction"
+          className="flex-1 min-w-0 outline-none px-2 py-0.5 text-xs font-ui"
           style={{
             background: inputBg,
             color: regexError ? '#CC7D5E' : text,
@@ -261,7 +261,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
             onChange={e => setReplaceText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
             placeholder="Replace…"
-            className="flex-1 min-w-0 outline-none px-2 py-0.5 text-xs font-redaction"
+            className="flex-1 min-w-0 outline-none px-2 py-0.5 text-xs font-ui"
             style={{ background: inputBg, color: text, border: `1px solid ${border}` }}
             spellCheck={false}
           />

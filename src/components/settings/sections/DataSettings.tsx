@@ -120,7 +120,7 @@ export default function DataSettings({
   return (
     <div className="space-y-8">
       {isWorking && (
-        <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-[3px] px-3 py-2 font-redaction text-sm text-[#2D2D2B] flex items-center gap-2">
+        <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-[3px] px-3 py-2 font-ui text-sm text-[#2D2D2B] flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-full border border-[#2D2D2B] border-t-transparent animate-spin shrink-0" />
           <span>
             {transfer.importingData
@@ -138,7 +138,7 @@ export default function DataSettings({
         </div>
       )}
       {confirmState && (
-        <div ref={confirmRef} className="border border-[#CC7D5E] bg-[#CC7D5E]/10 rounded p-3 flex flex-col gap-2 font-redaction">
+        <div ref={confirmRef} className="border border-[#CC7D5E] bg-[#CC7D5E]/10 rounded p-3 flex flex-col gap-2 font-ui">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-[#2D2D2B] flex-1">{confirmState.message}</p>
             <div className="flex gap-2 shrink-0">
@@ -209,7 +209,7 @@ export default function DataSettings({
                 onChange={(e) =>
                   setConfirmState((prev) => (prev ? { ...prev, inputValue: e.target.value } : null))
                 }
-                className={settingsFieldClass('flex-1 px-2 py-1 font-redaction')}
+                className={settingsFieldClass('flex-1 px-2 py-1 font-ui')}
                 autoFocus
               />
             </div>
@@ -220,7 +220,7 @@ export default function DataSettings({
       {message && (
         <div
           ref={messageRef}
-          className={`border rounded-[3px] p-3 flex items-center justify-between font-redaction text-sm ${
+          className={`border rounded-[3px] p-3 flex items-center justify-between font-ui text-sm ${
             message.type === 'success'
               ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2B]'
               : 'border-[#D45555]/60 bg-[#D45555]/10 text-[#A93B3B]'

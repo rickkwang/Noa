@@ -145,7 +145,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
             placeholder={"## Focus\n\n## Notes\n\n"}
             rows={5}
             aria-label="Daily note template"
-            className={settingsFieldClass('px-3 py-2 w-full font-redaction resize-none')}
+            className={settingsFieldClass('px-3 py-2 w-full font-ui resize-none')}
           />
         </SettingItem>
       </SettingSection>
@@ -205,7 +205,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
                   rows={7}
                   placeholder={"# {{title}}\n\n{{date}}\n\n"}
                   aria-label="Template content"
-                  className={settingsFieldClass('px-3 py-2 w-full font-redaction resize-none')}
+                  className={settingsFieldClass('px-3 py-2 w-full font-ui resize-none')}
                 />
               </div>
               <div className="flex items-center justify-end gap-2">

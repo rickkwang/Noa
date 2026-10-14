@@ -48,7 +48,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
     <div
       data-titlebar="true"
       data-translucent-sidebar-titlebar={isSidebarMaterialActive ? 'true' : undefined}
-      className={`h-11 grid items-center shrink-0 font-redaction relative ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
+      className={`h-11 grid items-center shrink-0 font-ui relative ${isMobile ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-3'}`}
       style={{
         ...dragRegion,
         backgroundColor: titlebarBaseColor,
@@ -101,7 +101,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               aria-hidden={!isSearchOpen}
               // Only while collapsed, and never tabIndex={0}: a literal tabindex matches the global focus-visible ring and paints an outline inside the shell.
               tabIndex={isSearchOpen ? undefined : -1}
-              className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-redaction"
+              className="noa-titlebar-search-input h-5 min-w-0 flex-1 bg-transparent pr-1.5 text-xs font-ui"
               onChange={(event) => onSearchChange(event.target.value)}
               onBlur={onSearchBlur}
               onKeyDown={(event) => {
