@@ -184,6 +184,21 @@ export default function CalendarPanel({
     }
   }, [today, year, month]);
 
+  const selectedPresetIndex = PRESETS.findIndex(preset => {
+    const target = presetRange(preset);
+    return !!range && range.start === target.start && range.end === target.end;
+  });
+  // Indicator keeps its last slot while hidden (clearing fades in place), and only slides preset→preset;
+  // appearing from nothing jumps to its slot and fades in rather than sweeping across from slot 0.
+  const [indicator, setIndicator] = useState({ selected: selectedPresetIndex, index: Math.max(0, selectedPresetIndex), slide: false });
+  if (indicator.selected !== selectedPresetIndex) {
+    setIndicator({
+      selected: selectedPresetIndex,
+      index: selectedPresetIndex === -1 ? indicator.index : selectedPresetIndex,
+      slide: indicator.selected !== -1 && selectedPresetIndex !== -1,
+    });
+  }
+
   const handleDayClick = (dateStr: string, shiftKey: boolean) => {
     if (shiftKey) {
       applyRange(order(anchorRef.current ?? today, dateStr));
@@ -233,15 +248,16 @@ export default function CalendarPanel({
             <div className="select-none">
               {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
               {activeRange && (
-                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] font-redaction">
-                  <span className="text-[#CC7D5E] font-medium truncate">
+                // Neutral ink: the range is already tinted in the grid; a second accent here competed with it.
+                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-[11.5px] font-redaction">
+                  <span className="truncate font-medium text-[var(--text-primary,#2D2D2B)]">
                     {activeRange.start === activeRange.end
                       ? shortDate(activeRange.start)
                       : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
                   </span>
                   {/* "edited", not "notes": the filter runs on updatedAt. */}
-                  <span className="text-[#2D2D2B]/40 shrink-0" title="Notes edited in this range">
-                    {rangeNoteCount} edited
+                  <span className="shrink-0 text-[var(--text-secondary,#8A8A86)]" title="Notes edited in this range">
+                    · {rangeNoteCount} {rangeNoteCount === 1 ? 'note' : 'notes'} edited
                   </span>
                 </div>
               )}
@@ -305,7 +321,7 @@ export default function CalendarPanel({
                   // Neighbouring-month days recede but stay usable; selection, today and range keep full strength.
                   if (outside && !isActive && !isToday && !inRange) cellClass += ' opacity-40';
 
-                  // Up to two 3px dots: notes left, open tasks right.
+                  // Up to two 4px dots: notes left (neutral; darker for a daily note), open tasks right (amber, red when overdue).
                   const noteDot = meta && (meta.daily || meta.notes > 0);
                   const taskDot = (meta?.due ?? 0) > 0;
                   const taskStatus = meta?.due
@@ -335,16 +351,17 @@ export default function CalendarPanel({
                         <span className="absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px] pointer-events-none">
                           {noteDot && (
                             <span
-                              className="w-[3px] h-[3px] rounded-full"
+                              className="w-1 h-1 rounded-full"
+                              // Neutral ink so notes never read as tasks, whose dots keep the status hues.
                               style={{
                                 backgroundColor: meta!.daily
-                                  ? 'var(--accent-color, #CC7D5E)'
-                                  : 'color-mix(in srgb, var(--accent-color, #CC7D5E) 45%, transparent)',
+                                  ? 'color-mix(in srgb, var(--text-primary, #2D2D2B) 55%, transparent)'
+                                  : 'color-mix(in srgb, var(--text-primary, #2D2D2B) 28%, transparent)',
                               }}
                             />
                           )}
                           {taskDot && (
-                            <span className={`w-[3px] h-[3px] rounded-full ${meta!.overdue > 0 ? 'bg-[#C24444]' : 'bg-[#D9862B]'}`} />
+                            <span className={`w-1 h-1 rounded-full ${meta!.overdue > 0 ? 'bg-[#C24444]' : 'bg-[#D9862B]'}`} />
                           )}
                         </span>
                       )}
@@ -353,28 +370,33 @@ export default function CalendarPanel({
                 })}
               </div>
 
-              {/* Outlined so the presets read as buttons, not captions. px-3 aligns them with the left-set text rows. */}
-              <div className="flex items-center gap-1 px-3 pb-3 text-[10px] font-redaction">
-                {PRESETS.map(preset => {
-                  const target = presetRange(preset);
-                  const isSelected = !!range && range.start === target.start && range.end === target.end;
-                  return (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => (isSelected ? clearRange() : applyRange(target))}
-                      aria-pressed={isSelected}
-                      // No active:opacity: the preset already recolours on click, and a press-fade reads as flicker.
-                      className={`px-1.5 py-0.5 border rounded-[3px] transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'border-[#CC7D5E] text-[#CC7D5E] bg-[#CC7D5E]/10'
-                          : 'border-[#2D2D2B]/15 text-[#2D2D2B]/60 hover:border-[#2D2D2B]/30 hover:text-[#2D2D2B]/80'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  );
-                })}
+              {/* Segmented control: one track, the selected preset lifts out of it like the tag filter field. px-3 aligns with the text rows. */}
+              <div className="flex items-center gap-2 px-3 pb-3 text-[11px] font-redaction">
+                <div className="noa-segmented-track relative flex flex-1 items-center rounded-lg p-0.5" role="group" aria-label="Date range presets">
+                  {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
+                  <span
+                    aria-hidden="true"
+                    className="noa-segment-indicator absolute top-0.5 bottom-0.5 left-0.5 rounded-md pointer-events-none"
+                    data-visible={selectedPresetIndex !== -1}
+                    data-slide={indicator.slide}
+                    style={{ width: `calc((100% - 4px) / ${PRESETS.length})`, transform: `translateX(${indicator.index * 100}%)` }}
+                  />
+                  {PRESETS.map((preset, i) => {
+                    const isSelected = i === selectedPresetIndex;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => (isSelected ? clearRange() : applyRange(presetRange(preset)))}
+                        aria-pressed={isSelected}
+                        // No active:opacity: the preset already recolours on click, and a press-fade reads as flicker.
+                        className="noa-segment relative flex h-6 flex-1 items-center justify-center rounded-md cursor-pointer"
+                      >
+                        {preset}
+                      </button>
+                    );
+                  })}
+                </div>
                 {activeRange && (
                   <button
                     type="button"

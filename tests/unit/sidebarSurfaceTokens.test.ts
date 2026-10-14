@@ -135,11 +135,8 @@ describe('sidebar surface tokens', () => {
       readFile(tagBrowserPath, 'utf8'),
     ]);
 
-    expect(css).toContain('background: hsl(var(--tag-h) 18% 90%);');
-    expect(css).toContain('background: hsl(var(--tag-h) 10% 19%);');
-    expect(css).toContain('color: hsl(var(--tag-h) 16% 64%);');
-    expect(css).toContain('border-color: var(--divider-subtle, rgba(249,249,247,0.15));');
-    expect(tagBrowser).toContain("style={{ ['--tag-h' as string]: tagHue(tag.name) } as React.CSSProperties}");
+    expect(css).toContain("[data-theme=\"dark\"] .noa-tag-row { --tag-fg: rgba(249,249,247,0.74);");
+    expect(tagBrowser).toContain("['--tag-h' as string]: tagHue(node.path)");
     expect(tagBrowser).not.toContain('uppercase tracking-');
   });
 
