@@ -22,7 +22,7 @@ describe('sidebar surface tokens', () => {
     ]);
 
     expect(injector).toContain("root.style.setProperty('--bg-sidebar', surfaces.sidebar);");
-    expect(THEME_SURFACES.dark.sidebar).toBe('#2F2F2D');
+    expect(THEME_SURFACES.dark.sidebar).toBe('#2B2B29');
     expect(THEME_SURFACES.light.sidebar).toBe('#FBFBF9');
     // Multi-layer falloff: a single 6px/14px shadow banded visibly on the dark canvas.
     expect(injector).toContain(
@@ -156,7 +156,7 @@ describe('sidebar surface tokens', () => {
     );
     expect(injector).toContain("root.style.setProperty('--sidebar-material-tint', '70%');");
     expect(injector).toContain("root.style.setProperty('--sidebar-material-color', surfaces.sidebarMaterial);");
-    expect(THEME_SURFACES.dark.sidebarMaterial).toBe('#383836');
+    expect(THEME_SURFACES.dark.sidebarMaterial).toBe('#343432');
     expect(THEME_SURFACES.light.sidebarMaterial).toBe('#FAFAF8');
     // Separator uses the shared divider token; no bespoke colour/shadow vars may return.
     expect(injector).not.toContain('--sidebar-divider-color');

@@ -15,17 +15,17 @@ export const THEME_SURFACES = {
     card: '#FFFFFF',
   },
   dark: {
-    primary: '#2A2A28',
-    secondary: '#222220',
+    primary: '#262624',
+    secondary: '#1E1E1C',
     // Soft lift above the editor plane, keeping the editor's red-blue spread
-    // (47/47/45 versus 42/42/40) so it reads as depth, not a colour cast.
-    sidebar: '#2F2F2D',
+    // (43/43/41 versus 38/38/36) so it reads as depth, not a colour cast.
+    sidebar: '#2B2B29',
     // Translucent-sidebar tint over the native `menu` material.
-    sidebarMaterial: '#383836',
+    sidebarMaterial: '#343432',
     sidebarRaised: 'rgba(249,249,247,0.08)',
-    // One step above primary, as primary is one above secondary (34 → 42 → 50): Claude Code's dark ramp lightens
+    // One step above primary, as primary is one above secondary (30 → 38 → 46): Claude Code's dark ramp lightens
     // evenly with elevation. Lifted overall so the floor never reaches its near-black.
-    card: '#323230',
+    card: '#2E2E2C',
   },
 } as const;
 

@@ -532,8 +532,8 @@ test('dark mode sidebar preview uses the docked sidebar plane without creating a
   });
 
   expect(palette).toMatchObject({
-    sidebarToken: '#2F2F2D',
-    primaryToken: '#2A2A28',
+    sidebarToken: '#2B2B29',
+    primaryToken: '#262624',
     previewColor: 'rgb(47, 47, 45)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
     primaryColor: 'rgb(42, 42, 40)',

@@ -7,9 +7,9 @@
     var root = document.documentElement;
     if (isDark) {
       root.setAttribute('data-theme', 'dark');
-      root.style.setProperty('--bg-primary', '#2A2A28');
-      root.style.setProperty('--bg-secondary', '#222220');
-      root.style.backgroundColor = '#2A2A28';
+      root.style.setProperty('--bg-primary', '#262624');
+      root.style.setProperty('--bg-secondary', '#1E1E1C');
+      root.style.backgroundColor = '#262624';
     } else {
       root.style.setProperty('--bg-primary', '#FCFCFB');
       root.style.setProperty('--bg-secondary', '#EFEAE3');
