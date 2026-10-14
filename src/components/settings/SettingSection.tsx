@@ -18,7 +18,7 @@ export default function SettingSection({ title, description, children, bare = fa
         )}
       </div>
       {bare ? children : (
-        <div className="bg-[#EFEAE3] border border-[var(--divider-subtle)] rounded p-4">
+        <div className="bg-[var(--bg-sidebar-raised,#ECEBE8)] border border-[var(--divider-subtle)] rounded p-4">
           {children}
         </div>
       )}

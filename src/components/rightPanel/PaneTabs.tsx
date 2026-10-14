@@ -36,7 +36,7 @@ export function PaneTabs({ activePanes, onSelect, badges, isDark }: PaneSwitchPr
             className={`relative flex items-center justify-center transition-colors flex-1 h-6 rounded-md ${
               isActive
                 ? ''
-                : isDark ? 'hover:text-[#F9F9F7] hover:bg-[#F9F9F7]/[0.05]' : 'hover:text-[#2D2D2B] hover:bg-[#2D2D2B]/[0.05]'
+                : isDark ? 'hover:text-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
             }`}
             style={style}
           >

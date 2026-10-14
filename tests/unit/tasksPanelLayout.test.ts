@@ -28,7 +28,7 @@ describe('tasks panel information hierarchy', () => {
     const source = await readFile(tasksPanelPath, 'utf8');
 
     expect(source).toContain('py-1.5');
-    expect(source).toContain('focus-visible:ring-2 focus-visible:ring-[#CC7D5E]/60');
+    expect(source).toContain('focus-visible:outline-none');
     expect(source).toContain("const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.48)]' : 'border-[#2D2D2B]/50';");
     expect(source).toContain("const rowHover = 'hover:bg-transparent';");
   });

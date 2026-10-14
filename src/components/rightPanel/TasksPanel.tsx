@@ -243,7 +243,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                 )}
                 <div className="flex items-center h-[21px] shrink-0">
-                  <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CC7D5E]/60 active:opacity-70" aria-label="Complete task">
+                  <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none active:opacity-70" aria-label="Complete task">
                     <div className={`w-[16px] h-[16px] rounded-[4px] border transition-colors hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
                   </button>
                 </div>
@@ -252,7 +252,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
                     aria-label={`Open source note: ${task.noteTitle}`}
                     title={task.noteTitle}
-                    className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#CC7D5E]/60 hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
+                    className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
                     <ExternalLink size={11} />
                   </button>
                   {task.dueDate && (
@@ -300,7 +300,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                     <span className={`absolute -left-2 top-2 bottom-2 w-[2px] rounded-full ${railColor}`} title={task.priority} />
                   )}
                   <div className="flex items-center h-[21px] shrink-0">
-                    <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CC7D5E]/60 active:opacity-70" aria-label="Reopen task">
+                    <button onClick={() => onToggleTask(task)} className="p-1 -m-1 rounded-[5px] focus-visible:outline-none active:opacity-70" aria-label="Reopen task">
                       <div className={`w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center ${checkboxBorderDone} ${checkboxBgDone}`}>
                         <Check size={10} weight="bold" className={checkmarkColor} />
                       </div>
@@ -311,7 +311,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                     <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
                       aria-label={`Open source note: ${task.noteTitle}`}
                       title={task.noteTitle}
-                      className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#CC7D5E]/60 hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
+                      className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none hover:text-[#CC7D5E] active:opacity-70 ${noteLink}`}>
                       <ExternalLink size={11} />
                     </button>
                     {task.dueDate && (

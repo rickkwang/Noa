@@ -71,7 +71,7 @@ describe('light theme border tokens', () => {
     expect(settingsSidebar).toContain('border border-[var(--divider-subtle)]');
     expect(settingsModal).not.toContain('rounded overflow-hidden');
     expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
-    expect(settingSection).toContain('bg-[#EFEAE3] border border-[var(--divider-subtle)]');
+    expect(settingSection).toContain('bg-[var(--bg-sidebar-raised,#ECEBE8)] border border-[var(--divider-subtle)]');
     expect(settingItem.split('border-b border-[var(--divider-subtle)]')).toHaveLength(3);
 
     expect(settingsModal).toContain('data-settings-surface="true"');

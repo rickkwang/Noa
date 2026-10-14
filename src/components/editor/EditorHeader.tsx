@@ -636,7 +636,7 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[#F9F9F7]/[0.07]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[#2D2D2B]/[0.05]'}`}
+            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'}`}
             style={noDragRegion}
             title="New tab"
             aria-label="New tab"

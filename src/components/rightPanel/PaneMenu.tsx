@@ -85,8 +85,8 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   const rowClass = `flex h-7 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-[13px] transition-colors ${
     isDark
-      ? 'text-[rgba(249,249,247,0.9)] hover:bg-[rgba(249,249,247,0.07)]'
-      : 'text-[#2D2D2B]/90 hover:bg-[#2D2D2B]/[0.05]'
+      ? 'text-[rgba(249,249,247,0.9)] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+      : 'text-[#2D2D2B]/90 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
   }`;
   return (
     <div ref={rootRef} className="relative flex items-center">
@@ -102,7 +102,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
         className={`${triggerClassName} flex h-6 w-6 items-center justify-center rounded-md ${
           isOpen
             ? (isDark ? 'bg-[rgba(249,249,247,0.10)]' : 'bg-[#2D2D2B]/[0.07]')
-            : (isDark ? 'hover:bg-[rgba(249,249,247,0.07)]' : 'hover:bg-[#2D2D2B]/[0.05]')
+            : (isDark ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]')
         }`}
       >
         {/* The app's one "more" glyph, turned upright. */}

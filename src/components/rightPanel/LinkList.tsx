@@ -46,9 +46,9 @@ export function LinkRow({
     ? (isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50')
     : (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]');
   const subtitleColor = isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40';
-  // Matches the app-wide hover convention (noa-sidebar-hover-surface): #EAE5DE in light, a white wash in dark.
+  // Matches the app-wide hover convention (--bg-sidebar-raised, as noa-sidebar-hover-surface uses).
   const hover = onClick
-    ? (isDark ? 'hover:bg-[rgba(249,249,247,0.07)]' : 'hover:bg-[#EAE5DE]')
+    ? (isDark ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]')
     : '';
 
   const body = (

@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-sm text-[#2D2D2B]/70 mb-4 max-w-md">
             An error occurred while rendering this component. Try reloading the application.
           </p>
-          <pre className="noa-selectable text-left bg-[#EFEAE3] p-4 rounded-sm text-xs overflow-auto max-w-lg max-h-48 border border-[#2D2D2B]/20">
+          <pre className="noa-selectable text-left bg-[var(--bg-sidebar-raised,#ECEBE8)] p-4 rounded-sm text-xs overflow-auto max-w-lg max-h-48 border border-[#2D2D2B]/20">
             {this.state.error?.message}
           </pre>
           <button

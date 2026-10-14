@@ -22,7 +22,7 @@ export default function NavigationConflictDialog({
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg border border-[var(--divider-subtle)] bg-[#F9F9F7] noa-floating-panel slide-down rounded-[14px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="border-b border-[var(--divider-subtle)] px-4 py-3 bg-[#EFEAE3]">
+        <div className="border-b border-[var(--divider-subtle)] px-4 py-3 bg-[var(--bg-sidebar-raised,#ECEBE8)]">
           <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
           <div className="text-sm text-[#2D2D2B] mt-1">
             Multiple notes match "<span className="font-bold">{title}</span>". Select one:
