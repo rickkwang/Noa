@@ -44,7 +44,7 @@ export function PaneTabs({ activePanes, onSelect, badges, isDark }: PaneSwitchPr
             {badge > 0 && (
               <span
                 aria-label={`${badge} pending`}
-                className="absolute top-0 right-1 text-[10px] font-bold leading-none tabular-nums text-[#CC7D5E]"
+                className="absolute top-0 right-1 text-micro font-bold leading-none tabular-nums text-[#CC7D5E]"
               >
                 {badge > 9 ? '9+' : badge}
               </span>

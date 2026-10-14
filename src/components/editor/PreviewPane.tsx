@@ -1108,7 +1108,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         // which would collapse the item to fit-content.
         <div className="mt-24 w-full">
           <div className="pt-4 font-ui" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)', ...contentMaxWidthStyle }}>
-            <h3 className="text-[10px] mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
+            <h3 className="text-micro mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
               <span>{backlinks.length}</span>
               <span>Linked Mentions</span>
             </h3>
@@ -1132,7 +1132,7 @@ export const PreviewPane = React.memo(function PreviewPane({
                   <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>
                     {backlink.title}
                   </div>
-                  <div className="text-[10px] leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
+                  <div className="text-micro leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
                     {getSnippet(backlink.content, note.title)}
                   </div>
                 </div>

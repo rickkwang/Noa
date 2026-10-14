@@ -236,7 +236,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
             >
               <span>+ New Template</span>
               {userTemplates.length === 0 && (
-                <span className="text-[11px] font-normal text-[#2D2D2B]/50">
+                <span className="text-caption font-normal text-[#2D2D2B]/50">
                   A reusable starting point for new notes
                 </span>
               )}

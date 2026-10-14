@@ -21,8 +21,8 @@ export function LinkSectionHeader({ label, count, isDark }: { label: string; cou
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   return (
     <div className="flex items-baseline justify-between px-2 pb-1.5">
-      <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${muted}`}>{label}</span>
-      <span className={`text-[10px] tabular-nums ${muted}`}>{count}</span>
+      <span className={`text-micro font-bold uppercase tracking-[0.14em] ${muted}`}>{label}</span>
+      <span className={`text-micro tabular-nums ${muted}`}>{count}</span>
     </div>
   );
 }
@@ -55,13 +55,13 @@ export function LinkRow({
     <>
       <span className="flex items-center gap-1.5">
         <Icon size={13} className={`shrink-0 ${subtitleColor}`} />
-        <span className={`truncate text-[13px] leading-5 ${titleColor} ${onClick ? 'group-hover:text-[#CC7D5E]' : ''} transition-colors`}>
+        <span className={`truncate text-body leading-5 ${titleColor} ${onClick ? 'group-hover:text-[#CC7D5E]' : ''} transition-colors`}>
           {title}
         </span>
       </span>
       {/* Indented past the 13px icon + 6px gap so the second line hangs off the title. */}
       {subtitle && (
-        <span className={`block truncate text-[11px] leading-4 pl-[19px] ${subtitleColor}`}>{subtitle}</span>
+        <span className={`block truncate text-caption leading-4 pl-[19px] ${subtitleColor}`}>{subtitle}</span>
       )}
     </>
   );

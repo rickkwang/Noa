@@ -104,7 +104,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                       onKeyDown={e => { if (e.key === 'Escape') setFilter(''); }}
                       placeholder="Filter"
                       aria-label="Filter tags"
-                      className="min-w-0 flex-1 bg-transparent text-[12px] outline-none"
+                      className="min-w-0 flex-1 bg-transparent text-xs leading-normal outline-none"
                     />
                     <button
                       type="button"
@@ -133,7 +133,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                           <div
                             data-active={isActive}
                             style={{ ['--tag-h' as string]: tagHue(node.path), paddingLeft: 8 + depth * 14 } as React.CSSProperties}
-                            className="noa-tag-row group flex h-7 w-full items-center gap-2 rounded-lg pr-1 text-[12.5px]"
+                            className="noa-tag-row group flex h-7 w-full items-center gap-2 rounded-lg pr-1 text-body"
                           >
                             {hasChildren ? (
                               <button
@@ -154,7 +154,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                               <span className="truncate">{node.name}</span>
                               {node.similarTo.length > 0 && (
                                 <span
-                                  className="noa-tag-similar shrink-0 rounded px-1 text-[10px] leading-4"
+                                  className="noa-tag-similar shrink-0 rounded px-1 text-micro leading-4"
                                   title={`Looks like a duplicate of ${node.similarTo.map(t => `#${t}`).join(', ')}`}
                                 >
                                   ≈
@@ -162,7 +162,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                               )}
                             </button>
                             {/* A real tag shows what clicking it finds (strict match); a pure group shows its subtree. */}
-                            <span className="noa-tag-count min-w-5 shrink-0 text-center text-[11px] tabular-nums">{node.isTag ? node.ownCount : node.count}</span>
+                            <span className="noa-tag-count min-w-5 shrink-0 text-center text-caption tabular-nums">{node.isTag ? node.ownCount : node.count}</span>
                           </div>
                         </li>
                       );

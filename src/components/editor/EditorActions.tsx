@@ -53,7 +53,7 @@ export function EditorActions({
 
   // Same row as the titlebar's panel menu (PaneMenu): every popup menu in the
   // app shares one shape — 10px panel, 4px inset, 28px rounded rows.
-  const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-[13px] text-left transition-colors whitespace-nowrap ${
+  const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-body text-left transition-colors whitespace-nowrap ${
     isDark ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[#2D2D2B]/90'
   }`;
 

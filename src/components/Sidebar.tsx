@@ -272,7 +272,7 @@ export default function Sidebar({
               return (
                 <button
                   key={t.id}
-                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-[13px] font-ui text-[#2D2D2B]/90 transition-colors"
+                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-body font-ui text-[#2D2D2B]/90 transition-colors"
                   onClick={() => {
                     onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                     setTemplateMenuFolderId(null);
@@ -505,7 +505,7 @@ export default function Sidebar({
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
           <ArrowUpDown size={14} />
-          <span className="text-[10px] uppercase tracking-wide leading-none">
+          <span className="text-micro uppercase tracking-wide leading-none">
             {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
           </span>
         </button>
@@ -623,14 +623,14 @@ export default function Sidebar({
         >
           <button
             role="menuitem"
-            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]"
+            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]"
             onClick={() => { setBlankMenu(null); onCreateNote(blankCreateTarget); }}
           >
             New note
           </button>
           <button
             role="menuitem"
-            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]"
+            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]"
             onClick={() => { setBlankMenu(null); onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined); }}
           >
             New folder
@@ -686,7 +686,7 @@ export default function Sidebar({
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {result.note.tags.map(tag => (
-                          <span key={tag} className="text-[10px] font-ui text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
+                          <span key={tag} className="text-micro font-ui text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
                             #{tag}
                           </span>
                         ))}
@@ -734,7 +734,7 @@ export default function Sidebar({
                   <>
                     {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
                     <div className={`mx-1.5 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-ui">Obsidian Vault</span>
+                      <span className="text-micro font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-ui">Obsidian Vault</span>
                     </div>
                     <div
                       onDragEnter={markVaultRootTarget}

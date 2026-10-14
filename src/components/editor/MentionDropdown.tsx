@@ -169,7 +169,7 @@ export function MentionDropdown({
       className={`absolute z-50 bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-panel p-1 noa-floating-panel font-ui w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
-      <div className="flex h-6 items-center px-2 text-[11px] text-[#2D2D2B]/50">
+      <div className="flex h-6 items-center px-2 text-caption text-[#2D2D2B]/50">
         Link to note
       </div>
       {items.map((item, i) => {
@@ -188,11 +188,11 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className="text-[10px] uppercase tracking-wider mr-2 text-[#CC7D5E]">New</span>
-                <span className="truncate text-[13px]">{item.title}</span>
+                <span className="text-micro uppercase tracking-wider mr-2 text-[#CC7D5E]">New</span>
+                <span className="truncate text-body">{item.title}</span>
               </>
             ) : (
-              <span className="truncate text-[13px]">{renderHighlighted(item.title, item.matchIndices)}</span>
+              <span className="truncate text-body">{renderHighlighted(item.title, item.matchIndices)}</span>
             )}
           </div>
         );

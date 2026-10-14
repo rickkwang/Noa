@@ -249,7 +249,7 @@ export default function CalendarPanel({
               {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
               {activeRange && (
                 // Neutral ink: the range is already tinted in the grid; a second accent here competed with it.
-                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-[11.5px] font-ui">
+                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-xs leading-normal font-ui">
                   <span className="truncate font-medium text-[var(--text-primary,#2D2D2B)]">
                     {activeRange.start === activeRange.end
                       ? shortDate(activeRange.start)
@@ -371,7 +371,7 @@ export default function CalendarPanel({
               </div>
 
               {/* Segmented control: one track, the selected preset lifts out of it like the tag filter field. px-3 aligns with the text rows. */}
-              <div className="flex items-center gap-2 px-3 pb-3 text-[11px] font-ui">
+              <div className="flex items-center gap-2 px-3 pb-3 text-caption font-ui">
                 <div className="noa-segmented-track relative flex flex-1 items-center rounded-lg p-0.5" role="group" aria-label="Date range presets">
                   {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
                   <span

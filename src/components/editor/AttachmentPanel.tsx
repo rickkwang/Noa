@@ -89,7 +89,7 @@ export function AttachmentPanel({
           <button
             disabled={readOnly || mutationsDisabled}
             onClick={() => fileInputRef.current?.click()}
-            className="text-[10px] uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
             title={mutationsDisabledReason ?? 'Add Attachment'}
           >
             + Attachments
@@ -117,7 +117,7 @@ export function AttachmentPanel({
       <div className="flex items-center gap-2 px-4 py-1.5">
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="flex items-center gap-1.5 text-micro uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title={isOpen ? 'Collapse Attachments' : 'Expand Attachments'}
         >
           <span>{isOpen ? '▾' : '▸'}</span>
@@ -127,7 +127,7 @@ export function AttachmentPanel({
         <button
           disabled={readOnly || mutationsDisabled}
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-[10px] uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="ml-auto text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
           title={mutationsDisabledReason ?? 'Add Attachment'}
         >
           + Add
@@ -151,7 +151,7 @@ export function AttachmentPanel({
       )}
 
       {mutationsDisabled && mutationsDisabledReason && (
-        <p className="px-4 pb-1 text-[10px] text-[#2D2D2B]/50 font-ui">
+        <p className="px-4 pb-1 text-micro text-[#2D2D2B]/50 font-ui">
           {mutationsDisabledReason}
         </p>
       )}
@@ -178,7 +178,7 @@ export function AttachmentPanel({
                 >
                   {att.filename}
                 </button>
-                <span className="text-[10px] text-[#2D2D2B]/30 shrink-0">{formatBytes(att.size)}</span>
+                <span className="text-micro text-[#2D2D2B]/30 shrink-0">{formatBytes(att.size)}</span>
                 {confirmDeleteId === att.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -194,13 +194,13 @@ export function AttachmentPanel({
                         }
                       }}
                       disabled={deletingId === att.id || mutationsDisabled || readOnly}
-                      className="text-[10px] text-[#D45555] hover:text-[#A93B3B] active:opacity-70"
+                      className="text-micro text-[#D45555] hover:text-[#A93B3B] active:opacity-70"
                     >
                       {deletingId === att.id ? '…' : 'Confirm'}
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-[10px] text-[#2D2D2B]/40 hover:text-[#2D2D2B] active:opacity-70"
+                      className="text-micro text-[#2D2D2B]/40 hover:text-[#2D2D2B] active:opacity-70"
                     >
                       Cancel
                     </button>
@@ -209,7 +209,7 @@ export function AttachmentPanel({
                   <button
                     disabled={readOnly || mutationsDisabled}
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-[10px] text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
+                    className="text-micro text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
                     title={mutationsDisabledReason ?? 'Delete Attachment'}
                   >
                     ✕

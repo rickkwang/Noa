@@ -19,6 +19,12 @@
      Content bold (`**strong**`, headings) uses --font-weight-content-bold below. */
   --font-weight-bold: 450;
   --font-weight-medium: 400;
+
+  /* Off-grid sizes fold into the 12px (text-xs) and 13px (text-body) tiers. text-micro and text-caption cover the small labels
+     that were previously 10px and 11px. Tiers differ by 1px, so text-caption is never a substitute for text-body. */
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-body: 13px;
 }
 
 /* Content bold (`**strong**`, headings, inline title) in preview and CodeMirror. Kept off @theme so chrome gets no `font-*` utility. */

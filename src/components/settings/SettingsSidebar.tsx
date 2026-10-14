@@ -121,7 +121,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               className="rounded-[3px] px-2.5 py-1.5 text-left transition-colors hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
             >
               <span className="block text-sm font-medium leading-snug">{entry.label}</span>
-              <span className="block text-[11px] text-[var(--text-secondary)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
+              <span className="block text-caption text-[var(--text-secondary)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
             </button>
           ))}
           {results.length === 0 && (

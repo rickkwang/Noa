@@ -548,7 +548,7 @@ export default function Editor({
           {/* Wordmark */}
           <div className="flex flex-col gap-1">
             <div className="text-4xl font-bold text-[#2D2D2B]/75 tracking-tight">Noa</div>
-            <div className="text-[10px] text-[#2D2D2B]/30 uppercase tracking-widest">your private writing space</div>
+            <div className="text-micro text-[#2D2D2B]/30 uppercase tracking-widest">your private writing space</div>
           </div>
 
           {/* Shortcuts */}
@@ -559,7 +559,7 @@ export default function Editor({
               { key: '⌘K', desc: 'Command palette' },
             ].map(({ key, desc }) => (
               <div key={key} className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-[#CC7D5E]/60 tracking-widest w-7">{key}</span>
+                <span className="text-micro font-bold text-[#CC7D5E]/60 tracking-widest w-7">{key}</span>
                 <span className="text-[#2D2D2B]/15">·</span>
                 <span className="text-xs text-[#2D2D2B]/40">{desc}</span>
               </div>
@@ -567,7 +567,7 @@ export default function Editor({
           </div>
 
           {/* Footer */}
-          <div className="text-[10px] text-[#2D2D2B]/20 tracking-wide">
+          <div className="text-micro text-[#2D2D2B]/20 tracking-wide">
             Notes stored locally · Export regularly
           </div>
         </div>

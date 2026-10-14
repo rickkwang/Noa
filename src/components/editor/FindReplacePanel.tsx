@@ -269,7 +269,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
           <button
             onClick={replaceOne}
             disabled={matches.length === 0}
-            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-[10px] disabled:opacity-30 hover:opacity-80 active:opacity-60"
+            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 active:opacity-60"
             style={{ borderColor: border, color: text, background: 'transparent' }}
           >
             Replace
@@ -277,7 +277,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
           <button
             onClick={replaceAll}
             disabled={matches.length === 0}
-            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-[10px] disabled:opacity-30 hover:opacity-80 active:opacity-60"
+            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 active:opacity-60"
             style={{ borderColor: border, color: text, background: 'transparent' }}
           >
             All

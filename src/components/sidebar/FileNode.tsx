@@ -87,7 +87,7 @@ export const FileNode = React.memo(({
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const menuItemClass = 'noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-[13px] text-[#2D2D2B]';
+  const menuItemClass = 'noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]';
 
   useEffect(() => {
     setIsOpen(defaultOpen);
@@ -307,7 +307,7 @@ export const FileNode = React.memo(({
         document.body,
       )}
       {isEditing && renameError && (
-        <div className="px-2 pt-1 text-[10px] text-[#C24444] font-ui leading-snug">
+        <div className="px-2 pt-1 text-micro text-[#C24444] font-ui leading-snug">
           {renameError}
         </div>
       )}

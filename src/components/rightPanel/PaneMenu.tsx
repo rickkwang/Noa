@@ -83,7 +83,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
   }, [isOpen]);
 
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const rowClass = `flex h-7 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-[13px] transition-colors ${
+  const rowClass = `flex h-7 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-body transition-colors ${
     isDark
       ? 'text-[rgba(249,249,247,0.9)] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
       : 'text-[#2D2D2B]/90 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
@@ -132,7 +132,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
                 <tab.icon size={15} className={`shrink-0 ${muted}`} strokeWidth={1.75} />
                 <span className="mr-auto truncate">{RIGHT_TAB_LABELS[tab.id]}</span>
                 {badge > 0 && (
-                  <span aria-hidden="true" className={`text-[11px] tabular-nums ${muted}`}>{badge > 99 ? '99+' : badge}</span>
+                  <span aria-hidden="true" className={`text-caption tabular-nums ${muted}`}>{badge > 99 ? '99+' : badge}</span>
                 )}
                 {/* Always in the row so the counts line up whether or not the
                     card is open. */}

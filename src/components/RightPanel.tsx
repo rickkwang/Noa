@@ -95,7 +95,7 @@ function PaneCard({
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
           no-drag as a whole (see App.tsx); the top card's header opts back in so the titlebar area stays draggable. */}
       <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={dragsWindow ? { WebkitAppRegion: 'drag' } as React.CSSProperties : undefined}>
-        <h2 className={`mr-auto truncate text-[12.5px] font-medium font-ui ${isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85'}`}>{title}</h2>
+        <h2 className={`mr-auto truncate text-body font-medium font-ui ${isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85'}`}>{title}</h2>
         <div className="flex min-w-0 items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {actions}
         {onToggleExpand && (
@@ -415,7 +415,7 @@ export default function RightPanel({
                         <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40'}`} />
                         <input autoFocus type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                           aria-label="Filter graph nodes" placeholder="Filter nodes…"
-                          className={`min-w-0 flex-1 bg-transparent text-[12px] outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+                          className={`min-w-0 flex-1 bg-transparent text-xs leading-normal outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
                           style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
                         {graphSearch && (
                           <button type="button" onClick={() => setGraphSearch('')}
@@ -454,7 +454,7 @@ export default function RightPanel({
             <div className="flex-1 min-h-0 flex flex-col">
               {showGraphGuide && (
                 <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[#2D2D2B]/80'}`}>
-                  <div className={`font-bold uppercase tracking-[0.14em] text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
+                  <div className={`font-bold uppercase tracking-[0.14em] text-micro mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
                   <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
                   <button
                     onClick={() => {
@@ -689,11 +689,11 @@ function GraphInfoPanel({
           <div className="px-3 pt-3 pb-2 space-y-3 [&>div:first-child>div:first-child]:pr-6">
         {activeNoteId && (
               <div>
-                <div className={`text-[10px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>
+                <div className={`text-micro uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>
                   Active · {notesById.get(activeNoteId)?.title ?? 'Unknown'}
                 </div>
                 {activeConnections.length === 0 ? (
-                  <div className={`text-[10px] italic ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>No connections</div>
+                  <div className={`text-micro italic ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>No connections</div>
                 ) : (
                   <div className="space-y-1">
                     {activeConnections.slice(0, 6).map(id => {
@@ -706,12 +706,12 @@ function GraphInfoPanel({
                                         {/* Same degree-sized square as Most Connected below. A Phosphor Circle drew a hollow ring here. */}
                           <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                           <span className="truncate">{target.title}</span>
-                          <span className={`ml-auto text-[10px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{degree}</span>
+                          <span className={`ml-auto text-micro tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{degree}</span>
                         </button>
                       );
                     })}
                     {activeConnections.length > 6 && (
-                      <div className={`text-[10px] pl-3 ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>+{activeConnections.length - 6} more</div>
+                      <div className={`text-micro pl-3 ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>+{activeConnections.length - 6} more</div>
                     )}
                   </div>
                 )}
@@ -719,7 +719,7 @@ function GraphInfoPanel({
             )}
             {stats.ranked.length > 0 && (
               <div>
-                <div className={`text-[10px] uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>Most Connected</div>
+                <div className={`text-micro uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>Most Connected</div>
                 <div className="space-y-1">
                   {stats.ranked.map(([id, degree]) => {
                     const target = notesById.get(id);
@@ -729,7 +729,7 @@ function GraphInfoPanel({
                         className={`flex items-center gap-1.5 w-full text-left text-xs transition-colors ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}>
                         <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
                         <span className="truncate">{target.title}</span>
-                        <span className={`ml-auto text-[10px] tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/40'}`}>{degree}</span>
+                        <span className={`ml-auto text-micro tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/40'}`}>{degree}</span>
                       </button>
                     );
                   })}
@@ -739,7 +739,7 @@ function GraphInfoPanel({
           </div>
         </div>
       )}
-      <div className={`flex h-8 w-full items-center gap-1.5 pl-3 pr-1.5 text-[11px] ${muted}`}>
+      <div className={`flex h-8 w-full items-center gap-1.5 pl-3 pr-1.5 text-caption ${muted}`}>
         {summary.map(({ label, value }, index) => (
           <React.Fragment key={label}>
             {index > 0 && <span aria-hidden="true">·</span>}
@@ -799,7 +799,7 @@ function GraphDrawerSection({ title, meta, isDark, defaultOpen = true, children 
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex w-full items-center justify-between font-bold uppercase tracking-[0.14em] text-[10px] transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
+        className={`flex w-full items-center justify-between font-bold uppercase tracking-[0.14em] text-micro transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
       >
         <span>{title}</span>
         <span className="flex items-center gap-1.5 normal-case tracking-normal font-normal">
@@ -842,8 +842,8 @@ function GraphFilterPanel({
 }: GraphFilterPanelProps) {
   const [groupDraft, setGroupDraft] = useState('');
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const labelCls = `text-[11px] w-16 shrink-0 whitespace-nowrap ${muted}`;
-  const resetCls = `text-[11px] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/55 hover:text-[#CC7D5E]'}`;
+  const labelCls = `text-caption w-16 shrink-0 whitespace-nowrap ${muted}`;
+  const resetCls = `text-caption cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/55 hover:text-[#CC7D5E]'}`;
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
   };
@@ -893,7 +893,7 @@ function GraphFilterPanel({
               key={String(option)}
               onClick={() => onChange(option)}
               aria-pressed={active}
-              className={`relative flex-1 h-5 rounded text-[11px] transition-colors duration-200 cursor-pointer ${
+              className={`relative flex-1 h-5 rounded text-caption transition-colors duration-200 cursor-pointer ${
                 active
                   ? (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]')
                   : isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]'
@@ -919,7 +919,7 @@ function GraphFilterPanel({
         aria-label={name}
         className="flex-1 h-1 accent-[#CC7D5E]"
       />
-      <span className={`text-[11px] tabular-nums w-10 text-right ${muted}`}>{format(value)}</span>
+      <span className={`text-caption tabular-nums w-10 text-right ${muted}`}>{format(value)}</span>
     </div>
   );
   const formatMultiplier = (v: number) => `${v.toFixed(1)}×`;
@@ -939,7 +939,7 @@ function GraphFilterPanel({
             aria-label="Depth"
             className="flex-1 h-1 accent-[#CC7D5E] disabled:opacity-40"
           />
-          <span className={`text-[11px] tabular-nums w-10 text-right ${muted}`}>{hasActiveNote ? depthLabel : '—'}</span>
+          <span className={`text-caption tabular-nums w-10 text-right ${muted}`}>{hasActiveNote ? depthLabel : '—'}</span>
         </div>
         {segment('Ghosts', showUnresolved, [[true, 'Shown'], [false, 'Hidden']], onShowUnresolvedChange, "Show links to notes that don't exist yet")}
         {allTags.length > 0 && (
@@ -959,7 +959,7 @@ function GraphFilterPanel({
                     key={t}
                     onClick={() => toggleTag(t)}
                     aria-pressed={active}
-                    className={`flex items-center gap-1.5 text-[11px] px-2 h-5 rounded-full transition-colors cursor-pointer ${
+                    className={`flex items-center gap-1.5 text-caption px-2 h-5 rounded-full transition-colors cursor-pointer ${
                       active
                         ? ''
                         : isDark
@@ -986,13 +986,13 @@ function GraphFilterPanel({
         {groups.map((group, index) => (
           <div key={`${index}-${group.query}`} className="flex items-center gap-2">
             <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.color }} />
-            <span className={`min-w-0 flex-1 truncate text-[11px] ${isDark ? 'text-[rgba(249,249,247,0.8)]' : 'text-[#2D2D2B]/80'}`}>{group.query}</span>
+            <span className={`min-w-0 flex-1 truncate text-caption ${isDark ? 'text-[rgba(249,249,247,0.8)]' : 'text-[#2D2D2B]/80'}`}>{group.query}</span>
             <button
               type="button"
               onClick={() => onGroupsChange(groups.filter((_, i) => i !== index))}
               aria-label={`Remove group ${group.query}`}
               title="Remove group"
-              className={`text-[13px] leading-none cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/50 hover:text-[#CC7D5E]'}`}
+              className={`text-body leading-none cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/50 hover:text-[#CC7D5E]'}`}
             >
               ×
             </button>
@@ -1005,7 +1005,7 @@ function GraphFilterPanel({
           onKeyDown={(e) => { if (e.key === 'Enter') addGroup(); }}
           aria-label="New group search"
           placeholder="Add group by title or tag…"
-          className={`h-7 w-full rounded-md border border-[var(--divider-subtle)] bg-transparent px-2 text-[11px] outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+          className={`h-7 w-full rounded-md border border-[var(--divider-subtle)] bg-transparent px-2 text-caption outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
           style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }}
         />
       </GraphDrawerSection>
@@ -1021,7 +1021,7 @@ function GraphFilterPanel({
           <button
             type="button"
             onClick={onAnimate}
-            className={`h-5 rounded-md px-2 text-[11px] cursor-pointer transition-colors ${isDark ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.7)] hover:text-[#CC7D5E]' : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}
+            className={`h-5 rounded-md px-2 text-caption cursor-pointer transition-colors ${isDark ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.7)] hover:text-[#CC7D5E]' : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}
           >
             Play time-lapse
           </button>

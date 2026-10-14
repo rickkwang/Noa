@@ -918,7 +918,7 @@ export default function GraphView({
             <button
               type="button"
               onClick={onClearFilters}
-              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-[10px] font-ui transition-colors hover:text-[#CC7D5E] ${
+              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-micro font-ui transition-colors hover:text-[#CC7D5E] ${
                 isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'
               }`}
             >

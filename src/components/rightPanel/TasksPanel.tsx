@@ -148,7 +148,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
     onChange: (v: T) => void
   ) {
     return (
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] font-bold font-ui">
+      <div className="flex items-center gap-3 text-caption uppercase tracking-[0.08em] font-bold font-ui">
         <span className={`shrink-0 w-[58px] ${dimmer}`}>{label}</span>
         <div className="flex items-center gap-1 flex-wrap">
           {options.map((opt) => (
@@ -182,9 +182,9 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           {/* ─── Stat header ─────────────────────────────────────────── */}
           <div className="mb-5">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className={`text-[10px] uppercase tracking-[0.14em] font-bold ${dimmer}`}>Progress</span>
+              <span className={`text-micro uppercase tracking-[0.14em] font-bold ${dimmer}`}>Progress</span>
               <div
-                className="flex items-baseline gap-1 tabular-nums text-[10px]"
+                className="flex items-baseline gap-1 tabular-nums text-micro"
                 aria-label={`${completedTasks.length} completed of ${total} tasks`}
               >
                 <span className={txt}>{completedTasks.length}</span>
@@ -205,7 +205,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               />
             </div>
             {(overdueCount > 0 || todayCount > 0) && (
-              <div className="flex items-center gap-3 mt-2 text-[11px] uppercase tracking-[0.08em] font-bold">
+              <div className="flex items-center gap-3 mt-2 text-caption uppercase tracking-[0.08em] font-bold">
                 {overdueCount > 0 && <span className="text-[#D45555]">▴ {overdueCount} overdue</span>}
                 {todayCount > 0 && <span className="text-[#CC7D5E]">● {todayCount} today</span>}
               </div>
@@ -256,7 +256,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                     <ExternalLink size={11} />
                   </button>
                   {task.dueDate && (
-                    <div className={`mt-0.5 text-[11px] tabular-nums font-bold ${
+                    <div className={`mt-0.5 text-caption tabular-nums font-bold ${
                       isOverdue ? 'text-[#D45555]' : isToday ? 'text-[#CC7D5E]' : isSoon ? 'text-[#CC7D5E]' : dim
                     }`}>
                       {isOverdue ? '⚠ ' : isToday ? '● ' : '→ '}{task.dueDate}
@@ -268,7 +268,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
           })}
           {filteredActiveTasks.length > activePageSize && (
             <button onClick={() => setActivePageSize(s => s + TASKS_PAGE_SIZE)}
-              className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
+              className={`w-full text-caption uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
               Show more ({filteredActiveTasks.length - activePageSize} remaining)
             </button>
           )}
@@ -287,8 +287,8 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               size={11}
               className={`shrink-0 transition-transform ${dimmer} ${completedExpanded ? 'rotate-90' : ''}`}
             />
-            <span className={`text-[10px] uppercase tracking-[0.14em] font-bold shrink-0 ${dimmer}`}>Completed</span>
-            <span className={`text-[10px] tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
+            <span className={`text-micro uppercase tracking-[0.14em] font-bold shrink-0 ${dimmer}`}>Completed</span>
+            <span className={`text-micro tabular-nums shrink-0 ${dimmer}`}>· {completedTasks.length}</span>
           </button>
           {completedExpanded && (
           <div>
@@ -315,7 +315,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                       <ExternalLink size={11} />
                     </button>
                     {task.dueDate && (
-                      <div className={`mt-0.5 text-[11px] tabular-nums ${dim}`}>→ {task.dueDate}</div>
+                      <div className={`mt-0.5 text-caption tabular-nums ${dim}`}>→ {task.dueDate}</div>
                     )}
                   </div>
                 </div>
@@ -323,7 +323,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             })}
             {completedTasks.length > completedPageSize && (
               <button onClick={() => setCompletedPageSize(s => s + TASKS_PAGE_SIZE)}
-                className={`w-full text-[11px] uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
+                className={`w-full text-caption uppercase tracking-[0.08em] py-1 mt-2 border border-dashed transition-colors font-ui ${showMoreBtn}`}>
                 Show more ({completedTasks.length - completedPageSize} remaining)
               </button>
             )}

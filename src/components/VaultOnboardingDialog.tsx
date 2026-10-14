@@ -22,7 +22,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
             </span>
             <h2 className="text-[15px] font-medium text-[#2D2D2B]">Connect a Markdown folder</h2>
           </div>
-          <div className="mt-3 space-y-2 text-[13px] leading-relaxed text-[#2D2D2B]/70">
+          <div className="mt-3 space-y-2 text-body leading-relaxed text-[#2D2D2B]/70">
             <p>Open existing Markdown files and save edits back to that folder.</p>
             <p>New notes created in Noa stay in this app, not in the connected folder. Export a backup to keep a separate copy.</p>
           </div>
@@ -34,7 +34,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
           <button
             onClick={onDismiss}
             disabled={connecting}
-            className="h-8 rounded-lg px-3 text-[13px] text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors disabled:opacity-50"
+            className="h-8 rounded-lg px-3 text-body text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors disabled:opacity-50"
           >
             Continue without a folder
           </button>
@@ -43,7 +43,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="h-8 rounded-lg px-3.5 text-[13px] font-medium bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="h-8 rounded-lg px-3.5 text-body font-medium bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {connecting ? 'Connecting…' : 'Connect folder'}
           </button>
