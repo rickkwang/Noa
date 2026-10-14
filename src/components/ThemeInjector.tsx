@@ -32,6 +32,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
       root.style.setProperty('--text-primary', '#F9F9F7');
       root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
+      // Solid sidebar text tiers (primary is --text-primary): alpha text over the translucent material washes out.
+      root.style.setProperty('--sidebar-text', '#D3D2CE');
+      root.style.setProperty('--sidebar-text-muted', '#9C9B96');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', 'rgba(249,249,247,0.30)');
@@ -45,6 +48,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
       root.style.setProperty('--text-primary', '#2D2D2B');
       root.style.setProperty('--text-secondary', 'rgba(45,45,43,0.55)');
+      root.style.setProperty('--sidebar-text', '#4A4947');
+      root.style.setProperty('--sidebar-text-muted', '#7B7974');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', '#E6E2DA');

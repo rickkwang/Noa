@@ -173,9 +173,9 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 
-/* Tree rows at 85% text colour; accent is reserved for active/hover feedback. */
+/* Tree rows use the solid sidebar text tier; accent is reserved for active/hover feedback. */
 .noa-sidebar-tree-item {
-  color: color-mix(in srgb, var(--text-primary, #2D2D2B) 85%, transparent);
+  color: var(--sidebar-text, #4A4947);
 }
 
 /* Sidebar sections share its floor; border-t does the separating. */

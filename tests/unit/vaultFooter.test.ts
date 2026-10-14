@@ -103,7 +103,7 @@ describe('sidebar vault footer', () => {
     expect(sidebar).toContain('className={footerIconButton(isTagsOpen)}');
     // Open state is shown by the accent icon alone, not a persistent surface; it must swap the class,
     // since ThemeInjector's !important /70 class would beat an inline colour.
-    expect(footer).toContain("noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}");
+    expect(footer).toContain("noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B]'}");
     // Footer always has a divider; panels only while mounted, so closed panels don't stack a second line.
     expect(footer).toContain('shrink-0 border-t pl-1.5 pr-1 pt-1.5 pb-2');
     expect(calendar).toContain("${isBodyMounted ? 'border-t' : ''}");

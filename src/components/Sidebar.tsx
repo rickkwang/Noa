@@ -272,13 +272,13 @@ export default function Sidebar({
               return (
                 <button
                   key={t.id}
-                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-body font-ui text-[#2D2D2B]/90 transition-colors"
+                  className="noa-sidebar-hover-surface flex h-7 shrink-0 items-center gap-2.5 w-full rounded-md px-2 text-left text-body font-ui text-[var(--text-primary,#2D2D2B)] transition-colors"
                   onClick={() => {
                     onCreateNote(node.folder.id, applyTemplate(t, 'New Note'));
                     setTemplateMenuFolderId(null);
                   }}
                 >
-                  <TemplateIcon size={13} className="shrink-0 text-[#2D2D2B]/50" />
+                  <TemplateIcon size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
                   <span className="truncate">{t.name}</span>
                 </button>
               );
@@ -324,7 +324,7 @@ export default function Sidebar({
             />
           ))}
           {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
-          {!hasChildren && <div className="text-[#2D2D2B]/50 py-1 font-ui" style={{ paddingLeft: '22px' }}>Empty</div>}
+          {!hasChildren && <div className="text-[var(--sidebar-text-muted,#7B7974)] py-1 font-ui" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -440,7 +440,7 @@ export default function Sidebar({
     >
       {isDragOver && (
         <div className="absolute inset-0 bg-[#CC7D5E]/10 border-2 border-dashed border-[#CC7D5E] z-50 flex items-center justify-center pointer-events-none">
-          <div className="noa-floating-panel bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] font-ui font-bold text-[#CC7D5E] flex items-center">
+          <div className="noa-floating-panel bg-[#F9F9F7] px-4 py-2 border border-[#CC7D5E] font-ui text-[#CC7D5E] flex items-center">
             <Plus size={16} className="mr-2" />
             Drop files to import
           </div>
@@ -450,7 +450,7 @@ export default function Sidebar({
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="New note"
           aria-label="New note"
         >
@@ -458,7 +458,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="New folder"
           aria-label="New folder"
         >
@@ -467,7 +467,7 @@ export default function Sidebar({
         {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="Open today's daily note"
           aria-label="Open today's daily note"
         >
@@ -480,7 +480,7 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title="Open random note"
           aria-label="Open random note"
         >
@@ -491,7 +491,7 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[#2D2D2B]/85 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
@@ -500,7 +500,7 @@ export default function Sidebar({
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
           // The label already names the order, so a non-default sort needs no accent.
-          className="flex items-center gap-1 px-1.5 py-1 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[#2D2D2B]/85 hover:text-[#2D2D2B] active:opacity-70"
+          className="flex items-center gap-1 px-1.5 py-1 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] active:opacity-70"
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
@@ -514,7 +514,7 @@ export default function Sidebar({
       {pendingDelete && (
         <div className="noa-confirm-reveal bg-[#CC7D5E]/10 px-3 py-2.5 flex flex-col gap-2 font-ui shrink-0 z-10">
           <p className="text-xs leading-relaxed text-[#2D2D2B]">
-            Delete "<span className="font-semibold">{pendingDelete.name}</span>"?{' '}
+            Delete "{pendingDelete.name}"?{' '}
             {pendingDelete.type === 'folder'
               ? (() => {
                   const target = folders.find((folder) => folder.id === pendingDelete.id);
@@ -553,13 +553,13 @@ export default function Sidebar({
                 else onDeleteFolder(pendingDelete.id);
                 setPendingDelete(null);
               }}
-              className="h-6 rounded-md px-3 text-xs font-medium min-w-16 text-center bg-[#D45555] text-white border border-transparent shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-opacity hover:opacity-90 active:opacity-75"
+              className="h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#D45555] text-white border border-transparent shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-opacity hover:opacity-90 active:opacity-75"
             >
               Delete
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="noa-confirm-btn noa-sidebar-hover-surface h-6 rounded-md px-3 text-xs font-medium min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] transition-colors active:opacity-75"
+              className="noa-confirm-btn noa-sidebar-hover-surface h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] transition-colors active:opacity-75"
             >
               Cancel
             </button>
@@ -570,19 +570,19 @@ export default function Sidebar({
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
         <div className="bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-ui">
-          <span className="text-xs text-[#2D2D2B]/70">{selectedNoteIds.size} selected</span>
+          <span className="text-xs text-[var(--sidebar-text,#4A4947)]">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -596,13 +596,13 @@ export default function Sidebar({
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs font-bold min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
                 >
                   Cancel
                 </button>
@@ -655,12 +655,12 @@ export default function Sidebar({
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
-                <div className="text-xs text-[#2D2D2B]/50 mb-2 px-2 font-ui uppercase tracking-wider flex items-center justify-between">
+                <div className="text-xs text-[var(--sidebar-text-muted,#7B7974)] mb-2 px-2 font-ui uppercase tracking-wider flex items-center justify-between">
                   <span>Search Results ({searchResults.length})</span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="noa-sidebar-hover-surface text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
+                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#CC7D5E] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
                       title="Close search"
                     >
                       <X size={13} />
@@ -674,13 +674,13 @@ export default function Sidebar({
                     className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
-                    <div className="font-bold font-ui text-sm text-[#2D2D2B] mb-1 flex items-center">
+                    <div className="font-ui text-sm text-[#2D2D2B] mb-1 flex items-center">
                       <FileText size={12} className="mr-1.5 text-[#CC7D5E] shrink-0" />
                       <span className="truncate">
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
-                    <div className="text-xs text-[#2D2D2B]/70 font-ui leading-relaxed break-words line-clamp-2">
+                    <div className="text-xs text-[var(--sidebar-text,#4A4947)] font-ui leading-relaxed break-words line-clamp-2">
                       <HighlightedText text={result.contentSnippet} />
                     </div>
                     {result.note.tags && result.note.tags.length > 0 && (
@@ -695,7 +695,7 @@ export default function Sidebar({
                   </div>
                 ))}
                 {searchResults.length === 0 && (
-                  <div className="text-[#2D2D2B]/50 px-2 py-4 font-ui text-sm text-center">
+                  <div className="text-[var(--sidebar-text-muted,#7B7974)] px-2 py-4 font-ui text-sm text-center">
                     No matches found
                   </div>
                 )}
@@ -734,7 +734,7 @@ export default function Sidebar({
                   <>
                     {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
                     <div className={`mx-1.5 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
-                      <span className="text-micro font-bold uppercase tracking-widest text-[#2D2D2B]/40 font-ui">Obsidian Vault</span>
+                      <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#7B7974)] font-ui">Obsidian Vault</span>
                     </div>
                     <div
                       onDragEnter={markVaultRootTarget}
