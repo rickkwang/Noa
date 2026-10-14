@@ -2,11 +2,11 @@ import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, u
 import { RIGHT_TABS, RIGHT_TAB_LABELS, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useIsDark } from '../hooks/useIsDark';
-import { buildGraphModel, pruneGraphTagFilter } from '../lib/graphModel';
+import { buildGraphModel, pruneGraphTagFilter, type GraphGroup } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
 import { THEME_SURFACES } from '../lib/themePalette';
 import { GlobalTask, Note, Folder, AppSettings } from '../types';
-import GraphView, { TAG_PALETTE, type GraphColorMode } from './GraphView';
+import GraphView, { DEFAULT_GRAPH_FORCES, DEFAULT_LABEL_FADE_THRESHOLD, DEFAULT_LINK_THICKNESS, DEFAULT_NODE_SIZE, TAG_PALETTE, type GraphColorMode, type GraphForces } from './GraphView';
 import { BacklinksPanel } from './rightPanel/BacklinksPanel';
 import { OutgoingLinksPanel } from './rightPanel/OutgoingLinksPanel';
 import { PaneTabs } from './rightPanel/PaneTabs';
@@ -80,8 +80,8 @@ function PaneCard({
   // 20px in a 28px row: the hover wash clears the card's top edge and rounded corner.
   const controlClass = `flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[rgba(249,249,247,0.07)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[#2D2D2B]/[0.06]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
   }`;
   return (
     <section
@@ -163,7 +163,13 @@ export default function RightPanel({
   const [localDepth, setLocalDepth] = useState(0);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<GraphColorMode>('tag');
-  const [sizeByDegree, setSizeByDegree] = useState(true);
+  const [arrows, setArrows] = useState(false);
+  const [nodeSize, setNodeSize] = useState(DEFAULT_NODE_SIZE);
+  const [linkThickness, setLinkThickness] = useState(DEFAULT_LINK_THICKNESS);
+  const [graphGroups, setGraphGroups] = useState<GraphGroup[]>([]);
+  const [animateKey, setAnimateKey] = useState(0);
+  const [graphForces, setGraphForces] = useState<GraphForces>(DEFAULT_GRAPH_FORCES);
+  const [labelFadeThreshold, setLabelFadeThreshold] = useState(DEFAULT_LABEL_FADE_THRESHOLD);
   useEffect(() => {
     if (!showGraphSearch) return;
     const handlePointerDown = (event: PointerEvent) => {
@@ -183,6 +189,16 @@ export default function RightPanel({
     setLocalDepth(0);
     setTagFilter([]);
     setShowUnresolved(true);
+  };
+  const restoreGraphDefaults = () => {
+    clearGraphFilters();
+    setColorMode('tag');
+    setArrows(false);
+    setNodeSize(DEFAULT_NODE_SIZE);
+    setLinkThickness(DEFAULT_LINK_THICKNESS);
+    setGraphGroups([]);
+    setGraphForces(DEFAULT_GRAPH_FORCES);
+    setLabelFadeThreshold(DEFAULT_LABEL_FADE_THRESHOLD);
   };
 
   // Topology-stable snapshot: notes gets a new identity on every keystroke, but the chips and graph
@@ -232,8 +248,8 @@ export default function RightPanel({
   // Mirrors PaneCard's own header controls.
   const graphToggleClass = `relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[rgba(249,249,247,0.07)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[#2D2D2B]/[0.06]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
   }`;
 
   // Once opened, the graph stays mounted while closed so its simulation and viewport survive.
@@ -437,7 +453,7 @@ export default function RightPanel({
           >
             <div className="flex-1 min-h-0 flex flex-col">
               {showGraphGuide && (
-                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[#EFEAE3] text-[#2D2D2B]/80'}`}>
+                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[#2D2D2B]/80'}`}>
                   <div className={`font-bold uppercase tracking-[0.14em] text-[10px] mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
                   <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
                   <button
@@ -446,8 +462,8 @@ export default function RightPanel({
                       try { localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1'); } catch { /* quota exceeded */ }
                     }}
                     // Same button as the storage notice's "Got it" (App.tsx), except the
-                    // hover wash: this card's light floor is already #EFEAE3, so the
-                    // notice's hover:bg-[#EFEAE3] would give no feedback here.
+                    // hover wash: this card's light floor is already the sidebar-raised surface, the same
+                    // as the notice's hover:bg-[var(--bg-sidebar-raised,#ECEBE8)], so it would give no feedback here.
                     className="mt-2 text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--divider-subtle)] transition-colors"
                   >
                     Got it
@@ -462,14 +478,26 @@ export default function RightPanel({
                   hasActiveNote={!!activeNoteId}
                   colorMode={colorMode}
                   onColorModeChange={setColorMode}
-                  sizeByDegree={sizeByDegree}
-                  onSizeByDegreeChange={setSizeByDegree}
+                  arrows={arrows}
+                  onArrowsChange={setArrows}
+                  nodeSize={nodeSize}
+                  onNodeSizeChange={setNodeSize}
+                  linkThickness={linkThickness}
+                  onLinkThicknessChange={setLinkThickness}
+                  groups={graphGroups}
+                  onGroupsChange={setGraphGroups}
+                  onAnimate={() => setAnimateKey((k) => k + 1)}
                   showUnresolved={showUnresolved}
                   onShowUnresolvedChange={setShowUnresolved}
+                  forces={graphForces}
+                  onForcesChange={setGraphForces}
+                  labelFadeThreshold={labelFadeThreshold}
+                  onLabelFadeThresholdChange={setLabelFadeThreshold}
                   allTags={allTags}
                   tagColors={tagColors}
                   tagFilter={tagFilter}
                   onTagFilterChange={setTagFilter}
+                  onRestoreDefaults={restoreGraphDefaults}
                 />
               )}
               {/* Lists open over the canvas rather than shrinking it: GraphView doesn't re-fit on resize, so height taken would crop nodes. */}
@@ -477,7 +505,10 @@ export default function RightPanel({
                 <GraphView notes={topologyNotes} folders={topologyFolders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                   searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                   hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
-                  colorMode={colorMode} sizeByDegree={sizeByDegree} showUnresolved={showUnresolved}
+                  colorMode={colorMode} showUnresolved={showUnresolved}
+                  arrows={arrows} nodeSize={nodeSize} linkThickness={linkThickness} groups={graphGroups}
+                  animateKey={animateKey}
+                  forces={graphForces} labelFadeThreshold={labelFadeThreshold}
                   onClearFilters={clearGraphFilters} onEnableHideIsolated={() => setHideIsolated(true)} />
               </div>
               <GraphInfoPanel
@@ -631,8 +662,8 @@ function GraphInfoPanel({
       title={isOpen ? 'Hide connections' : 'Show connections'}
       className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors ${
         isDark
-          ? 'hover:bg-[rgba(249,249,247,0.07)] hover:text-[#F9F9F7]'
-          : 'hover:bg-[#2D2D2B]/[0.06] hover:text-[#2D2D2B]'
+          ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#F9F9F7]'
+          : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#2D2D2B]'
       }`}
     >
       {isOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
@@ -728,16 +759,57 @@ interface GraphFilterPanelProps {
   localDepth: number;
   onLocalDepthChange: (v: number) => void;
   hasActiveNote: boolean;
-  colorMode: GraphColorMode;
-  onColorModeChange: (v: GraphColorMode) => void;
-  sizeByDegree: boolean;
-  onSizeByDegreeChange: (v: boolean) => void;
   showUnresolved: boolean;
   onShowUnresolvedChange: (v: boolean) => void;
   allTags: string[];
   tagColors: Map<string, string>;
   tagFilter: string[];
   onTagFilterChange: (v: string[]) => void;
+  groups: GraphGroup[];
+  onGroupsChange: (v: GraphGroup[]) => void;
+  colorMode: GraphColorMode;
+  onColorModeChange: (v: GraphColorMode) => void;
+  arrows: boolean;
+  onArrowsChange: (v: boolean) => void;
+  labelFadeThreshold: number;
+  onLabelFadeThresholdChange: (v: number) => void;
+  nodeSize: number;
+  onNodeSizeChange: (v: number) => void;
+  linkThickness: number;
+  onLinkThicknessChange: (v: number) => void;
+  onAnimate: () => void;
+  forces: GraphForces;
+  onForcesChange: (v: GraphForces) => void;
+  onRestoreDefaults: () => void;
+}
+
+// Collapsible block in the filter drawer. Local state: the drawer remounts on close, so sections re-open by default.
+function GraphDrawerSection({ title, meta, isDark, defaultOpen = true, children }: {
+  title: string;
+  meta?: string;
+  isDark: boolean;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+  return (
+    <section className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`flex w-full items-center justify-between font-bold uppercase tracking-[0.14em] text-[10px] transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
+      >
+        <span>{title}</span>
+        <span className="flex items-center gap-1.5 normal-case tracking-normal font-normal">
+          {meta && <span className="tabular-nums">{meta}</span>}
+          <ChevronDown size={11} className={`transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
+        </span>
+      </button>
+      {open && <div className="space-y-3">{children}</div>}
+    </section>
+  );
 }
 
 function GraphFilterPanel({
@@ -745,21 +817,42 @@ function GraphFilterPanel({
   localDepth,
   onLocalDepthChange,
   hasActiveNote,
-  colorMode,
-  onColorModeChange,
-  sizeByDegree,
-  onSizeByDegreeChange,
   showUnresolved,
   onShowUnresolvedChange,
   allTags,
   tagColors,
   tagFilter,
   onTagFilterChange,
+  groups,
+  onGroupsChange,
+  colorMode,
+  onColorModeChange,
+  arrows,
+  onArrowsChange,
+  labelFadeThreshold,
+  onLabelFadeThresholdChange,
+  nodeSize,
+  onNodeSizeChange,
+  linkThickness,
+  onLinkThicknessChange,
+  onAnimate,
+  forces,
+  onForcesChange,
+  onRestoreDefaults,
 }: GraphFilterPanelProps) {
+  const [groupDraft, setGroupDraft] = useState('');
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const labelCls = `text-[11px] w-12 shrink-0 ${muted}`;
+  const labelCls = `text-[11px] w-16 shrink-0 whitespace-nowrap ${muted}`;
+  const resetCls = `text-[11px] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/55 hover:text-[#CC7D5E]'}`;
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
+  };
+  const addGroup = () => {
+    const query = groupDraft.trim();
+    if (!query) return;
+    // Colours cycle through the tag palette in creation order, as Obsidian assigns them.
+    onGroupsChange([...groups, { query, color: TAG_PALETTE[groups.length % TAG_PALETTE.length] }]);
+    setGroupDraft('');
   };
   const depthLabel = localDepth === 0 ? 'All' : `${localDepth} hop${localDepth > 1 ? 's' : ''}`;
   // One control for every two-way choice: a quiet inset track with the chosen
@@ -813,73 +906,140 @@ function GraphFilterPanel({
       </div>
     </div>
   );
+  const sliderRow = (name: string, value: number, min: number, max: number, step: number, format: (v: number) => string, onChange: (v: number) => void, title?: string) => (
+    <div className="flex items-center gap-2" title={title}>
+      <span className={labelCls}>{name}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={name}
+        className="flex-1 h-1 accent-[#CC7D5E]"
+      />
+      <span className={`text-[11px] tabular-nums w-10 text-right ${muted}`}>{format(value)}</span>
+    </div>
+  );
+  const formatMultiplier = (v: number) => `${v.toFixed(1)}×`;
   return (
-    <div className="mx-3 mb-2 space-y-2 border-b border-[var(--divider-subtle)] pb-3 pt-1 shrink-0">
-      {/* Local depth */}
-      <div className="flex items-center gap-2">
-        <span className={labelCls}>Depth</span>
-        <input
-          type="range"
-          min={0}
-          max={3}
-          step={1}
-          value={localDepth}
-          onChange={(e) => onLocalDepthChange(Number(e.target.value))}
-          disabled={!hasActiveNote}
-          aria-label="Depth"
-          className="flex-1 h-1 accent-[#CC7D5E] disabled:opacity-40"
-        />
-        <span className={`text-[11px] tabular-nums w-10 text-right ${muted}`}>{hasActiveNote ? depthLabel : '—'}</span>
-      </div>
-
-      {segment('Color', colorMode, [['tag', 'By tag'], ['none', 'Off']], onColorModeChange)}
-      {segment('Size', sizeByDegree, [[true, 'By degree'], [false, 'Uniform']], onSizeByDegreeChange)}
-      {/* Unresolved link targets (ghost nodes) */}
-      {segment('Ghosts', showUnresolved, [[true, 'Shown'], [false, 'Hidden']], onShowUnresolvedChange, "Show links to notes that don't exist yet")}
-
-      {/* Tag chips */}
-      {allTags.length > 0 && (
-        <div className="space-y-1.5 pt-0.5">
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] ${muted}`}>Tags</span>
-            {tagFilter.length > 0 && (
-              <button
-                onClick={() => onTagFilterChange([])}
-                className={`text-[11px] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/55 hover:text-[#CC7D5E]'}`}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto [scrollbar-gutter:stable]">
-            {allTags.map((t) => {
-              const active = tagFilter.includes(t);
-              return (
-                <button
-                  key={t}
-                  onClick={() => toggleTag(t)}
-                  aria-pressed={active}
-                  className={`flex items-center gap-1.5 text-[11px] px-2 h-5 rounded-full transition-colors cursor-pointer ${
-                    active
-                      ? ''
-                      : isDark
-                        ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.65)] hover:bg-[rgba(249,249,247,0.1)]'
-                        : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:bg-[rgba(45,45,43,0.09)]'
-                  }`}
-                  // Accent tint, not a solid fill, so the colour-legend dot stays readable.
-                  style={active
-                    ? { background: 'color-mix(in srgb, var(--accent-color, #CC7D5E) 18%, transparent)', color: isDark ? '#F9F9F7' : '#2D2D2B', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #CC7D5E) 55%, transparent)' }
-                    : undefined}
-                >
-                  {/* Same palette and order as GraphView's node fill. */}
-                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagColors.get(t) }} />
-                  {t}
-                </button>
-              );
-            })}
-          </div>
+    <div className="mx-3 mb-2 space-y-4 border-b border-[var(--divider-subtle)] pb-4 pt-2 shrink-0">
+      <GraphDrawerSection title="Filters" isDark={isDark}>
+        <div className="flex items-center gap-2">
+          <span className={labelCls}>Depth</span>
+          <input
+            type="range"
+            min={0}
+            max={3}
+            step={1}
+            value={localDepth}
+            onChange={(e) => onLocalDepthChange(Number(e.target.value))}
+            disabled={!hasActiveNote}
+            aria-label="Depth"
+            className="flex-1 h-1 accent-[#CC7D5E] disabled:opacity-40"
+          />
+          <span className={`text-[11px] tabular-nums w-10 text-right ${muted}`}>{hasActiveNote ? depthLabel : '—'}</span>
         </div>
-      )}
+        {segment('Ghosts', showUnresolved, [[true, 'Shown'], [false, 'Hidden']], onShowUnresolvedChange, "Show links to notes that don't exist yet")}
+        {allTags.length > 0 && (
+          <GraphDrawerSection title="Tags" meta={tagFilter.length > 0 ? `${tagFilter.length} selected` : `${allTags.length}`} isDark={isDark} defaultOpen={false}>
+            {tagFilter.length > 0 && (
+              <div className="flex justify-end -mt-1">
+                <button onClick={() => onTagFilterChange([])} className={resetCls}>
+                  Clear
+                </button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {allTags.map((t) => {
+                const active = tagFilter.includes(t);
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleTag(t)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 text-[11px] px-2 h-5 rounded-full transition-colors cursor-pointer ${
+                      active
+                        ? ''
+                        : isDark
+                          ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.65)] hover:bg-[rgba(249,249,247,0.1)]'
+                          : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:bg-[rgba(45,45,43,0.09)]'
+                    }`}
+                    // Accent tint, not a solid fill, so the colour-legend dot stays readable.
+                    style={active
+                      ? { background: 'color-mix(in srgb, var(--accent-color, #CC7D5E) 18%, transparent)', color: isDark ? '#F9F9F7' : '#2D2D2B', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #CC7D5E) 55%, transparent)' }
+                      : undefined}
+                  >
+                    {/* Same palette and order as GraphView's node fill. */}
+                    <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagColors.get(t) }} />
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          </GraphDrawerSection>
+        )}
+      </GraphDrawerSection>
+
+      <GraphDrawerSection title="Groups" meta={groups.length > 0 ? `${groups.length}` : undefined} isDark={isDark}>
+        {groups.map((group, index) => (
+          <div key={`${index}-${group.query}`} className="flex items-center gap-2">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.color }} />
+            <span className={`min-w-0 flex-1 truncate text-[11px] ${isDark ? 'text-[rgba(249,249,247,0.8)]' : 'text-[#2D2D2B]/80'}`}>{group.query}</span>
+            <button
+              type="button"
+              onClick={() => onGroupsChange(groups.filter((_, i) => i !== index))}
+              aria-label={`Remove group ${group.query}`}
+              title="Remove group"
+              className={`text-[13px] leading-none cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/50 hover:text-[#CC7D5E]'}`}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <input
+          type="text"
+          value={groupDraft}
+          onChange={(e) => setGroupDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addGroup(); }}
+          aria-label="New group search"
+          placeholder="Add group by title or tag…"
+          className={`h-7 w-full rounded-md border border-[var(--divider-subtle)] bg-transparent px-2 text-[11px] outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+          style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }}
+        />
+      </GraphDrawerSection>
+
+      <GraphDrawerSection title="Display" isDark={isDark}>
+        {segment('Color', colorMode, [['tag', 'By tag'], ['none', 'Off']], onColorModeChange)}
+        {segment('Arrows', arrows, [[true, 'Shown'], [false, 'Hidden']], onArrowsChange, 'Show direction on one-way links')}
+        {sliderRow('Labels', labelFadeThreshold, 0.3, 1.5, 0.05, (v) => v.toFixed(2), onLabelFadeThresholdChange, 'Zoom at which labels fully appear')}
+        {sliderRow('Node size', nodeSize, 0.5, 2, 0.1, formatMultiplier, onNodeSizeChange)}
+        {sliderRow('Link width', linkThickness, 0.5, 3, 0.1, formatMultiplier, onLinkThicknessChange)}
+        <div className="flex items-center gap-2">
+          <span className={labelCls}>Animate</span>
+          <button
+            type="button"
+            onClick={onAnimate}
+            className={`h-5 rounded-md px-2 text-[11px] cursor-pointer transition-colors ${isDark ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.7)] hover:text-[#CC7D5E]' : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}
+          >
+            Play time-lapse
+          </button>
+        </div>
+      </GraphDrawerSection>
+
+      <GraphDrawerSection title="Forces" isDark={isDark} defaultOpen={false}>
+        {sliderRow('Center', forces.center, 0, 3, 0.1, formatMultiplier, (v) => onForcesChange({ ...forces, center: v }), 'Pull toward the middle')}
+        {sliderRow('Repel', forces.repel, 0, 3, 0.1, formatMultiplier, (v) => onForcesChange({ ...forces, repel: v }), 'Push nodes apart')}
+        {sliderRow('Link', forces.link, 0, 3, 0.1, formatMultiplier, (v) => onForcesChange({ ...forces, link: v }), 'Pull linked nodes together')}
+        {sliderRow('Distance', forces.distance, 0, 3, 0.1, formatMultiplier, (v) => onForcesChange({ ...forces, distance: v }), 'Target length of links')}
+      </GraphDrawerSection>
+
+      <div className="flex justify-end">
+        <button type="button" onClick={onRestoreDefaults} className={resetCls}>
+          Restore defaults
+        </button>
+      </div>
     </div>
   );
 }

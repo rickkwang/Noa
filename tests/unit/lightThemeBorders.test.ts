@@ -54,7 +54,7 @@ describe('light theme border tokens', () => {
     expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
     expect(editorToolbar).toContain('w-px h-4 bg-[var(--divider-subtle)]');
-    expect(rightPanel).toContain('border-b border-[var(--divider-subtle)] pb-3 pt-1');
+    expect(rightPanel).toContain('border-b border-[var(--divider-subtle)] pb-4 pt-2');
   });
 
   it('scopes all ordinary settings-panel borders to the divider token', async () => {

@@ -601,7 +601,7 @@ export default function App() {
     // 1px short of the sidebar: its divider sits on that pixel, and covering it
     // leaves the sidebar with no edge.
     ? (isSidebarOpen ? 'calc(100vw - var(--noa-sidebar-width, 325px) - 1px)' : '100vw')
-    : 'var(--noa-right-panel-width, 340px)';
+    : 'var(--noa-right-panel-width, 360px)';
   // Column width changes with the sidebar toggle must ride the sidebar's 500ms clock or the edges part mid-motion.
   // Set during render so the same commit that flips the sidebar carries the transition.
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);

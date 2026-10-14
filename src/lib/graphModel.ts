@@ -1,15 +1,22 @@
 import { Folder, Note } from '../types';
 import { buildLinkIndex, normalizeLinkKey, resolveLinkTarget } from './noteUtils';
 
-export type GraphModelNote = Pick<Note, 'id' | 'title' | 'links' | 'tags' | 'folder'>;
+export type GraphModelNote = Pick<Note, 'id' | 'title' | 'links' | 'tags' | 'folder' | 'createdAt'>;
 
 export interface GraphModelNode {
   id: string;
   title: string;
   degree: number;
   tags: string[];
+  createdAt?: string;
   /** Unresolved link target (Obsidian-style faded node). Not clickable. */
   ghost?: boolean;
+}
+
+/** Obsidian-style group: nodes whose title or tags match `query` take `color`. */
+export interface GraphGroup {
+  query: string;
+  color: string;
 }
 
 export interface GraphModelLink {
@@ -56,6 +63,42 @@ function intersectIds(left: Set<string> | null, right: Set<string>): Set<string>
   return left ? new Set([...left].filter((id) => right.has(id))) : right;
 }
 
+/** First matching group wins, as in Obsidian. Matching is the same substring rule as graph search. */
+export function matchGraphGroup(node: { title: string; tags: string[] }, groups: GraphGroup[]): string | undefined {
+  const title = node.title.toLowerCase();
+  const tags = node.tags.map((tag) => tag.toLowerCase());
+  return groups.find(({ query }) => {
+    const q = query.trim().toLowerCase();
+    return q !== '' && (title.includes(q) || tags.some((tag) => tag.includes(q)));
+  })?.color;
+}
+
+/**
+ * Order in which nodes appear during the time-lapse: notes by creation time,
+ * ghosts with their earliest linking note, so no link appears before both ends.
+ */
+export function buildTimelapseRanks(model: Pick<GraphModel, 'nodes' | 'links'>): Map<string, number> {
+  const real = model.nodes
+    .filter((node) => !node.ghost)
+    .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.id.localeCompare(b.id));
+  const ranks = new Map<string, number>(real.map((node, index) => [node.id, index]));
+  // One pass over the links, so ghosts cost O(links) in total rather than O(ghosts × links).
+  const neighbours = new Map<string, string[]>();
+  for (const link of model.links) {
+    if (!neighbours.has(link.source)) neighbours.set(link.source, []);
+    if (!neighbours.has(link.target)) neighbours.set(link.target, []);
+    neighbours.get(link.source)!.push(link.target);
+    neighbours.get(link.target)!.push(link.source);
+  }
+  for (const node of model.nodes) {
+    if (!node.ghost) continue;
+    let earliest = Infinity;
+    for (const other of neighbours.get(node.id) ?? []) earliest = Math.min(earliest, ranks.get(other) ?? Infinity);
+    ranks.set(node.id, Number.isFinite(earliest) ? earliest : real.length);
+  }
+  return ranks;
+}
+
 export function pruneGraphTagFilter(selected: string[], available: string[]): string[] {
   const availableTags = new Set(available);
   const next = selected.filter((tag) => availableTags.has(tag));
@@ -72,6 +115,7 @@ export function buildGraphModel(notes: GraphModelNote[], options: GraphModelOpti
     title: note.title,
     degree: 0,
     tags: note.tags ?? [],
+    createdAt: note.createdAt,
   }));
   const ghostNodes = new Map<string, GraphModelNode>();
   const edgeMap = new Map<string, { source: string; target: string; directions: Set<string> }>();

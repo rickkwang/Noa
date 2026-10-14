@@ -135,7 +135,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
         data-right-panel-anchor={isMobile ? undefined : 'true'}
         style={isMobile ? undefined : {
           // 15px (not a round rem) lines the menu glyph up with the editor toolbar's last action.
-          right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 340px) + 15px)' : '15px',
+          right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 360px) + 15px)' : '15px',
           transition: rightPanelEdgeTransition,
         }}
       >

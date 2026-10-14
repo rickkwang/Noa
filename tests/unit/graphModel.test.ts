@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGraphModel, pruneGraphTagFilter } from '../../src/lib/graphModel';
+import { buildGraphModel, buildTimelapseRanks, matchGraphGroup, pruneGraphTagFilter } from '../../src/lib/graphModel';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -157,5 +157,27 @@ describe('buildGraphModel', () => {
   it('drops selected tags that no longer exist in the graph', () => {
     expect(pruneGraphTagFilter(['daily', 'removed'], ['daily', 'project'])).toEqual(['daily']);
     expect(pruneGraphTagFilter(['removed'], [])).toEqual([]);
+  });
+
+  it('colours a node with the first group whose query matches its title or tags', () => {
+    const groups = [
+      { query: 'project', color: '#111111' },
+      { query: 'alpha', color: '#222222' },
+    ];
+    expect(matchGraphGroup({ title: 'Alpha Plan', tags: ['project'] }, groups)).toBe('#111111');
+    expect(matchGraphGroup({ title: 'Alpha Plan', tags: [] }, groups)).toBe('#222222');
+    expect(matchGraphGroup({ title: 'Beta', tags: [] }, groups)).toBeUndefined();
+    expect(matchGraphGroup({ title: 'Beta', tags: [] }, [{ query: '  ', color: '#333333' }])).toBeUndefined();
+  });
+
+  it('reveals notes in creation order and a ghost after its earliest linking note', () => {
+    const model = buildGraphModel([
+      note({ id: 'late', title: 'Late', createdAt: '2024-03-01T00:00:00.000Z', links: ['Missing'] }),
+      note({ id: 'early', title: 'Early', createdAt: '2024-01-01T00:00:00.000Z', links: ['Late'] }),
+    ]);
+    const ranks = buildTimelapseRanks(model);
+    expect(ranks.get('early')).toBe(0);
+    expect(ranks.get('late')).toBe(1);
+    expect(ranks.get('ghost:missing')).toBe(1);
   });
 });

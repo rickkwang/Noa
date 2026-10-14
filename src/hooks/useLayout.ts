@@ -6,7 +6,7 @@ import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { useResizeDrag } from './useResizeDrag';
 
 const SIDEBAR_DEFAULT_WIDTH = 325;
-const RIGHT_PANEL_DEFAULT_WIDTH = 340;
+const RIGHT_PANEL_DEFAULT_WIDTH = 360;
 // Neither panel narrows below the width it opens at: a lower minimum is reachable once and never returned to.
 export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 export const RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_DEFAULT_WIDTH;
@@ -295,7 +295,7 @@ export function useLayout() {
   );
 
   // Layout effect: with the graph showing alone the column's width is not the
-  // 340px the CSS fallbacks carry, so the variable has to be in place before
+  // 360px the CSS fallbacks carry, so the variable has to be in place before
   // the first paint or the column opens narrow and jumps.
   useLayoutEffect(() => {
     previewSidebarWidth(sidebarWidth);

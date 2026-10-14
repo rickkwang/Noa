@@ -3,12 +3,25 @@ import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';
-import { buildGraphModel } from '../lib/graphModel';
+import { buildGraphModel, buildTimelapseRanks, matchGraphGroup, type GraphGroup } from '../lib/graphModel';
 import { computeTopologySignature } from '../lib/noteUtils';
 import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings } from '../types';
 
 export type GraphColorMode = 'tag' | 'none';
+
+// Multipliers on the node-count-based defaults below, so 1 is the tuned layout.
+export interface GraphForces {
+  center: number;
+  repel: number;
+  link: number;
+  distance: number;
+}
+export const DEFAULT_GRAPH_FORCES: GraphForces = { center: 1, repel: 1, link: 1, distance: 1 };
+export const DEFAULT_NODE_SIZE = 1;
+export const DEFAULT_LINK_THICKNESS = 1;
+// Zoom at which labels are fully visible. Lower shows them further zoomed out.
+export const DEFAULT_LABEL_FADE_THRESHOLD = 0.9;
 
 interface GraphViewProps {
   notes: Note[];
@@ -21,12 +34,19 @@ interface GraphViewProps {
   localDepth?: number;
   tagFilter?: string[];
   colorMode?: GraphColorMode;
-  sizeByDegree?: boolean;
+  arrows?: boolean;
+  nodeSize?: number;
+  linkThickness?: number;
+  groups?: GraphGroup[];
+  /** Bump to replay the time-lapse animation. */
+  animateKey?: number;
   showUnresolved?: boolean;
   /** Offered from the empty state when filters leave no nodes. */
   onClearFilters?: () => void;
   /** One-click action on the large-graph perf warning. */
   onEnableHideIsolated?: () => void;
+  forces?: GraphForces;
+  labelFadeThreshold?: number;
 }
 
 const GRAPH_PERF_WARN_THRESHOLD = 200;
@@ -93,7 +113,7 @@ type GraphLinkData = {
 type GraphNode = NodeObject<GraphNodeData>;
 type GraphLink = LinkObject<GraphNodeData, GraphLinkData>;
 
-type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags' | 'folder'>;
+type TopologyNote = Pick<Note, 'id' | 'title' | 'links' | 'linkRefs' | 'tags' | 'folder' | 'createdAt'>;
 
 function readLinkEndpointId(endpoint: GraphLink['source'] | GraphLink['target']): string {
   if (typeof endpoint === 'string' || typeof endpoint === 'number') return String(endpoint);
@@ -154,13 +174,16 @@ function graphCooldownTime(nodeCount: number): number {
 // Update reset-view alongside if changed.
 const LINK_STRENGTH = 1.25;
 
-// Node radius: log-scaled by degree; fixed 5px when sizeByDegree is false.
+// Node radius: log-scaled by degree, then multiplied by the Node size setting.
 const NODE_RADIUS_MAX = 9;
-function nodeRadius(degree: number, sizeByDegree: boolean): number {
-  if (!sizeByDegree) return 5;
+function nodeRadius(degree: number, nodeSize: number): number {
   // log1p(degree) maps 0→0, 1→0.69, 5→1.79, 20→3.04, 50→3.93
-  return Math.min(NODE_RADIUS_MAX, 3 + Math.log1p(degree) * 1.6);
+  return Math.min(NODE_RADIUS_MAX, 3 + Math.log1p(degree) * 1.6) * nodeSize;
 }
+
+const NO_GROUPS: GraphGroup[] = [];
+// Length of one time-lapse replay: notes appear in creation order across this span.
+const TIMELAPSE_MS = 4000;
 // Past 1:1 the camera spreads the graph out much faster than it grows the
 // dots. A world-unit radius grows linearly with zoom, so a graph fitted to a
 // large area (an expanded card runs at 2-3x) turned into a field of 20px discs
@@ -226,6 +249,8 @@ const LATE_FIT_MIN_DELTA = 0.03;
 
 // Top-degree hubs keep their labels at overview zoom, so the graph stays oriented.
 const HUB_LABEL_COUNT = 8;
+// Zoom range between the fade threshold and the point labels fully disappear.
+const LABEL_FADE_SPAN = 0.4;
 // Zoom range over which hub and active-note labels fade out when zooming away.
 const ANCHOR_LABEL_FADE_START = 0.45;
 const ANCHOR_LABEL_FADE_END = 0.6;
@@ -245,10 +270,16 @@ export default function GraphView({
   localDepth = 0,
   tagFilter,
   colorMode = 'tag',
-  sizeByDegree = true,
+  arrows = false,
+  nodeSize = DEFAULT_NODE_SIZE,
+  linkThickness = DEFAULT_LINK_THICKNESS,
+  groups = NO_GROUPS,
+  animateKey = 0,
   showUnresolved = true,
   onClearFilters,
   onEnableHideIsolated,
+  forces = DEFAULT_GRAPH_FORCES,
+  labelFadeThreshold = DEFAULT_LABEL_FADE_THRESHOLD,
 }: GraphViewProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -258,6 +289,13 @@ export default function GraphView({
   const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
   const dimensionsRef = useRef(canvasSize);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  // null: nothing hidden. 0..1: the share of notes revealed so far in a time-lapse.
+  const [timelapse, setTimelapse] = useState<number | null>(null);
+  // Read by fitView, which is memoised and must not depend on the slider.
+  const nodeSizeRef = useRef(nodeSize);
+  useEffect(() => {
+    nodeSizeRef.current = nodeSize;
+  }, [nodeSize]);
   const [perfBannerDismissed, setPerfBannerDismissed] = useState(false);
   // Previous graph's node objects. d3 mutates x/y in place, so this ref always
   // holds the latest settled positions of the last rendered graph.
@@ -301,7 +339,7 @@ export default function GraphView({
     // getGraphBbox pads each node by sqrt(nodeVal) * nodeRelSize = 4 world units,
     // but nodeCanvasObject draws them at up to NODE_RADIUS_MAX. Widen the span by
     // the shortfall so the tighter screen padding below can't clip edge nodes.
-    const radiusShortfall = Math.max(0, NODE_RADIUS_MAX - FG_ASSUMED_NODE_RADIUS);
+    const radiusShortfall = Math.max(0, NODE_RADIUS_MAX * nodeSizeRef.current - FG_ASSUMED_NODE_RADIUS);
     const bboxW = Math.max(1, bbox.x[1] - bbox.x[0]) + radiusShortfall * 2;
     const bboxH = Math.max(1, bbox.y[1] - bbox.y[0]) + radiusShortfall * 2;
     const rect = container.getBoundingClientRect();
@@ -450,6 +488,7 @@ export default function GraphView({
       linkRefs: note.linkRefs ?? [],
       tags: note.tags ?? [],
       folder: note.folder ?? '',
+      createdAt: note.createdAt,
     })),
     [notes]
   );
@@ -542,12 +581,33 @@ export default function GraphView({
       bidirectional: link.bidirectional,
     }));
 
-    return { nodes, links };
+    return { nodes, links, timelapseRank: buildTimelapseRanks(model) };
     // topologyKey is a stable hash standing in for the `notes`/`folders` arrays;
     // including them directly would recompute on every parent re-render that
     // produces new array identities even when topology is unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery, showUnresolved]);
+
+  const { timelapseRank } = graphData;
+
+  // Replays the time-lapse on each animateKey bump. Reduced motion shows the full graph at once.
+  useEffect(() => {
+    if (!animateKey || prefersReducedMotion()) return;
+    let frame = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = (now - start) / TIMELAPSE_MS;
+      if (progress >= 1) {
+        setTimelapse(null);
+        return;
+      }
+      setTimelapse(progress);
+      frame = requestAnimationFrame(step);
+    };
+    setTimelapse(0);
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [animateKey]);
 
   const hoveredNeighbours = useMemo(() => {
     if (!hoveredNodeId) return null;
@@ -577,18 +637,18 @@ export default function GraphView({
     // Repulsion: breathing room without scattering
     const chargeForce = fgRef.current.d3Force('charge');
     if (hasStrength(chargeForce)) {
-      chargeForce.strength(graphChargeStrength(n));
+      chargeForce.strength(graphChargeStrength(n) * forces.repel);
     }
     // Link distance: short lines, tight graph
     const linkForce = fgRef.current.d3Force('link');
     if (hasDistance(linkForce)) {
-      linkForce.distance(graphLinkDistance(n));
+      linkForce.distance(graphLinkDistance(n) * forces.distance);
     }
     if (hasStrength(linkForce)) {
-      linkForce.strength(LINK_STRENGTH);
+      linkForce.strength(LINK_STRENGTH * forces.link);
     }
     // Collide padding pushes nodes apart enough that labels don't crash.
-    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0, sizeByDegree) + 6).iterations(3);
+    const collide = forceCollide((node: GraphNode) => nodeRadius(node.degree ?? 0, nodeSize) + 6).iterations(3);
     fgRef.current.d3Force('collide', collide);
     // Centering forces target the world ORIGIN, which is where force-graph parks
     // the camera (adjustCanvasSize translates the world origin to the canvas
@@ -596,9 +656,9 @@ export default function GraphView({
     // width/2,height/2 pushed the layout hundreds of world units past the visible
     // crop, so the whole settle happened off-screen until the engine-stop fit
     // chased it. The origin is also maximally stable: no resize can move it.
-    fgRef.current.d3Force('center', forceCenter(0, 0).strength(0.2));
-    fgRef.current.d3Force('x', forceX(0).strength(graphCenteringStrength(n)));
-    fgRef.current.d3Force('y', forceY(0).strength(graphCenteringStrength(n)));
+    fgRef.current.d3Force('center', forceCenter(0, 0).strength(0.2 * forces.center));
+    fgRef.current.d3Force('x', forceX(0).strength(graphCenteringStrength(n) * forces.center));
+    fgRef.current.d3Force('y', forceY(0).strength(graphCenteringStrength(n) * forces.center));
     fgRef.current.d3Force('radial', null);
     // Reheat so updated forces actually move existing nodes; otherwise the
     // simulation sits at alpha≈0 and parameter changes are invisible.
@@ -606,7 +666,7 @@ export default function GraphView({
     // Depend on graphData identity, not just node count: an in-flight reset
     // animation zeroes charge/link strengths, so every rebuild must reapply
     // them even when the node count is unchanged.
-  }, [graphData, sizeByDegree]);
+  }, [graphData, nodeSize, forces]);
 
   useEffect(() => {
     // Hand the new node objects to the position carry-over above. d3 mutates
@@ -644,6 +704,8 @@ export default function GraphView({
   // Pick node fill color: ghost (muted) > tag color > accent (connected) > grey (isolated)
   const getNodeColor = useCallback((node: GraphNode): string => {
     if (node.ghost) return isDark ? '#8A8070' : '#9A9080';
+    const groupColor = matchGraphGroup({ title: node.name ?? '', tags: node.tags ?? [] }, groups);
+    if (groupColor) return groupColor;
     if (colorMode === 'tag') {
       const tags: string[] = node.tags ?? [];
       for (const tag of tags) {
@@ -652,7 +714,7 @@ export default function GraphView({
       }
     }
     return (node.degree ?? 0) > 0 ? nodeColor : (isDark ? '#5A5648' : '#B0AA9E');
-  }, [tagColorMap, nodeColor, isDark, colorMode]);
+  }, [tagColorMap, nodeColor, isDark, colorMode, groups]);
 
   // Re-arm the perf banner once the graph shrinks back below the threshold.
   const overPerfThreshold = graphData.nodes.length > GRAPH_PERF_WARN_THRESHOLD;
@@ -714,13 +776,21 @@ export default function GraphView({
             const src = readLinkEndpointId(link.source);
             const tgt = readLinkEndpointId(link.target);
             if (src === hoveredNodeId || tgt === hoveredNodeId) {
-              return link.bidirectional ? 3 : 2;
+              return (link.bidirectional ? 3 : 2) * linkThickness;
             }
-            return 0.5;
+            return 0.5 * linkThickness;
           }
-          return link.bidirectional ? 2.5 : 1.5;
+          return (link.bidirectional ? 2.5 : 1.5) * linkThickness;
         }}
-        linkDirectionalArrowLength={(link: GraphLink) => link.bidirectional ? 0 : 4}
+        linkDirectionalArrowLength={(link: GraphLink) => arrows && !link.bidirectional ? 4 : 0}
+        // Time-lapse hides notes that are not yet "created" and any link with a hidden end.
+        nodeVisibility={(node: GraphNode) => timelapse === null || (timelapseRank.get(String(node.id)) ?? 0) < timelapse * graphData.nodes.length}
+        linkVisibility={(link: GraphLink) => {
+          if (timelapse === null) return true;
+          const limit = timelapse * graphData.nodes.length;
+          return (timelapseRank.get(readLinkEndpointId(link.source)) ?? 0) < limit
+            && (timelapseRank.get(readLinkEndpointId(link.target)) ?? 0) < limit;
+        }}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link: GraphLink) => {
           if (hoveredNodeId) {
@@ -765,7 +835,7 @@ export default function GraphView({
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
           const degree = node.degree ?? 0;
-          const radius = nodeRadius(degree, sizeByDegree) * zoomDamp(globalScale);
+          const radius = nodeRadius(degree, nodeSize) * zoomDamp(globalScale);
           const isActive = activeNoteId && String(node.id) === activeNoteId;
           const isHovered = hoveredNodeId === String(node.id);
           const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
@@ -794,8 +864,8 @@ export default function GraphView({
           }
 
           // Labels fade in with zoom. Hubs and the open note fade out later, and the hovered node always shows its name.
-          const labelFadeStart = 0.5;
-          const labelFadeEnd = 0.9;
+          const labelFadeEnd = labelFadeThreshold;
+          const labelFadeStart = labelFadeThreshold - LABEL_FADE_SPAN;
           const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
           const anchorLabelAlpha = Math.min(1, Math.max(0, (globalScale - ANCHOR_LABEL_FADE_START) / (ANCHOR_LABEL_FADE_END - ANCHOR_LABEL_FADE_START)));
           const isAnchor = isActive || hubLabelIds.has(String(node.id));
@@ -829,7 +899,7 @@ export default function GraphView({
         }}
         nodePointerAreaPaint={(node: GraphNode, color, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
-          const radius = nodeRadius(node.degree ?? 0, sizeByDegree) * zoomDamp(globalScale);
+          const radius = nodeRadius(node.degree ?? 0, nodeSize) * zoomDamp(globalScale);
           ctx.fillStyle = color;
           ctx.beginPath();
           // Hit area is 8 screen px larger than the node; divided by globalScale so it doesn't balloon when zoomed in.
@@ -869,7 +939,7 @@ export default function GraphView({
               onClick={() => onNavigateToNoteById(String(node.id))}
               onFocus={() => setHoveredNodeId(String(node.id))}
               onBlur={() => setHoveredNodeId(null)}
-              className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:border-[#CC7D5E] focus:px-2 focus:py-1 focus:text-xs focus:font-redaction focus:outline-none ${
+              className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:px-2 focus:py-1 focus:text-xs focus:font-redaction focus:outline-none ${
                 isDark ? 'focus:bg-[var(--bg-secondary)] focus:text-[#F9F9F7]' : 'focus:bg-[#FCFCFB] focus:text-[#2D2D2B]'
               }`}
             >
