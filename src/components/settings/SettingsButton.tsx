@@ -8,7 +8,7 @@ export type SettingsButtonSize = 'regular' | 'compact';
 
 const BASE =
   'inline-flex items-center justify-center font-bold border rounded-chip transition-colors ' +
-  'active:opacity-70 disabled:opacity-60 disabled:pointer-events-none';
+  'noa-press disabled:opacity-60 disabled:pointer-events-none';
 
 const SIZES: Record<SettingsButtonSize, string> = {
   regular: 'gap-2 px-4 py-2 text-sm',

@@ -264,7 +264,7 @@ export default function CalendarPanel({
 
               {/* Month navigation — the label doubles as "jump back to today" */}
               <div className="flex items-center justify-between px-3 pt-0.5 pb-2">
-                <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+                <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface noa-press transition-colors cursor-pointer">
                   <ChevronLeft size={14} />
                 </button>
                 <button
@@ -277,7 +277,7 @@ export default function CalendarPanel({
                   <span className="font-semibold">{monthName}</span>
                   <span className="ml-1 text-[#2D2D2B]/40">{year}</span>
                 </button>
-                <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface active:opacity-70 transition-colors cursor-pointer">
+                <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface noa-press transition-colors cursor-pointer">
                   <ChevronRight size={14} />
                 </button>
               </div>

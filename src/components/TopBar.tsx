@@ -84,7 +84,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               // Prevent focus: the 28px icon overflows the 26px shell by 2px, and focusing it would scroll the shell and jerk the icon mid-expand.
               onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleSearch}
-              className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] active:opacity-70 transition-colors cursor-pointer"
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] noa-press transition-colors cursor-pointer"
               title="Search notes"
               aria-label="Search notes"
               aria-pressed={isSearchOpen}
@@ -117,7 +117,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               <button
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => onSearchChange('')}
-                className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] active:opacity-70"
+                className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] noa-press"
                 aria-label="Clear search"
               >
                 <X size={12} />

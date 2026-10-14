@@ -37,6 +37,25 @@
   --dur-fast: 60ms;
   --dur-snap: 120ms;
   --dur-base: 200ms;
+  --dur-slow: 450ms;
+  /* Claude's button spring (--cds-btn-spring): overshoots ~9% and settles. Used for a press releasing. */
+  --spring-press: linear(0, .2459, .6526, .9468, 1.0764, 1.0915, 1.0585, 1.0219, .9993, .9914, .9921, .9957, .9988, 1.0004, 1);
+}
+
+/* Press feedback, Claude's .cds-btn-squish: sink to .975 fast on press, spring back on release. Claude applies the
+   same .975 to icon and text buttons alike, and none to full-width list rows, so neither does Noa. */
+.noa-press {
+  /* Unlayered, so it outranks Tailwind's transition-* utilities; restate their colour/opacity fades. */
+  --noa-press-fades: color 120ms var(--ease-out), background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), opacity 120ms var(--ease-out);
+  transform-origin: center;
+  transition: transform var(--dur-slow) var(--spring-press), var(--noa-press-fades);
+}
+.noa-press:not(:disabled):active {
+  transform: scale(.975);
+  transition: transform var(--dur-fast) ease-out, var(--noa-press-fades);
+}
+@media (prefers-reduced-motion: reduce) {
+  .noa-press, .noa-press:not(:disabled):active { transform: none; transition: none; }
 }
 
 /* Content bold (`**strong**`, headings, inline title) in preview and CodeMirror. Kept off @theme so chrome gets no `font-*` utility. */
@@ -272,6 +291,7 @@ body {
   -webkit-mask-image: linear-gradient(to right, var(--noa-fade-ramp));
   mask-image: linear-gradient(to right, var(--noa-fade-ramp));
 }
+
 
 /* Inside the settings dialog the shared 8% divider is too faint to read: its
    rules and card borders sit on a panel the eye is scanning for structure, not

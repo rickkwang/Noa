@@ -584,7 +584,7 @@ export function EditorHeader({
                           e.stopPropagation();
                           onTabClose?.(tab.id);
                         }}
-                        className={`shrink-0 ${isActiveTab ? '' : 'opacity-0 pointer-events-none'} group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
+                        className={`shrink-0 ${isActiveTab ? '' : 'opacity-0 pointer-events-none'} group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -624,7 +624,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors active:opacity-70 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`} aria-label="Close tab" title="Close tab">
+                  <button onClick={onClose} className={`shrink-0 transition-colors noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`} aria-label="Close tab" title="Close tab">
                     <X size={11} />
                   </button>
                 )}
@@ -636,7 +636,7 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center transition-[background-color,color,transform] duration-200 ease-out active:scale-95 active:opacity-80 ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'}`}
+            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'}`}
             style={noDragRegion}
             title="New tab"
             aria-label="New tab"

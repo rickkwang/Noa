@@ -25,7 +25,7 @@ export default function TemplatePickerDialog({
           <div>
             <div className="text-sm text-[#2D2D2B] font-bold">Choose template</div>
           </div>
-          <button aria-label="Close template picker" onClick={onClose} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none active:opacity-70">×</button>
+          <button aria-label="Close template picker" onClick={onClose} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none noa-press">×</button>
         </div>
         <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
           {allTemplates.map(t => (
@@ -37,7 +37,7 @@ export default function TemplatePickerDialog({
                 }
                 onClose();
               }}
-              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] active:opacity-70"
+              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
             >
               <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
               {t.content && (

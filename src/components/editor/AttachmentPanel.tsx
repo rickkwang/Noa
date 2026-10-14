@@ -89,7 +89,7 @@ export function AttachmentPanel({
           <button
             disabled={readOnly || mutationsDisabled}
             onClick={() => fileInputRef.current?.click()}
-            className="text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
             title={mutationsDisabledReason ?? 'Add Attachment'}
           >
             + Attachments
@@ -99,7 +99,7 @@ export function AttachmentPanel({
         {error && (
           <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-ui flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
+            <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 noa-press">✕</button>
           </div>
         )}
       </div>
@@ -117,7 +117,7 @@ export function AttachmentPanel({
       <div className="flex items-center gap-2 px-4 py-1.5">
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center gap-1.5 text-micro uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="flex items-center gap-1.5 text-micro uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors noa-press"
           title={isOpen ? 'Collapse Attachments' : 'Expand Attachments'}
         >
           <span>{isOpen ? '▾' : '▸'}</span>
@@ -127,7 +127,7 @@ export function AttachmentPanel({
         <button
           disabled={readOnly || mutationsDisabled}
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors active:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="ml-auto text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
           title={mutationsDisabledReason ?? 'Add Attachment'}
         >
           + Add
@@ -146,7 +146,7 @@ export function AttachmentPanel({
       {error && (
         <div className="mx-4 mb-2 px-3 py-1.5 bg-[#D45555]/10 border border-[#D45555]/40 text-[#A93B3B] text-xs font-ui flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 active:opacity-70">✕</button>
+          <button onClick={() => setError(null)} className="ml-2 opacity-60 hover:opacity-100 noa-press">✕</button>
         </div>
       )}
 
@@ -173,7 +173,7 @@ export function AttachmentPanel({
                   <button
                   disabled={readOnly}
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-ui text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors active:opacity-70 disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
+                  className="flex-1 text-left text-xs font-ui text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}
@@ -194,13 +194,13 @@ export function AttachmentPanel({
                         }
                       }}
                       disabled={deletingId === att.id || mutationsDisabled || readOnly}
-                      className="text-micro text-[#D45555] hover:text-[#A93B3B] active:opacity-70"
+                      className="text-micro text-[#D45555] hover:text-[#A93B3B] noa-press"
                     >
                       {deletingId === att.id ? '…' : 'Confirm'}
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-micro text-[#2D2D2B]/40 hover:text-[#2D2D2B] active:opacity-70"
+                      className="text-micro text-[#2D2D2B]/40 hover:text-[#2D2D2B] noa-press"
                     >
                       Cancel
                     </button>
@@ -209,7 +209,7 @@ export function AttachmentPanel({
                   <button
                     disabled={readOnly || mutationsDisabled}
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-micro text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] active:opacity-70 shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
+                    className="text-micro text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] noa-press shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
                     title={mutationsDisabledReason ?? 'Delete Attachment'}
                   >
                     ✕

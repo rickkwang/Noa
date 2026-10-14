@@ -450,7 +450,7 @@ export default function Sidebar({
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New note  ⌘N"
           aria-label="New note"
         >
@@ -458,7 +458,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New folder"
           aria-label="New folder"
         >
@@ -467,7 +467,7 @@ export default function Sidebar({
         {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open today's daily note  ⌘⇧K"
           aria-label="Open today's daily note"
         >
@@ -480,7 +480,7 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open random note"
           aria-label="Open random note"
         >
@@ -491,7 +491,7 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
+          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
@@ -500,7 +500,7 @@ export default function Sidebar({
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
           // The label already names the order, so a non-default sort needs no accent.
-          className="flex items-center gap-1 px-1.5 py-1 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] active:opacity-70"
+          className="flex items-center gap-1 px-1.5 py-1 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] noa-press"
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
@@ -553,13 +553,13 @@ export default function Sidebar({
                 else onDeleteFolder(pendingDelete.id);
                 setPendingDelete(null);
               }}
-              className="h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#D45555] text-white border border-transparent shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-opacity hover:opacity-90 active:opacity-75"
+              className="h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#D45555] text-white border border-transparent shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-opacity hover:opacity-90 noa-press"
             >
               Delete
             </button>
             <button
               onClick={() => setPendingDelete(null)}
-              className="noa-confirm-btn noa-sidebar-hover-surface h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] transition-colors active:opacity-75"
+              className="noa-confirm-btn noa-sidebar-hover-surface h-6 rounded-md px-3 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] transition-colors noa-press"
             >
               Cancel
             </button>
@@ -576,13 +576,13 @@ export default function Sidebar({
               <>
                 <button
                   onClick={() => setPendingBulkDelete(true)}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 noa-press"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedNoteIds(new Set())}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] noa-press"
                 >
                   Cancel
                 </button>
@@ -596,13 +596,13 @@ export default function Sidebar({
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
-                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 active:opacity-70"
+                  className="noa-confirm-btn px-2 py-0.5 text-xs min-w-16 text-center bg-[#D45555] text-white border border-[var(--divider-subtle)] hover:opacity-90 noa-press"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setPendingBulkDelete(false)}
-                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] active:opacity-70"
+                  className="noa-confirm-btn noa-sidebar-hover-surface px-2 py-0.5 text-xs min-w-16 text-center bg-[#F9F9F7] border border-[var(--divider-subtle)] noa-press"
                 >
                   Cancel
                 </button>
@@ -660,7 +660,7 @@ export default function Sidebar({
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#CC7D5E] active:opacity-70 shrink-0 -mr-1 p-1 rounded"
+                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#CC7D5E] noa-press shrink-0 -mr-1 p-1 rounded"
                       title="Close search"
                     >
                       <X size={13} />

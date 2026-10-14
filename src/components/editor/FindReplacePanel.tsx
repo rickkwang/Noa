@@ -178,7 +178,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
         <button
           onClick={() => setShowReplace(v => !v)}
           title={showReplace ? 'Hide replace' : 'Show replace'}
-          className="shrink-0 p-0.5 hover:opacity-70 active:opacity-50"
+          className="shrink-0 p-0.5 hover:opacity-70 noa-press"
           style={{ color: mutedText }}
         >
           {showReplace ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
@@ -269,7 +269,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
           <button
             onClick={replaceOne}
             disabled={matches.length === 0}
-            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 active:opacity-60"
+            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 noa-press"
             style={{ borderColor: border, color: text, background: 'transparent' }}
           >
             Replace
@@ -277,7 +277,7 @@ export function FindReplacePanel({ editorViewRef, content, isDark, onClose }: Fi
           <button
             onClick={replaceAll}
             disabled={matches.length === 0}
-            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 active:opacity-60"
+            className="shrink-0 border px-2 py-0.5 uppercase tracking-wider font-bold text-micro disabled:opacity-30 hover:opacity-80 noa-press"
             style={{ borderColor: border, color: text, background: 'transparent' }}
           >
             All

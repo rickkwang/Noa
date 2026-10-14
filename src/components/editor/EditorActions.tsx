@@ -61,7 +61,7 @@ export function EditorActions({
     <div className="flex items-center gap-1 shrink-0">
       <button
         onClick={() => setViewMode(nextViewMode)}
-        className={`p-1 rounded-md active:opacity-70 transition-colors cursor-pointer ${
+        className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
           isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
         }`}
         title={`Switch to ${nextViewMode} view`}
@@ -74,7 +74,7 @@ export function EditorActions({
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className={`p-1 rounded-md active:opacity-70 transition-colors cursor-pointer ${
+          className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
             menuOpen || isHistoryOpen
               ? 'text-[#CC7D5E] bg-[#CC7D5E]/15'
               : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[#CC7D5E]`
