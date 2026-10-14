@@ -904,6 +904,17 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   mask-repeat: no-repeat, no-repeat;
 }
 
+/* Long names fade out over the last 24px instead of ending in an ellipsis. Takes the remaining row width,
+   so a name that fits never reaches the ramp. */
+.noa-fade-truncate {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+}
+
 /* Same pull-back for the right panel's tab bodies (keeps hover bands symmetric). Keep 6px equal to ::-webkit-scrollbar width. */
 .noa-panel-scroll {
   scrollbar-gutter: stable;

@@ -235,7 +235,7 @@ export const FileNode = React.memo(({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="truncate">
+            <span className="noa-fade-truncate">
               {name}
             </span>
           )}

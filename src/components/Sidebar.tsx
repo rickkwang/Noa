@@ -451,7 +451,7 @@ export default function Sidebar({
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
           className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
-          title="New note"
+          title="New note  ⌘N"
           aria-label="New note"
         >
           <SquarePen size={14} />
@@ -468,7 +468,7 @@ export default function Sidebar({
         <button
           onClick={() => onOpenDailyNote?.()}
           className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors active:opacity-70"
-          title="Open today's daily note"
+          title="Open today's daily note  ⌘⇧K"
           aria-label="Open today's daily note"
         >
           <Calendar size={13.5} />
