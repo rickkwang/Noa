@@ -42,12 +42,6 @@ function loadSystemFonts(): Promise<string[]> {
   return systemFontsPromise;
 }
 
-/** Exposed for tests; clears the cross-mount enumeration cache. */
-export function resetSystemFontCache() {
-  cachedSystemFonts = null;
-  systemFontsPromise = null;
-}
-
 interface FontOption {
   value: string;
   label: string;

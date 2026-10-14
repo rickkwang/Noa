@@ -16,7 +16,6 @@ import {
   CaretRight,
   CaretUpDown,
   CaretUp,
-  ChartBar,
   Circle as PhCircle,
   Clock as PhClock,
   Code as PhCode,
@@ -76,7 +75,6 @@ function icon(Cmp: Icon) {
 export const AlertTriangle = icon(Warning);
 export const AlignLeft = icon(TextAlignLeft);
 export const ArrowUpDown = icon(ArrowsDownUp);
-export const BarChart = icon(ChartBar);
 export const Bold = icon(TextB);
 export const BookOpen = icon(PhBookOpen);
 export const Calendar = icon(CalendarBlank);
