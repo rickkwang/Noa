@@ -295,7 +295,7 @@ interface PreviewPaneProps {
 // coral get a lightened variant for dark mode, where the light-mode value fails
 // against #2D2D2B.
 const CALLOUT_TONES = {
-  neutral: { light: '#2D2D2B', dark: '#F9F9F7', lightBg: 'rgba(45,45,43,0.04)',   darkBg: 'rgba(249,249,247,0.05)' },
+  neutral: { light: '#2D2D2B', dark: '#F0EFEC', lightBg: 'rgba(45,45,43,0.04)',   darkBg: 'rgba(249,249,247,0.05)' },
   warn:    { light: '#A26721', dark: '#C9913F', lightBg: 'rgba(162,103,33,0.07)', darkBg: 'rgba(201,145,63,0.09)'  },
   alert:   { light: '#CC7D5E', dark: '#D8907A', lightBg: 'rgba(204,125,94,0.08)', darkBg: 'rgba(216,144,122,0.10)' },
 } as const;

@@ -36,10 +36,10 @@ function applyInlineFormat(view: EditorView, before: string, after: string, plac
   return true;
 }
 
-// Warm dark palette: bg #2D2D2B, text #F9F9F7, accent #CC7D5E
+// Warm dark palette: bg #2D2D2B, text #F0EFEC (matches --text-primary), accent #CC7D5E
 const darkTheme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'transparent', color: '#F9F9F7' },
-  '.cm-content': { caretColor: '#F9F9F7', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#F0EFEC' },
+  '.cm-content': { caretColor: '#F0EFEC', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
@@ -74,7 +74,7 @@ const darkTheme = EditorView.theme({
   '.cm-lp-fold': { color: 'rgba(249,249,247,0.45)', cursor: 'pointer', opacity: '0', userSelect: 'none' },
   '.cm-lp-fold-closed': { opacity: '1' },
   '.cm-gutterElement:hover .cm-lp-fold': { opacity: '1' },
-  '.cm-cursor': { borderLeftColor: '#F9F9F7' },
+  '.cm-cursor': { borderLeftColor: '#F0EFEC' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.38)' },
   '.cm-activeLine': { backgroundColor: 'rgba(249,249,247,0.03)' },
@@ -93,7 +93,7 @@ const darkMarkdownHighlightStyle = HighlightStyle.define([
   // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.monospace, fontFamily: 'inherit', color: '#F9F9F7' },
+  { tag: tags.monospace, fontFamily: 'inherit', color: '#F0EFEC' },
   { tag: tags.link, color: '#CC7D5E', textDecoration: 'underline' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
   { tag: [tags.processingInstruction, tags.meta], color: 'rgba(249,249,247,0.32)', fontFamily: 'inherit' },

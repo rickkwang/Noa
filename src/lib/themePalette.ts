@@ -23,8 +23,9 @@ export const THEME_SURFACES = {
     // Translucent-sidebar tint over the native `menu` material.
     sidebarMaterial: '#383836',
     sidebarRaised: 'rgba(249,249,247,0.08)',
-    // A small lift above primary so cards read as raised, not as a different colour.
-    card: '#2F2F2D',
+    // One step above primary, as primary is one above secondary (34 → 42 → 50): Claude Code's dark ramp lightens
+    // evenly with elevation. Lifted overall so the floor never reaches its near-black.
+    card: '#323230',
   },
 } as const;
 

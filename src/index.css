@@ -684,7 +684,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .bg-\[\#F9F9F7\]\/90 { background-color: color-mix(in srgb, var(--bg-primary) 90%, transparent) !important; }
 
 /* ── Text ── */
-[data-theme="dark"] .text-\[\#2D2D2B\]      { color: #F9F9F7 !important; }
+[data-theme="dark"] .text-\[\#2D2D2B\]      { color: #F0EFEC !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/10  { color: rgba(249,249,247,0.10) !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/15  { color: rgba(249,249,247,0.15) !important; }
 [data-theme="dark"] .text-\[\#2D2D2B\]\/20  { color: rgba(249,249,247,0.20) !important; }
@@ -716,7 +716,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .hover\:text-\[\#A93B3B\]:hover { color: #E08A8A !important; }
 
 /* ── Hover text ── */
-[data-theme="dark"] .hover\:text-\[\#2D2D2B\]:hover     { color: #F9F9F7 !important; }
+[data-theme="dark"] .hover\:text-\[\#2D2D2B\]:hover     { color: #F0EFEC !important; }
 [data-theme="dark"] .hover\:text-\[\#2D2D2B\]\/70:hover { color: rgba(220,220,214,0.70) !important; }
 [data-theme="dark"] .hover\:text-\[\#CC7D5E\]:hover     { color: #CC7D5E !important; }
 [data-theme="dark"] .group:hover .group-hover\:text-\[\#CC7D5E\] { color: #CC7D5E !important; }
@@ -857,7 +857,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 
 /* ── Prose (Markdown preview) ── */
 [data-theme="dark"] .prose-a\:text-\[\#CC7D5E\] a            { color: #CC7D5E !important; }
-[data-theme="dark"] .prose-pre\:text-\[\#2D2D2B\] pre        { color: #F9F9F7 !important; }
+[data-theme="dark"] .prose-pre\:text-\[\#2D2D2B\] pre        { color: #F0EFEC !important; }
 [data-theme="dark"] .prose-code\:text-\[\#CC7D5E\] code      { color: #CC7D5E !important; }
 
 /* ── highlight.js: backgrounds transparent in both themes; the pre's tint is owned by CodeBlock in PreviewPane.tsx. */

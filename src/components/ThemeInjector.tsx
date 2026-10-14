@@ -30,8 +30,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--sidebar-material-tint', '70%');
       // Four stacked layers approximate light falloff; a single shadow reads as a band with a visible edge on dark.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(0,0,0,0.07), 3px 0 6px -2px rgba(0,0,0,0.09), 10px 0 22px -6px rgba(0,0,0,0.11), 26px 0 54px -16px rgba(0,0,0,0.12)');
-      root.style.setProperty('--text-primary', '#F9F9F7');
-      root.style.setProperty('--text-secondary', 'rgba(249,249,247,0.5)');
+      // Claude Code's dark text tiers are solid steps of one warm ramp, primary held off pure white (#F0EFEC).
+      root.style.setProperty('--text-primary', '#F0EFEC');
+      root.style.setProperty('--text-secondary', '#9C9B96');
       // Solid sidebar text tiers (primary is --text-primary): alpha text over the translucent material washes out.
       root.style.setProperty('--sidebar-text', '#D3D2CE');
       root.style.setProperty('--sidebar-text-muted', '#9C9B96');
