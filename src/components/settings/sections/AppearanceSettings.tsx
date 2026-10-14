@@ -25,7 +25,7 @@ const SCENE_OPTIONS = [
 
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <SettingSection title="Theme">
         <SettingItem label="Base Theme" description="Choose between light, dark, or sync with system.">
           <SegmentedControl

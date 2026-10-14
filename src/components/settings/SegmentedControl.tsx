@@ -80,13 +80,13 @@ export default function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       // Equal auto columns so the pill is the same size wherever it lands (a flex row made it resize as it slid).
-      className="noa-segmented-track relative inline-grid grid-flow-col [grid-auto-columns:1fr] items-center gap-0.5 rounded-[9px] p-0.5"
+      className="noa-segmented-track relative inline-grid grid-flow-col [grid-auto-columns:1fr] items-center rounded-lg p-px"
     >
       {/* Mounted only once a position is known, so it doesn't slide in from the left edge. */}
       {pill && (
         <span
           aria-hidden="true"
-          className="noa-segmented-pill absolute top-0.5 bottom-0.5 left-0 rounded-[7px] bg-[var(--bg-primary,#FCFCFB)] shadow-[0_1px_2px_rgba(45,45,43,0.12)]"
+          className="noa-segmented-pill absolute top-px bottom-px left-0 rounded-[7px] bg-[var(--bg-primary,#FCFCFB)]"
           style={{ transform: `translateX(${pill.left}px)`, width: pill.width }}
         />
       )}
@@ -108,12 +108,12 @@ export default function SegmentedControl<T extends string>({
             aria-label={option.icon ? option.label : undefined}
             title={option.icon ? option.label : undefined}
             // z-index:auto so labels paint above the pill by DOM order; a positive z-index would escape the scroll pane's top fade (SettingsModal).
-            className={`relative flex items-center justify-center rounded-[7px] py-1 text-sm font-medium transition-colors ${
+            className={`relative flex h-[30px] items-center justify-center rounded-[7px] text-sm transition-colors ${
               option.icon ? 'px-2.5' : 'px-3'
             } ${
               selected
                 ? 'text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                : 'text-[var(--settings-text-secondary,var(--text-secondary))] hover:text-[var(--text-primary)]'
             }`}
           >
             {option.icon ? <option.icon size={16} aria-hidden="true" /> : option.label}

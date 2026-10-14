@@ -230,8 +230,8 @@ export default function SettingsModal({
   return (
     <div
       data-settings-backdrop="true"
-      className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4 transition-opacity duration-150"
-      style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0)' }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 transition-opacity duration-150"
+      style={{ backgroundColor: mounted ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0)' }}
       onMouseDown={(e) => { pressStartedOnBackdrop.current = e.target === e.currentTarget; }}
       onClick={(e) => {
         if (pressStartedOnBackdrop.current && e.target === e.currentTarget) onClose();
@@ -244,7 +244,7 @@ export default function SettingsModal({
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="relative w-full max-w-[900px] h-full max-h-[calc(100vh-2rem)] bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-dialog overflow-hidden flex flex-col font-ui transition-[opacity,transform] duration-150 md:max-h-[650px] outline-none"
+        className="noa-settings-dialog relative w-full max-w-[1024px] h-full max-h-[calc(100vh-2rem)] bg-[var(--bg-primary,#FCFCFB)] rounded-[12px] overflow-hidden flex flex-col font-ui transition-[opacity,transform] duration-150 md:max-h-[800px] outline-none"
         style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'scale(1)' : 'scale(0.97)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleFocusTrap}
@@ -254,7 +254,7 @@ export default function SettingsModal({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="absolute right-3 top-3 z-10 p-1 rounded-chip border border-transparent text-[var(--text-secondary)] transition-colors hover:bg-[#D45555] hover:text-white"
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-[var(--settings-text-secondary)] transition-colors hover:bg-[var(--settings-fill-hover)] hover:text-[var(--text-primary)] noa-press"
         >
           <X size={18} />
         </button>
@@ -268,14 +268,14 @@ export default function SettingsModal({
             id={`settings-panel-${activeTab}`}
             role="tabpanel"
             aria-labelledby={`settings-tab-${activeTab}`}
-            className="noa-settings-scroll flex-1 p-4 pr-12 pt-14 bg-[#F9F9F7] overflow-y-auto [scrollbar-gutter:stable] sm:p-6 sm:pr-12 sm:pt-14 md:p-8 md:pr-14 md:pt-14"
+            className="noa-settings-scroll flex-1 px-6 pb-4 pt-14 bg-[var(--bg-primary,#FCFCFB)] overflow-y-auto [scrollbar-gutter:stable]"
           >
             {activeTab === 'appearance' && (
               <AppearanceSettings settings={settings} updateSettings={updateSettings} />
             )}
 
             {(activeTab === 'general' || activeTab === 'notes') && (
-              <div className="space-y-8">
+              <div className="space-y-10">
                 <WritingSettings
                   group={activeTab}
                   settings={settings}
@@ -348,7 +348,7 @@ export default function SettingsModal({
             )}
 
             {activeTab === 'about' && (
-              <div className="space-y-8">
+              <div className="space-y-10">
                 <SettingSection bare title="Noa" description="A local-first Markdown knowledge base. Notes live in this device's browser storage — no account, no server, no sync.">
                   <img
                     src={fable5VerifiedBadge}
@@ -389,11 +389,11 @@ export default function SettingsModal({
           </div>
             <div
               aria-hidden="true"
-              // Opaque to 40px (past the close button), then fades out over 24px. The only always-on fade in the app; it shields the close button.
+              // Opaque to 24px, then fades out over 16px, so content (from 56px, below the close button) sits clear of it. The only always-on fade in the app; it shields the close button.
               // Stops at the 6px scrollbar strip.
-              className="pointer-events-none absolute left-0 right-[6px] top-0 h-[64px]"
+              className="pointer-events-none absolute left-0 right-[6px] top-0 h-[40px]"
               style={{
-                background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #FCFCFB) 100%, transparent) 40px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 96%, transparent) 43px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 84%, transparent) 46px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 68%, transparent) 49px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 50%, transparent) 52px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 32%, transparent) 55px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 16%, transparent) 58px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 4%, transparent) 61px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 0%, transparent) 64px)',
+                background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #FCFCFB) 100%, transparent) 24px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 96%, transparent) 26px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 84%, transparent) 28px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 68%, transparent) 30px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 50%, transparent) 32px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 32%, transparent) 34px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 16%, transparent) 36px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 4%, transparent) 38px, color-mix(in srgb, var(--bg-primary, #FCFCFB) 0%, transparent) 40px)',
               }}
             />
           </div>

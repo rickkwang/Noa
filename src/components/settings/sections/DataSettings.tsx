@@ -118,7 +118,7 @@ export default function DataSettings({
   const isWorking = transfer.importingData || transfer.exportingZip || transfer.exportingHtml || transfer.connectingFs;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {isWorking && (
         <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-chip px-3 py-2 font-ui text-sm text-[#2D2D2B] flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-full border border-[#2D2D2B] border-t-transparent animate-spin shrink-0" />
@@ -132,7 +132,7 @@ export default function DataSettings({
         </div>
       )}
       {group === 'backup' && (
-        <div className="border border-[var(--divider-subtle)] bg-[var(--bg-sidebar-raised,#ECEBE8)] rounded-chip px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="text-sm leading-5 text-[var(--settings-text-muted)]">
           {LOCAL_DATA_BOUNDARY_COPY}
           <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
         </div>

@@ -91,13 +91,13 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
     // Same plane step the app shell uses: the settings sidebar sits on
     // --bg-sidebar, one notch under the content pane's --bg-primary, so the
     // two columns read as different surfaces without a heavier divider.
-    <div className="w-full border-b border-[var(--divider-subtle)] bg-[var(--bg-sidebar,#F4F4F2)] shrink-0 md:w-48 md:border-b-0 md:border-r md:overflow-y-auto">
-      <div className="px-2 pt-3 pb-1">
+    <div className="w-full border-b border-[var(--divider-subtle)] bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_2%,var(--bg-primary,#FCFCFB))] shrink-0 md:w-48 md:border-b-0 md:border-r md:overflow-y-auto">
+      <div className="px-3 pt-3 pb-2">
         <div className="relative">
           <Search
             size={16}
             aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--settings-text-muted)]"
           />
           <input
             type="search"
@@ -106,31 +106,31 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
             onKeyDown={handleSearchKeyDown}
             placeholder="Search"
             aria-label="Search settings"
-            className="w-full rounded-[3px] border border-[var(--divider-subtle)] bg-[var(--bg-primary,#FCFCFB)] py-1.5 pl-9 pr-2.5 text-sm outline-none transition-colors placeholder:text-[var(--text-secondary)] focus:border-[var(--border-strong)] [&::-webkit-search-cancel-button]:appearance-none"
+            className="noa-settings-field h-8 w-full rounded-lg pl-9 pr-2.5 text-sm outline-none transition-shadow placeholder:text-[var(--settings-text-muted)] [&::-webkit-search-cancel-button]:appearance-none"
           />
         </div>
       </div>
 
       {searching ? (
-        <div className="flex flex-col gap-0.5 px-2 pb-2 pt-0.5" role="group" aria-label="Search results">
+        <div className="flex flex-col gap-px px-3 pb-3" role="group" aria-label="Search results">
           {results.map((entry) => (
             <button
               key={`${entry.tab}-${entry.label}`}
               type="button"
               onClick={() => reveal(entry)}
-              className="rounded-[3px] px-2.5 py-1.5 text-left transition-colors hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
+              className="rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-[var(--settings-fill-hover)]"
             >
-              <span className="block text-sm font-medium leading-snug">{entry.label}</span>
-              <span className="block text-caption text-[var(--text-secondary)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
+              <span className="block text-sm leading-5">{entry.label}</span>
+              <span className="block text-caption text-[var(--settings-text-muted)] leading-snug">{TAB_META[entry.tab].label} · {entry.section}</span>
             </button>
           ))}
           {results.length === 0 && (
-            <p className="px-2.5 py-2 text-sm text-[var(--text-secondary)]">No matching setting</p>
+            <p className="noa-hint-in px-2 py-2 text-sm text-[var(--settings-text-muted)]">No matching setting</p>
           )}
         </div>
       ) : (
         <div
-          className="flex min-w-max flex-row gap-0.5 overflow-x-auto px-2 pb-2 pt-0.5 md:min-w-0 md:flex-col md:overflow-x-visible"
+          className="flex min-w-max flex-row gap-px overflow-x-auto px-3 pb-3 md:min-w-0 md:flex-col md:overflow-x-visible"
           role="tablist"
         >
           {SETTINGS_TABS.map((tab, index) => (
@@ -156,10 +156,10 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
               // background swap lands, so the two changes stacked into the
               // same "fade then flicker" this was meant to fix. The
               // background fill already answers "did my click register".
-              className={`flex min-w-[9.5rem] items-center space-x-2.5 px-2.5 py-2 rounded-[3px] text-left transition-colors text-sm font-medium md:min-w-0 md:w-full ${
+              className={`flex h-8 min-w-[9.5rem] items-center space-x-2.5 px-2 rounded-lg text-left transition-colors text-sm md:min-w-0 md:w-full ${
                 activeTab === tab.id
-                  ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)] shadow-[0_1px_2px_rgba(45,45,43,0.12)]'
-                  : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+                  ? 'bg-[var(--settings-fill-active)] text-[var(--text-primary)]'
+                  : 'text-[var(--settings-text-secondary)] hover:bg-[var(--settings-fill-hover)] hover:text-[var(--text-primary)]'
               }`}
             >
               <tab.icon size={16} />

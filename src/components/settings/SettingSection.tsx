@@ -4,24 +4,22 @@ interface SettingSectionProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  // Kept for call sites: sections no longer sit on a card, so bare and carded now render alike.
   bare?: boolean;
   id?: string;
 }
 
-export default function SettingSection({ title, description, children, bare = false, id }: SettingSectionProps) {
+// Claude Code's settings: a 15px semibold heading, then the rows straight on the page, no card around them.
+export default function SettingSection({ title, description, children, id }: SettingSectionProps) {
   return (
-    <div id={id}>
+    <section id={id}>
       <div className="mb-4">
-        <h2 className="font-bold text-lg text-[#2D2D2B]">{title}</h2>
+        <h2 className="text-[15px] leading-5 font-semibold text-[var(--text-primary,#2D2D2B)]">{title}</h2>
         {description && (
-          <p className="text-sm text-[#2D2D2B]/70 mt-1">{description}</p>
+          <p className="text-sm leading-5 text-[var(--settings-text-muted)] mt-1">{description}</p>
         )}
       </div>
-      {bare ? children : (
-        <div className="bg-[var(--bg-sidebar-raised,#ECEBE8)] border border-[var(--divider-subtle)] rounded p-4">
-          {children}
-        </div>
-      )}
-    </div>
+      <div>{children}</div>
+    </section>
   );
 }

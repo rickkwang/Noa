@@ -67,12 +67,12 @@ describe('light theme border tokens', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(settingsModal).toContain('bg-[#F9F9F7] border border-[var(--divider-subtle)]');
-    expect(settingsSidebar).toContain('border border-[var(--divider-subtle)]');
+    // Claude Code's layout: the dialog edge is a ring (noa-settings-dialog), rows sit on the page with a 5% rule, no section card.
+    expect(settingsModal).toContain('noa-settings-dialog');
     expect(settingsModal).not.toContain('rounded overflow-hidden');
     expect(settingsSidebar).toContain('border-b border-[var(--divider-subtle)]');
-    expect(settingSection).toContain('bg-[var(--bg-sidebar-raised,#ECEBE8)] border border-[var(--divider-subtle)]');
-    expect(settingItem.split('border-b border-[var(--divider-subtle)]')).toHaveLength(3);
+    expect(settingSection).not.toContain('bg-[var(--bg-sidebar-raised,#ECEBE8)]');
+    expect(settingItem.split('border-t border-[var(--settings-row-rule)]')).toHaveLength(3);
 
     expect(settingsModal).toContain('data-settings-surface="true"');
     expect(indexCss).toContain('[data-settings-surface="true"] .border-\\[\\#2D2D2B\\]');

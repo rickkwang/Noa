@@ -100,7 +100,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {group === 'general' && (
         <SettingSection title="Editor" description="How the editor behaves while you write.">
           <SettingItem label="Default editing mode" description="The view the app starts in. Live Preview edits with formatting shown; Reading view is read-only. Switching views while you work does not change it.">

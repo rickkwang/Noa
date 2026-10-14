@@ -339,6 +339,46 @@ body {
   --divider-subtle: color-mix(in srgb, var(--text-primary) 9%, var(--bg-secondary));
 }
 
+/* Claude Code's settings dialog, measured: fills are ink washes (5% hover, 10% selected), rows are split by a 5%
+   rule, secondary text is #52514E and descriptions #898782; fields are a half-white well with a 1px inset ring. */
+[data-settings-surface="true"] {
+  --settings-fill-hover: rgba(11,11,11,0.05);
+  --settings-fill-active: rgba(11,11,11,0.10);
+  --settings-row-rule: rgba(11,11,11,0.05);
+  --settings-text-secondary: #52514E;
+  --settings-text-muted: #898782;
+  --settings-field-bg: rgba(255,255,255,0.5);
+  --settings-field-ring: rgba(11,11,11,0.10);
+  --settings-switch-off: rgba(11,11,11,0.15);
+}
+[data-theme="dark"] [data-settings-surface="true"] {
+  --settings-fill-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --settings-fill-active: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --settings-row-rule: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --settings-text-secondary: #D3D2CE;
+  --settings-text-muted: #9C9B96;
+  --settings-field-bg: rgba(0,0,0,0.12);
+  --settings-field-ring: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --settings-switch-off: color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+
+/* Dialog: Claude's 12px card with a 1px ring and two soft layers. */
+.noa-settings-dialog {
+  box-shadow: 0 0 0 1px rgba(11,11,11,0.10), 0 1px 2px 0 rgba(11,11,11,0.06), 0 2px 8px 0 rgba(11,11,11,0.08);
+}
+[data-theme="dark"] .noa-settings-dialog {
+  box-shadow: 0 0 0 1px rgba(249,249,247,0.08), 0 8px 24px 0 rgba(0,0,0,0.45), 0 2px 6px 0 rgba(0,0,0,0.30);
+}
+
+.noa-settings-field {
+  background-color: var(--settings-field-bg);
+  box-shadow: inset 0 0 0 1px var(--settings-field-ring);
+}
+.noa-settings-field:focus-within,
+.noa-settings-field:focus {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 /* Softer corners throughout the dialog. Restated here rather than edited into
    ~60 utility classes across a dozen section files: the radii come in exactly
    two sizes (3px chips, 4px cards), so scoping the two utilities keeps the
@@ -350,14 +390,14 @@ body {
 }
 
 [data-settings-surface="true"] .rounded {
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
-/* The settings pane scrolls its full height under the 64px top fade, but its
+/* The settings pane scrolls its full height under the 40px top fade, but its
    scrollbar track starts at the fade's lower edge, so the thumb never runs
    up into the gradient. */
 .noa-settings-scroll::-webkit-scrollbar-track {
-  margin-top: 64px;
+  margin-top: 40px;
 }
 
 /* Flash for a setting reached from the search. Colour, not motion: the row is
@@ -442,7 +482,7 @@ html.noa-vt-image-closing::view-transition-new(root) {
 
 /* Track uses a low ink wash: a palette step disappears in one theme or the other. */
 .noa-segmented-track {
-  background-color: rgba(45, 45, 43, 0.07);
+  background-color: rgba(11, 11, 11, 0.05);
 }
 
 [data-theme="dark"] .noa-segmented-track {
@@ -451,9 +491,14 @@ html.noa-vt-image-closing::view-transition-new(root) {
 
 /* Only the pill moves; transform/width are cheap here (no layout of its own). */
 .noa-segmented-pill {
+  box-shadow: inset 0 0 0 1px rgba(11, 11, 11, 0.10), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition:
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="dark"] .noa-segmented-pill {
+  box-shadow: inset 0 0 0 1px rgba(249, 249, 247, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.30);
 }
 
 @media (prefers-reduced-motion: reduce) {

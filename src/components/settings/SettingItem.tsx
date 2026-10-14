@@ -23,10 +23,10 @@ export default function SettingItem({ label, description, children, stacked = fa
 
   if (stacked) {
     return (
-      <div id={anchorId} role="group" aria-labelledby={labelId} className="py-4 border-b border-[var(--divider-subtle)] last:border-0 scroll-mt-16">
-        <div id={labelId} className="font-medium text-sm text-[#2D2D2B]">{label}</div>
+      <div id={anchorId} role="group" aria-labelledby={labelId} className="py-3 border-t border-[var(--settings-row-rule)] first:border-t-0 scroll-mt-16">
+        <div id={labelId} className="text-sm leading-5 text-[var(--text-primary,#2D2D2B)]">{label}</div>
         {description && (
-          <div className="text-xs text-[#2D2D2B]/70 mt-1 leading-relaxed">
+          <div className="text-sm leading-5 text-[var(--settings-text-muted)] mt-1">
             {description}
           </div>
         )}
@@ -38,11 +38,11 @@ export default function SettingItem({ label, description, children, stacked = fa
   }
 
   return (
-    <div id={anchorId} role="group" aria-labelledby={labelId} className="flex flex-col gap-3 py-4 border-b border-[var(--divider-subtle)] last:border-0 scroll-mt-16 md:flex-row md:items-center md:justify-between">
+    <div id={anchorId} role="group" aria-labelledby={labelId} className="flex flex-col gap-3 py-3 border-t border-[var(--settings-row-rule)] first:border-t-0 scroll-mt-16 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0 md:flex-1 md:pr-8">
-        <div id={labelId} className="font-medium text-sm text-[#2D2D2B]">{label}</div>
+        <div id={labelId} className="text-sm leading-5 text-[var(--text-primary,#2D2D2B)]">{label}</div>
         {description && (
-          <div className="text-xs text-[#2D2D2B]/70 mt-1 leading-relaxed">
+          <div className="text-sm leading-5 text-[var(--settings-text-muted)] mt-1">
             {description}
           </div>
         )}

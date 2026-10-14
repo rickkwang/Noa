@@ -14,9 +14,10 @@ export default function SettingsToggle({ checked, onChange, label }: SettingsTog
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-14 rounded-full border border-[#2D2D2B] transition-colors active:translate-x-px active:translate-y-px ${checked ? 'bg-[#CC7D5E]' : 'bg-[#F9F9F7]'}`}
+      // Claude Code's switch: 36×20 track, 2px inset, 16px white knob with a soft lift.
+      className={`relative h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${checked ? 'bg-[var(--accent-color,#CC7D5E)]' : 'bg-[var(--settings-switch-off)]'}`}
     >
-      <span className={`absolute left-1 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full border border-[#2D2D2B] bg-[#F9F9F7] shadow-[0_1px_2px_rgba(45,45,43,0.12)] transition-transform ${checked ? 'translate-x-7' : 'translate-x-0'}`} />
+      <span className={`block h-4 w-4 rounded-full bg-white shadow-[0_1px_2px_rgba(11,11,11,0.06),0_2px_8px_rgba(11,11,11,0.08)] transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </button>
   );
 }
