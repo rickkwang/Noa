@@ -74,6 +74,8 @@ body {
   /* Pre-hydration fallback only; ThemeInjector overrides this with the
      resolved user font once settings load. See --font-ui above. */
   font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: #FCFCFB;
   color: #2D2D2B;
   margin: 0;
