@@ -270,7 +270,7 @@ export default function Sidebar({
                     setTemplateMenuFolderId(null);
                   }}
                 >
-                  <TemplateIcon size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                  <TemplateIcon size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                   <span className="truncate">{t.name}</span>
                 </button>
               );
@@ -316,7 +316,7 @@ export default function Sidebar({
             />
           ))}
           {/* 22px aligns with FileNode's icon column: 2 (child padding) + 16 (chevron) + 4 (gap). */}
-          {!hasChildren && <div className="text-[var(--sidebar-text-muted,#7B7974)] py-1 font-ui" style={{ paddingLeft: '22px' }}>Empty</div>}
+          {!hasChildren && <div className="text-[var(--sidebar-text-muted,#898781)] py-1 font-ui" style={{ paddingLeft: '22px' }}>Empty</div>}
         </FileNode>
       </div>
     );
@@ -442,7 +442,7 @@ export default function Sidebar({
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New note  ⌘N"
           aria-label="New note"
         >
@@ -450,7 +450,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New folder"
           aria-label="New folder"
         >
@@ -459,7 +459,7 @@ export default function Sidebar({
         {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open today's daily note  ⌘⇧K"
           aria-label="Open today's daily note"
         >
@@ -472,7 +472,7 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open random note"
           aria-label="Open random note"
         >
@@ -483,7 +483,7 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
@@ -492,7 +492,7 @@ export default function Sidebar({
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
           // The label already names the order, so a non-default sort needs no accent.
-          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] noa-press"
+          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] noa-press"
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
@@ -562,7 +562,7 @@ export default function Sidebar({
       {/* Bulk selection action bar */}
       {selectedNoteIds.size > 0 && (
         <div className="bg-[#CC7D5E]/10 px-3 py-1.5 flex items-center justify-between shrink-0 font-ui">
-          <span className="text-xs text-[var(--sidebar-text,#4A4947)]">{selectedNoteIds.size} selected</span>
+          <span className="text-xs text-[var(--sidebar-text,#52514E)]">{selectedNoteIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             {!pendingBulkDelete ? (
               <>
@@ -647,12 +647,12 @@ export default function Sidebar({
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
-                <div className="text-xs text-[var(--sidebar-text-muted,#7B7974)] mb-2 px-2 font-ui flex items-center justify-between">
+                <div className="text-xs text-[var(--sidebar-text-muted,#898781)] mb-2 px-2 font-ui flex items-center justify-between">
                   <span>Search results <span className="tabular-nums">{searchResults.length}</span></span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#CC7D5E] noa-press shrink-0 -mr-1 p-1 rounded"
+                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[#CC7D5E] noa-press shrink-0 -mr-1 p-1 rounded"
                       title="Close search"
                     >
                       <X size={13} />
@@ -672,7 +672,7 @@ export default function Sidebar({
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
-                    <div className="text-xs text-[var(--sidebar-text,#4A4947)] font-ui leading-relaxed break-words line-clamp-2">
+                    <div className="text-xs text-[var(--sidebar-text,#52514E)] font-ui leading-relaxed break-words line-clamp-2">
                       <HighlightedText text={result.contentSnippet} />
                     </div>
                     {result.note.tags && result.note.tags.length > 0 && (
@@ -687,7 +687,7 @@ export default function Sidebar({
                   </div>
                 ))}
                 {searchResults.length === 0 && (
-                  <div className="noa-hint-in text-[var(--sidebar-text-muted,#7B7974)] px-2 py-4 font-ui text-sm text-center">
+                  <div className="noa-hint-in text-[var(--sidebar-text-muted,#898781)] px-2 py-4 font-ui text-sm text-center">
                     No matches found
                   </div>
                 )}
@@ -726,7 +726,7 @@ export default function Sidebar({
                   <>
                     {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
                     <div className={`mx-2 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
-                      <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#7B7974)] font-ui">Obsidian Vault</span>
+                      <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">Obsidian Vault</span>
                     </div>
                     <div
                       onDragEnter={markVaultRootTarget}

@@ -14,7 +14,7 @@ describe('sidebar typography tokens', () => {
       readFile(sidebarPath, 'utf8'),
     ]);
 
-    expect(css).toMatch(/\.noa-sidebar-tree-item\s*\{[^}]*color:\s*var\(--sidebar-text, #4A4947\)/);
+    expect(css).toMatch(/\.noa-sidebar-tree-item\s*\{[^}]*color:\s*var\(--sidebar-text, #52514E\)/);
     expect(fileNode).toContain('noa-sidebar-tree-item');
     expect(fileNode).not.toContain("isFolder ? 'text-[#CC7D5E]'");
     expect(sidebar).not.toContain('iconColor="#CC7D5E"');

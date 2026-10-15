@@ -13,13 +13,13 @@ export function linkSubtitle(note: Note, folders?: Folder[]): string {
 
 // Must match PropertiesPanel's "no note" state. Distinct from "a real note with zero links" (the header shows 0).
 export function LinkNoNoteState() {
-  return <div className="noa-hint-in text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#7B7974)]">No note selected</div>;
+  return <div className="noa-hint-in text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#898781)]">No note selected</div>;
 }
 
 export function LinkSectionHeader({ label, count }: { label: string; count: number }) {
   // Sentence-case label with its count beside it: same size as the card title, quieter only by colour.
   return (
-    <div className="flex items-baseline gap-1.5 px-2 pb-1.5 text-body text-[var(--sidebar-text-muted,#7B7974)]">
+    <div className="flex items-baseline gap-1.5 px-2 pb-1.5 text-body text-[var(--sidebar-text-muted,#898781)]">
       <span>{label}</span>
       <span className="tabular-nums">{count}</span>
     </div>
@@ -39,8 +39,8 @@ export function LinkRow({
   onClick?: () => void;
   dimmed?: boolean;
 }) {
-  const titleColor = dimmed ? 'text-[var(--sidebar-text-muted,#7B7974)]' : 'text-[var(--text-primary,#2D2D2B)]';
-  const subtitleColor = 'text-[var(--sidebar-text-muted,#7B7974)]';
+  const titleColor = dimmed ? 'text-[var(--sidebar-text-muted,#898781)]' : 'text-[var(--text-primary,#2D2D2B)]';
+  const subtitleColor = 'text-[var(--sidebar-text-muted,#898781)]';
   // Matches the app-wide hover convention (a 5% ink wash, as noa-sidebar-hover-surface uses).
   // Hover only lifts the surface; the title keeps its colour.
   const hover = onClick ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : '';

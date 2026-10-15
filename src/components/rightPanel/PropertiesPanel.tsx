@@ -24,7 +24,7 @@ export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatter
   if (!activeNote || !frontmatter) {
     return (
       <div className="flex-1 overflow-y-auto noa-panel-scroll px-3 pb-3 pt-2">
-        <div className="noa-hint-in text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#7B7974)]">No note selected</div>
+        <div className="noa-hint-in text-xs font-ui text-center py-8 text-[var(--sidebar-text-muted,#898781)]">No note selected</div>
       </div>
     );
   }

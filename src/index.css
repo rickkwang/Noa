@@ -196,7 +196,7 @@ body {
 
 /* Tree rows use the solid sidebar text tier; accent is reserved for active/hover feedback. */
 .noa-sidebar-tree-item {
-  color: var(--sidebar-text, #4A4947);
+  color: var(--sidebar-text, #52514E);
 }
 
 /* Sidebar sections share its floor; border-t does the separating. */
@@ -345,7 +345,7 @@ body {
   --settings-fill-active: rgba(11,11,11,0.10);
   --settings-row-rule: rgba(11,11,11,0.05);
   --settings-text-secondary: #52514E;
-  --settings-text-muted: #898782;
+  --settings-text-muted: #898781;
   --settings-field-bg: rgba(255,255,255,0.5);
   --settings-field-ring: rgba(11,11,11,0.10);
   --settings-switch-off: rgba(11,11,11,0.15);
@@ -354,8 +354,8 @@ body {
   --settings-fill-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
   --settings-fill-active: color-mix(in srgb, var(--text-primary) 11%, transparent);
   --settings-row-rule: color-mix(in srgb, var(--text-primary) 6%, transparent);
-  --settings-text-secondary: #D3D2CE;
-  --settings-text-muted: #9C9B96;
+  --settings-text-secondary: #C3C2B7;
+  --settings-text-muted: #898781;
   --settings-field-bg: rgba(0,0,0,0.12);
   --settings-field-ring: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --settings-switch-off: color-mix(in srgb, var(--text-primary) 18%, transparent);

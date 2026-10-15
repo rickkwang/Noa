@@ -171,7 +171,7 @@ function PaneCard({
       {/* Header row: pl-3/pr-1.5 gives every card's content the same 12px inset. The column is
           no-drag as a whole (see App.tsx); the top card's header opts back in so the titlebar area stays draggable. */}
       <header className="h-7 shrink-0 flex items-center gap-0.5 pl-3 pr-1.5" style={dragsWindow ? { WebkitAppRegion: 'drag' } as React.CSSProperties : undefined}>
-        <h2 className={`mr-auto truncate text-body font-medium font-ui text-[var(--sidebar-text,#4A4947)]`}>{title}</h2>
+        <h2 className={`mr-auto truncate text-body font-medium font-ui text-[var(--sidebar-text,#52514E)]`}>{title}</h2>
         <div className="flex min-w-0 items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {actions}
         {onToggleExpand && (

@@ -40,7 +40,7 @@ function syncLabel(status: SyncStatus, lastSyncAt?: string | null): string {
 
 /** Shared by the gear and the Calendar/Tags toggles. Swaps the colour class, not an inline style: ThemeInjector's !important rules would beat it. */
 export const footerIconButton = (active = false) =>
-  `p-1.5 shrink-0 rounded-lg noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B]'} noa-press transition-colors cursor-pointer`;
+  `p-1.5 shrink-0 rounded-lg noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B]'} noa-press transition-colors cursor-pointer`;
 
 const DOT_CLASS: Record<SyncStatus, string> = {
   idle: 'bg-[var(--text-primary,#2D2D2B)]/30',
@@ -140,9 +140,9 @@ export function VaultFooter({
             <>
               {/* Workspace and vault coexist: the workspace is always present, the vault is an optional mirrored folder. */}
               <div className="flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
-                <Check size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                <Check size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                 <span className="truncate">{label}</span>
-                <span className="ml-auto shrink-0 text-xs text-[var(--sidebar-text-muted,#7B7974)]">Workspace</span>
+                <span className="ml-auto shrink-0 text-xs text-[var(--sidebar-text-muted,#898781)]">Workspace</span>
               </div>
 
               <div className="mx-2.5 my-1 h-px bg-[var(--divider-subtle)]" />
@@ -151,10 +151,10 @@ export function VaultFooter({
                 <>
                   <div className="px-2.5 pt-1.5 pb-1.5">
                     <div className="flex items-center gap-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
-                      <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                      <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span className="truncate">{vaultName}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 pl-[23px] text-xs font-ui text-[var(--sidebar-text-muted,#7B7974)]">
+                    <div className="mt-1 flex items-center gap-1.5 pl-[23px] text-xs font-ui text-[var(--sidebar-text-muted,#898781)]">
                       <span className="shrink-0">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${DOT_CLASS[syncStatus]}`} />
                       </span>
@@ -163,32 +163,32 @@ export function VaultFooter({
                   </div>
                   {syncStatus === 'error' && onRetrySync && (
                     <button role="menuitem" className={itemClass} onClick={() => run(onRetrySync)} disabled={busy}>
-                      <RefreshCcw size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                      <RefreshCcw size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span>Retry sync</span>
                     </button>
                   )}
                   {onSwitchVault && (
                     <button role="menuitem" className={itemClass} onClick={() => setConfirmSwitch(true)} disabled={busy}>
-                      <ChevronsUpDown size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                      <ChevronsUpDown size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span>Switch vault folder…</span>
                     </button>
                   )}
                   {onDisconnectVault && (
                     <button role="menuitem" className={itemClass} onClick={() => run(onDisconnectVault)} disabled={busy}>
-                      <Unlink size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                      <Unlink size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span>Disconnect vault</span>
                     </button>
                   )}
                 </>
               ) : (
                 <>
-                  <div className="flex h-8 items-center gap-2.5 px-2.5 text-body font-ui text-[var(--sidebar-text-muted,#7B7974)]">
+                  <div className="flex h-8 items-center gap-2.5 px-2.5 text-body font-ui text-[var(--sidebar-text-muted,#898781)]">
                     <Unlink size={13} className="shrink-0" />
                     <span className="truncate">No vault connected</span>
                   </div>
                   {onConnectVault && (
                     <button role="menuitem" className={itemClass} onClick={() => run(onConnectVault)} disabled={busy}>
-                      <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                      <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span>Connect vault folder…</span>
                     </button>
                   )}
@@ -198,7 +198,7 @@ export function VaultFooter({
               <div className="mx-2.5 my-1 h-px bg-[var(--divider-subtle)]" />
 
               <button role="menuitem" className={itemClass} onClick={() => run(onOpenWorkspaceSettings)}>
-                <Settings size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
+                <Settings size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                 <span>Workspace settings…</span>
               </button>
             </>
@@ -209,7 +209,7 @@ export function VaultFooter({
       <button
         data-vault-btn
         onClick={() => setIsOpen(v => !v)}
-        className="noa-sidebar-hover-surface flex items-center min-w-0 h-8 rounded-lg pl-[7px] pr-3.5 text-caption font-ui text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#2D2D2B] transition-colors cursor-pointer"
+        className="noa-sidebar-hover-surface flex items-center min-w-0 h-8 rounded-lg pl-[7px] pr-3.5 text-caption font-ui text-[var(--sidebar-text-muted,#898781)] hover:text-[#2D2D2B] transition-colors cursor-pointer"
         title={vaultName ? `${label} · vault: ${vaultName} (${syncError || status})` : `${label} · no vault connected`}
         aria-haspopup="menu"
         aria-expanded={isOpen}

@@ -34,8 +34,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--text-primary', '#F0EFEC');
       root.style.setProperty('--text-secondary', '#9C9B96');
       // Solid sidebar text tiers (primary is --text-primary): alpha text over the translucent material washes out.
-      root.style.setProperty('--sidebar-text', '#D3D2CE');
-      root.style.setProperty('--sidebar-text-muted', '#9C9B96');
+      root.style.setProperty('--sidebar-text', '#C3C2B7');
+      root.style.setProperty('--sidebar-text-muted', '#898781');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', 'color-mix(in srgb, var(--text-primary) 16%, transparent)');
@@ -48,10 +48,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // Light counterpart of the dark stack, at lower weight since light floors don't band.
       root.style.setProperty('--sidebar-preview-shadow', '0 0 0 1px rgba(45,45,43,0.03), 3px 0 6px -2px rgba(45,45,43,0.035), 10px 0 22px -6px rgba(45,45,43,0.04), 26px 0 54px -16px rgba(45,45,43,0.05)');
       root.style.setProperty('--text-primary', '#2D2D2B');
-      // Solid, as in dark; one muted tier with the sidebar's (#7B7974).
+      // Solid, as in dark.
       root.style.setProperty('--text-secondary', '#7B7974');
-      root.style.setProperty('--sidebar-text', '#4A4947');
-      root.style.setProperty('--sidebar-text-muted', '#7B7974');
+      root.style.setProperty('--sidebar-text', '#52514E');
+      root.style.setProperty('--sidebar-text-muted', '#898781');
       // Hairlines: near-black at 10%, strong at 20%.
       root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
