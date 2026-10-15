@@ -17,7 +17,7 @@ describe('sidebar search result layout', () => {
 
     expect(source).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
     expect(source).not.toContain('[scrollbar-gutter:stable]');
-    expect(source).toContain('p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2');
+    expect(source).toContain('p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer');
     expect(styles).not.toContain('scrollbar-width: none;');
     expect(styles).not.toContain('.noa-sidebar-scroll::-webkit-scrollbar');
   });
@@ -104,7 +104,7 @@ describe('sidebar search result layout', () => {
   it('marks multi-selected rows without shifting their icon column', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain("'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'");
+    expect(fileNode).toContain("? 'noa-ink-selected'");
     expect(fileNode).not.toContain("'bg-[#CC7D5E]/20 border-l-2 border-[#CC7D5E]'");
   });
 

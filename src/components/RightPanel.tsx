@@ -1156,9 +1156,9 @@ function GraphFilterPanel({
                           ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.65)] hover:bg-[rgba(249,249,247,0.1)]'
                           : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:bg-[rgba(45,45,43,0.09)]'
                     }`}
-                    // Accent tint, not a solid fill, so the colour-legend dot stays readable.
+                    // An ink wash, not a solid fill, so the colour-legend dot stays readable.
                     style={active
-                      ? { background: 'color-mix(in srgb, var(--accent-color, #CC7D5E) 18%, transparent)', color: isDark ? '#F9F9F7' : '#2D2D2B', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #CC7D5E) 55%, transparent)' }
+                      ? { background: 'color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, transparent)', color: isDark ? '#F9F9F7' : '#2D2D2B', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-primary, #2D2D2B) 20%, transparent)' }
                       : undefined}
                   >
                     {/* Same palette and order as GraphView's node fill. */}

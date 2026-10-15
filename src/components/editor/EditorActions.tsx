@@ -76,8 +76,8 @@ export function EditorActions({
           onClick={() => setMenuOpen((v) => !v)}
           className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
             menuOpen || isHistoryOpen
-              ? 'text-[#CC7D5E] bg-[#CC7D5E]/15'
-              : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[#CC7D5E]`
+              ? 'noa-ink-selected'
+              : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[var(--text-primary,#2D2D2B)]`
           }`}
           title="More actions"
           aria-label="More actions"

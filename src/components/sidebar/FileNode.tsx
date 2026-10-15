@@ -179,7 +179,7 @@ export const FileNode = React.memo(({
             : isDropTarget
               ? 'noa-sidebar-drop-row'
               : isSelected
-                ? 'bg-[#CC7D5E]/20 shadow-[inset_2px_0_0_#CC7D5E]'
+                ? 'noa-ink-selected'
                 : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{

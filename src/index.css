@@ -186,7 +186,7 @@ body {
   background-color: #3D3D3B;
 }
 .noa-graph-control-button:hover {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 22%, transparent);
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
 }
 
 /* Sidebar is a plane: separated from the editor by a tiny background step only (same hue, so it reads as depth). */
@@ -791,8 +791,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-tag-count { color: var(--text-secondary, #7B7974); }
 .noa-tag-muted { color: color-mix(in srgb, var(--text-primary, #2D2D2B) 45%, transparent); }
 .noa-tag-similar {
-  color: var(--accent-color, #CC7D5E);
-  background: color-mix(in srgb, var(--accent-color, #CC7D5E) 12%, transparent);
+  color: var(--text-secondary, #7B7974);
+  background: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
 }
 /* Filter field: a raised card (surface + hairline + soft drop) so it reads as an input, not a stripe. */
 .noa-tag-filter {
@@ -824,16 +824,17 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 }
 .noa-tag-filter input::placeholder { color: color-mix(in srgb, var(--text-primary, #2D2D2B) 40%, transparent); }
 .noa-tag-icon-button { color: color-mix(in srgb, var(--text-primary, #2D2D2B) 45%, transparent); transition: background-color 120ms ease, color 120ms ease; }
-.noa-tag-icon-button:hover { background: color-mix(in srgb, var(--text-primary, #2D2D2B) 7%, transparent); color: var(--text-primary, #2D2D2B); }
+.noa-tag-icon-button:hover { background: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent); color: var(--text-primary, #2D2D2B); }
 [data-theme="dark"] .noa-tag-row { --tag-fg: #C3C2B7; }
 
 /* Active (filtering on this tag): accent wash; theme-qualified so it wins over the dark base rule. */
+/* One ink scale for state washes: 5% hover, 10% selected or pressed, 20% for a ring. The accent stays on text and links. */
+.noa-ink-selected,
 .noa-tag-row[data-active="true"],
 [data-theme="dark"] .noa-tag-row[data-active="true"] {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 13%, transparent);
-  color: var(--accent-color, #CC7D5E);
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, transparent);
+  color: var(--text-primary, #2D2D2B);
 }
-.noa-tag-row[data-active="true"] .noa-tag-count { color: inherit; opacity: 0.7; }
 
 /* Calendar presets: the settings SegmentedControl look (shared track, same pill), but nothing may be selected. */
 .noa-segment {
@@ -947,7 +948,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 
 /* Property URL values: a tint on hover is the only cue that the value is a link. */
 .noa-property-link:hover {
-  background-color: color-mix(in srgb, var(--accent-color, #CC7D5E) 14%, transparent);
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
 }
 
 /* ── List markers: typography's default grays wash out on cream; pin to body text colour per theme. */

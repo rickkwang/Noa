@@ -663,7 +663,7 @@ export default function Sidebar({
                   <div
                     key={result.note.id}
                     data-testid="search-result"
-                    className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer border-l-2 ${activeNoteId === result.note.id ? 'bg-[#CC7D5E]/10 border-l-[#CC7D5E]' : 'border-l-transparent noa-sidebar-hover-surface-subtle'} transition-colors`}
+                    className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer ${activeNoteId === result.note.id ? 'noa-ink-selected' : 'noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
                     <div className="font-ui text-sm text-[#2D2D2B] mb-1 flex items-center">
@@ -678,7 +678,7 @@ export default function Sidebar({
                     {result.note.tags && result.note.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {result.note.tags.map(tag => (
-                          <span key={tag} className="text-micro font-ui text-[#CC7D5E] bg-[#CC7D5E]/10 px-1">
+                          <span key={tag} className="noa-tag-similar rounded-sm px-1 text-micro font-ui">
                             #{tag}
                           </span>
                         ))}
