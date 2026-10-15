@@ -486,7 +486,7 @@ function getSnippet(content: string, title: string) {
     return (
       <span>
         ...{match[1]}
-        <span className="text-[#CC7D5E] px-0.5 rounded-sm">{match[2].slice(2, -2)}</span>
+        <span className="text-[var(--text-primary,#2D2D2B)]">{match[2].slice(2, -2)}</span>
         {match[3]}...
       </span>
     );
@@ -1106,38 +1106,27 @@ export const PreviewPane = React.memo(function PreviewPane({
         // item itself: auto cross-axis margins cancel `align-self: stretch`,
         // which would collapse the item to fit-content.
         <div className="mt-24 w-full">
-          <div className="pt-4 font-ui" style={{ borderTop: '1px dashed var(--divider-subtle, #E6E2DA)', ...contentMaxWidthStyle }}>
-            <h3 className="text-micro mb-3 uppercase tracking-widest flex items-center gap-1.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.35)' }}>
-              <span>{backlinks.length}</span>
-              <span>Linked Mentions</span>
+          {/* A rail-style card: hairline ring, a 26px header, and rows that take an ink wash on hover. */}
+          <section className="noa-rail-card rounded-[10px] py-2 font-ui" style={contentMaxWidthStyle}>
+            <h3 className="flex h-[26px] items-center gap-1.5 px-3 text-xs leading-[15px] font-[500] text-[var(--text-primary,#2D2D2B)]">
+              Linked mentions
+              <span className="noa-rail-muted font-normal tabular-nums">{backlinks.length}</span>
             </h3>
-            <div className="space-y-1.5">
+            <ul className="flex flex-col px-1">
               {backlinks.map((backlink) => (
-                <div
-                  key={backlink.id}
-                  className="noa-ambient-panel rounded-panel px-3 py-2 cursor-pointer transition-colors group"
-                  style={{
-                    // The ambient shadow already draws the card's edge, so the
-                    // hairline only needs to keep it from dissolving into the
-                    // page — half the divider weight is enough.
-                    border: '1px solid color-mix(in srgb, var(--divider-subtle, #E6E2DA) 50%, transparent)',
-                    // The sidebar's surface tone, so the card reads as its own
-                    // material against the page. Opaque either way, so the
-                    // ambient shadow has something to sit on.
-                    backgroundColor: 'var(--bg-sidebar, #F4F4F2)',
-                  }}
-                  onClick={() => onNavigateToNoteById(backlink.id)}
-                >
-                  <div className="text-xs font-bold transition-colors group-hover:text-[#CC7D5E]" style={{ color: isDark ? 'rgba(249,249,247,0.55)' : 'rgba(45,45,43,0.65)' }}>
-                    {backlink.title}
-                  </div>
-                  <div className="text-micro leading-relaxed break-words mt-0.5" style={{ color: isDark ? 'rgba(249,249,247,0.3)' : 'rgba(45,45,43,0.4)' }}>
-                    {getSnippet(backlink.content, note.title)}
-                  </div>
-                </div>
+                <li key={backlink.id}>
+                  <button
+                    type="button"
+                    className="noa-backlink-row flex w-full flex-col rounded-md px-2 py-1.5 text-left"
+                    onClick={() => onNavigateToNoteById(backlink.id)}
+                  >
+                    <span className="truncate text-body leading-[19px] text-[var(--text-primary,#2D2D2B)]">{backlink.title}</span>
+                    <span className="noa-rail-muted break-words text-xs leading-[15px]">{getSnippet(backlink.content, note.title)}</span>
+                  </button>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
         </div>
       )}
     </div>

@@ -1326,6 +1326,8 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-rail-muted {
   color: var(--text-secondary, #7B7974);
 }
+.noa-backlink-row { transition: background-color 60ms var(--ease-out); }
+.noa-backlink-row:hover { background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent); }
 /* The rail over the editor while the right panel is open: one floating panel, its cards flat and ruled apart. */
 .noa-rail-overlay {
   background-color: var(--bg-primary, #FCFCFB);
