@@ -8,7 +8,7 @@ describe('tasks panel information hierarchy', () => {
   it('keeps the completed count compact while exposing its full meaning to assistive technology', async () => {
     const source = await readFile(tasksPanelPath, 'utf8');
 
-    expect(source).toContain('aria-label={`${completedTasks.length} completed of ${total} tasks`}');
+    expect(source).toContain('aria-label={`${doneCount} completed of ${total} tasks`}');
     expect(source).toContain('<span className={dimmer}>/</span>');
     expect(source).not.toContain('<span className={dimmer}>Completed</span>');
     expect(source).not.toContain('<span className={dimmer}>Total</span>');
@@ -36,7 +36,7 @@ describe('tasks panel information hierarchy', () => {
   it('keeps the completed section label unruled', async () => {
     const source = await readFile(tasksPanelPath, 'utf8');
 
-    const completedSection = source.slice(source.indexOf('Completed section'), source.indexOf('completedExpanded &&'));
+    const completedSection = source.slice(source.indexOf('Completed section'), source.indexOf('inert='));
     expect(completedSection).not.toContain('flex-1 h-px');
   });
 

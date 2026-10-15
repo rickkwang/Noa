@@ -735,6 +735,20 @@ test('image viewer zooms around the pointer, ignores sub-4px jitter, and closes 
   await expect(viewer).toHaveCount(0);
 });
 
+test('a checked task holds its place, done, before settling into Completed', async ({ page }) => {
+  const marker = `settle-${Date.now()}`;
+  await page.goto('/');
+  await createNewNote(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`- [ ] ${marker}`);
+  const pane = page.locator('[data-pane="tasks"]');
+  const row = pane.locator('.group', { hasText: marker });
+  await row.getByRole('button', { name: 'Complete task' }).click();
+  await expect(row.getByRole('button', { name: 'Reopen task' })).toBeVisible();
+  await expect(pane.getByRole('button', { name: /completed$/ })).toHaveCount(0);
+  await expect(pane.getByRole('button', { name: '1 completed' })).toBeVisible({ timeout: 3000 });
+});
+
 test('jumping to a task flashes the line it lands on, then clears', async ({ page }) => {
   const marker = `landme-${Date.now()}`;
   await page.goto('/');
