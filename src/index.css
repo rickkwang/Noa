@@ -1323,6 +1323,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-rail-muted {
   color: var(--text-secondary, #7B7974);
 }
+/* While a card is being dragged, nothing inside the rail answers the pointer: rows passed over don't light up. The drag
+   itself listens on window, so it doesn't need these targets. */
+[data-note-rail][data-dragging="true"] .noa-rail-card * { pointer-events: none; }
+[data-rail-grabbing="true"], [data-rail-grabbing="true"] * { cursor: grabbing !important; }
 .noa-backlink-row { transition: background-color 60ms var(--ease-out); }
 .noa-backlink-row:hover { background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent); }
 /* The rail over the editor while the right panel is open: one floating panel, its cards flat and ruled apart. */
@@ -1332,7 +1336,9 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: 0 2px 4px rgba(11, 11, 11, 0.07), 0 6px 16px rgba(11, 11, 11, 0.08);
 }
 [data-theme="dark"] .noa-rail-overlay { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35); }
-.noa-rail-overlay .noa-rail-card { box-shadow: none; border-radius: 0; }
+/* Each later card keeps its 10px corners under a top-only rule, so the rule curves down at both ends like a tab
+   edge instead of running straight across. */
+.noa-rail-overlay .noa-rail-card { box-shadow: none; }
 .noa-rail-overlay .noa-rail-card + .noa-rail-card { border-top: 1px solid var(--divider-subtle); }
 
 /* Rail calendar. Neutral ink throughout, as in the rest of the rail: washes for today, the range and hover,

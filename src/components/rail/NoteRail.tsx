@@ -147,6 +147,7 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
       document.body.style.removeProperty('user-select');
+      delete document.documentElement.dataset.railGrabbing;
       window.removeEventListener('keydown', onKey, true);
       if (!commit) setOrder(startOrder);
       else if (current !== startOrder) lsSetJson(STORAGE_KEYS.NOTE_RAIL_ORDER, current);
@@ -163,6 +164,8 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
     // On window, not the grip: a swap moves the held card's DOM node, which drops any pointer capture on it.
     event.preventDefault();
     document.body.style.userSelect = 'none';
+    // Every element's own cursor (the editor's text cursor, buttons) would override one set on body.
+    document.documentElement.dataset.railGrabbing = 'true';
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
@@ -215,16 +218,19 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
       aria-label="Calendar and tags"
       data-note-rail="true"
       data-overlay={overlay || undefined}
+      data-dragging={drag ? 'true' : undefined}
       // The first card's top edge lines up with the top of the toolbar icons' drawn strokes (the glyphs sit ~2px
       // inside their boxes). The card covers the toolbar's line where they meet.
       // The overlay floats: in a narrow window it reaches past the editor, over the sidebar's divider (z-30).
-      className={`absolute top-2 flex flex-col ${overlay ? 'bottom-2 z-[31]' : 'bottom-0 z-20'}`}
+      // The overlay's box only bounds the panel: it lets clicks through (so the editor below it still counts as
+      // "outside"), and the panel takes its content's height up to the window's bottom inset.
+      className={`absolute top-2 flex flex-col ${overlay ? 'pointer-events-none bottom-2 z-[31]' : 'bottom-0 z-20'}`}
       style={{ right: RAIL_RIGHT, width: RAIL_WIDTH }}
     >
       {overlay ? (
         // The panel and its scroller are separate elements: the edge fade is a mask, which would also erase the
         // panel's border and shadow.
-        <div className="noa-rail-overlay flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px]">
+        <div className="noa-rail-overlay pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-[10px]">
           <div ref={fadeRef} className="noa-edge-fade-y flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:none]">
             {order.map(id => cards[id])}
           </div>
