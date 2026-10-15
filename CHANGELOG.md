@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.30] - 2026-10-15
+
+### Added
+- The sidebar has a search field at its top, and Cmd+F opens a collapsed sidebar first.
+- Back and forward buttons beside the sidebar toggle, plus Cmd+[ and Cmd+] (Alt+Left/Right elsewhere), step through opened notes.
+
+### Changed
+- The titlebar buttons show only a hover block, and the sidebar toggle reads Hide or Show sidebar.
+
+### Fixed
+- Right-panel cards reorder without moving their nodes.
+- The note rail overlay fits its content, with curved rules and quieter drags.
+
 ## [1.0.29] - 2026-10-15
 
 ### Added
