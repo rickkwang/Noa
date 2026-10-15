@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, getBacklinks, nextAvailableTitle, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, splitImageSize, tokenizeInlineRefs } from '../../src/lib/noteUtils';
+import { buildLinkIndex, computeTopologySignature, extractLinks, extractTags, findMentionLine, getBacklinks, nextAvailableTitle, normalizeLinkKey, recomputeLinkRefsForNotes, resolveLinkTarget, sliceHeadingSection, splitImageSize, tokenizeInlineRefs } from '../../src/lib/noteUtils';
 import { Note } from '../../src/types';
 
 const note = (overrides: Partial<Note>): Note => ({
@@ -370,5 +370,24 @@ describe('nextAvailableTitle', () => {
     expect(nextAvailableTitle('New Note', [])).toBe('New Note');
     expect(nextAvailableTitle('New Note', ['new note'])).toBe('New Note 1');
     expect(nextAvailableTitle('New Note', ['New Note', 'New Note 1'])).toBe('New Note 2');
+  });
+});
+
+describe('findMentionLine', () => {
+  it('returns the first linking line and a readable excerpt', () => {
+    const content = '# Notes\n\nIntro text\n- [ ] read [[Target|the target]] soon\n> see [[Target]] again';
+    expect(findMentionLine(content, 'Target')).toEqual({ lineIndex: 3, excerpt: 'read the target soon' });
+  });
+
+  it('matches case-insensitively, through anchors and path-style targets', () => {
+    expect(findMentionLine('x\n## About [[folder/target#Setup]]', 'Target')).toEqual({ lineIndex: 1, excerpt: 'About folder/target' });
+  });
+
+  it('shows markdown links by their text', () => {
+    expect(findMentionLine('see [the target](Target.md) here', 'Target')).toEqual({ lineIndex: 0, excerpt: 'see the target here' });
+  });
+
+  it('ignores code spans and returns null with no link', () => {
+    expect(findMentionLine('use `[[Target]]` literally', 'Target')).toBeNull();
   });
 });

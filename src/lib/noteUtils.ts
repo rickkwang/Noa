@@ -372,6 +372,33 @@ export const getBacklinks = (activeNote: Note | undefined, notes: Note[]): Note[
   );
 };
 
+/**
+ * The first line of `content` that links to `title`, for a backlink's context: its index into
+ * content.split('\n') (the editor's line-jump unit) and the line as a reader sees it — list, quote and heading
+ * markers dropped, wikilinks shown by their alias or target. A path-style target ("folder/Title") matches on
+ * its last segment, the same leniency resolution gives it.
+ */
+export function findMentionLine(content: string, title: string): { lineIndex: number; excerpt: string } | null {
+  const want = normalizeLinkKey(title);
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.includes('[[') && !line.includes('](')) continue;
+    const hit = extractLinks(line).some((target) => {
+      const key = normalizeLinkKey(target);
+      return key === want || key.split('/').pop() === want;
+    });
+    if (!hit) continue;
+    const excerpt = line
+      .replace(/\[\[([^\]|]*?)(?:\\?\|([^\]]*))?\]\]/g, (_, target: string, alias?: string) => alias ?? target.split('#')[0])
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/^\s*(?:>\s*)*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)?/, '')
+      .trim();
+    return { lineIndex: i, excerpt };
+  }
+  return null;
+}
+
 /** Unique title: "New Note", "New Note 1", "New Note 2"… (case-insensitive, like macOS filenames). */
 export function nextAvailableTitle(base: string, taken: string[]): string {
   const used = new Set(taken.map((title) => title.toLowerCase()));

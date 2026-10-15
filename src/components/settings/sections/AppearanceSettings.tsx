@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveFontFamily } from '../../../lib/fontFamily';
 import { AppSettings } from '../../../types';
 import FontPicker from '../FontPicker';
 import SegmentedControl from '../SegmentedControl';
@@ -22,6 +23,13 @@ const SCENE_OPTIONS = [
   { value: 'island', label: 'Island' },
   { value: 'desk', label: 'Desk' },
 ] as const;
+
+// Steps that read as distinct sizes; 16 is the default. A saved size off this list (older builds allowed any
+// 10–24) is shown as its own segment, so it stays visible and re-selectable instead of silently matching nothing.
+const FONT_SIZE_PRESETS = [12, 13, 14, 15, 16, 17];
+
+const rangeFill = (value: number, min: number, max: number) =>
+  ({ '--noa-range-fill': `${((value - min) / (max - min)) * 100}%` }) as React.CSSProperties;
 
 export default function AppearanceSettings({ settings, updateSettings }: AppearanceSettingsProps) {
   return (
@@ -73,19 +81,12 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
           />
         </SettingItem>
         <SettingItem label="Font Size" description="Base font size for the editor.">
-          <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2B]/70">{settings.editor.fontSize}px</span>
-            <input
-              type="range"
-              min="10"
-              max="24"
-              value={settings.editor.fontSize}
-              aria-label="Font size"
-              aria-valuetext={`${settings.editor.fontSize}px`}
-              onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: parseInt(e.target.value, 10) } }))}
-              className="w-32 accent-[#CC7D5E]"
-            />
-          </div>
+          <SegmentedControl
+            ariaLabel="Font size"
+            value={String(settings.editor.fontSize)}
+            options={[...new Set([...FONT_SIZE_PRESETS, settings.editor.fontSize])].sort((a, b) => a - b).map((size) => ({ value: String(size), label: String(size) }))}
+            onChange={(value) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: Number(value) } }))}
+          />
         </SettingItem>
         <SettingItem label="Line Height" description="Spacing between lines of text.">
           <div className="flex items-center space-x-3">
@@ -99,10 +100,21 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               aria-label="Line height"
               aria-valuetext={String(settings.editor.lineHeight)}
               onChange={(e) => updateSettings(s => ({ ...s, editor: { ...s.editor, lineHeight: parseFloat(e.target.value) } }))}
-              className="w-32 accent-[#CC7D5E]"
+              className="noa-range w-32"
+              style={rangeFill(settings.editor.lineHeight, 1.2, 2.5)}
             />
           </div>
         </SettingItem>
+        {/* The editor's text at the chosen family, size and line height, so they're judged on text, not numbers. */}
+        <div
+          aria-hidden="true"
+          className="rounded-panel border-[0.5px] border-[var(--divider-subtle)] px-4 py-3 text-[var(--text-primary,#2D2D2B)] transition-[font-size,line-height] duration-200 ease-(--ease-out) motion-reduce:transition-none"
+          style={{ fontSize: settings.editor.fontSize, lineHeight: settings.editor.lineHeight, fontFamily: resolveFontFamily(settings.appearance.fontFamily) }}
+        >
+          Notes that link to each other slowly become a map of what you know.
+          <br />
+          彼此链接的笔记，会慢慢长成你知识的地图。
+        </div>
       </SettingSection>
 
       <SettingSection title="Reading">
@@ -118,7 +130,8 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
               aria-label="Maximum editor width"
               aria-valuetext={`${settings.appearance.maxWidth}px`}
               onChange={(e) => updateSettings(s => ({ ...s, appearance: { ...s.appearance, maxWidth: parseInt(e.target.value, 10) } }))}
-              className="w-32 accent-[#CC7D5E]"
+              className="noa-range w-32"
+              style={rangeFill(settings.appearance.maxWidth, 600, 1200)}
             />
           </div>
         </SettingItem>

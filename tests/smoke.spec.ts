@@ -749,6 +749,24 @@ test('a checked task holds its place, done, before settling into Completed', asy
   await expect(pane.getByRole('button', { name: '1 completed' })).toBeVisible({ timeout: 3000 });
 });
 
+test('a backlink shows the linking line and opens the source note at it', async ({ page }) => {
+  const marker = `mention-${Date.now()}`;
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Panels' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Backlinks', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await createNewNote(page);
+  await page.locator('.cm-content').last().click();
+  await page.keyboard.type(`intro\n\n${marker} [[Welcome to Noa]] here`);
+  await page.locator('.editor-tab', { hasText: 'Welcome to Noa' }).click();
+  const row = page.locator('[data-pane="backlinks"]').getByRole('button', { name: new RegExp(marker) });
+  await expect(row).toContainText(`${marker} Welcome to Noa here`);
+  await row.click();
+  const landed = page.locator('.cm-line.noa-landed-line');
+  await expect(landed).toHaveCount(1);
+  await expect(landed).toContainText(marker);
+});
+
 test('jumping to a task flashes the line it lands on, then clears', async ({ page }) => {
   const marker = `landme-${Date.now()}`;
   await page.goto('/');

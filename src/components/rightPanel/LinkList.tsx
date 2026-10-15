@@ -29,12 +29,15 @@ export function LinkSectionHeader({ label, count }: { label: string; count: numb
 export function LinkRow({
   title,
   subtitle,
+  snippet,
   icon: Icon,
   onClick,
   dimmed = false,
 }: {
   title: string;
   subtitle?: string;
+  /** The line the link sits on, shown under the title; the folder then rides beside the title instead. */
+  snippet?: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   onClick?: () => void;
   dimmed?: boolean;
@@ -52,10 +55,13 @@ export function LinkRow({
         <span className={`truncate text-body leading-5 ${titleColor}`}>
           {title}
         </span>
+        {snippet && subtitle && (
+          <span className={`ml-auto shrink-0 max-w-[40%] truncate text-caption ${subtitleColor}`}>{subtitle}</span>
+        )}
       </span>
       {/* Indented past the 13px icon + 6px gap so the second line hangs off the title. */}
-      {subtitle && (
-        <span className={`block truncate text-caption leading-4 pl-[19px] ${subtitleColor}`}>{subtitle}</span>
+      {(snippet || subtitle) && (
+        <span className={`block text-caption leading-4 pl-[19px] ${subtitleColor} ${snippet ? 'line-clamp-2 break-words' : 'truncate'}`}>{snippet || subtitle}</span>
       )}
     </>
   );
