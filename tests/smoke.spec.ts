@@ -1411,7 +1411,6 @@ test('audit: task markers stay in source but not preview or search snippets', as
   await ensurePreviewMode(page);
   await expect(page.locator('.prose').last()).toContainText('audit milk');
   await expect(page.locator('.prose').last()).not.toContainText('noa-task:');
-  await page.getByRole('button', { name: 'Search notes', exact: true }).click();
   await page.getByRole('textbox', { name: 'Search notes' }).fill('audit milk');
   await expect(page.getByTestId('search-result').first()).toContainText('audit milk');
   await expect(page.getByTestId('search-result').first()).not.toContainText('noa-task:');

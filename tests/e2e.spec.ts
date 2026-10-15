@@ -211,15 +211,13 @@ test('search returns a note by title and content', async ({ page }) => {
   await page.goto('/');
   // The default view is Live Preview, where the title is the editor's inline title rather than a heading.
   await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toBeVisible();
-  await page.getByTitle('Search notes').click();
-  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+  await page.getByRole('textbox', { name: 'Search notes' }).fill('"Welcome to Noa"');
   await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 });
 
 test('search result cards keep visible scroll chrome without changing horizontal rhythm', async ({ page }) => {
   await page.goto('/');
-  await page.getByTitle('Search notes').click();
-  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+  await page.getByRole('textbox', { name: 'Search notes' }).fill('"Welcome to Noa"');
 
   const resultRow = page.getByTestId('search-result').first();
   await expect(resultRow).toBeVisible();
@@ -244,8 +242,8 @@ test('search result cards keep visible scroll chrome without changing horizontal
   expect(layout.scrollbarGutter).toBe('stable');
   // A visible scrollbar; 'none' would hide the thumb.
   expect(layout.scrollbarWidth).toBe('auto');
-  expect(layout.left).toBe(6);
-  expect(layout.right).toBe(6);
+  expect(layout.left).toBe(8);
+  expect(layout.right).toBe(8);
   expect(layout.overflowPastScrollport).toBeLessThanOrEqual(0);
 });
 
@@ -260,8 +258,7 @@ test('clicking a search result opens that note', async ({ page }) => {
   await page.keyboard.type(`# ${marker}`);
   await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toHaveCount(0);
 
-  await page.getByTitle('Search notes').click();
-  await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
+  await page.getByRole('textbox', { name: 'Search notes' }).fill('"Welcome to Noa"');
   await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 
   // Click the result row, not the file tree (which also lists the note and would pass vacuously).
@@ -273,9 +270,8 @@ test('clicking a search result opens that note', async ({ page }) => {
 
 test('search survives focus leaving the search field', async ({ page }) => {
   await page.goto('/');
-  const searchInput = page.getByPlaceholder('Search notes, tags...');
+  const searchInput = page.getByRole('textbox', { name: 'Search notes' });
 
-  await page.getByTitle('Search notes').click();
   await searchInput.fill('Welcome');
   await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 
@@ -284,7 +280,8 @@ test('search survives focus leaving the search field', async ({ page }) => {
   await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 });
 
-test('expanding search never scrolls its own icon sideways', async ({ page }) => {
+test('expanding mobile search never scrolls its own icon sideways', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 720 });
   await page.goto('/');
   await expect(page.getByTitle('Search notes')).toBeVisible();
 
@@ -306,14 +303,15 @@ test('expanding search never scrolls its own icon sideways', async ({ page }) =>
   expect(await peakScroll).toBe(0);
 
   // Suppressing the scroll must not drop the field's focus.
-  await expect(page.getByPlaceholder('Search notes, tags...')).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Search notes' })).toBeFocused();
 });
 
-test('search icon closes an open search field on a second click', async ({ page }) => {
+test('mobile search icon closes an open search field on a second click', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 720 });
   await page.goto('/');
 
   const searchButton = page.getByTitle('Search notes');
-  const searchInput = page.getByPlaceholder('Search notes, tags...');
+  const searchInput = page.getByRole('textbox', { name: 'Search notes' });
   await searchButton.click();
   await searchInput.fill('Welcome');
   await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
@@ -326,29 +324,22 @@ test('search icon closes an open search field on a second click', async ({ page 
 test('tab strip occupies the title-bar row instead of leaving a second header row', async ({ page }) => {
   await page.goto('/');
 
-  const [tabBox, searchButtonBox, searchShellBox, sidebarToggleBox, sidebarActionBox, rightPanelTabBox] = await Promise.all([
+  const [tabBox, sidebarToggleBox, sidebarActionBox, rightPanelTabBox] = await Promise.all([
     page.locator('[data-tab-id]').first().boundingBox(),
-    page.getByTitle('Search notes').boundingBox(),
-    page.getByTitle('Search notes').locator('..').boundingBox(),
     page.getByRole('button', { name: 'Toggle sidebar' }).boundingBox(),
     page.getByTitle('New note').boundingBox(),
     page.getByRole('button', { name: 'Panels' }).boundingBox(),
   ]);
 
   expect(tabBox).not.toBeNull();
-  expect(searchButtonBox).not.toBeNull();
-  expect(searchShellBox).not.toBeNull();
   expect(sidebarToggleBox).not.toBeNull();
   expect(sidebarActionBox).not.toBeNull();
   expect(rightPanelTabBox).not.toBeNull();
-  // 26px tab pill centred on the same line as the 26px search shell.
-  expect(tabBox!.height - searchShellBox!.height).toBe(0);
-  expect(Math.abs((tabBox!.y + tabBox!.height / 2) - (searchShellBox!.y + searchShellBox!.height / 2))).toBeLessThanOrEqual(1);
-  expect(Math.abs((searchButtonBox!.y + searchButtonBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
-  expect(tabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
-  expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(searchShellBox!.y + 24);
-  // Panel menu shares the title-bar row with search.
-  expect(rightPanelTabBox!.y).toBeLessThanOrEqual(searchShellBox!.y + 4);
+  // The tab pill is centred on the same line as the sidebar toggle.
+  expect(Math.abs((tabBox!.y + tabBox!.height / 2) - (sidebarToggleBox!.y + sidebarToggleBox!.height / 2))).toBeLessThanOrEqual(1);
+  expect(sidebarActionBox!.y).toBeGreaterThanOrEqual(tabBox!.y + 24);
+  // Panel menu shares the title-bar row.
+  expect(rightPanelTabBox!.y).toBeLessThanOrEqual(tabBox!.y + 4);
 });
 
 test('right panel keeps Tasks as the penultimate tab', async ({ page }) => {
@@ -375,19 +366,15 @@ test('lifted title-bar tab controls opt out of the native drag region', async ({
   expect(await appRegion(page.getByRole('button', { name: 'New tab' }))).toBe('no-drag');
 });
 
-test('expanded desktop search does not cover the first tab when the sidebar is closed', async ({ page }) => {
+test('Cmd+F with the sidebar collapsed opens it and focuses its search field', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-  await page.getByRole('button', { name: 'Search notes' }).click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-  const [inputBox, tabBox] = await Promise.all([
-    page.getByRole('textbox', { name: 'Search notes' }).boundingBox(),
-    page.locator('[data-tab-id]').first().boundingBox(),
-  ]);
-  expect(inputBox).not.toBeNull();
-  expect(tabBox).not.toBeNull();
-  expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(tabBox!.x);
+  await page.keyboard.press('Meta+f');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('textbox', { name: 'Search notes' })).toBeFocused();
 });
 
 test('narrow desktop keeps the sidebar default stable on first pointer and keyboard resize', async ({ page }) => {
@@ -717,10 +704,10 @@ test('sidebar toggle stays clickable while a note lifts the tab strip over the t
       border: before.borderBottomWidth,
     };
   });
-  // Web build value; the desktop shell adds traffic-light clearance (147px).
-  expect(floor.marginLeft).toBe('69.5px');
-  expect(floor.left).toBe('-69.5px');
-  expect(floor.width).toBe('69.5px');
+  // Web build value; the desktop shell adds traffic-light clearance (169.5px).
+  expect(floor.marginLeft).toBe('92px');
+  expect(floor.left).toBe('-92px');
+  expect(floor.width).toBe('92px');
   expect(floor.border).toBe('0px');
 
   // Direct hit-test at the toggle's center: the topmost element must be the
@@ -1181,9 +1168,10 @@ test('expanded mobile search keeps its clear button above the title-bar actions'
 
 test('Cmd+F exits focus mode and focuses the mounted search input', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Search notes' })).toBeVisible();
+  // The titlebar only renders outside focus mode.
+  await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   await page.keyboard.press('Meta+Shift+f');
-  await expect(page.getByRole('button', { name: 'Search notes' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toHaveCount(0);
 
   await page.keyboard.press('Meta+f');
   const searchInput = page.getByRole('textbox', { name: 'Search notes' });
@@ -1367,8 +1355,7 @@ test('app chrome prevents accidental text selection while content remains select
   await expect(page.locator('.noa-app-shell')).toBeVisible();
   expect(await userSelect(page.locator('.noa-app-shell'))).toBe('none');
   expect(await userSelect(page.getByTitle('Double-click to rename'))).toBe('none');
-  await page.getByTitle('Search notes').click();
-  expect(await userSelect(page.getByPlaceholder('Search notes, tags...'))).toBe('text');
+  expect(await userSelect(page.getByRole('textbox', { name: 'Search notes' }))).toBe('text');
   const editorContent = page.locator('.cm-content').last();
   expect(await userSelect(editorContent)).toBe('text');
   await editorContent.evaluate((element) => element.setAttribute('contenteditable', 'false'));
@@ -1503,7 +1490,7 @@ test('restored-open right panel waits until the post-load animation frame', asyn
   });
 
   await page.goto('/');
-  await expect(page.getByTitle('Search notes')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   await expect(page.locator('[data-noa-right-panel-content]')).toHaveCount(0);
 
   await page.evaluate(() => {
