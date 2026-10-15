@@ -431,8 +431,15 @@ export default function Sidebar({
     const scroller = treeScrollRef.current;
     const root = sidebarRootRef.current;
     if (!scroller || !root) return;
-    const fade = attachEdgeFade(scroller, { target: root });
-    return () => fade.dispose();
+    const fade = attachEdgeFade(scroller, { target: root, end: true });
+    // The bottom edge moves when folders expand/collapse or the window resizes, with no scroll event.
+    const observer = new ResizeObserver(fade.refresh);
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => {
+      observer.disconnect();
+      fade.dispose();
+    };
   }, []);
 
   return (

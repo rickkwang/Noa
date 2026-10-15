@@ -15,7 +15,7 @@ const REMOVED_BUNDLED_FONTS = new Set([
 
 export const defaultSettings: AppSettings = {
   editor: {
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 1.5,
   },
   appearance: {

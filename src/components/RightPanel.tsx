@@ -1066,7 +1066,7 @@ function GraphFilterPanel({
         {/* One raised thumb slides between halves so the choice visibly moves; far position = thumb width + gap. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-3px)] rounded transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-3px)] rounded transition-transform duration-200 ease-(--ease-snap) motion-reduce:transition-none"
           style={{
             transform: options.findIndex(([option]) => option === value) === 1 ? 'translateX(calc(100% + 2px))' : 'none',
             background: isDark ? '#41413F' : '#FFFFFF',

@@ -87,12 +87,14 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
   const restRows = rows.slice(cutoff);
   const restTagCount = restRows.filter(r => r.depth === 0).length;
 
-  const renderRow = ({ node, depth, isOpen }: { node: TagNode; depth: number; isOpen: boolean }) => {
+  const renderRow = ({ node, depth, isOpen }: { node: TagNode; depth: number; isOpen: boolean }, index: number) => {
     const hasChildren = node.children.length > 0;
     const isActive = node.isTag && activeTags.has(node.path.toLowerCase());
     const shown = node.isTag ? node.ownCount : node.count;
+    // Only the list opening cascades; rows revealed by expanding or filtering appear without a positional delay.
+    const stagger = depth === 0 && !filter;
     return (
-      <li key={node.path}>
+      <li key={node.path} className="noa-row-in" style={{ '--noa-i': stagger ? index : 0 } as React.CSSProperties}>
         <div
           data-active={isActive}
           style={{ paddingLeft: 4 + depth * 14 }}

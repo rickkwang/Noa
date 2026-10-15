@@ -32,6 +32,7 @@
    since inline styles read var(--ease-out) and var(--dur-*) directly. */
 @theme static {
   --ease-out: cubic-bezier(.165, .84, .44, 1);
+  --ease-snap: cubic-bezier(.32, .72, 0, 1);
   --default-transition-timing-function: var(--ease-out);
   --default-transition-duration: 120ms;
   --dur-fast: 60ms;
@@ -432,6 +433,20 @@ body {
   animation: noa-hint-in 400ms cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
+/* List entry: rows rise 4px into place, staggered 30ms by --noa-i (capped at 8 so long lists don't trail). */
+.noa-row-in {
+  animation: noa-row-in var(--dur-base) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--noa-i, 0), 8) * 30ms);
+}
+
+@keyframes noa-row-in {
+  0% { opacity: 0; transform: translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noa-row-in { animation: none; }
+}
+
 @keyframes noa-hint-in {
   0% { opacity: 0.4; transform: translateY(1px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -441,7 +456,7 @@ body {
    into the viewer; old/new don't crossfade, and the thumbnail snapshot is hidden on the way in. */
 ::view-transition-group(noa-image-preview) {
   animation-duration: 350ms;
-  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-timing-function: var(--ease-snap);
 }
 html.noa-vt-image-closing::view-transition-group(noa-image-preview) {
   animation-duration: 250ms;
@@ -1040,7 +1055,12 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
     rgb(0 0 0 / 0.16) calc(var(--noa-fade-top, 0) * 4px),
     rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 8px),
     rgb(0 0 0 / 0.84) calc(var(--noa-fade-top, 0) * 12px),
-    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 16px);
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 16px),
+    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-bottom, 0) * 16px),
+    rgb(0 0 0 / 0.84) calc(100% - var(--noa-fade-bottom, 0) * 12px),
+    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-bottom, 0) * 8px),
+    rgb(0 0 0 / 0.16) calc(100% - var(--noa-fade-bottom, 0) * 4px),
+    rgb(0 0 0 / 0) 100%;
   -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   -webkit-mask-size: 100% 100%, 6px 100%;
