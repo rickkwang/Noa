@@ -588,26 +588,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
-/* Semantic sidebar states, opted into explicitly. Hover rules stay !important to beat base-surface utilities. */
+/* Semantic sidebar states, opted into explicitly. The shared ink scale: 10% for the active row, 5% on hover;
+   text-primary flips with the theme, so one rule serves both. Hover rules stay !important to beat base-surface utilities. */
 .noa-sidebar-active-surface {
-  background-color: var(--bg-sidebar-raised, #ECEBE8) !important;
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, transparent) !important;
 }
-.noa-sidebar-hover-surface:hover {
-  background-color: var(--bg-sidebar-raised, #ECEBE8) !important;
-}
+.noa-sidebar-hover-surface:hover,
 .noa-sidebar-hover-surface-subtle:hover {
-  background-color: color-mix(in srgb, var(--bg-sidebar-raised, #ECEBE8) 55%, transparent) !important;
-}
-
-/* Dark variants: theme-qualified selectors out-specify the light ones regardless of order. */
-[data-theme="dark"] .noa-sidebar-active-surface {
-  background-color: rgba(249, 249, 247, 0.08) !important;
-}
-[data-theme="dark"] .noa-sidebar-hover-surface:hover {
-  background-color: rgba(249, 249, 247, 0.06) !important;
-}
-[data-theme="dark"] .noa-sidebar-hover-surface-subtle:hover {
-  background-color: rgba(249, 249, 247, 0.04) !important;
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent) !important;
 }
 
 /* Blur stays under the 8px container padding so the parent's overflow-hidden doesn't clip it. */
@@ -621,6 +609,10 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .noa-floating-panel {
   box-shadow: var(--shadow-floating);
 }
+/* Menus and popovers: 12px corners and, in light mode, a white sheet that lifts off the page. !important because
+   ThemeInjector rewrites their bg-[#F9F9F7] to the page surface in both themes. */
+.noa-floating-panel.rounded-panel { border-radius: 12px; }
+:root:not([data-theme="dark"]) .noa-floating-panel.rounded-panel { background-color: #FFFFFF !important; }
 .noa-floating-panel.rounded-dialog {
   box-shadow: var(--shadow-dialog);
 }
@@ -785,7 +777,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   color: var(--tag-fg);
   transition: background-color 120ms ease, color 120ms ease;
 }
-.noa-tag-row:hover { background-color: var(--bg-sidebar-raised, #ECEBE8); color: var(--text-primary, #2D2D2B); }
+.noa-tag-row:hover { background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent); color: var(--text-primary, #2D2D2B); }
 .noa-tag-group { font-weight: 500; }
 .noa-tag-bar { background: rgba(137, 135, 129, 0.15); }
 .noa-tag-count { color: var(--text-secondary, #7B7974); }

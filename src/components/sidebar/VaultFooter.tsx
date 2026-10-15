@@ -94,7 +94,7 @@ export function VaultFooter({
 
   const label = workspaceName.trim() || 'Workspace';
   const status = syncLabel(syncStatus, lastSyncAt);
-  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2.5 w-full rounded-md px-2 h-7 shrink-0 text-left text-body font-ui text-[var(--text-primary,#2D2D2B)] transition-colors disabled:opacity-40 disabled:pointer-events-none';
+  const itemClass = 'noa-sidebar-hover-surface flex items-center gap-2.5 w-full rounded-lg px-2.5 h-8 shrink-0 text-left text-body font-ui text-[var(--text-primary,#2D2D2B)] transition-colors disabled:opacity-40 disabled:pointer-events-none';
 
   const run = (action?: () => void) => {
     setIsOpen(false);
@@ -139,22 +139,22 @@ export function VaultFooter({
           ) : (
             <>
               {/* Workspace and vault coexist: the workspace is always present, the vault is an optional mirrored folder. */}
-              <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
+              <div className="flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
                 <Check size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
                 <span className="truncate">{label}</span>
                 <span className="ml-auto shrink-0 text-xs text-[var(--sidebar-text-muted,#7B7974)]">Workspace</span>
               </div>
 
-              <div className="my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
+              <div className="mx-2.5 my-1 h-px bg-[var(--divider-subtle)]" />
 
               {vaultName ? (
                 <>
-                  <div className="px-2 pt-0.5 pb-1.5">
-                    <div className="flex items-center gap-2 text-xs font-ui text-[#2D2D2B]">
+                  <div className="px-2.5 pt-1.5 pb-1.5">
+                    <div className="flex items-center gap-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
                       <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
                       <span className="truncate">{vaultName}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 pl-[21px] text-micro font-ui text-[var(--sidebar-text-muted,#7B7974)]">
+                    <div className="mt-1 flex items-center gap-1.5 pl-[23px] text-xs font-ui text-[var(--sidebar-text-muted,#7B7974)]">
                       <span className="shrink-0">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle ${DOT_CLASS[syncStatus]}`} />
                       </span>
@@ -182,7 +182,7 @@ export function VaultFooter({
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-ui text-[var(--sidebar-text-muted,#7B7974)]">
+                  <div className="flex h-8 items-center gap-2.5 px-2.5 text-body font-ui text-[var(--sidebar-text-muted,#7B7974)]">
                     <Unlink size={13} className="shrink-0" />
                     <span className="truncate">No vault connected</span>
                   </div>
@@ -195,7 +195,7 @@ export function VaultFooter({
                 </>
               )}
 
-              <div className="my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
+              <div className="mx-2.5 my-1 h-px bg-[var(--divider-subtle)]" />
 
               <button role="menuitem" className={itemClass} onClick={() => run(onOpenWorkspaceSettings)}>
                 <Settings size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />

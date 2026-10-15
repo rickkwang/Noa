@@ -615,14 +615,14 @@ export default function Sidebar({
         >
           <button
             role="menuitem"
-            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]"
+            className="noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[#2D2D2B]"
             onClick={() => { setBlankMenu(null); onCreateNote(blankCreateTarget); }}
           >
             New note
           </button>
           <button
             role="menuitem"
-            className="noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]"
+            className="noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[#2D2D2B]"
             onClick={() => { setBlankMenu(null); onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined); }}
           >
             New folder

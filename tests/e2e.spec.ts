@@ -552,7 +552,8 @@ test('dark sidebar active rows use a restrained selection surface', async ({ pag
 
   const activeRow = page.locator('.noa-sidebar-active-surface').first();
   await expect(activeRow).toBeVisible();
-  await expect(activeRow).toHaveCSS('background-color', 'rgba(249, 249, 247, 0.08)');
+  // The shared ink scale: 10% of the dark theme's light text, not a fixed tint.
+  await expect(activeRow).toHaveCSS('background-color', /^color\(srgb 0\.94\d* 0\.93\d* 0\.92\d* \/ 0\.1\)$/);
 });
 
 test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing the editor right', async ({ page }) => {

@@ -89,9 +89,9 @@ describe('sidebar surface tokens', () => {
       readFile(calendarPath, 'utf8'),
     ]);
 
-    expect(css).toMatch(/\.noa-sidebar-active-surface\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
-    expect(css).toMatch(/\.noa-sidebar-hover-surface:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
-    expect(css).toMatch(/\.noa-sidebar-hover-surface-subtle:hover\s*\{[^}]*var\(--bg-sidebar-raised,\s*#ECEBE8\)/);
+    // One ink scale in both themes: the active row is a stronger wash than hover.
+    expect(css).toMatch(/\.noa-sidebar-active-surface\s*\{[^}]*var\(--text-primary, #2D2D2B\) 10%/);
+    expect(css).toMatch(/\.noa-sidebar-hover-surface:hover,\s*\.noa-sidebar-hover-surface-subtle:hover\s*\{[^}]*var\(--text-primary, #2D2D2B\) 5%/);
     expect(css).not.toContain('.noa-sidebar-surface .bg-\\[\\#EFEAE3\\]');
     expect(css).not.toContain('.noa-sidebar-surface .hover\\:bg-\\[\\#EFEAE3\\]');
 
@@ -102,15 +102,6 @@ describe('sidebar surface tokens', () => {
       expect(consumer).not.toMatch(/(?:hover:)?bg-\[#EFEAE3\](?:\/50)?/);
     }
 
-    const darkActive = css.match(
-      /\[data-theme="dark"\] \.noa-sidebar-active-surface\s*\{[^}]*rgba\(249,\s*249,\s*247,\s*([\d.]+)\)/,
-    );
-    const darkHover = css.match(
-      /\[data-theme="dark"\] \.noa-sidebar-hover-surface:hover\s*\{[^}]*rgba\(249,\s*249,\s*247,\s*([\d.]+)\)/,
-    );
-    expect(darkActive).not.toBeNull();
-    expect(darkHover).not.toBeNull();
-    expect(Number(darkActive![1])).toBeGreaterThan(Number(darkHover![1]));
   });
 
   it('gives the calendar clear today, active-note, and keyboard interaction states', async () => {

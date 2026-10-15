@@ -213,7 +213,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
         aria-controls={open ? listboxId : undefined}
         onClick={() => (open ? closePicker(false) : openPicker())}
         onKeyDown={onTriggerKeyDown}
-        className={`flex items-center max-w-full border border-[#2D2D2B] rounded-chip pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none relative hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] ${open ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'bg-[var(--bg-primary,#F9F9F7)]'}`}
+        className={`flex items-center max-w-full border border-[#2D2D2B] rounded-chip pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none relative hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] ${open ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'bg-[var(--bg-primary,#F9F9F7)]'}`}
       >
         <span className="min-w-0 truncate">{currentLabel}</span>
         <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
@@ -262,7 +262,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
                     // Select on click, not pointerdown, which would race the outside-click listener.
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => select(option.value)}
-                    className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : ''}`}
+                    className={`w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${isActive ? 'noa-ink-selected' : ''}`}
                     style={{ fontFamily: resolveFontFamily(option.value) }}
                   >
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>

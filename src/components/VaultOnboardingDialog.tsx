@@ -34,7 +34,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
           <button
             onClick={onDismiss}
             disabled={connecting}
-            className="h-8 rounded-lg px-3 text-body text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors disabled:opacity-50"
+            className="h-8 rounded-lg px-3 text-body text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors disabled:opacity-50"
           >
             Continue without a folder
           </button>

@@ -17,9 +17,9 @@ const SIZES: Record<SettingsButtonSize, string> = {
 
 const VARIANTS: Record<SettingsButtonVariant, string> = {
   primary: 'bg-[#CC7D5E] text-white border-[#2D2D2B] hover:opacity-90',
-  secondary: 'bg-[#F9F9F7] text-[#2D2D2B] border-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]',
+  secondary: 'bg-[#F9F9F7] text-[#2D2D2B] border-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]',
   // Transparent border (not none) keeps it the same height as its siblings.
-  ghost: 'bg-transparent text-[#2D2D2B]/70 border-transparent hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#2D2D2B]',
+  ghost: 'bg-transparent text-[#2D2D2B]/70 border-transparent hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#2D2D2B]',
   danger: 'bg-transparent text-[#C24444] border-[#C24444] hover:bg-[#C24444]/10',
   warning: 'bg-[#EC9A3C] text-white border-[#2D2D2B] hover:opacity-90',
 };

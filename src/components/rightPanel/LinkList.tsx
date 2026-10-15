@@ -41,9 +41,9 @@ export function LinkRow({
 }) {
   const titleColor = dimmed ? 'text-[var(--sidebar-text-muted,#7B7974)]' : 'text-[var(--text-primary,#2D2D2B)]';
   const subtitleColor = 'text-[var(--sidebar-text-muted,#7B7974)]';
-  // Matches the app-wide hover convention (--bg-sidebar-raised, as noa-sidebar-hover-surface uses).
+  // Matches the app-wide hover convention (a 5% ink wash, as noa-sidebar-hover-surface uses).
   // Hover only lifts the surface; the title keeps its colour.
-  const hover = onClick ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]' : '';
+  const hover = onClick ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : '';
 
   const body = (
     <>

@@ -143,8 +143,8 @@ function PaneCard({
   // 20px in a 28px row: the hover wash clears the card's top edge and rounded corner.
   const controlClass = `flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
   }`;
   return (
     <section
@@ -326,8 +326,8 @@ export default function RightPanel({
   // Mirrors PaneCard's own header controls.
   const graphToggleClass = `relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
   }`;
 
   // Once opened, the graph stays mounted while closed so its simulation and viewport survive.
@@ -651,9 +651,8 @@ export default function RightPanel({
                       setShowGraphGuide(false);
                       try { localStorage.setItem(STORAGE_KEYS.GRAPH_GUIDE_SEEN, '1'); } catch { /* quota exceeded */ }
                     }}
-                    // Same button as the storage notice's "Got it" (App.tsx), except the
-                    // hover wash: this card's light floor is already the sidebar-raised surface, the same
-                    // as the notice's hover:bg-[var(--bg-sidebar-raised,#ECEBE8)], so it would give no feedback here.
+                    // Same button as the storage notice's "Got it" (App.tsx), except the hover wash: this card's
+                    // light floor is already the sidebar-raised surface, so it takes the stronger divider tone.
                     className="mt-2 text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--divider-subtle)] transition-colors"
                   >
                     Got it
@@ -852,8 +851,8 @@ function GraphInfoPanel({
       title={isOpen ? 'Hide connections' : 'Show connections'}
       className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors ${
         isDark
-          ? 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#F9F9F7]'
-          : 'hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] hover:text-[#2D2D2B]'
+          ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#F9F9F7]'
+          : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#2D2D2B]'
       }`}
     >
       {isOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}

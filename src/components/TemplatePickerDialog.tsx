@@ -37,7 +37,7 @@ export default function TemplatePickerDialog({
                 }
                 onClose();
               }}
-              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]"
+              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
             >
               <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
               {t.content && (

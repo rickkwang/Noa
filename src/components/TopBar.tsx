@@ -170,7 +170,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 className={`noa-press flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${
                   isNoteRailOpen
                     ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_10%,transparent)] text-[var(--text-primary,#2D2D2B)]'
-                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]`
+                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
                 }`}
               >
                 <LayoutList size={16} />

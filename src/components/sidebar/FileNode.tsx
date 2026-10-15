@@ -87,7 +87,7 @@ export const FileNode = React.memo(({
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const menuItemClass = 'noa-sidebar-hover-surface flex h-7 w-full items-center rounded-md px-2 text-left text-body text-[#2D2D2B]';
+  const menuItemClass = 'noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[#2D2D2B]';
 
   useEffect(() => {
     setIsOpen(defaultOpen);

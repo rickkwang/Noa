@@ -1345,7 +1345,7 @@ export default function App() {
             <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
             <button
               onClick={clearSaveError}
-              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors noa-press rounded"
+              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press rounded"
             >
               Dismiss
             </button>
@@ -1371,7 +1371,7 @@ export default function App() {
               <button
                 disabled={syncStatus === 'syncing'}
                 onClick={needsReauth ? reconnect : retry}
-                className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
               </button>
@@ -1379,7 +1379,7 @@ export default function App() {
                 <button
                   disabled={syncStatus === 'syncing'}
                   onClick={() => { void handleDisconnectFolderAndDismissOnboarding().catch(() => {}); }}
-                  className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                  className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
                 >
                   Disconnect
                 </button>
@@ -1398,7 +1398,7 @@ export default function App() {
                 setShowStorageNotice(false);
                 try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
               }}
-              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] transition-colors"
+              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors"
             >
               Got it
             </button>
