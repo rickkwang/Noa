@@ -9,7 +9,7 @@ const rightPanelPath = fileURLToPath(new URL('../../src/components/RightPanel.ts
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 
 describe('sidebar search result layout', () => {
-  it('keeps sidebar scroll chrome without changing compact 6px search result spacing', async () => {
+  it('keeps sidebar scroll chrome and the search hit row markup', async () => {
     const [source, styles] = await Promise.all([
       readFile(sidebarPath, 'utf8'),
       readFile(indexCssPath, 'utf8'),
@@ -17,7 +17,7 @@ describe('sidebar search result layout', () => {
 
     expect(source).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
     expect(source).not.toContain('[scrollbar-gutter:stable]');
-    expect(source).toContain('p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer');
+    expect(source).toContain('noa-search-hit mx-2 rounded-lg px-3 py-2 cursor-pointer font-ui');
     expect(styles).not.toContain('scrollbar-width: none;');
     expect(styles).not.toContain('.noa-sidebar-scroll::-webkit-scrollbar');
   });
