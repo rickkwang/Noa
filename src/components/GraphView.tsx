@@ -1,5 +1,5 @@
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
-import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';
@@ -184,6 +184,9 @@ function nodeRadius(degree: number, nodeSize: number): number {
 const NO_GROUPS: GraphGroup[] = [];
 // Length of one time-lapse replay: notes appear in creation order across this span.
 const TIMELAPSE_MS = 4000;
+// Each note grows in over this span once its turn comes, rather than popping in at full size. The same entry
+// plays for nodes a filter change brings into view.
+const NODE_ENTER_MS = 450;
 // Past 1:1 the camera spreads the graph out much faster than it grows the
 // dots. A world-unit radius grows linearly with zoom, so a graph fitted to a
 // large area (an expanded card runs at 2-3x) turned into a field of 20px discs
@@ -255,6 +258,51 @@ const LABEL_FADE_SPAN = 0.4;
 const ANCHOR_LABEL_FADE_START = 0.45;
 const ANCHOR_LABEL_FADE_END = 0.6;
 
+// Labels are laid out per frame in screen space, highest priority first; one that would overlap a label
+// already placed is skipped, so dense clusters show their most connected names instead of a pile.
+const LABEL_MAX_SCREEN_WIDTH = 132;
+const LABEL_GAP_PX = 3;
+// Hover focus eases in and out over --dur-base rather than snapping.
+const HOVER_FADE_MS = 200;
+const HOVER_DIM_ALPHA = 0.08;
+// Link ink as a share of the text colour: resting, touching the hovered node, and dimmed away from it.
+const LINK_ALPHA = 0.22;
+const LINK_ALPHA_FOCUS = 0.65;
+const LINK_ALPHA_DIM = 0.05;
+// Stays clear of the card edge when following the open note into view.
+const FOLLOW_MARGIN_PX = 32;
+
+// A small overshoot for a node growing in, in the spirit of --ease-overshoot (cubic-bezier(.34,1.3,.64,1)).
+function easeOvershoot(t: number): number {
+  const c1 = 1.1;
+  const c3 = c1 + 1;
+  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+}
+
+// Matches --ease-out (cubic-bezier(.165,.84,.44,1)) closely enough for a 200ms fade.
+function easeOut(t: number): number {
+  return 1 - (1 - t) ** 4;
+}
+
+// Unresolved links are often paths ("folder/Note.md"); the last segment is the name a reader looks for.
+function displayName(node: GraphNode): string {
+  const name = node.name ?? '';
+  if (!node.ghost) return name;
+  return (name.split('/').pop() || name).replace(/\.md$/i, '');
+}
+
+function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (ctx.measureText(`${text.slice(0, mid)}…`).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${text.slice(0, lo).trimEnd()}…`;
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 }
@@ -289,8 +337,20 @@ export default function GraphView({
   const [canvasSize, setCanvasSize] = useState(() => getStableCanvasSize());
   const dimensionsRef = useRef(canvasSize);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  // null: nothing hidden. 0..1: the share of notes revealed so far in a time-lapse.
-  const [timelapse, setTimelapse] = useState<number | null>(null);
+  // Time-lapse start, or null. Read per frame from a ref so playback never re-renders React.
+  const timelapseStartRef = useRef<number | null>(null);
+  // id → when a node newly brought in by a rebuild started entering.
+  const enterAtRef = useRef(new Map<string, number>());
+  const frameNowRef = useRef(0);
+  // While an entry or time-lapse plays, force-graph must keep drawing even though the layout is still.
+  const [entryLive, setEntryLive] = useState(false);
+  const entryTimerRef = useRef(0);
+  const keepDrawing = useCallback((ms: number) => {
+    setEntryLive(true);
+    window.clearTimeout(entryTimerRef.current);
+    entryTimerRef.current = window.setTimeout(() => setEntryLive(false), ms + 50);
+  }, []);
+  useEffect(() => () => window.clearTimeout(entryTimerRef.current), []);
   // Read by fitView, which is memoised and must not depend on the slider.
   const nodeSizeRef = useRef(nodeSize);
   useEffect(() => {
@@ -506,8 +566,10 @@ export default function GraphView({
 
   // The card's own surface (RightPanel's PaneCard), not the page's.
   const bgColor   = themeSurfaces(isDark).card;
-  const linkColor = isDark ? '#8A8070' : '#9A9080';
   const textColor = isDark ? '#F9F9F7' : '#2D2D2B';
+  // Links are hairlines of the text ink, not a third hue; mutual links keep the accent.
+  const inkRgb = isDark ? '249,249,247' : '45,45,43';
+  const accentRgb = '204,125,94';
 
   // Accent is a fixed token — deliberately the same in both themes.
   const nodeColor = '#CC7D5E';
@@ -589,25 +651,37 @@ export default function GraphView({
   }, [hideIsolated, topologyKey, localDepth, localAnchorId, tagFilter, searchQuery, showUnresolved]);
 
   const { timelapseRank } = graphData;
+  // Ranks count real notes only (ghosts share their earliest neighbour's), so the run is spread over the
+  // highest rank, not the node count — dividing by the count let ghost-heavy graphs finish in the first instant.
+  const timelapseSpan = useMemo(() => {
+    let max = 0;
+    for (const rank of timelapseRank.values()) if (rank > max) max = rank;
+    return max + 1;
+  }, [timelapseRank]);
 
   // Replays the time-lapse on each animateKey bump. Reduced motion shows the full graph at once.
   useEffect(() => {
     if (!animateKey || prefersReducedMotion()) return;
-    let frame = 0;
-    const start = performance.now();
-    const step = (now: number) => {
-      const progress = (now - start) / TIMELAPSE_MS;
-      if (progress >= 1) {
-        setTimelapse(null);
-        return;
-      }
-      setTimelapse(progress);
-      frame = requestAnimationFrame(step);
-    };
-    setTimelapse(0);
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [animateKey]);
+    timelapseStartRef.current = performance.now();
+    keepDrawing(TIMELAPSE_MS);
+    const timer = window.setTimeout(() => { timelapseStartRef.current = null; }, TIMELAPSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [animateKey, keepDrawing]);
+
+  // 0 → 1 as a node enters: its time-lapse turn (notes in creation order, spread over the run) and any
+  // filter-driven entry, whichever is later.
+  const nodeReveal = (id: string): number => {
+    const now = frameNowRef.current;
+    let reveal = 1;
+    const start = timelapseStartRef.current;
+    if (start !== null) {
+      const turnAt = start + ((timelapseRank.get(id) ?? 0) / timelapseSpan) * (TIMELAPSE_MS - NODE_ENTER_MS);
+      reveal = Math.min(reveal, Math.max(0, Math.min(1, (now - turnAt) / NODE_ENTER_MS)));
+    }
+    const enterAt = enterAtRef.current.get(id);
+    if (enterAt !== undefined) reveal = Math.min(reveal, Math.max(0, Math.min(1, (now - enterAt) / NODE_ENTER_MS)));
+    return reveal;
+  };
 
   const hoveredNeighbours = useMemo(() => {
     if (!hoveredNodeId) return null;
@@ -620,6 +694,50 @@ export default function GraphView({
     }
     return neighbours;
   }, [hoveredNodeId, graphData.links]);
+
+  // Hover focus transition: the outgoing focus and when the change began. Read on every frame, so a ref.
+  // Layout effect so the first frame drawn with the new hover already sees the new start time.
+  const hoverFadeRef = useRef<{ fromNeighbours: Set<string> | null; fromId: string | null; start: number }>({ fromNeighbours: null, fromId: null, start: 0 });
+  const lastHoverRef = useRef<{ neighbours: Set<string> | null; id: string | null }>({ neighbours: null, id: null });
+  const hoverMixRef = useRef(1);
+  // Truncated label text and its width in screen px, keyed by font + size + name. Measured at screen size so
+  // the result holds across zoom; without it every frame re-measured every label.
+  const labelCacheRef = useRef(new Map<string, { text: string; width: number }>());
+  const [hoverFading, setHoverFading] = useState(false);
+  useLayoutEffect(() => {
+    hoverFadeRef.current = { fromNeighbours: lastHoverRef.current.neighbours, fromId: lastHoverRef.current.id, start: performance.now() };
+    lastHoverRef.current = { neighbours: hoveredNeighbours, id: hoveredNodeId };
+    if (prefersReducedMotion()) {
+      hoverFadeRef.current.start = 0;
+      return;
+    }
+    // Keep the canvas redrawing for the length of the fade; force-graph otherwise pauses once the layout is still.
+    setHoverFading(true);
+    const timer = window.setTimeout(() => setHoverFading(false), HOVER_FADE_MS + 50);
+    return () => window.clearTimeout(timer);
+  }, [hoveredNeighbours, hoveredNodeId]);
+
+  const nodeHoverAlpha = (id: string): number => {
+    const target = hoveredNeighbours && !hoveredNeighbours.has(id) ? HOVER_DIM_ALPHA : 1;
+    const from = hoverFadeRef.current.fromNeighbours;
+    const origin = from && !from.has(id) ? HOVER_DIM_ALPHA : 1;
+    return origin + (target - origin) * hoverMixRef.current;
+  };
+
+  const linkAlphaFor = (focusId: string | null, src: string, tgt: string): number => {
+    if (!focusId) return LINK_ALPHA;
+    return src === focusId || tgt === focusId ? LINK_ALPHA_FOCUS : LINK_ALPHA_DIM;
+  };
+  const linkHoverAlpha = (link: GraphLink): number => {
+    const src = readLinkEndpointId(link.source);
+    const tgt = readLinkEndpointId(link.target);
+    const origin = linkAlphaFor(hoverFadeRef.current.fromId, src, tgt);
+    const target = linkAlphaFor(hoveredNodeId, src, tgt);
+    return origin + (target - origin) * hoverMixRef.current;
+  };
+
+  const linkReveal = (link: GraphLink): number =>
+    Math.min(nodeReveal(readLinkEndpointId(link.source)), nodeReveal(readLinkEndpointId(link.target)));
 
   // Top-degree real nodes whose labels stay on regardless of zoom.
   const hubLabelIds = useMemo(() => {
@@ -672,6 +790,12 @@ export default function GraphView({
     // Hand the new node objects to the position carry-over above. d3 mutates
     // these in place from here on, so the ref stays current until the next
     // rebuild reads it.
+    const previousIds = new Set(prevNodesRef.current.map((node) => String(node.id)));
+    const entering = previousIds.size > 0 && !prefersReducedMotion()
+      ? graphData.nodes.filter((node) => !previousIds.has(String(node.id)))
+      : [];
+    enterAtRef.current = new Map(entering.map((node) => [String(node.id), performance.now()]));
+    if (entering.length > 0) keepDrawing(NODE_ENTER_MS);
     prevNodesRef.current = graphData.nodes;
     if (!fgRef.current) return;
     // The hovered node may not exist in the rebuilt graph; a stale id would
@@ -679,7 +803,28 @@ export default function GraphView({
     setHoveredNodeId(null);
     pendingInitialCaptureRef.current = true;
     pendingEarlyFitRef.current = true;
-  }, [graphData]);
+  }, [graphData, keepDrawing]);
+
+  // Opening a note that sits outside the visible card pans it into view, like scrollIntoView({ block: 'nearest' }):
+  // a note already on screen leaves the camera alone. Reads refs so graph rebuilds don't re-trigger it.
+  useEffect(() => {
+    if (!activeNoteId || localDepth > 0) return;
+    const fg = fgRef.current;
+    const container = containerRef.current;
+    const node = prevNodesRef.current.find((candidate) => String(candidate.id) === activeNoteId);
+    if (!fg || !container || !node || node.x == null || node.y == null) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const { x: sx, y: sy } = fg.graph2ScreenCoords(node.x, node.y);
+    const offsetX = (dimensionsRef.current.width - rect.width) / 2;
+    const offsetY = (dimensionsRef.current.height - rect.height) / 2;
+    const inView =
+      sx >= offsetX + FOLLOW_MARGIN_PX && sx <= offsetX + rect.width - FOLLOW_MARGIN_PX &&
+      sy >= offsetY + FOLLOW_MARGIN_PX && sy <= offsetY + rect.height - FOLLOW_MARGIN_PX;
+    if (inView) return;
+    fg.centerAt(node.x, node.y, prefersReducedMotion() ? 0 : 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a note switch should move the camera
+  }, [activeNoteId]);
 
   // Fit off force-graph's tick, not a rAF: the first tick is the earliest point where the bbox is
   // both populated and current (a rAF can run before the digest, or still see the previous graph).
@@ -756,52 +901,19 @@ export default function GraphView({
         graphData={graphData}
         nodeLabel="name"
         backgroundColor={bgColor}
-        linkColor={(link: GraphLink) => {
-          if (hoveredNodeId) {
-            // Only emphasise links touching the hovered node itself — links
-            // between two of its neighbours dim like everything else. (A
-            // both-endpoints-in-neighbour-set check would wrongly light up
-            // neighbour↔neighbour edges in triangles.) Matches linkWidth.
-            const src = readLinkEndpointId(link.source);
-            const tgt = readLinkEndpointId(link.target);
-            if (src === hoveredNodeId || tgt === hoveredNodeId) {
-              return link.bidirectional ? nodeColor : linkColor;
-            }
-            return `${linkColor}20`;
-          }
-          return link.bidirectional ? nodeColor : linkColor;
-        }}
+        linkColor={(link: GraphLink) => `rgba(${link.bidirectional ? accentRgb : inkRgb},${linkHoverAlpha(link) * linkReveal(link)})`}
         linkWidth={(link: GraphLink) => {
-          if (hoveredNodeId) {
-            const src = readLinkEndpointId(link.source);
-            const tgt = readLinkEndpointId(link.target);
-            if (src === hoveredNodeId || tgt === hoveredNodeId) {
-              return (link.bidirectional ? 3 : 2) * linkThickness;
-            }
-            return 0.5 * linkThickness;
-          }
-          return (link.bidirectional ? 2.5 : 1.5) * linkThickness;
+          const src = readLinkEndpointId(link.source);
+          const tgt = readLinkEndpointId(link.target);
+          const focused = hoveredNodeId != null && (src === hoveredNodeId || tgt === hoveredNodeId);
+          return (link.bidirectional ? 1.5 : 1) * (focused ? 1.5 : 1) * linkThickness;
         }}
         linkDirectionalArrowLength={(link: GraphLink) => arrows && !link.bidirectional ? 4 : 0}
-        // Time-lapse hides notes that are not yet "created" and any link with a hidden end.
-        nodeVisibility={(node: GraphNode) => timelapse === null || (timelapseRank.get(String(node.id)) ?? 0) < timelapse * graphData.nodes.length}
-        linkVisibility={(link: GraphLink) => {
-          if (timelapse === null) return true;
-          const limit = timelapse * graphData.nodes.length;
-          return (timelapseRank.get(readLinkEndpointId(link.source)) ?? 0) < limit
-            && (timelapseRank.get(readLinkEndpointId(link.target)) ?? 0) < limit;
-        }}
+        // Notes still waiting for their time-lapse turn are hidden (and unhoverable); links wait for both ends.
+        nodeVisibility={(node: GraphNode) => nodeReveal(String(node.id)) > 0}
+        linkVisibility={(link: GraphLink) => nodeReveal(readLinkEndpointId(link.source)) > 0 && nodeReveal(readLinkEndpointId(link.target)) > 0}
         linkDirectionalArrowRelPos={1}
-        linkDirectionalArrowColor={(link: GraphLink) => {
-          if (hoveredNodeId) {
-            const src = readLinkEndpointId(link.source);
-            const tgt = readLinkEndpointId(link.target);
-            if (src !== hoveredNodeId && tgt !== hoveredNodeId) {
-              return `${linkColor}20`;
-            }
-          }
-          return linkColor;
-        }}
+        linkDirectionalArrowColor={(link: GraphLink) => `rgba(${inkRgb},${Math.min(1, linkHoverAlpha(link) * 1.6) * linkReveal(link)})`}
         onNodeClick={(node: GraphNode) => {
           // Ghost nodes are unresolved links — there is no note to open.
           if (node.ghost) return;
@@ -820,6 +932,76 @@ export default function GraphView({
         d3VelocityDecay={graphData.nodes.length > 200 ? 0.65 : 0.5}
         onEngineTick={handleEngineTick}
         onEngineStop={captureInitialLayout}
+        autoPauseRedraw={!hoverFading && !entryLive}
+        onRenderFramePre={() => {
+          frameNowRef.current = performance.now();
+          const { start } = hoverFadeRef.current;
+          hoverMixRef.current = start === 0 ? 1 : easeOut(Math.min(1, (performance.now() - start) / HOVER_FADE_MS));
+        }}
+        onRenderFramePost={(ctx, globalScale) => {
+          // Labels go on last, above every node and link, placed greedily by priority.
+          // ctx is already scaled by globalScale, so dividing keeps labels at a set screen size. Do NOT floor this in
+          // world units — a `Math.max(6, …)` floor only bites past zoom 1.33 and then grows labels linearly with zoom.
+          // The small end is handled by the label alpha fading out, not by a size floor.
+          const screenSize = Math.round(labelScreenSize(globalScale) * 4) / 4;
+          const fontSize = screenSize / globalScale;
+          const cache = labelCacheRef.current;
+          if (cache.size > 5000) cache.clear();
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          const labelFadeStart = labelFadeThreshold - LABEL_FADE_SPAN;
+          const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeThreshold - labelFadeStart)));
+          const anchorLabelAlpha = Math.min(1, Math.max(0, (globalScale - ANCHOR_LABEL_FADE_START) / (ANCHOR_LABEL_FADE_END - ANCHOR_LABEL_FADE_START)));
+          const candidates: { node: GraphNode; priority: number; alpha: number; strong: boolean }[] = [];
+          for (const node of graphData.nodes) {
+            if (node.x == null || node.y == null) continue;
+            const id = String(node.id);
+            const reveal = nodeReveal(id);
+            if (reveal <= 0) continue;
+            const isHovered = hoveredNodeId === id;
+            const isActive = activeNoteId === id;
+            const isAnchor = isActive || hubLabelIds.has(id);
+            const isNeighbour = !isHovered && hoveredNeighbours?.has(id) === true;
+            const zoomAlpha = isHovered ? 1 : isAnchor ? anchorLabelAlpha : isNeighbour ? Math.max(zoomLabelAlpha, anchorLabelAlpha) : zoomLabelAlpha;
+            const alpha = zoomAlpha * nodeHoverAlpha(id) * (node.ghost ? 0.6 : 1) * reveal;
+            if (alpha <= 0.02) continue;
+            const priority = isHovered ? 4e6 : isActive ? 3e6 : isNeighbour ? 2e6 + (node.degree ?? 0) : isAnchor ? 1e6 + (node.degree ?? 0) : node.degree ?? 0;
+            candidates.push({ node, priority, alpha, strong: isHovered || isAnchor || isNeighbour });
+          }
+          candidates.sort((a, b) => b.priority - a.priority);
+          ctx.font = `${fontSize}px ${fontFamily}`;
+          const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+          const gap = LABEL_GAP_PX / globalScale;
+          for (const { node, alpha, strong, priority } of candidates) {
+            const radius = nodeRadius(node.degree ?? 0, nodeSize) * zoomDamp(globalScale);
+            const full = displayName(node);
+            const hovered = priority >= 4e6;
+            const key = `${hovered ? 'f' : 't'}|${screenSize}|${fontFamily}|${full}`;
+            let measured = cache.get(key);
+            if (!measured) {
+              ctx.font = `${screenSize}px ${fontFamily}`;
+              const text = hovered ? full : truncateToWidth(ctx, full, LABEL_MAX_SCREEN_WIDTH);
+              measured = { text, width: ctx.measureText(text).width };
+              cache.set(key, measured);
+              ctx.font = `${fontSize}px ${fontFamily}`;
+            }
+            const text = measured.text;
+            const width = measured.width / globalScale;
+            const x = node.x!;
+            const y = node.y! + radius + 4 / globalScale;
+            const box = { x0: x - width / 2 - gap, y0: y - gap, x1: x + width / 2 + gap, y1: y + fontSize + gap };
+            // The hovered label always draws; everything else yields to what's already placed.
+            if (priority < 4e6 && placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
+            placed.push(box);
+            ctx.globalAlpha = alpha * (strong ? 1 : 0.62);
+            ctx.shadowColor = bgColor;
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, x, y);
+          }
+          ctx.restore();
+        }}
         onNodeDrag={(node: GraphNode) => {
           node.fx = node.x;
           node.fy = node.y;
@@ -835,15 +1017,12 @@ export default function GraphView({
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           if (node.x == null || node.y == null) return;
           const degree = node.degree ?? 0;
-          const radius = nodeRadius(degree, nodeSize) * zoomDamp(globalScale);
+          const reveal = nodeReveal(String(node.id));
+          const radius = nodeRadius(degree, nodeSize) * zoomDamp(globalScale) * (reveal < 1 ? Math.max(0, easeOvershoot(reveal)) : 1);
           const isActive = activeNoteId && String(node.id) === activeNoteId;
           const isHovered = hoveredNodeId === String(node.id);
-          const inHoverNeighbour = hoveredNeighbours ? hoveredNeighbours.has(String(node.id)) : true;
-
-          const dimByHover = hoveredNeighbours && !inHoverNeighbour;
-
           // Ghosts render faded (Obsidian's unresolved-node treatment).
-          const alpha = dimByHover ? 0.08 : (node.ghost ? 0.35 : 1);
+          const alpha = nodeHoverAlpha(String(node.id)) * (node.ghost ? 0.35 : 1) * Math.min(1, reveal * 1.6);
 
           ctx.save();
           ctx.globalAlpha = alpha;
@@ -861,38 +1040,6 @@ export default function GraphView({
             ctx.strokeStyle = textColor;
             ctx.lineWidth = (isActive ? 1.5 : 1) / globalScale;
             ctx.stroke();
-          }
-
-          // Labels fade in with zoom. Hubs and the open note fade out later, and the hovered node always shows its name.
-          const labelFadeEnd = labelFadeThreshold;
-          const labelFadeStart = labelFadeThreshold - LABEL_FADE_SPAN;
-          const zoomLabelAlpha = Math.min(1, Math.max(0, (globalScale - labelFadeStart) / (labelFadeEnd - labelFadeStart)));
-          const anchorLabelAlpha = Math.min(1, Math.max(0, (globalScale - ANCHOR_LABEL_FADE_START) / (ANCHOR_LABEL_FADE_END - ANCHOR_LABEL_FADE_START)));
-          const isAnchor = isActive || hubLabelIds.has(String(node.id));
-          const labelAlpha = isHovered ? 1 : isAnchor ? anchorLabelAlpha : zoomLabelAlpha;
-
-          if (labelAlpha > 0) {
-            // globalScale is the zoom factor and ctx is already scaled by it, so
-            // dividing keeps labels at a set screen size. Do NOT clamp this
-            // in world units — a `Math.max(6, …)` floor only bites past zoom 1.33
-            // and then grows labels linearly with zoom (36px at 6×). The small
-            // end is handled by labelAlpha fading them out, not by a size floor.
-            const fontSize = labelScreenSize(globalScale) / globalScale;
-            ctx.font = `${fontSize}px ${fontFamily}`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-
-            const label = node.name;
-            const labelX = node.x;
-            const labelY = node.y + radius + 5 / globalScale;
-
-            // Background halo for legibility
-            ctx.globalAlpha = alpha * labelAlpha;
-            ctx.shadowColor = bgColor;
-            ctx.shadowBlur = 4;
-            ctx.fillStyle = textColor;
-            ctx.fillText(label, labelX, labelY);
-            ctx.shadowBlur = 0;
           }
 
           ctx.restore();

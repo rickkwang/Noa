@@ -659,38 +659,46 @@ export default function RightPanel({
                   </button>
                 </div>
               )}
-              {showFilters && (
-                <GraphFilterPanel
-                  isDark={isDark}
-                  localDepth={localDepth}
-                  onLocalDepthChange={setLocalDepth}
-                  hasActiveNote={!!activeNoteId}
-                  colorMode={colorMode}
-                  onColorModeChange={setColorMode}
-                  arrows={arrows}
-                  onArrowsChange={setArrows}
-                  nodeSize={nodeSize}
-                  onNodeSizeChange={setNodeSize}
-                  linkThickness={linkThickness}
-                  onLinkThicknessChange={setLinkThickness}
-                  groups={graphGroups}
-                  onGroupsChange={setGraphGroups}
-                  onAnimate={() => setAnimateKey((k) => k + 1)}
-                  showUnresolved={showUnresolved}
-                  onShowUnresolvedChange={setShowUnresolved}
-                  forces={graphForces}
-                  onForcesChange={setGraphForces}
-                  labelFadeThreshold={labelFadeThreshold}
-                  onLabelFadeThresholdChange={setLabelFadeThreshold}
-                  allTags={allTags}
-                  tagColors={tagColors}
-                  tagFilter={tagFilter}
-                  onTagFilterChange={setTagFilter}
-                  onRestoreDefaults={restoreGraphDefaults}
-                />
-              )}
               {/* Lists open over the canvas rather than shrinking it: GraphView doesn't re-fit on resize, so height taken would crop nodes. */}
-              <div className="flex-1 min-h-[120px] overflow-hidden">
+              <div className="relative flex-1 min-h-[120px] overflow-hidden">
+                {/* Filters float over the canvas as a fixed-width popover, top-right under the toolbar button that opens
+                    it, so opening them never moves or re-fits the graph and an expanded card doesn't stretch every control. */}
+                {showFilters && (
+                  <div
+                    onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowFilters(false); } }}
+                    className="noa-row-in noa-floating-panel rounded-panel absolute right-2 top-1 z-30 w-[min(300px,calc(100%-16px))] max-h-[calc(100%-12px)] overflow-y-auto overscroll-contain bg-[var(--bg-card,#FFFFFF)] px-3 py-3"
+                  >
+                    <GraphFilterPanel
+                      isDark={isDark}
+                      localDepth={localDepth}
+                      onLocalDepthChange={setLocalDepth}
+                      hasActiveNote={!!activeNoteId}
+                      colorMode={colorMode}
+                      onColorModeChange={setColorMode}
+                      arrows={arrows}
+                      onArrowsChange={setArrows}
+                      nodeSize={nodeSize}
+                      onNodeSizeChange={setNodeSize}
+                      linkThickness={linkThickness}
+                      onLinkThicknessChange={setLinkThickness}
+                      groups={graphGroups}
+                      onGroupsChange={setGraphGroups}
+                      // The popover would cover the canvas being animated, so playing closes it.
+                      onAnimate={() => { setShowFilters(false); setAnimateKey((k) => k + 1); }}
+                      showUnresolved={showUnresolved}
+                      onShowUnresolvedChange={setShowUnresolved}
+                      forces={graphForces}
+                      onForcesChange={setGraphForces}
+                      labelFadeThreshold={labelFadeThreshold}
+                      onLabelFadeThresholdChange={setLabelFadeThreshold}
+                      allTags={allTags}
+                      tagColors={tagColors}
+                      tagFilter={tagFilter}
+                      onTagFilterChange={setTagFilter}
+                      onRestoreDefaults={restoreGraphDefaults}
+                    />
+                  </div>
+                )}
                 <GraphView notes={topologyNotes} folders={topologyFolders} onNavigateToNoteById={onNavigateToNoteById} settings={settings}
                   searchQuery={deferredGraphSearch} activeNoteId={activeNoteId}
                   hideIsolated={hideIsolated} localDepth={localDepth} tagFilter={tagFilter}
@@ -840,6 +848,20 @@ function GraphInfoPanel({
     { label: 'isolated', value: stats.isolated },
   ];
 
+  // A list row: hover wash rather than a colour change, the open note marked, link count trailing in muted ink.
+  const connectionRow = (id: string, title: string, degree: number) => {
+    const current = id === activeNoteId;
+    return (
+      <button key={id} onClick={() => onNavigateToNoteById(id)}
+        aria-current={current ? 'page' : undefined}
+        className={`flex h-7 w-full items-center gap-2 rounded-md px-1.5 text-left text-body transition-colors hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] ${current ? strong : isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/75'}`}>
+        <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${current ? 'bg-[var(--accent-color,#CC7D5E)]' : isDark ? 'bg-[rgba(249,249,247,0.3)]' : 'bg-[#2D2D2B]/25'}`} />
+        <span className="truncate">{title}</span>
+        <span className={`ml-auto shrink-0 text-caption tabular-nums ${muted}`}>{degree}</span>
+      </button>
+    );
+  };
+
   // Only the chevron is the control: a 20px block like the header's, in the
   // same column as the close button above it.
   const toggle = (
@@ -867,7 +889,7 @@ function GraphInfoPanel({
       {isOpen && (
         <div
           id="noa-graph-connections"
-          className={`absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t-[0.5px] border-[var(--divider-subtle)] bg-[var(--bg-card,#FFFFFF)]`}
+          className={`noa-row-in absolute inset-x-0 bottom-full max-h-56 overflow-y-auto border-t-[0.5px] border-[var(--divider-subtle)] bg-[var(--bg-card,#FFFFFF)]`}
         >
           {/* Open, the toggle rides the drawer's top edge — where the thing
               it closes begins — and stays there while the lists scroll. The
@@ -875,32 +897,23 @@ function GraphInfoPanel({
           <div className={`sticky top-0 z-10 flex h-0 justify-end pr-1.5 ${muted}`}>
             <span className="mt-[9px]">{toggle}</span>
           </div>
-          <div className="px-3 pt-3 pb-2 space-y-3 [&>div:first-child>div:first-child]:pr-6">
+          <div className="px-1.5 pt-2.5 pb-1.5 space-y-2.5 [&>div:first-child>div:first-child]:pr-7">
         {activeNoteId && (
               <div>
-                <div className={`text-micro uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>
-                  Active · {notesById.get(activeNoteId)?.title ?? 'Unknown'}
+                <div className={`truncate px-1.5 mb-0.5 text-caption ${muted}`}>
+                  Linked with <span className={strong}>{notesById.get(activeNoteId)?.title ?? 'Unknown'}</span>
                 </div>
                 {activeConnections.length === 0 ? (
-                  <div className={`text-micro italic ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>No connections</div>
+                  <div className={`px-1.5 text-caption ${muted}`}>No connections yet</div>
                 ) : (
-                  <div className="space-y-1">
+                  <div>
                     {activeConnections.slice(0, 6).map(id => {
                       const target = notesById.get(id);
                       if (!target) return null;
-                      const degree = stats.degreeMap.get(id) ?? 0;
-                      return (
-                        <button key={id} onClick={() => onNavigateToNoteById(id)}
-                          className={`flex items-center gap-1.5 w-full text-left text-xs transition-colors ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}>
-                                        {/* Same degree-sized square as Most Connected below. A Phosphor Circle drew a hollow ring here. */}
-                          <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
-                          <span className="truncate">{target.title}</span>
-                          <span className={`ml-auto text-micro tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/30'}`}>{degree}</span>
-                        </button>
-                      );
+                      return connectionRow(id, target.title, stats.degreeMap.get(id) ?? 0);
                     })}
                     {activeConnections.length > 6 && (
-                      <div className={`text-micro pl-3 ${isDark ? 'text-[rgba(249,249,247,0.55)]' : 'text-[#2D2D2B]/40'}`}>+{activeConnections.length - 6} more</div>
+                      <div className={`px-1.5 pt-0.5 text-caption ${muted}`}>{activeConnections.length - 6} more</div>
                     )}
                   </div>
                 )}
@@ -908,19 +921,12 @@ function GraphInfoPanel({
             )}
             {stats.ranked.length > 0 && (
               <div>
-                <div className={`text-micro uppercase tracking-wider mb-1.5 font-bold ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50'}`}>Most Connected</div>
-                <div className="space-y-1">
+                <div className={`px-1.5 mb-0.5 text-caption ${muted}`}>Most connected</div>
+                <div>
                   {stats.ranked.map(([id, degree]) => {
                     const target = notesById.get(id);
                     if (!target) return null;
-                    return (
-                      <button key={id} onClick={() => onNavigateToNoteById(id)}
-                        className={`flex items-center gap-1.5 w-full text-left text-xs transition-colors ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}>
-                        <div className="shrink-0 bg-[#CC7D5E]" style={{ width: Math.min(8, 3 + degree), height: Math.min(8, 3 + degree) }} />
-                        <span className="truncate">{target.title}</span>
-                        <span className={`ml-auto text-micro tabular-nums shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/40'}`}>{degree}</span>
-                      </button>
-                    );
+                    return connectionRow(id, target.title, degree);
                   })}
                 </div>
               </div>
@@ -983,20 +989,26 @@ function GraphDrawerSection({ title, meta, isDark, defaultOpen = true, children 
   const [open, setOpen] = useState(defaultOpen);
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
   return (
-    <section className="space-y-3">
+    <section>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex w-full items-center justify-between font-bold uppercase tracking-[0.14em] text-micro transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
+        className={`flex w-full items-center justify-between text-caption font-medium transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
       >
         <span>{title}</span>
-        <span className="flex items-center gap-1.5 normal-case tracking-normal font-normal">
+        <span className="flex items-center gap-1.5 font-normal">
           {meta && <span className="tabular-nums">{meta}</span>}
-          <ChevronDown size={11} className={`transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
+          <ChevronDown size={11} className={`transition-transform duration-200 ease-(--ease-snap) ${open ? '' : '-rotate-90'}`} />
         </span>
       </button>
-      {open && <div className="space-y-3">{children}</div>}
+      {/* Height eases via grid rows; inert while folded so hidden controls leave the tab order. */}
+      <div
+        inert={!open || undefined}
+        className={`grid transition-[grid-template-rows] duration-200 ease-(--ease-out) motion-reduce:transition-none ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+      >
+        <div className="min-h-0 overflow-hidden"><div className="space-y-3 px-px pb-px pt-3">{children}</div></div>
+      </div>
     </section>
   );
 }
@@ -1106,14 +1118,15 @@ function GraphFilterPanel({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={name}
-        className="flex-1 h-1 accent-[#CC7D5E]"
+        className="noa-range flex-1"
+        style={{ '--noa-range-fill': `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
       />
       <span className={`text-caption tabular-nums w-10 text-right ${muted}`}>{format(value)}</span>
     </div>
   );
   const formatMultiplier = (v: number) => `${v.toFixed(1)}×`;
   return (
-    <div className="mx-3 mb-2 space-y-4 border-b-[0.5px] border-[var(--divider-subtle)] pb-4 pt-2 shrink-0">
+    <div className="space-y-4">
       <GraphDrawerSection title="Filters" isDark={isDark}>
         <div className="flex items-center gap-2">
           <span className={labelCls}>Depth</span>
@@ -1126,7 +1139,8 @@ function GraphFilterPanel({
             onChange={(e) => onLocalDepthChange(Number(e.target.value))}
             disabled={!hasActiveNote}
             aria-label="Depth"
-            className="flex-1 h-1 accent-[#CC7D5E] disabled:opacity-40"
+            className="noa-range flex-1"
+            style={{ '--noa-range-fill': `${(localDepth / 3) * 100}%` } as React.CSSProperties}
           />
           <span className={`text-caption tabular-nums w-10 text-right ${muted}`}>{hasActiveNote ? depthLabel : '—'}</span>
         </div>
@@ -1202,7 +1216,7 @@ function GraphFilterPanel({
       <GraphDrawerSection title="Display" isDark={isDark}>
         {segment('Color', colorMode, [['tag', 'By tag'], ['none', 'Off']], onColorModeChange)}
         {segment('Arrows', arrows, [[true, 'Shown'], [false, 'Hidden']], onArrowsChange, 'Show direction on one-way links')}
-        {sliderRow('Labels', labelFadeThreshold, 0.3, 1.5, 0.05, (v) => v.toFixed(2), onLabelFadeThresholdChange, 'Zoom at which labels fully appear')}
+        {sliderRow('Labels', labelFadeThreshold, 0.3, 1.5, 0.05, formatMultiplier, onLabelFadeThresholdChange, 'Zoom at which labels fully appear')}
         {sliderRow('Node size', nodeSize, 0.5, 2, 0.1, formatMultiplier, onNodeSizeChange)}
         {sliderRow('Link width', linkThickness, 0.5, 3, 0.1, formatMultiplier, onLinkThicknessChange)}
         <div className="flex items-center gap-2">
