@@ -227,7 +227,6 @@ export default function App() {
   const {
     openTabs: allOpenTabs,
     enteringTabIds,
-    enteringFromTabIds,
     closingTabIds,
     tabLimitWarning,
     openTabForNote,
@@ -1164,7 +1163,6 @@ export default function App() {
                 settings={settings}
                 tabs={openTabs}
                 enteringTabIds={enteringTabIds}
-                enteringFromTabIds={enteringFromTabIds}
                 closingTabIds={closingTabIds}
                 onTabChange={handleTabChange}
                 onTabClose={handleTabClose}

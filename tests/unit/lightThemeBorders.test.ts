@@ -35,7 +35,8 @@ describe('light theme border tokens', () => {
     expect(themeInjector).toContain("root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');");
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', '#E6E2DA');");
     expect(themeInjector).not.toContain("root.style.setProperty('--divider-subtle', 'rgba(249,249,247,0.15)');");
-    expect(editorHeader).toContain('editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 bg-[var(--divider-subtle)]');
+    // Tabs sit apart on a plain gap; the active tab's wash separates them, not a rule.
+    expect(editorHeader).not.toContain('editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 bg-');
     expect(previewPane).toContain("const borderColor = 'var(--divider-subtle, #E6E2DA)';");
   });
 

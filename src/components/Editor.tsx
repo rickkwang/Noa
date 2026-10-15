@@ -66,7 +66,6 @@ interface EditorProps {
   settings: AppSettings;
   tabs?: EditorTab[];
   enteringTabIds?: string[];
-  enteringFromTabIds?: string[];
   closingTabIds?: string[];
   onTabChange?: (id: string) => void;
   onTabClose?: (id: string) => void;
@@ -101,7 +100,6 @@ export default function Editor({
   settings,
   tabs,
   enteringTabIds,
-  enteringFromTabIds,
   closingTabIds,
   onTabChange,
   onTabClose,
@@ -609,7 +607,6 @@ export default function Editor({
         onClose={onClose}
         titleInputRef={titleInputRef}
         enteringTabIds={enteringTabIds}
-        enteringFromTabIds={enteringFromTabIds}
         closingTabIds={closingTabIds}
         onTabEnterComplete={onTabEnterComplete}
         onTabCloseAnimationComplete={onTabCloseAnimationComplete}

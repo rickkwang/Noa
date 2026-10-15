@@ -252,15 +252,10 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
 
   const closingTabIdList = useMemo(() => Array.from(closingTabIds), [closingTabIds]);
   const enteringTabIdList = useMemo(() => Array.from(enteringTabs.keys()), [enteringTabs]);
-  const enteringFromTabIdList = useMemo(
-    () => Array.from(new Set(Array.from(enteringTabs.values()).filter((id): id is string => Boolean(id)))),
-    [enteringTabs],
-  );
 
   return {
     openTabs,
     enteringTabIds: enteringTabIdList,
-    enteringFromTabIds: enteringFromTabIdList,
     closingTabIds: closingTabIdList,
     tabLimitWarning,
     openTabForNote,

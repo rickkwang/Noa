@@ -39,7 +39,6 @@ interface EditorHeaderProps {
   isEditingTitle: boolean;
   titleInput: string;
   enteringTabIds?: string[];
-  enteringFromTabIds?: string[];
   closingTabIds?: string[];
   onTitleInputChange: (value: string) => void;
   onTitleSubmit: () => void;
@@ -98,7 +97,6 @@ export function EditorHeader({
   isEditingTitle,
   titleInput,
   enteringTabIds = NO_TAB_IDS,
-  enteringFromTabIds = NO_TAB_IDS,
   closingTabIds = NO_TAB_IDS,
   onTitleInputChange,
   onTitleSubmit,
@@ -137,7 +135,6 @@ export function EditorHeader({
     onTitleKeyDown(e);
   };
   const enteringTabIdSet = useMemo(() => new Set(enteringTabIds), [enteringTabIds]);
-  const enteringFromTabIdSet = useMemo(() => new Set(enteringFromTabIds), [enteringFromTabIds]);
   const closingTabIdSet = useMemo(() => new Set(closingTabIds), [closingTabIds]);
   const isEnteringActiveTab = enteringTabIdSet.has(note.id);
   const anyTabAnimating = enteringTabIds.length > 0 || closingTabIds.length > 0;
@@ -462,16 +459,8 @@ export function EditorHeader({
             {tabs && tabs.length > 0 ? (
               tabs.map((tab, idx) => {
                 const isActiveTab = tab.id === note.id;
-                const prevTab = idx > 0 ? tabs[idx - 1] : null;
-                const prevIsActive = prevTab?.id === note.id;
-                const prevIsEntering = Boolean(prevTab && enteringTabIdSet.has(prevTab.id));
-                const isEnteringFromTab = enteringFromTabIdSet.has(tab.id);
-                const prevIsEnteringFromTab = Boolean(prevTab && enteringFromTabIdSet.has(prevTab.id));
-                const showDivider = idx > 0 && !isActiveTab && !prevIsActive;
                 const isEnteringTab = enteringTabIdSet.has(tab.id);
                 const isClosingTab = closingTabIdSet.has(tab.id);
-                const prevIsClosing = Boolean(prevTab && closingTabIdSet.has(prevTab.id));
-                const showSettledDivider = showDivider && !isEnteringTab && !prevIsEntering && !isEnteringFromTab && !prevIsEnteringFromTab && !isClosingTab && !prevIsClosing;
                 const sourceIndex = tabDrag?.sourceIndex ?? -1;
                 const targetIndex = tabDrag?.targetIndex ?? -1;
                 const positions = tabDrag?.positions;
@@ -480,7 +469,8 @@ export function EditorHeader({
                   <React.Fragment key={tab.id}>
                     {idx > 0 && (
                       <div
-                        className={`editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 bg-[var(--divider-subtle)] mx-0.5 ${showSettledDivider ? 'opacity-100' : 'opacity-0'}`}
+                        // A plain 4.5px gap between tabs (no rule): the active tab's wash is enough to separate them.
+                        className="editor-tab-divider self-center h-3.5 w-[0.5px] shrink-0 mx-0.5"
                         aria-hidden="true"
                         style={tabDrag && idx !== sourceIndex ? { transform: `translateX(${shift}px)`, transition: 'transform 150ms ease-out' } : undefined}
                       />
@@ -540,14 +530,12 @@ export function EditorHeader({
                         if (isClosingTab) onTabCloseAnimationComplete?.(tab.id);
                         if (isEnteringTab) onTabEnterComplete?.(tab.id);
                       }}
-                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 h-[26px] rounded-lg cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
-                        // The active pill's surface and ring come from
-                        // .editor-tab[data-active-tab] in index.css — a literal
-                        // bg-[#F9F9F7] here would be remapped to the page colour
-                        // and the pill would vanish into the bar.
+                      className={`group editor-tab ${isEnteringTab ? 'editor-tab-enter' : ''} ${isClosingTab ? 'editor-tab-exit' : ''} flex items-center gap-1.5 h-[26px] rounded-md cursor-pointer transition-colors relative flex-none w-[var(--noa-tab-w)] ${
+                        // The active tab's wash comes from .editor-tab[data-active-tab] in index.css, so the
+                        // dark-mode colour remap can't touch it.
                         isActiveTab
                           ? `z-[1] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`
-                          : isDark ? 'text-[#F9F9F7]/55 hover:text-[#F9F9F7]/80' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]/80'
+                          : isDark ? 'text-[#F9F9F7]/70 hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'
                       }`}
                       style={tabDrag ? {
                         ...noDragRegion,
@@ -584,7 +572,7 @@ export function EditorHeader({
                           e.stopPropagation();
                           onTabClose?.(tab.id);
                         }}
-                        className={`shrink-0 ${isActiveTab ? '' : 'opacity-0 pointer-events-none'} group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`}
+                        className={`noa-tab-close flex size-5 shrink-0 items-center justify-center rounded ${isActiveTab ? '' : 'opacity-0 pointer-events-none'} group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto transition-opacity noa-press`}
                         aria-label={`Close ${tab.title || 'Untitled'} tab`}
                         title="Close tab"
                       >
@@ -598,7 +586,7 @@ export function EditorHeader({
               /* Fallback when no tab list is provided */
               <div
                 data-active-tab="true"
-                className="editor-tab flex items-center gap-1.5 h-[26px] px-3 rounded-lg relative z-[1] shrink-0"
+                className="editor-tab flex items-center gap-1.5 h-[26px] px-3 rounded-md relative z-[1] shrink-0"
                 style={noDragRegion}
               >
                 {isEditingTitle ? (
@@ -624,7 +612,7 @@ export function EditorHeader({
                   </span>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className={`shrink-0 transition-colors noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/40 hover:text-[#D45555]'}`} aria-label="Close tab" title="Close tab">
+                  <button onClick={onClose} className="noa-tab-close flex size-5 shrink-0 items-center justify-center rounded noa-press" aria-label="Close tab" title="Close tab">
                     <X size={11} />
                   </button>
                 )}
