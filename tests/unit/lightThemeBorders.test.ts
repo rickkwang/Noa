@@ -246,7 +246,7 @@ describe('light theme border tokens', () => {
       readFile(fileURLToPath(new URL('../../src/main.tsx', import.meta.url)), 'utf8'),
     ]);
     expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }');
-    expect(indexCss).toContain(':root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }');
+    expect(indexCss).toContain(':root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 3 * 24px + 2px + 10px); }');
     expect(main).toContain("if (window.noaDesktop) document.documentElement.dataset.desktop = 'true';");
   });
 

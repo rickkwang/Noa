@@ -767,6 +767,16 @@ test('a backlink shows the linking line and opens the source note at it', async 
   await expect(landed).toContainText(marker);
 });
 
+test('the sidebar search field keeps every typed character and Escape clears it', async ({ page }) => {
+  await page.goto('/');
+  const field = page.getByPlaceholder('Search', { exact: true });
+  await field.click();
+  await page.keyboard.type('welcome');
+  await expect(field).toHaveValue('welcome');
+  await page.keyboard.press('Escape');
+  await expect(field).toHaveValue('');
+});
+
 test('jumping to a task flashes the line it lands on, then clears', async ({ page }) => {
   const marker = `landme-${Date.now()}`;
   await page.goto('/');

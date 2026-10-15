@@ -12,7 +12,16 @@ import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import { Note, Folder as FolderType } from '../types';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X, ArrowUpDown, Check } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X, ArrowUpDown, Check, Search } from '@/src/lib/icons';
+
+export interface SidebarSearchField {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onChange: (query: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+  /** Escape: clear the query and leave the field. */
+  onDismiss: () => void;
+}
 
 type NoteSortOrder = 'updatedAt' | 'name';
 const NOTE_SORT_OPTIONS: readonly { value: NoteSortOrder; label: string }[] = [
@@ -117,6 +126,8 @@ interface SidebarProps {
   vault: VaultFooterProps;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
   onClearSearch?: () => void;
+  /** The note search field, shown as the sidebar's first row (desktop); absent, search lives in the titlebar. */
+  search?: SidebarSearchField;
   caseSensitive?: boolean;
   fuzzySearch?: boolean;
 }
@@ -126,7 +137,7 @@ export default function Sidebar({
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
-  onImportNote, onClearSearch, caseSensitive = false, fuzzySearch = true,
+  onImportNote, onClearSearch, search, caseSensitive = false, fuzzySearch = true,
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
@@ -461,6 +472,35 @@ export default function Sidebar({
           </div>
         </div>
       )}
+      {search && (
+        // 26px tall, 6px corners, 10px side margins, the icon centred in a 28px slot and 13px text starting 32px in; a
+        // hairline ring plus a 1px drop, hover deepens the well. Results filter the tree below as you type. No clear
+        // button: Escape clears, and so does the results header's ×.
+        <div className="noa-sidebar-search mx-2.5 mb-2 mt-1 flex h-[26px] shrink-0 cursor-text items-center gap-0.5 rounded-[6px] px-0.5" onClick={() => search.inputRef.current?.focus()}>
+          <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center text-[var(--sidebar-text-muted,#898781)]">
+            <Search size={16} />
+          </span>
+          <input
+            ref={search.inputRef}
+            type="text"
+            value={searchQuery}
+            placeholder="Search"
+            aria-label="Search notes"
+            className="noa-sidebar-search-input min-w-0 flex-1 bg-transparent text-body font-ui outline-none"
+            onChange={(event) => search.onChange(event.target.value)}
+            onFocus={search.onFocus}
+            onBlur={search.onBlur}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                search.onDismiss();
+                event.currentTarget.blur();
+              }
+            }}
+          />
+        </div>
+      )}
       {/* Vertical rhythm by centre line: titlebar 22px, this row 60px, first tree row ~98px — two equal 38px steps. */}
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
@@ -696,12 +736,12 @@ export default function Sidebar({
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
-                <div className="text-xs text-[var(--sidebar-text-muted,#898781)] mb-2 px-2 font-ui flex items-center justify-between">
+                <div className="text-xs text-[var(--sidebar-text-muted,#898781)] mb-1 mx-2 pl-3 pr-1 h-6 font-ui flex items-center justify-between">
                   <span>Search results <span className="tabular-nums">{searchResults.length}</span></span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
-                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[#CC7D5E] noa-press shrink-0 -mr-1 p-1 rounded"
+                      className="noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[var(--sidebar-text,#52514E)] noa-press shrink-0 flex size-5 items-center justify-center rounded-md"
                       title="Close search"
                     >
                       <X size={13} />
@@ -712,25 +752,24 @@ export default function Sidebar({
                   <div
                     key={result.note.id}
                     data-testid="search-result"
-                    className={`p-2 mx-1.5 mb-1.5 rounded-md cursor-pointer ${activeNoteId === result.note.id ? 'noa-ink-selected' : 'noa-sidebar-hover-surface-subtle'} transition-colors`}
+                    data-active={activeNoteId === result.note.id || undefined}
+                    className={`noa-search-hit mx-2 rounded-lg px-3 py-2 cursor-pointer font-ui ${activeNoteId === result.note.id ? 'noa-ink-selected' : 'noa-sidebar-hover-surface-subtle'} transition-colors`}
                     onClick={() => onSelectNote(result.note.id)}
                   >
-                    <div className="font-ui text-sm text-[#2D2D2B] mb-1 flex items-center">
-                      <FileText size={12} className="mr-1.5 text-[#CC7D5E] shrink-0" />
+                    <div className="noa-search-hit-title flex h-5 items-center gap-2 text-sm">
+                      <FileText size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
                       <span className="truncate">
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
-                    <div className="text-xs text-[var(--sidebar-text,#52514E)] font-ui leading-relaxed break-words line-clamp-2">
-                      <HighlightedText text={result.contentSnippet} />
-                    </div>
+                    {result.contentSnippet && (
+                      <div className="mt-0.5 pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)] break-words line-clamp-2">
+                        <HighlightedText text={result.contentSnippet} />
+                      </div>
+                    )}
                     {result.note.tags && result.note.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {result.note.tags.map(tag => (
-                          <span key={tag} className="noa-tag-similar rounded-sm px-1 text-micro font-ui">
-                            #{tag}
-                          </span>
-                        ))}
+                      <div className="mt-0.5 truncate pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)]">
+                        {result.note.tags.map(tag => `#${tag}`).join('  ')}
                       </div>
                     )}
                   </div>

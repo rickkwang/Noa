@@ -20,6 +20,7 @@ import { useFileSync } from './hooks/useFileSync';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { useGlobalTasks } from './hooks/useGlobalTasks';
 import { PANEL_MAX_WIDTH, RIGHT_PANEL_MIN_WIDTH, SIDEBAR_MIN_WIDTH, useLayout } from './hooks/useLayout';
+import { useNoteHistory } from './hooks/useNoteHistory';
 import { useNotes } from './hooks/useNotes';
 import { usePaneBadges } from './hooks/usePaneBadges';
 import { useGlobalScrollingClass } from './hooks/useScrollingClass';
@@ -224,6 +225,12 @@ export default function App() {
     () => (vaultConnected ? folders.filter((folder) => folder.origin === 'vault') : folders),
     [folders, vaultConnected],
   );
+  const noteHistory = useNoteHistory(activeNoteId);
+  // The tab strip only switches notes on its own (a neighbour after a close), so that's not a visit worth a Back step.
+  const setActiveNoteIdFromTabs = useCallback((id: string) => {
+    noteHistory.replaceNext(id);
+    setActiveNoteId(id);
+  }, [noteHistory, setActiveNoteId]);
   const {
     openTabs: allOpenTabs,
     enteringTabIds,
@@ -235,7 +242,7 @@ export default function App() {
     handleTabReorder,
     handleTabEnterComplete,
     handleTabCloseAnimationComplete,
-  } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId });
+  } = useTabs({ notes, isLoaded: isDataReady, activeNoteId, setActiveNoteId: setActiveNoteIdFromTabs });
   // Tabs of the hidden workspace stay open (and persisted) so they return on disconnect.
   const openTabs = useMemo(() => {
     if (!vaultConnected) return allOpenTabs;
@@ -579,8 +586,10 @@ export default function App() {
       exitFocusMode();
       return;
     }
+    // On desktop the field lives in the sidebar, so a collapsed sidebar opens first.
+    if (!isMobile && !isSidebarOpen) toggleSidebar();
     openSearch();
-  }, [isFocusMode, exitFocusMode, openSearch]);
+  }, [isFocusMode, exitFocusMode, openSearch, isMobile, isSidebarOpen, toggleSidebar]);
   useEffect(() => {
     if (isFocusMode || !pendingSearchFocusRef.current) return;
     pendingSearchFocusRef.current = false;
@@ -593,6 +602,8 @@ export default function App() {
       if (document.activeElement === searchInputRef.current) searchInputRef.current?.blur();
       return;
     }
+    // Opened by clicking into the field itself: it already has focus, and selecting now would swallow what's being typed.
+    if (document.activeElement === searchInputRef.current) return;
     const frameId = window.requestAnimationFrame(() => {
       // preventScroll: the field is still mid-expand and sits outside its
       // clipped shell, so a scrolling focus would drag the search icon
@@ -602,6 +613,18 @@ export default function App() {
     });
     return () => window.cancelAnimationFrame(frameId);
   }, [isFocusMode, isSearchOpen]);
+
+  // On desktop the search field is the sidebar's first row and stays mounted while the
+  // sidebar slides so it travels with it; the titlebar keeps its search toggle only on mobile. Both share searchInputRef.
+  const searchInSidebar = !isMobile;
+  const sidebarSearch = useMemo(() => ({
+    inputRef: searchInputRef,
+    onChange: setSearchQuery,
+    onFocus: () => setIsSearchOpen(true),
+    // Same rule as the titlebar field: only an empty query closes search on blur.
+    onBlur: () => { if (!searchQuery) setIsSearchOpen(false); },
+    onDismiss: () => { setSearchQuery(''); setIsSearchOpen(false); },
+  }), [searchQuery]);
 
   // Keep the graph/tasks bundle out of the first render: mount next frame if restored open, else while idle.
   // Once mounted it stays mounted, so every open is instant.
@@ -805,6 +828,11 @@ export default function App() {
     });
   }, [openTabForNote, setActiveNoteId, isMobile, setIsSidebarOpen, flushAllPendingSaves]);
 
+  const workspaceNoteIds = useMemo(() => new Set(workspaceNotes.map((note) => note.id)), [workspaceNotes]);
+  const navigateHistory = useCallback((dir: -1 | 1) => {
+    noteHistory.go(dir, workspaceNoteIds, handleSidebarSelectNote);
+  }, [noteHistory, workspaceNoteIds, handleSidebarSelectNote]);
+
   const commandPalette = useCommandPalette({
     notes: workspaceNotes,
     onCreateNote: () => handleCreateNote(defaultCreateFolderId),
@@ -847,6 +875,7 @@ export default function App() {
     isFocusMode,
     onExitFocusMode: exitFocusMode,
     onToggleViewMode: () => setEditorViewMode((mode) => (mode === 'edit' ? 'preview' : 'edit')),
+    onNavigateHistory: navigateHistory,
   });
 
   if (!isLoaded) {
@@ -890,7 +919,7 @@ export default function App() {
       data-sidebar-moving={!isMobile && isSidebarMoving ? 'true' : undefined}
       data-sidebar-material-painted={hasPaintedSidebarMaterial ? 'true' : undefined}
       style={{
-        '--noa-titlebar-search-extra': isSearchOpen ? '9rem' : '0px',
+        '--noa-titlebar-search-extra': isSearchOpen && !searchInSidebar ? '9rem' : '0px',
         '--noa-sidebar-material-width': isSidebarOpen && !isMobile && !isFocusMode
           ? 'var(--noa-sidebar-width, 325px)'
           : '0px',
@@ -955,6 +984,7 @@ export default function App() {
       {!isFocusMode && <TopBar
         settings={settings}
         onToggleSidebar={toggleSidebar}
+        noteHistory={isMobile ? undefined : { history: noteHistory, liveIds: workspaceNoteIds, navigate: navigateHistory }}
         sidebarToggleRef={sidebarToggleRef}
         onSidebarPreviewEnter={openSidebarPreview}
         onSidebarPreviewLeave={scheduleSidebarPreviewClose}
@@ -986,6 +1016,7 @@ export default function App() {
           setIsSearchOpen(false);
         }}
         searchInputRef={searchInputRef}
+        hideSearch={searchInSidebar}
       />}
       <div className="flex-1 flex min-h-0 overflow-visible relative">
         {isMobile && isSidebarOpen && (
@@ -1069,6 +1100,7 @@ export default function App() {
                 notes={workspaceNotes}
                 folders={workspaceFolders}
                 searchQuery={searchQuery}
+                search={searchInSidebar ? sidebarSearch : undefined}
                 activeNoteId={activeNoteId}
                 onSelectNote={handleSidebarSelectNote}
                 onCreateNote={handleSidebarCreateNote}

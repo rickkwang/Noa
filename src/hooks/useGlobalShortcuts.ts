@@ -14,6 +14,15 @@ interface UseGlobalShortcutsOptions {
   isFocusMode?: boolean;
   onExitFocusMode?: () => void;
   onToggleViewMode?: () => void;
+  onNavigateHistory?: (dir: -1 | 1) => void;
+}
+
+const MAC_HISTORY_KEYS: Record<string, -1 | 1> = { BracketLeft: -1, BracketRight: 1 };
+const HISTORY_KEYS: Record<string, -1 | 1> = { ArrowLeft: -1, ArrowRight: 1 };
+
+function isEditable(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
 }
 
 export function useGlobalShortcuts({
@@ -30,6 +39,7 @@ export function useGlobalShortcuts({
   isFocusMode,
   onExitFocusMode,
   onToggleViewMode,
+  onNavigateHistory,
 }: UseGlobalShortcutsOptions): void {
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
@@ -37,6 +47,7 @@ export function useGlobalShortcuts({
   useEffect(() => {
     if (!enabled) return;
 
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
@@ -82,10 +93,21 @@ export function useGlobalShortcuts({
       }
 
       // macOS only Cmd: Ctrl+E is line-end in CodeMirror's default keymap there.
-      const viewToggleMod = /Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
+      const viewToggleMod = isMac ? e.metaKey : e.ctrlKey;
       if (viewToggleMod && !e.shiftKey && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         onToggleViewMode?.();
+      }
+
+      // Back/forward as in browsers: Cmd+[ / Cmd+] on macOS, Alt+Left/Right elsewhere. Unlike the shortcuts above these
+      // yield to anything editable (Cmd+[ is outdent in the editor), anything that already handled the key, and any
+      // open dialog, which would otherwise switch the note behind itself.
+      const historyDir = isMac
+        ? (e.metaKey && !e.altKey && !e.ctrlKey && !e.shiftKey ? MAC_HISTORY_KEYS[e.code] : undefined)
+        : (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey ? HISTORY_KEYS[e.key] : undefined);
+      if (historyDir && onNavigateHistory && !e.defaultPrevented && !isEditable(e.target) && !document.querySelector('[role="dialog"]')) {
+        e.preventDefault();
+        if (!e.repeat) onNavigateHistory(historyDir);
       }
 
       if (e.key === 'Escape') {
@@ -102,5 +124,5 @@ export function useGlobalShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, onToggleViewMode, isFocusMode, searchInputRef]);
+  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, onToggleViewMode, onNavigateHistory, isFocusMode, searchInputRef]);
 }

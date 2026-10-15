@@ -5,6 +5,8 @@ import {
   Warning,
   TextAlignLeft,
   ArrowsDownUp,
+  ArrowLeft as PhArrowLeft,
+  ArrowRight as PhArrowRight,
   TextB,
   BookOpen as PhBookOpen,
   CalendarBlank,
@@ -76,6 +78,8 @@ function icon(Cmp: Icon) {
 export const AlertTriangle = icon(Warning);
 export const AlignLeft = icon(TextAlignLeft);
 export const ArrowUpDown = icon(ArrowsDownUp);
+export const ArrowLeft = icon(PhArrowLeft);
+export const ArrowRight = icon(PhArrowRight);
 export const Bold = icon(TextB);
 export const BookOpen = icon(PhBookOpen);
 export const Calendar = icon(CalendarBlank);

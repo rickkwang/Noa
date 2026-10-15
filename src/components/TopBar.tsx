@@ -1,10 +1,11 @@
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, useSyncExternalStore } from 'react';
 import { TITLEBAR_NOTE_ACTIONS_SLOT_ID, TITLEBAR_PANEL_TABS_SLOT_ID, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
+import type { NoteHistory } from '../hooks/useNoteHistory';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 import { PaneMenu } from './rightPanel/PaneMenu';
-import { Search, PanelLeft, PanelRight, X, LayoutList } from '@/src/lib/icons';
+import { Search, PanelLeft, PanelRight, X, LayoutList, ArrowLeft, ArrowRight } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -39,14 +40,44 @@ interface TopBarProps {
   onCloseSearch: () => void;
   onSearchBlur: () => void;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  /** The sidebar is showing its own search field, so the titlebar drops its search toggle. */
+  hideSearch?: boolean;
+  /** Back/forward through opened notes; omitted where the titlebar has no room for it (mobile). */
+  noteHistory?: { history: NoteHistory; liveIds: ReadonlySet<string>; navigate: (dir: -1 | 1) => void };
 }
 
-export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+// Subscribes on its own so a history step re-renders these two buttons, not the titlebar.
+function HistoryButtons({ history, liveIds, navigate, buttonClass }: NonNullable<TopBarProps['noteHistory']> & { buttonClass: string }) {
+  useSyncExternalStore(history.subscribe, history.getVersion);
+  // aria-disabled rather than disabled: a button that disables under the keyboard drops focus to <body>.
+  const className = `${buttonClass} aria-disabled:pointer-events-none aria-disabled:*:opacity-50`;
+  return (
+    <div className="flex items-center">
+      {([[-1, 'Back', ArrowLeft], [1, 'Forward', ArrowRight]] as const).map(([dir, label, Icon]) => {
+        const enabled = history.can(dir, liveIds);
+        return (
+          <button
+            key={label}
+            onClick={enabled ? () => navigate(dir) : undefined}
+            className={className}
+            title={label}
+            aria-label={label}
+            aria-disabled={!enabled || undefined}
+          >
+            <Icon size={16} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef, hideSearch = false, noteHistory }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = themeSurfaces(isDark).primary;
-  // Dark titlebar uses a bright neutral for "open" — coral reads too loud next to the traffic lights.
-  const activeToggleClass = isDark ? 'text-[#F9F9F7]' : 'text-[#CC7D5E]';
-  const actionClass = 'p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer';
+  // Titlebar buttons only answer the pointer: a ~9% ink block on hover, never a lasting "open" fill or colour.
+  const idleInk = isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]';
+  const buttonClass = `flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${idleInk} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_9%,transparent)]`;
   return (
     <div
       data-titlebar="true"
@@ -65,15 +96,15 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             onClick={onToggleSidebar}
             onMouseEnter={onSidebarPreviewEnter}
             onMouseLeave={onSidebarPreviewLeave}
-            // No active:opacity: the icon recolours as soon as isSidebarOpen flips, and a press-fade reads as flicker.
-            className={`p-1 text-[#2D2D2B]/70 hover:text-[#CC7D5E] transition-colors cursor-pointer ${isSidebarOpen ? activeToggleClass : ''}`}
-            title="Toggle Sidebar"
+            className={buttonClass}
+            title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
             aria-label="Toggle sidebar"
             aria-pressed={isSidebarOpen}
           >
             <PanelLeft size={16} />
           </button>
-          <div
+          {noteHistory && <HistoryButtons {...noteHistory} buttonClass={buttonClass} />}
+          {!hideSearch && <div
             className={`flex h-[26px] min-w-7 items-center overflow-hidden rounded-md border-[0.5px] transition-[width,background-color,border-color] duration-200 ease-out ${isMobile && isSearchOpen ? 'flex-1' : ''}`}
             style={{
               width: isSearchOpen
@@ -126,7 +157,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 <X size={12} />
               </button>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -149,7 +180,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             // so here the button only has the drawer to open.
             <button
               onClick={onToggleRightPanel}
-              className={`${actionClass} ${isRightPanelOpen ? activeToggleClass : ''}`}
+              className={buttonClass}
               title="Toggle Panel"
               aria-label="Toggle right panel"
               aria-pressed={isRightPanelOpen}

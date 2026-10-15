@@ -330,7 +330,7 @@ test('tab strip occupies the title-bar row instead of leaving a second header ro
     page.locator('[data-tab-id]').first().boundingBox(),
     page.getByTitle('Search notes').boundingBox(),
     page.getByTitle('Search notes').locator('..').boundingBox(),
-    page.getByTitle('Toggle Sidebar').boundingBox(),
+    page.getByRole('button', { name: 'Toggle sidebar' }).boundingBox(),
     page.getByTitle('New note').boundingBox(),
     page.getByRole('button', { name: 'Panels' }).boundingBox(),
   ]);
@@ -1750,7 +1750,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await expect(page.getByRole('switch', { name: 'Translucent Sidebar' })).toBeChecked();
   await page.getByRole('button', { name: 'Close settings' }).click();
 
-  await page.getByTitle('Toggle Sidebar').click();
+  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
   await expect(column).toHaveAttribute('data-sidebar-expanded', 'true');
   // Material width never transitions; the veil animates transform from it instead.
   await expect(shell).toHaveCSS('transition-property', 'none');
@@ -1764,7 +1764,7 @@ test('translucent sidebar persists and keeps its material through the closing mo
   await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
 
   await page.mouse.move(700, 500);
-  await page.getByTitle('Toggle Sidebar').hover();
+  await page.getByRole('button', { name: 'Toggle sidebar' }).hover();
   await expect(page.locator('[data-sidebar-preview-shell="true"]')).toBeVisible();
   await expect(column).not.toHaveAttribute('data-sidebar-expanded', 'true');
   await expect(sidebarToolbar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
@@ -1781,7 +1781,7 @@ test('closing the mobile sidebar does not leave desktop material state active', 
   await page.setViewportSize({ width: 1000, height: 760 });
   await page.goto('/');
 
-  const toggle = page.getByTitle('Toggle Sidebar');
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   const sidebar = page.locator('[data-sidebar-container]');
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await page.setViewportSize({ width: 700, height: 760 });
@@ -1824,7 +1824,7 @@ test('translucent sidebar material does not animate with reduced motion', async 
   const shell = page.locator('.noa-app-shell');
   await expect(page.locator('html')).toHaveAttribute('data-translucent-sidebar', 'enabled');
   await expect(shell).toHaveCSS('transition-property', 'none');
-  await page.getByTitle('Toggle Sidebar').click();
+  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
   await expect(shell).toHaveCSS('transition-property', 'none');
 });
 
@@ -1900,7 +1900,7 @@ test('a restart with the sidebar already open does not sweep the translucent vei
   expect(await entries()).toEqual([]);
 
   // Positive control: a real toggle must produce an entry, or the check above is vacuous.
-  const toggle = page.getByTitle('Toggle Sidebar');
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   await toggle.click();
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
   await toggle.click();
