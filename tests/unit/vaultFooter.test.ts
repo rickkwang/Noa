@@ -95,7 +95,7 @@ describe('sidebar vault footer', () => {
     expect(sidebar).not.toContain('TagBrowser');
     expect(rail).toContain('<CalendarPanel');
     expect(rail).toContain('<TagBrowser');
-    expect(footer).toContain('shrink-0 border-t-[0.5px] pl-2 pr-1 pt-1.5 pb-2');
+    expect(footer).toContain('shrink-0 border-t-[0.5px] pl-2 pr-1 py-1');
     expect(footer).toContain('<Settings size={14} />');
   });
 
