@@ -9,6 +9,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
 import Sidebar from './components/Sidebar';
+import { NoteRail } from './components/rail/NoteRail';
+import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
 import type { RightTab } from './constants/rightTabs';
@@ -75,6 +77,11 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+  // Calendar and Tags rail at the editor's top right; toggled from the titlebar, remembered across launches.
+  const [isNoteRailOpen, setIsNoteRailOpen] = useState(() => lsGetBoolean(STORAGE_KEYS.NOTE_RAIL_OPEN));
+  const toggleNoteRail = useCallback(() => {
+    setIsNoteRailOpen(open => { lsSetBoolean(STORAGE_KEYS.NOTE_RAIL_OPEN, !open); return !open; });
+  }, []);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const openSearch = useCallback(() => {
@@ -858,6 +865,9 @@ export default function App() {
     && !isSidebarPreviewSettling
     && !isDraggingSidebar;
 
+  // Desktop only: on a phone there's no room beside the text, and focus mode hides all chrome.
+  const showNoteRail = isNoteRailOpen && !isMobile && !isFocusMode;
+
   return (
     <>
     <div
@@ -938,6 +948,8 @@ export default function App() {
         onSidebarPreviewEnter={openSidebarPreview}
         onSidebarPreviewLeave={scheduleSidebarPreviewClose}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
+        isNoteRailOpen={isNoteRailOpen}
+        onToggleNoteRail={toggleNoteRail}
         isSidebarOpen={isSidebarOpen}
         isSidebarMaterialActive={isSidebarMaterialActive}
         isRightPanelOpen={isRightPanelOpen}
@@ -1045,7 +1057,6 @@ export default function App() {
               <Sidebar
                 notes={workspaceNotes}
                 folders={workspaceFolders}
-                tasks={globalTasks}
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
                 onSelectNote={handleSidebarSelectNote}
@@ -1088,19 +1099,9 @@ export default function App() {
                   },
                 }}
                 onImportNote={handleImportNoteGuarded}
-                // Both replace the file tree with a result list, so the query must be visible.
-                onSearchTag={(tag) => {
-                  setSearchQuery(`tag:${tag}`);
-                  setIsSearchOpen(true);
-                }}
-                onSearchQuery={(query) => {
-                  setSearchQuery(query);
-                  setIsSearchOpen(Boolean(query));
-                }}
                 onClearSearch={() => setSearchQuery('')}
                 caseSensitive={settings.search.caseSensitive}
                 fuzzySearch={settings.search.fuzzySearch}
-                dateFormat={settings.dailyNotes.dateFormat}
               />
             </div>
             {!isMobile && (
@@ -1125,6 +1126,8 @@ export default function App() {
           </div>
         </div>
 
+        {/* Editor plus the Calendar/Tags rail: the rail is a column of its own, so showing it narrows the editor. */}
+        <div className="relative flex min-w-0 flex-1">
         <ErrorBoundary>
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading editor…</div>}>
             {activeNoteId ? (
@@ -1182,6 +1185,26 @@ export default function App() {
             )}
           </Suspense>
         </ErrorBoundary>
+        {showNoteRail && (
+          <NoteRail
+            notes={workspaceNotes}
+            tasks={globalTasks}
+            activeNoteId={activeNoteId ?? ''}
+            searchQuery={searchQuery}
+            dateFormat={settings.dailyNotes.dateFormat}
+            onOpenDailyNote={handleSidebarOpenDailyNote}
+            // Both replace the file tree with a result list, so the query must be visible.
+            onSearchQuery={(query) => {
+              setSearchQuery(query);
+              setIsSearchOpen(Boolean(query));
+            }}
+            onSearchTag={(tag) => {
+              setSearchQuery(`tag:${tag}`);
+              setIsSearchOpen(true);
+            }}
+          />
+        )}
+        </div>
 
         {isMobile && isRightPanelOpen && (
           <div

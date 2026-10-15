@@ -13,7 +13,7 @@ interface CalendarPanelProps {
   /** Watched so a range detaches the moment the search box says something else. */
   searchQuery?: string;
   dateFormat?: string;
-  /** Owned by Sidebar: the toggle lives in the footer row, not a header here. */
+  /** Owned by the rail card: false while the card is collapsed, so no per-note work runs. */
   isOpen: boolean;
 }
 
@@ -232,20 +232,10 @@ export default function CalendarPanel({
   const isViewingToday = today.startsWith(`${year}-${pad(month + 1)}-`);
 
 
+  // The rail card supplies the title row; this is only its body.
+  if (!isBodyMounted) return null;
   return (
-    // No header row: Calendar and Tags open from icon buttons in the footer row,
-    // so the sidebar's bottom edge is one line instead of three stacked bars.
-    // Dividers follow one rule — the footer always has one, and each panel adds
-    // its own only while its body is mounted (open, or easing closed). A closed
-    // panel is zero-height, so its line would stack on the footer's.
-    <div
-      className={`noa-sidebar-section-surface shrink-0 ${isBodyMounted ? 'border-t-[0.5px]' : ''}`}
-      style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
-    >
-      <div className="noa-sidebar-collapse" data-open={isOpen ? 'true' : undefined}>
-        <div inert={!isOpen ? true : undefined}>
-          {isBodyMounted && (
-            <div className="select-none">
+            <div className="select-none pt-1">
               {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
               {activeRange && (
                 // Neutral ink: the range is already tinted in the grid; a second accent here competed with it.
@@ -263,7 +253,7 @@ export default function CalendarPanel({
               )}
 
               {/* Month navigation — the label doubles as "jump back to today" */}
-              <div className="flex items-center justify-between px-3 pt-0.5 pb-2">
+              <div className="flex items-center justify-between px-2 pb-2">
                 <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface noa-press transition-colors cursor-pointer">
                   <ChevronLeft size={14} />
                 </button>
@@ -283,7 +273,7 @@ export default function CalendarPanel({
               </div>
 
               {/* Weekday headers */}
-              <div className="grid grid-cols-[repeat(7,2rem)] justify-between px-3 pb-1">
+              <div className="grid grid-cols-[repeat(7,2rem)] justify-between px-2 pb-1">
                 {WEEKDAYS.map(wd => (
                   <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
                     <span className="font-medium text-[#2D2D2B]/50">{wd}</span>
@@ -297,7 +287,7 @@ export default function CalendarPanel({
                   so the grid drifted away from the header, summary and chip rows,
                   which sit at a fixed 12px. The sidebar cannot go below 320px and
                   7x32 + 24 = 248, so the tracks always fit. */}
-              <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-3 pb-2" onDragStart={e => e.preventDefault()}>
+              <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-2 pb-1" onDragStart={e => e.preventDefault()}>
                 {gridDates.map((date) => {
                   const dateStr = toKey(date);
                   const outside = date.getMonth() !== month;
@@ -371,7 +361,7 @@ export default function CalendarPanel({
               </div>
 
               {/* Segmented control: one track, the selected preset lifts out of it like the tag filter field. px-3 aligns with the text rows. */}
-              <div className="flex items-center gap-2 px-3 pb-3 text-caption font-ui">
+              <div className="flex items-center gap-2 px-2 pt-1 text-caption font-ui">
                 <div className="noa-segmented-track relative flex flex-1 items-center rounded-lg p-0.5" role="group" aria-label="Date range presets">
                   {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
                   <span
@@ -409,9 +399,5 @@ export default function CalendarPanel({
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

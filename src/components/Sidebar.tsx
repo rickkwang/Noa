@@ -9,12 +9,10 @@ import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
-import { GlobalTask, Note, Folder as FolderType } from '../types';
-import CalendarPanel from './CalendarPanel';
+import { Note, Folder as FolderType } from '../types';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
-import { TagBrowser } from './sidebar/TagBrowser';
-import { footerIconButton, VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, ArrowUpDown, Dices, X, CalendarMonth, Tag } from '@/src/lib/icons';
+import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, ArrowUpDown, Dices, X } from '@/src/lib/icons';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -97,7 +95,6 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
 interface SidebarProps {
   notes: Note[];
   folders: FolderType[];
-  tasks?: GlobalTask[];
   searchQuery: string;
   activeNoteId: string;
   onSelectNote: (id: string) => void;
@@ -113,26 +110,21 @@ interface SidebarProps {
   dailyNotesEnabled?: boolean;
   vault: VaultFooterProps;
   onImportNote?: (title: string, content: string, folderId?: string, attachmentFile?: File | null) => void;
-  onSearchTag?: (tag: string) => void;
-  onSearchQuery?: (query: string) => void;
   onClearSearch?: () => void;
   caseSensitive?: boolean;
   fuzzySearch?: boolean;
-  dateFormat?: string;
 }
 
 export default function Sidebar({
-  notes, folders, tasks, searchQuery, activeNoteId,
+  notes, folders, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
-  onImportNote, onSearchTag, onSearchQuery, onClearSearch, caseSensitive = false, fuzzySearch = true, dateFormat = 'YYYY-MM-DD',
+  onImportNote, onClearSearch, caseSensitive = false, fuzzySearch = true,
 }: SidebarProps) {
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'note' | 'folder'; id: string; name: string } | null>(null);
   const [foldersExpandedByDefault, setFoldersExpandedByDefault] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [isTagsOpen, setIsTagsOpen] = useState(false);
   const [folderTreeResetKey, setFolderTreeResetKey] = useState(0);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
@@ -769,47 +761,8 @@ export default function Sidebar({
           </div>
         </div>
 
-      {/* Always mounted so open state and viewMonth survive search toggles. */}
-      <CalendarPanel
-        notes={notes}
-        tasks={tasks}
-        activeNoteId={activeNoteId}
-        onSelectDate={(dateStr) => onOpenDailyNote?.(dateStr)}
-        onSearchRange={onSearchQuery}
-        searchQuery={searchQuery}
-        dateFormat={dateFormat}
-        isOpen={isCalendarOpen}
-      />
-
-      <TagBrowser notes={notes} onSearchTag={onSearchTag} searchQuery={searchQuery} isOpen={isTagsOpen} />
-
-      {/* Calendar and Tags toggle from the footer row; an open panel's toggle shows an accent icon (no persistent fill). */}
       <VaultFooter
         {...vault}
-        actions={(
-          <>
-            <button
-              type="button"
-              onClick={() => setIsCalendarOpen(v => !v)}
-              className={footerIconButton(isCalendarOpen)}
-              title="Calendar"
-              aria-label="Calendar"
-              aria-expanded={isCalendarOpen}
-            >
-              <CalendarMonth size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsTagsOpen(v => !v)}
-              className={footerIconButton(isTagsOpen)}
-              title="Tags"
-              aria-label="Tags"
-              aria-expanded={isTagsOpen}
-            >
-              <Tag size={14} />
-            </button>
-          </>
-        )}
       />
     </div>
   );

@@ -503,10 +503,10 @@ test('dark mode sidebar preview uses the docked sidebar plane without creating a
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   const sidebar = page.locator('.noa-sidebar-surface').first();
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(47, 47, 45)');
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(43, 43, 41)');
   expect(await page.locator('[data-sidebar-column-surface="true"]').evaluate((element) => (
     getComputedStyle(element).backgroundColor
-  ))).toBe('rgb(47, 47, 45)');
+  ))).toBe('rgb(43, 43, 41)');
   await toggle.click();
   await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
   await page.mouse.move(700, 400);
@@ -534,9 +534,9 @@ test('dark mode sidebar preview uses the docked sidebar plane without creating a
   expect(palette).toMatchObject({
     sidebarToken: '#2B2B29',
     primaryToken: '#262624',
-    previewColor: 'rgb(47, 47, 45)',
+    previewColor: 'rgb(43, 43, 41)',
     sidebarColor: 'rgba(0, 0, 0, 0)',
-    primaryColor: 'rgb(42, 42, 40)',
+    primaryColor: 'rgb(38, 38, 36)',
     previewBounds: { x: 0, y: 0, height: 720 },
   });
   expectPreviewShadowShape(palette.previewShadow);

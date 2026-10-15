@@ -84,30 +84,18 @@ describe('sidebar vault footer', () => {
     expect(app).toContain('onDisconnectVault: canPickVaultFolder');
   });
 
-  it('carries the Calendar and Tags toggles in the one footer row', async () => {
-    const [footer, tagBrowser, calendar, sidebar] = await Promise.all([
+  it('leaves Calendar and Tags to the note rail, keeping the footer to vault and settings', async () => {
+    const [footer, sidebar, rail] = await Promise.all([
       readFile(footerPath, 'utf8'),
-      readFile(tagBrowserPath, 'utf8'),
-      readFile(fileURLToPath(new URL('../../src/components/CalendarPanel.tsx', import.meta.url)), 'utf8'),
       readFile(fileURLToPath(new URL('../../src/components/Sidebar.tsx', import.meta.url)), 'utf8'),
+      readFile(fileURLToPath(new URL('../../src/components/rail/NoteRail.tsx', import.meta.url)), 'utf8'),
     ]);
 
-    // One footer row: Sidebar owns the panels' open state and hands the toggles to the footer.
-    expect(tagBrowser).not.toContain('aria-expanded');
-    expect(calendar).not.toContain('aria-expanded');
-    expect(footer).toContain('{actions}');
-    expect(footer).toContain('className={footerIconButton()}');
-    expect(sidebar).toContain('aria-label="Calendar"');
-    expect(sidebar).toContain('aria-label="Tags"');
-    expect(sidebar).toContain('className={footerIconButton(isCalendarOpen)}');
-    expect(sidebar).toContain('className={footerIconButton(isTagsOpen)}');
-    // Open state is shown by the accent icon alone, not a persistent surface; it must swap the class,
-    // since ThemeInjector's !important /70 class would beat an inline colour.
-    expect(footer).toContain("noa-sidebar-hover-surface ${active ? 'text-[#CC7D5E]' : 'text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B]'}");
-    // Footer always has a divider; panels only while mounted, so closed panels don't stack a second line.
+    expect(sidebar).not.toContain('CalendarPanel');
+    expect(sidebar).not.toContain('TagBrowser');
+    expect(rail).toContain('<CalendarPanel');
+    expect(rail).toContain('<TagBrowser');
     expect(footer).toContain('shrink-0 border-t-[0.5px] pl-1.5 pr-1 pt-1.5 pb-2');
-    expect(calendar).toContain("${isBodyMounted ? 'border-t-[0.5px]' : ''}");
-    expect(tagBrowser).toContain("${isBodyMounted ? 'border-t-[0.5px]' : ''}");
     expect(footer).toContain('<Settings size={14} />');
   });
 

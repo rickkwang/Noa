@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useResizeDrag } from '../../hooks/useResizeDrag';
 import { buildTagTree, shapeTagTree, type TagNode, type TagSort } from '../../lib/tagTree';
 import { Note } from '../../types';
 import { ArrowUpDown, ChevronRight, Search } from '@/src/lib/icons';
@@ -8,7 +7,7 @@ interface TagBrowserProps {
   notes: Note[];
   onSearchTag?: (tag: string) => void;
   searchQuery?: string;
-  /** Owned by Sidebar: the toggle lives in the footer row. */
+  /** Owned by the rail card: false while the card is collapsed. */
   isOpen: boolean;
 }
 
@@ -37,12 +36,6 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
     }
     return set;
   }, [searchQuery]);
-
-  const { size: tagsHeight, setIsDragging } = useResizeDrag(
-    250, 100, 600,
-    (e: MouseEvent) => Math.min(window.innerHeight * 0.8, window.innerHeight - e.clientY),
-    'row-resize'
-  );
 
   const [sortBy, setSortBy] = useState<TagSort>('count');
   const [filter, setFilter] = useState('');
@@ -73,30 +66,16 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
   };
   flatten(shaped, 0);
 
-  // Body gets an explicit height (not auto) so the 0fr/1fr collapse can ease; a drag still lands in one frame.
-  const bodyHeight = Math.max(0, tagsHeight - (isBodyMounted ? 1 : 0));
-
+  // The rail card supplies the title row; this is only its body. The list scrolls past a fixed height
+  // so a large tag set doesn't push the calendar off the rail.
+  if (!isBodyMounted) return null;
   return (
-    // Top divider only while the body is mounted — see CalendarPanel's rule.
-    <div
-      className={`noa-sidebar-section-surface flex shrink-0 relative flex-col ${isBodyMounted ? 'border-t-[0.5px]' : ''}`}
-      style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
-    >
-      {isTagsOpen && (
-        <div
-          className="h-3 w-full bg-transparent cursor-row-resize absolute top-0 left-0 right-0 z-20 -translate-y-1/2"
-          onMouseDown={() => setIsDragging(true)}
-        />
-      )}
-      <div className="noa-sidebar-collapse" data-open={isTagsOpen ? 'true' : undefined}>
-        <div inert={!isTagsOpen ? true : undefined}>
-          {isBodyMounted && (
-            <div className="flex flex-col font-ui" style={{ height: bodyHeight }}>
+            <div className="flex max-h-[360px] flex-col font-ui">
               {tagCount > 0 && (
-                <div className="shrink-0 overflow-y-hidden px-1 pt-2.5 pb-1.5" style={{ scrollbarGutter: 'stable both-edges' }}>
+                <div className="shrink-0 px-2 pt-1 pb-1">
                   {/* Same both-edges gutter as the list below: field and rows share edges, and left/right insets match. */}
                   {/* One quiet control: search + sort share a single field so the header reads as a unit. */}
-                  <label className="noa-tag-filter flex h-7 items-center gap-2 rounded-lg pl-2 pr-1">
+                  <label className="noa-tag-filter flex h-[26px] items-center gap-2 rounded-md pl-2 pr-1">
                     <span className="flex w-3 shrink-0 justify-center"><Search size={14} className="noa-tag-muted" /></span>
                     <input
                       value={filter}
@@ -118,13 +97,13 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                   </label>
                 </div>
               )}
-              <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2" style={{ scrollbarGutter: 'stable both-edges' }}>
+              <div className="min-h-0 flex-1 overflow-y-auto px-2 [scrollbar-width:none]">
                 {tagCount === 0 ? (
-                  <div className="noa-tag-muted px-2 pt-2.5 text-xs">No tags found in notes</div>
+                  <div className="noa-tag-muted px-1 py-1 text-xs">No tags found in notes</div>
                 ) : rows.length === 0 ? (
-                  <div className="noa-tag-muted px-2 py-1 text-xs">No matching tags</div>
+                  <div className="noa-tag-muted px-1 py-1 text-xs">No matching tags</div>
                 ) : (
-                  <ul className="flex flex-col gap-px">
+                  <ul className="flex flex-col">
                     {rows.map(({ node, depth, isOpen }) => {
                       const hasChildren = node.children.length > 0;
                       const isActive = node.isTag && activeTags.has(node.path.toLowerCase());
@@ -133,7 +112,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                           <div
                             data-active={isActive}
                             style={{ ['--tag-h' as string]: tagHue(node.path), paddingLeft: 8 + depth * 14 } as React.CSSProperties}
-                            className="noa-tag-row group flex h-7 w-full items-center gap-2 rounded-lg pr-1 text-body"
+                            className="noa-tag-row group flex h-[26px] w-full items-center gap-2 rounded-md pr-1 text-body"
                           >
                             {hasChildren ? (
                               <button
@@ -162,7 +141,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                               )}
                             </button>
                             {/* A real tag shows what clicking it finds (strict match); a pure group shows its subtree. */}
-                            <span className="noa-tag-count min-w-5 shrink-0 text-center text-caption tabular-nums">{node.isTag ? node.ownCount : node.count}</span>
+                            <span className="noa-tag-count min-w-5 shrink-0 text-right text-xs tabular-nums">{node.isTag ? node.ownCount : node.count}</span>
                           </div>
                         </li>
                       );
@@ -171,9 +150,5 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

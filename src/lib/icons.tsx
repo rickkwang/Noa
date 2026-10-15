@@ -1,6 +1,7 @@
 // Central icon mapping: Phosphor Icons re-exported under the legacy lucide-react
 // names so call sites are unchanged. To swap a shape, change its mapping here only.
 import {
+  Article,
   Warning,
   TextAlignLeft,
   ArrowsDownUp,
@@ -132,6 +133,7 @@ export const HardDrive = icon(HardDrives);
 export const Info = icon(PhInfo);
 export const Italic = icon(TextItalic);
 export const List = icon(PhList);
+export const LayoutList = icon(Article);
 export const Loader2 = icon(CircleNotch);
 export const Maximize2 = icon(ArrowsOutSimple);
 export const Minimize2 = icon(ArrowsInSimple);

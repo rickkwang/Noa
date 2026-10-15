@@ -1308,6 +1308,23 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   }
 }
 
+/* Note rail cards: a 1px hairline ring at 10px radius, sitting on the page rather than on a fill.
+   The title is the collapse button; its hover is an ink wash. */
+.noa-rail-card {
+  background-color: var(--bg-primary, #FCFCFB);
+  box-shadow: 0 0 0 1px var(--divider-subtle);
+}
+.noa-rail-card-title {
+  color: var(--text-primary, #2D2D2B);
+  transition: background-color 60ms var(--ease-out);
+}
+.noa-rail-card-title:hover {
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent);
+}
+.noa-rail-muted {
+  color: var(--text-secondary, #7B7974);
+}
+
 /* Collapsible sidebar sections (Calendar, Tags). Not animated: the drawer
    opens and closes in one frame. The track is still a grid row so a closed
    section takes no height while its wrapper stays in place. */

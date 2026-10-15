@@ -4,7 +4,7 @@ import { useIsDark } from '../hooks/useIsDark';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 import { PaneMenu } from './rightPanel/PaneMenu';
-import { Search, PanelLeft, PanelRight, X } from '@/src/lib/icons';
+import { Search, PanelLeft, PanelRight, X, LayoutList } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -26,6 +26,9 @@ interface TopBarProps {
   isSidebarOpen: boolean;
   isSidebarMaterialActive: boolean;
   isRightPanelOpen: boolean;
+  /** The Calendar and Tags rail; its toggle sits beside the panel menu. */
+  isNoteRailOpen?: boolean;
+  onToggleNoteRail?: () => void;
   /** Set while the right column opens or closes, so the actions ride its edge. */
   rightPanelEdgeTransition?: string;
   isMobile: boolean;
@@ -38,7 +41,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = themeSurfaces(isDark).primary;
   // Dark titlebar uses a bright neutral for "open" — coral reads too loud next to the traffic lights.
@@ -153,6 +156,24 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               <PanelRight size={16} className="scale-x-[-1]" />
             </button>
           ) : (
+            <>
+            {onToggleNoteRail && (
+              <button
+                type="button"
+                onClick={onToggleNoteRail}
+                title={isNoteRailOpen ? 'Hide calendar and tags' : 'Show calendar and tags'}
+                aria-label={isNoteRailOpen ? 'Hide calendar and tags' : 'Show calendar and tags'}
+                aria-pressed={isNoteRailOpen}
+                // Pressed is an ink wash under the glyph rather than a colour change, so it reads as a held toggle.
+                className={`noa-press flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${
+                  isNoteRailOpen
+                    ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_10%,transparent)] text-[var(--text-primary,#2D2D2B)]'
+                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[var(--bg-sidebar-raised,#ECEBE8)]`
+                }`}
+              >
+                <LayoutList size={16} />
+              </button>
+            )}
             <div id={TITLEBAR_PANEL_TABS_SLOT_ID} className="flex items-center">
               <PaneMenu
                 activePanes={activePanes}
@@ -165,6 +186,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 onTogglePanel={onToggleRightPanel}
               />
             </div>
+            </>
           )}
         </div>
       </div>

@@ -19,6 +19,9 @@ export const STORAGE_KEYS = {
   LAST_ACTIVE_NOTE: 'redaction-last-active-note-id',
   NOTE_SORT_ORDER: 'app-note-sort-order',
   TASKS_COMPLETED_EXPANDED: 'app-tasks-completed-expanded',
+  NOTE_RAIL_OPEN: 'app-note-rail-open',
+  NOTE_RAIL_CALENDAR_COLLAPSED: 'app-note-rail-calendar-collapsed',
+  NOTE_RAIL_TAGS_COLLAPSED: 'app-note-rail-tags-collapsed',
   LAST_AUTO_BACKUP_AT: 'noa:last-auto-backup-at',
   AUTO_BACKUP_LAST_ERROR: 'noa:auto-backup-last-error',
   // Import edits IndexedDB couldn't store; parked in localStorage since that store is independent of IndexedDB.
