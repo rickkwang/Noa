@@ -104,6 +104,19 @@ describe('deleteNoteFile with duplicate titles', () => {
     expect(resolvePath(root, 'Sample_b2b2b2b2.md')).toBeNull();
   });
 
+  it('does not delete an untracked sibling when a legacy manifest path is missing', async () => {
+    const root = createMemRoot();
+    const note = makeNote();
+    await writeRawFile(root, '.noa/manifest.json', JSON.stringify({ version: 1, notes: {
+      'Sample_a1a1a1a1.md': { id: note.id, createdAt: note.createdAt, source: note.source },
+    } }));
+    await writeRawFile(root, 'Sample.md', 'unrelated external work');
+
+    await syncNoteDelete(asFsHandle(root), note, []);
+
+    expect(await readFileText(root, 'Sample.md')).toBe('unrelated external work');
+  });
+
   it('falls back to title heuristics without touching paths owned by other notes', async () => {
     const root = createMemRoot();
     const noteA = makeNote({ id: 'a1a1a1a1-0000-4000-8000-000000000001', content: 'note A' });
@@ -188,6 +201,71 @@ describe('syncNoteRename', () => {
 
     expect(await readFileText(root, 'Sample.md')).toBe('second edit');
     expect(listPaths(root).filter((path) => path.includes('Noa conflict'))).toEqual([]);
+  });
+
+  it.each(['What?.md', 'Projects?/What?.md'])('updates the original vault path without creating a duplicate: %s', async (path) => {
+    const root = createMemRoot();
+    await writeRawFile(root, path, 'version A');
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+
+    await syncNoteUpdate(asFsHandle(root), notes[0], 'version B', folders);
+
+    expect(await readFileText(root, path)).toBe('version B');
+    expect(listPaths(root).filter((entry) => entry.endsWith('.md'))).toEqual([path]);
+    const rescanned = await scanDirectory(asFsHandle(root), folders);
+    expect(rescanned.notes).toHaveLength(1);
+    expect(rescanned.notes[0]).toMatchObject({ id: notes[0].id, title: 'What?', content: 'version B' });
+  });
+
+  it.each([false, true])('advances a successful slow write baseline for queued typing (external edit: %s)', async (externalEdit) => {
+    const root = createMemRoot();
+    const note = makeNote({ id: crypto.randomUUID(), content: 'version A', vaultBaseText: 'version A' });
+    await writeNote(asFsHandle(root), note, []);
+    const file = await root.getFileHandle('Sample.md');
+    const createWritable = file.createWritable.bind(file);
+    let release!: () => void;
+    let started!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const writing = new Promise<void>((resolve) => { started = resolve; });
+    let delayed = false;
+    file.createWritable = async () => {
+      const writable = await createWritable();
+      return { ...writable, close: async () => {
+        await writable.close();
+        if (!delayed) {
+          delayed = true;
+          started();
+          await gate;
+        }
+      } };
+    };
+    const writeB = syncNoteUpdate(asFsHandle(root), note, 'version B', []);
+    await writing;
+    const writeC = syncNoteUpdate(asFsHandle(root), { ...note, content: 'version B', vaultDirty: true }, 'version C', []);
+    if (externalEdit) await writeRawFile(root, 'Sample.md', 'external work');
+    release();
+    await writeB;
+
+    if (externalEdit) {
+      await expect(writeC).rejects.toThrow('Vault conflict');
+      expect(await readFileText(root, 'Sample.md')).toBe('external work');
+    } else {
+      await writeC;
+      expect(await readFileText(root, 'Sample.md')).toBe('version C');
+      expect(listPaths(root).filter((entry) => entry.includes('Noa conflict'))).toEqual([]);
+    }
+  });
+
+  it('leaves final baseline persistence to the sync acknowledgement', async () => {
+    const root = createMemRoot();
+    const note = makeNote({ id: crypto.randomUUID(), content: 'version A' });
+    await writeNote(asFsHandle(root), note, []);
+    const advanced: string[] = [];
+
+    await syncNoteUpdate(asFsHandle(root), note, 'version B', [], (_id, text) => { advanced.push(text); });
+
+    expect(await readFileText(root, 'Sample.md')).toBe('version B');
+    expect(advanced).toEqual([]);
   });
 
   it('retains the original disk baseline across a failed write and later edit', async () => {
@@ -434,6 +512,23 @@ describe('syncNoteRename', () => {
     expect(await readFileText(root, 'Unique Title.md')).toBe('note B');
   });
 
+  it.each(['rename', 'move'] as const)('does not %s a same-titled sibling when the exact source was deleted externally', async (operation) => {
+    const root = createMemRoot();
+    const first = makeNote({ content: 'same body' });
+    const second = makeNote({ id: 'b2b2b2b2-0000-4000-8000-000000000002', content: 'same body' });
+    await writeNote(asFsHandle(root), first, []);
+    await writeNote(asFsHandle(root), second, []);
+    const { notes } = await scanDirectory(asFsHandle(root), []);
+    const target = notes.find((note) => note.id === second.id)!;
+    await root.removeEntry(target.vaultPath!);
+
+    const result = operation === 'rename'
+      ? syncNoteRename(asFsHandle(root), target, 'Renamed', [])
+      : syncNoteMove(asFsHandle(root), target, { ...target, folder: 'destination' }, [{ id: 'destination', name: 'Destination', origin: 'vault' }]);
+    await expect(result).rejects.toThrow('Vault conflict');
+    expect(await readFileText(root, 'Sample.md')).toBe('same body');
+  });
+
   it('still removes attachments on real deletion', async () => {
     const root = createMemRoot();
     const note = makeNote();
@@ -467,6 +562,18 @@ describe('syncNoteRename', () => {
 });
 
 describe('syncVaultNoteSnapshot', () => {
+  it.each(['What?.md', 'Projects?/What?.md'])('recovers content-only edits at the original path: %s', async (path) => {
+    const root = createMemRoot();
+    await writeRawFile(root, path, 'version A');
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), { ...notes[0], content: 'version B', vaultBaseText: 'version A', vaultDirty: true }, folders);
+
+    expect(conflict).toBeNull();
+    expect(await readFileText(root, path)).toBe('version B');
+    expect(listPaths(root).filter((entry) => entry.endsWith('.md'))).toEqual([path]);
+  });
+
   it('preserves both versions when recovering a dirty cache row over changed disk content', async () => {
     const root = createMemRoot();
     const original = makeNote({ title: 'Recovery', content: 'common base' });
@@ -496,6 +603,7 @@ describe('syncVaultNoteSnapshot', () => {
       title: 'Recovered title',
       content: 'latest local edit',
       vaultPath: 'Old title.md',
+      vaultBaseText: 'old content',
       vaultDirty: true,
     };
     // Model a crash after the desired file landed but before obsolete-path
@@ -505,6 +613,31 @@ describe('syncVaultNoteSnapshot', () => {
 
     expect(resolvePath(root, 'Old title.md')).toBeNull();
     expect(await readFileText(root, 'Recovered title.md')).toBe('latest local edit');
+  });
+
+  it.each(['rename', 'move'] as const)('preserves external work at the old path after interrupted %s cleanup', async (operation) => {
+    const root = createMemRoot();
+    const original = makeNote({ title: 'Old', content: 'baseline', vaultPath: 'Old.md', vaultBaseText: 'baseline' });
+    await writeNote(asFsHandle(root), original, []);
+    const folders = [{ id: 'destination', name: 'Destination', origin: 'vault' as const }];
+    const recovered = { ...original, title: operation === 'rename' ? 'New' : 'Old', folder: operation === 'move' ? 'destination' : '', vaultDirty: true };
+    const removeEntry = root.removeEntry.bind(root);
+    root.removeEntry = async (name, options) => {
+      if (name === 'Old.md') throw new DOMException('blocked', 'NotAllowedError');
+      return removeEntry(name, options);
+    };
+    const result = operation === 'rename'
+      ? syncNoteRename(asFsHandle(root), original, recovered.title, folders)
+      : syncNoteMove(asFsHandle(root), original, recovered, folders);
+    await expect(result).rejects.toThrow('blocked');
+    root.removeEntry = removeEntry;
+    await writeRawFile(root, 'Old.md', 'external new work');
+
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), recovered, folders);
+
+    expect(await readFileText(root, 'Old.md')).toBe('external new work');
+    expect(await readFileText(root, operation === 'rename' ? 'New.md' : 'Destination/Old.md')).toBe('baseline');
+    expect(conflict?.message).toContain('Vault conflict');
   });
 
   it('recovers a dirty cache row after restart when disk still matches its persisted baseline', async () => {
@@ -1010,7 +1143,19 @@ describe('vault manifest location and hidden entries', () => {
     expect(resolvePath(root, 'manifest.json')).toBeNull();
   });
 
-  it('reads a legacy root manifest.json and removes it on the next write', async () => {
+  it.each(['{"project":"user metadata"}', 'not json', '{"version":99,"notes":{}}'])(
+    'preserves an unrelated root manifest on connection and subsequent writes: %s',
+    async (content) => {
+      const root = createMemRoot();
+      await writeRawFile(root, 'manifest.json', content);
+      await getVaultIdentity(asFsHandle(root));
+      expect(await readFileText(root, 'manifest.json')).toBe(content);
+      await writeNote(asFsHandle(root), makeNote(), []);
+      expect(await readFileText(root, 'manifest.json')).toBe(content);
+    },
+  );
+
+  it('reads a legacy root manifest.json and preserves it when writing the hidden manifest', async () => {
     const root = createMemRoot();
     const note = makeNote({ id: 'a1a1a1a1-0000-4000-8000-0000000000a3' });
     await writeRawFile(root, 'Sample.md', 'legacy body');
@@ -1022,9 +1167,10 @@ describe('vault manifest location and hidden entries', () => {
     const scan = await scanDirectory(asFsHandle(root), []);
     expect(scan.notes.map((n) => n.id)).toEqual([note.id]);
 
+    const legacyManifest = await readFileText(root, 'manifest.json');
     await writeNote(asFsHandle(root), note, []);
     expect(resolvePath(root, '.noa/manifest.json')?.kind).toBe('file');
-    expect(resolvePath(root, 'manifest.json')).toBeNull();
+    expect(await readFileText(root, 'manifest.json')).toBe(legacyManifest);
   });
 
   it('ignores dot-directories like .noa during scans', async () => {

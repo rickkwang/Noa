@@ -7,6 +7,8 @@ import {
   getNoteFilePath,
   persistHandle,
   readVaultNoteText,
+  readVaultNoteTextAtPath,
+  isNoteAtCanonicalPath,
   removeNoteFileAtPath,
   removeEmptyFolderTree,
   requestDirectoryAccess,
@@ -322,8 +324,9 @@ async function writeNoteTracked(
   note: Note,
   folders: Folder[],
   payloadOverride?: string,
+  existingPath?: string,
 ): Promise<Awaited<ReturnType<typeof writeNote>>> {
-  const written = await writeNote(handle, note, folders, payloadOverride);
+  const written = await writeNote(handle, note, folders, payloadOverride, existingPath);
   if (written && _vaultStatSnapshot) {
     _vaultStatSnapshot.set(written.path, `${written.lastModified}:${written.size}`);
   }
@@ -454,14 +457,15 @@ async function preserveNoaEditIfDiskChanged(
   desiredNote: Note,
   previousFolders: Folder[],
   conflictFolders: Folder[] = previousFolders,
-): Promise<void> {
-  const diskText = await readVaultNoteText(handle, previousNote, previousFolders);
+): Promise<string | null> {
+  const path = await getNoteFilePath(handle, previousNote, previousFolders);
+  const diskText = path ? await readVaultNoteTextAtPath(handle, path) : null;
   const baselineText = previousNote.vaultBaseText ?? serializeNoteForVault(previousNote);
   const desiredText = serializeNoteForVault(desiredNote);
   // The second equality recognizes a Markdown write that landed before a later
   // manifest/attachment step failed. It is Noa's own partial success, not an
   // external edit.
-  if (diskText === baselineText || diskText === desiredText) return;
+  if (diskText === baselineText || diskText === desiredText) return path;
   const exactStructuralPayload = previousNote.vaultBaseText
     && extractContentFromVaultText(previousNote.vaultBaseText) === desiredNote.content
     ? previousNote.vaultBaseText
@@ -533,6 +537,7 @@ let _vaultWriteQueue: Promise<void> = Promise.resolve();
 const _noteDebounceTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; fn: () => Promise<void> }>();
 const _notePendingSettlers = new Map<string, Array<{ resolve: () => void; reject: (err: unknown) => void }>>();
 const _noteWriteBaselines = new Map<string, Note>();
+const _notePendingUpdateCounts = new Map<string, number>();
 
 /** Flush a note write immediately, skipping the debounce. */
 function flushNoteWrite(noteId: string, fn: () => Promise<void>): Promise<void> {
@@ -638,39 +643,51 @@ export async function syncNoteUpdate(
   if (!_noteWriteBaselines.has(note.id)) {
     _noteWriteBaselines.set(note.id, note);
   }
+  _notePendingUpdateCounts.set(note.id, (_notePendingUpdateCounts.get(note.id) ?? 0) + 1);
+  let completed = false;
   // Use per-note debounce: rapid typing collapses into one write.
-  await debouncedNoteWrite(note.id, async () => {
-    const baseline = _noteWriteBaselines.get(note.id) ?? note;
-    const nextNote = { ...note, content, updatedAt: new Date().toISOString() };
-    try {
-      await preserveNoaEditIfDiskChanged(handle, baseline, nextNote, folders);
-      await writeNoteTracked(
-        handle,
-        nextNote,
-        folders,
-      );
-      _noteWriteBaselines.delete(note.id);
-    } catch (error) {
-      if (error instanceof VaultWriteConflictError) {
-        _noteWriteBaselines.delete(note.id);
-      } else {
-        // Markdown may already be durable even when a later manifest or
-        // attachment step fails. Advance the accepted baseline so a queued
-        // newer edit is compared against Noa's landed version, not stale A.
-        const desiredText = serializeNoteForVault(nextNote);
-        try {
-          const diskText = await readVaultNoteText(handle, nextNote, folders);
-          if (diskText === desiredText) {
-            _noteWriteBaselines.set(note.id, { ...nextNote, vaultBaseText: desiredText });
-            await onBaselineAdvanced?.(note.id, desiredText);
+  try {
+    await debouncedNoteWrite(note.id, async () => {
+      const baseline = _noteWriteBaselines.get(note.id) ?? note;
+      const nextNote = { ...note, content, updatedAt: new Date().toISOString() };
+      try {
+        // Content saves retain the exact disk path, including names legal on the host filesystem.
+        const existingPath = await preserveNoaEditIfDiskChanged(handle, baseline, nextNote, folders);
+        await writeNoteTracked(handle, nextNote, folders, undefined, existingPath ?? undefined);
+        // In-memory only: queued typing compares against this write; the sync
+        // acknowledgement persists the final baseline.
+        _noteWriteBaselines.set(note.id, { ...nextNote, vaultBaseText: serializeNoteForVault(nextNote) });
+      } catch (error) {
+        if (error instanceof VaultWriteConflictError) {
+          _noteWriteBaselines.delete(note.id);
+        } else {
+          // Markdown may already be durable even when a later manifest or
+          // attachment step fails. Advance the accepted baseline so a queued
+          // newer edit is compared against Noa's landed version, not stale A.
+          const desiredText = serializeNoteForVault(nextNote);
+          try {
+            const diskText = await readVaultNoteText(handle, nextNote, folders);
+            if (diskText === desiredText) {
+              _noteWriteBaselines.set(note.id, { ...nextNote, vaultBaseText: desiredText });
+              await onBaselineAdvanced?.(note.id, desiredText);
+            }
+          } catch {
+            // Keep the earlier baseline when read-back cannot confirm durability.
           }
-        } catch {
-          // Keep the earlier baseline when read-back cannot confirm durability.
         }
+        throw error;
       }
-      throw error;
+    });
+    completed = true;
+  } finally {
+    const remaining = (_notePendingUpdateCounts.get(note.id) ?? 1) - 1;
+    if (remaining > 0) {
+      _notePendingUpdateCounts.set(note.id, remaining);
+    } else {
+      _notePendingUpdateCounts.delete(note.id);
+      if (completed) _noteWriteBaselines.delete(note.id);
     }
-  });
+  }
 }
 
 /**
@@ -804,10 +821,19 @@ export async function syncVaultNoteSnapshot(
       && extractContentFromVaultText(note.vaultBaseText) === note.content
       ? note.vaultBaseText
       : undefined;
-    const written = await writeNoteTracked(handle, note, folders, exactStructuralPayload);
+    const existingPath = previousPath && isNoteAtCanonicalPath(previousPath, note, folders) ? previousPath : undefined;
+    const written = await writeNoteTracked(handle, note, folders, exactStructuralPayload, existingPath);
     const stalePaths = new Set([previousPath, note.vaultPath].filter((path): path is string => Boolean(path)));
     if (written) stalePaths.delete(written.path);
     for (const path of stalePaths) {
+      const diskText = await readVaultNoteTextAtPath(handle, path);
+      if (diskText === null) continue;
+      // The manifest may already point at the new file; validate each old path independently.
+      const baselineText = baseline.vaultBaseText ?? serializeNoteForVault(baseline);
+      if (diskText !== baselineText) {
+        _noteWriteBaselines.delete(note.id);
+        return new VaultWriteConflictError(note.title, path, 'external');
+      }
       await removeNoteFileAtPathTracked(handle, path);
     }
     _noteWriteBaselines.delete(note.id);

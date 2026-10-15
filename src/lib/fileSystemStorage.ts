@@ -247,7 +247,8 @@ export async function getVaultIdentity(rootHandle: FileSystemDirectoryHandle): P
 }
 
 // App data lives in hidden .noa/ so it never shows up as vault content. Reads
-// fall back to a root-level manifest.json; the next write removes it.
+// fall back to a root-level manifest.json; writes leave that file alone since
+// it may not be Noa's.
 async function readVaultManifest(rootHandle: FileSystemDirectoryHandle): Promise<VaultManifest> {
   try {
     const noaDir = await rootHandle.getDirectoryHandle(NOA_DATA_DIRNAME);
@@ -270,11 +271,6 @@ async function writeVaultManifest(rootHandle: FileSystemDirectoryHandle, manifes
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(manifest, null, 2));
   await writable.close();
-  try {
-    await rootHandle.removeEntry(VAULT_MANIFEST_FILENAME);
-  } catch {
-    // No legacy root manifest to migrate away.
-  }
 }
 
 function relativeNotePath(folderName: string | undefined, filename: string): string {
@@ -463,6 +459,7 @@ export async function writeNote(
   note: Note,
   folders: Folder[],
   payloadOverride?: string,
+  existingPath?: string,
 ): Promise<WrittenNoteFile | null> {
   // Defense in depth: only vault-origin notes are ever written to disk.
   if (note.origin !== 'vault') return null;
@@ -472,9 +469,11 @@ export async function writeNote(
   // A non-root destination must be a vault-origin folder, so private Noa folder
   // names never leak into the connected vault.
   if (note.folder && (!folder || folder.origin !== 'vault')) return null;
-  const dirHandle = folder
-    ? await getFolderHandle(rootHandle, folder.name)
-    : rootHandle;
+  const existingSegments = existingPath?.split('/').filter(Boolean);
+  const existingFilename = existingSegments?.pop();
+  const dirHandle = existingFilename
+    ? await ensureDirectory(rootHandle, existingSegments!, false)
+    : folder ? await getFolderHandle(rootHandle, folder.name) : rootHandle;
   if (!dirHandle) return null;
 
   const baseName = sanitizeFilename(note.title || 'Untitled');
@@ -487,16 +486,16 @@ export async function writeNote(
     || note.vaultPath === preferredPath;
   // Manifest entries are written after their file, so an entry with no file
   // behind it is stale (deleted outside Noa) and must not force a suffix.
-  const preferredOccupied = !preferredIsOwned && await fileExists(dirHandle, defaultFilename);
+  const preferredOccupied = !existingFilename && !preferredIsOwned && await fileExists(dirHandle, defaultFilename);
   const suffixedFilename = `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`;
   const suffixedPath = relativeNotePath(folder?.name, suffixedFilename);
   // A note already living at its suffixed name stays there; writing the
   // preferred name would leave the old file behind as a duplicate.
   const ownsSuffixed = existingManifestEntry?.[0] === suffixedPath || note.vaultPath === suffixedPath;
-  const filename = preferredOccupied || ownsSuffixed ? suffixedFilename : defaultFilename;
+  const filename = existingFilename ?? (preferredOccupied || ownsSuffixed ? suffixedFilename : defaultFilename);
 
   const payload = payloadOverride ?? serializeNoteForVault(note);
-  const nextPath = relativeNotePath(folder?.name, filename);
+  const nextPath = existingPath ?? relativeNotePath(folder?.name, filename);
   if (filename !== defaultFilename) {
     const alternateOwner = manifest.notes[nextPath];
     const alternateIsOwned = alternateOwner?.id === diskNoteId
@@ -584,8 +583,8 @@ export async function deleteNoteFile(
         await parentHandle.removeEntry(segments[segments.length - 1]);
         deleted = true;
         removedPath = manifestEntry[0];
-      } catch {
-        // Stale manifest path — fall through to title heuristics.
+      } catch (error) {
+        if (!(error && typeof error === 'object' && 'name' in error && error.name === 'NotFoundError')) throw error;
       }
     }
   }
@@ -598,9 +597,8 @@ export async function deleteNoteFile(
     }
   }
 
-  // Title fallback only for legacy rows without vaultPath; a row with an exact
-  // path must never delete a same-titled unrelated file.
-  if (!deleted && !note.vaultPath) {
+  // Missing known paths must never fall back to a same-titled unrelated file.
+  if (!deleted && !manifestEntry && !note.vaultPath) {
     const folder = folders.find(f => f.id === note.folder);
     const dirHandle = folder
       ? await getFolderHandle(rootHandle, folder.name, false)
@@ -639,6 +637,15 @@ export async function deleteNoteFile(
   return removedPath;
 }
 
+/** True when `path` is where the note's title and folder already map, modulo host-legal characters. */
+export function isNoteAtCanonicalPath(path: string, note: Note, folders: Folder[]): boolean {
+  const folder = folders.find((item) => item.id === note.folder);
+  const baseName = sanitizeFilename(note.title || 'Untitled');
+  const canonical = sanitizeFolderPath(path);
+  return canonical === relativeNotePath(folder?.name, `${baseName}.md`)
+    || canonical === relativeNotePath(folder?.name, `${baseName}_${noteCollisionSuffix(vaultDiskNoteId(note))}.md`);
+}
+
 /** Resolve the current on-disk path before a structural write changes manifest state. */
 export async function getNoteFilePath(
   rootHandle: FileSystemDirectoryHandle,
@@ -655,6 +662,8 @@ export async function getNoteFilePath(
   if (note.vaultPath && await fileExistsAtPath(rootHandle, note.vaultPath)) {
     return note.vaultPath;
   }
+  // A missing known file must never resolve to a same-titled sibling.
+  if (manifestEntry || note.vaultPath) return null;
 
   const folder = folders.find((item) => item.id === note.folder);
   if (note.folder && folder?.origin !== 'vault') return null;
@@ -662,7 +671,10 @@ export async function getNoteFilePath(
   if (!dirHandle) return null;
   const baseName = sanitizeFilename(note.title || 'Untitled');
   for (const filename of [`${baseName}.md`, `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`]) {
-    if (await fileExists(dirHandle, filename)) return relativeNotePath(folder?.name, filename);
+    const path = relativeNotePath(folder?.name, filename);
+    const owner = manifest.notes[path];
+    if (owner && owner.id !== diskNoteId) continue;
+    if (await fileExists(dirHandle, filename)) return path;
   }
   return null;
 }
@@ -674,7 +686,13 @@ export async function readVaultNoteText(
   folders: Folder[],
 ): Promise<string | null> {
   const path = await getNoteFilePath(rootHandle, note, folders);
-  if (!path) return null;
+  return path ? readVaultNoteTextAtPath(rootHandle, path) : null;
+}
+
+export async function readVaultNoteTextAtPath(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string,
+): Promise<string | null> {
   const segments = path.split('/').filter(Boolean);
   const filename = segments.pop();
   if (!filename) return null;

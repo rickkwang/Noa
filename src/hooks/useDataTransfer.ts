@@ -420,11 +420,14 @@ export function useDataTransfer({
   const [importingData, setImportingData] = useState(false);
   const [importStatusText, setImportStatusText] = useState<string | null>(null);
   const importStrategyRef = useRef<'overwrite' | 'merge' | 'skip'>('skip');
+  // Confirmation callbacks outlive the render that opened them; read the latest workspace at confirm time.
+  const workspaceRef = useRef({ notes, folders, isVaultConnected });
+  workspaceRef.current = { notes, folders, isVaultConnected };
   const exportWorkspace = useMemo(() => selectNoaOwnedWorkspace(notes, folders), [folders, notes]);
 
   // Wrap onImportData to track loading state
   const trackedImportData: typeof onImportData = useCallback(async (...args) => {
-    if (args[3] && isVaultConnected) {
+    if (args[3] && workspaceRef.current.isVaultConnected) {
       throw new Error('Disconnect the vault folder before replacing this workspace.');
     }
     setImportingData(true);
@@ -435,7 +438,7 @@ export function useDataTransfer({
       setImportingData(false);
       setImportStatusText(null);
     }
-  }, [onImportData, isVaultConnected]);
+  }, [onImportData]);
 
   const ensureExportIntegrity = useCallback(() => {
     const report = validateExportData(exportWorkspace.notes, exportWorkspace.folders);
@@ -694,20 +697,21 @@ export function useDataTransfer({
             onStrategyChange: (s) => { importStrategyRef.current = s; },
             onConfirm: async () => {
               const strategy = importStrategyRef.current;
-              if (strategy === 'overwrite' && isVaultConnected) {
+              if (strategy === 'overwrite' && workspaceRef.current.isVaultConnected) {
                 notify({ type: 'error', text: 'Disconnect the vault folder before replacing this workspace.' });
                 return;
               }
-              const finalNotes = applyImportStrategy(normalizedWithPayloads, notes, strategy);
+              const { notes: currentNotes, folders: currentFolders } = workspaceRef.current;
+              const finalNotes = applyImportStrategy(normalizedWithPayloads, currentNotes, strategy);
               const warningCount = report.issues.filter((issue) => issue.level === 'warning').length;
-              const importedCount = countImportedNotes(finalNotes, notes, strategy);
+              const importedCount = countImportedNotes(finalNotes, currentNotes, strategy);
               const incomingFolders = Array.isArray(parsed.folders)
                 ? stripVaultMetadataFromImportedFolders(parsed.folders as Folder[])
                 : [];
               try {
                 await trackedImportData(
                   finalNotes as ImportedNote[],
-                  resolveImportedFolders(strategy, folders, incomingFolders),
+                  resolveImportedFolders(strategy, currentFolders, incomingFolders),
                   resolveImportedWorkspaceName(strategy, parsed.workspaceName),
                   strategy === 'overwrite',
                 );
@@ -749,7 +753,7 @@ export function useDataTransfer({
       };
       reader.readAsText(file);
     },
-    [notes, folders, notify, trackedImportData, requestConfirm, isVaultConnected],
+    [notes, folders, notify, trackedImportData, requestConfirm],
   );
 
   const importVaultFolder = useCallback(async () => {
@@ -788,15 +792,8 @@ export function useDataTransfer({
         return;
       }
 
-      const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
-        notes,
-        folders,
-        validatedNotes as ImportedNote[],
-        newFolders,
-      );
-
       requestConfirm({
-        message: `Import "${workspaceLabel}" (${remappedNotes.length} note(s), ${newFolders.length} folder(s)) into current workspace?`,
+        message: `Import "${workspaceLabel}" (${validatedNotes.length} note(s), ${newFolders.length} folder(s)) into current workspace?`,
         onConfirm: async () => {
           try {
             setImportStatusText('Saving imported attachments...');
@@ -815,7 +812,14 @@ export function useDataTransfer({
               return;
             }
 
-            await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
+            const { notes: currentNotes, folders: currentFolders } = workspaceRef.current;
+            const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
+              currentNotes,
+              currentFolders,
+              validatedNotes as ImportedNote[],
+              newFolders,
+            );
+            await trackedImportData([...currentNotes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
             notify({
               type: 'success',
               text: `Imported ${remappedNotes.length} note(s) from "${workspaceLabel}" into your workspace${stagedAttachments.length > 0 ? ` with ${stagedAttachments.length} attachment(s)` : ''}.`,
@@ -851,7 +855,7 @@ export function useDataTransfer({
     } finally {
       setImportStatusText(null);
     }
-  }, [folders, notes, notify, trackedImportData, requestConfirm]);
+  }, [notify, trackedImportData, requestConfirm]);
 
   const importFolderFiles = useCallback(
     (files: FileList) => {
@@ -939,15 +943,16 @@ export function useDataTransfer({
           return;
         }
 
-      const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
-        notes,
-        folders,
-        validatedNotes as ImportedNote[],
-        newFolders,
-      );
+        const { notes: currentNotes, folders: currentFolders } = workspaceRef.current;
+        const { notes: remappedNotes, folders: mergedFolders } = mergeImportedWorkspaceData(
+          currentNotes,
+          currentFolders,
+          validatedNotes as ImportedNote[],
+          newFolders,
+        );
 
         try {
-          await trackedImportData([...notes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
+          await trackedImportData([...currentNotes, ...remappedNotes] as ImportedNote[], mergedFolders, undefined, false);
         } catch (error) {
           await Promise.allSettled(
             stagedAttachments.map(async ({ attachmentId }) => {
@@ -983,11 +988,11 @@ export function useDataTransfer({
         },
       });
     },
-    [notes, folders, notify, trackedImportData, requestConfirm],
+    [notify, trackedImportData, requestConfirm],
   );
 
   const createNewWorkspace = useCallback(() => {
-      if (isVaultConnected) {
+      if (workspaceRef.current.isVaultConnected) {
         notify({ type: 'error', text: 'Disconnect the vault folder before replacing this workspace.' });
         return;
       }
@@ -1014,7 +1019,7 @@ export function useDataTransfer({
           }
         },
       });
-    }, [notes, folders, notify, trackedImportData, requestConfirm, isVaultConnected]);
+    }, [notes, folders, notify, trackedImportData, requestConfirm]);
 
   const connectFolder = useCallback(async () => {
     setConnectingFs(true);

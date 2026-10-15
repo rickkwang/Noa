@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import type { ConfirmRequest, useDataTransfer } from '../../src/hooks/useDataTransfer';
 import {
   buildVaultImportPayload,
   collectVaultDirectoryEntries,
@@ -46,6 +47,202 @@ it('imports an ordinary root README rather than treating its filename as an expo
   const imported = await buildVaultImportPayload(scan.files, new Map());
   expect(imported.notes).toHaveLength(1);
   expect(imported.notes[0]).toMatchObject({ title: 'README', content: '# My project\nImportant notes' });
+});
+
+describe('import confirmation uses the current workspace', () => {
+  afterEach(() => {
+    vi.doUnmock('react');
+    vi.doUnmock('../../src/lib/storage');
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  async function setup() {
+    vi.resetModules();
+    const refs: Array<{ current: unknown }> = [];
+    let refIndex = 0;
+    // Hooks run in a fixed order like React's own dispatcher; effects are inert here.
+    vi.doMock('react', async (importOriginal) => ({
+      ...await importOriginal<typeof import('react')>(),
+      useState: (initial: unknown) => [typeof initial === 'function' ? initial() : initial, vi.fn()],
+      useEffect: () => {},
+      useLayoutEffect: () => {},
+      useRef: (initial: unknown) => {
+        const index = refIndex++;
+        return refs[index] ??= { current: initial };
+      },
+      useCallback: (callback: unknown) => callback,
+      useMemo: (factory: () => unknown) => factory(),
+    }));
+    const saveAttachmentBlob = vi.fn(async (_id: string, _blob: Blob) => {});
+    vi.doMock('../../src/lib/storage', () => ({
+      storage: { saveAttachmentBlob, deleteAttachmentBlob: vi.fn() },
+    }));
+    const { useDataTransfer: useTransfer } = await import('../../src/hooks/useDataTransfer');
+    const onImportData = vi.fn<Parameters<typeof useDataTransfer>[0]['onImportData']>().mockResolvedValue(undefined);
+    const requestConfirm = vi.fn<(request: ConfirmRequest) => void>();
+    const notify = vi.fn();
+    const render = (notes: Note[], folders: Parameters<typeof useDataTransfer>[0]['folders'], isVaultConnected = false) => {
+      refIndex = 0;
+      return useTransfer({
+        notes, folders, workspaceName: 'Current', onImportData, isVaultConnected,
+        onConnectFolder: vi.fn(), onDisconnectFolder: vi.fn(), notify, requestConfirm,
+      });
+    };
+    return { render, onImportData, requestConfirm, notify, saveAttachmentBlob };
+  }
+
+  it.each(['skip', 'merge', 'overwrite'] as const)(
+    'JSON %s applies to edits and folder changes saved before confirmation', async strategy => {
+      const { render, onImportData, requestConfirm, notify } = await setup();
+      vi.stubGlobal('FileReader', class {
+        onload?: (event: { target: { result: string } }) => void;
+        readAsText(file: File) {
+          void file.text().then(result => this.onload?.({ target: { result } }));
+        }
+      });
+      const original = makeNote('existing', 'Existing');
+      const removed = makeNote('removed', 'Removed');
+      const api = render([original, removed], [{ id: 'folder', name: 'Old' }]);
+      const incoming = { ...makeNote('existing', 'Existing'), content: 'Backup body' };
+      api.importJsonFile(new File([JSON.stringify({
+        notes: [incoming, makeNote('incoming', 'Incoming')],
+        folders: [{ id: 'backup-folder', name: 'Backup' }], workspaceName: 'Backup workspace',
+      })], 'backup.json'));
+      await vi.waitFor(() => expect(requestConfirm).toHaveBeenCalledOnce());
+      const confirmation = requestConfirm.mock.calls[0][0];
+      const edited = { ...original, content: 'Saved before confirmation', updatedAt: '2024-02-01T00:00:00.000Z' };
+      const added = makeNote('added', 'Incoming');
+      const currentFolders = [{ id: 'folder', name: 'Renamed' }, { id: 'added-folder', name: 'Added' }];
+      render([edited, added], currentFolders);
+      confirmation.onStrategyChange!(strategy);
+      await confirmation.onConfirm();
+
+      const [importedNotes, importedFolders, workspaceName, shouldPrune] = onImportData.mock.calls[0];
+      if (strategy === 'overwrite') {
+        expect(importedNotes).toHaveLength(2);
+        expect(importedNotes).toMatchObject([incoming, makeNote('incoming', 'Incoming')]);
+        expect(importedFolders).toEqual([{ id: 'backup-folder', name: 'Backup' }]);
+        expect(workspaceName).toBe('Backup workspace');
+        expect(shouldPrune).toBe(true);
+      } else {
+        expect(importedNotes.find(note => note.id === 'existing')).toEqual(edited);
+        expect(importedNotes).toContainEqual(added);
+        expect(importedNotes.some(note => note.id === 'removed')).toBe(false);
+        expect(importedFolders).toEqual([...currentFolders, { id: 'backup-folder', name: 'Backup' }]);
+        expect(workspaceName).toBeUndefined();
+        expect(shouldPrune).toBe(false);
+        expect(notify).toHaveBeenLastCalledWith({ type: 'success', text: `Imported ${strategy === 'skip' ? 0 : 2} notes.` });
+      }
+    },
+  );
+
+  it.each([
+    { strategy: 'overwrite', connections: [false, true], blocked: true },
+    { strategy: 'overwrite', connections: [true, false], blocked: false },
+    { strategy: 'overwrite', connections: [false, true, false], blocked: false },
+    { strategy: 'merge', connections: [false, true], blocked: false },
+    { strategy: 'skip', connections: [false, true], blocked: false },
+  ] as const)(
+    'JSON $strategy checks the latest vault connection after $connections', async ({ strategy, connections, blocked }) => {
+      const { render, onImportData, requestConfirm, notify } = await setup();
+      vi.stubGlobal('FileReader', class {
+        onload?: (event: { target: { result: string } }) => void;
+        readAsText(file: File) {
+          void file.text().then(result => this.onload?.({ target: { result } }));
+        }
+      });
+      const notes = [makeNote('existing', 'Existing')];
+      const incoming = makeNote('incoming', 'Incoming');
+      const api = render(notes, [], connections[0]);
+      api.importJsonFile(new File([JSON.stringify({ notes: [incoming] })], 'backup.json'));
+      await vi.waitFor(() => expect(requestConfirm).toHaveBeenCalledOnce());
+      const confirmation = requestConfirm.mock.calls[0][0];
+      confirmation.onStrategyChange!(strategy);
+      for (const connected of connections.slice(1)) render(notes, [], connected);
+      await confirmation.onConfirm();
+
+      if (blocked) {
+        expect(onImportData).not.toHaveBeenCalled();
+        expect(notify).toHaveBeenLastCalledWith({
+          type: 'error', text: 'Disconnect the vault folder before replacing this workspace.',
+        });
+      } else {
+        expect(onImportData).toHaveBeenCalledOnce();
+        const [importedNotes, , , shouldPrune] = onImportData.mock.calls[0];
+        expect(importedNotes.map(note => note.id)).toEqual(
+          strategy === 'overwrite' ? ['incoming'] : ['existing', 'incoming'],
+        );
+        expect(shouldPrune).toBe(strategy === 'overwrite');
+        expect(notify).toHaveBeenLastCalledWith({ type: 'success', text: 'Imported 1 notes.' });
+      }
+    },
+  );
+
+  it.each([true, false])(
+    'workspace replacement uses the latest vault connection when connected is %s', async connectedAtConfirmation => {
+      const { render, onImportData, requestConfirm, notify } = await setup();
+      const api = render([], []);
+      api.createNewWorkspace();
+      expect(requestConfirm).toHaveBeenCalledOnce();
+      const confirmation = requestConfirm.mock.calls[0][0];
+      render([], [], true);
+      if (!connectedAtConfirmation) render([], [], false);
+      await confirmation.onConfirm('Replacement');
+
+      if (connectedAtConfirmation) {
+        expect(onImportData).not.toHaveBeenCalled();
+        expect(notify).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'error' }));
+      } else {
+        expect(onImportData).toHaveBeenCalledExactlyOnceWith([], [], 'Replacement', true);
+        expect(notify).toHaveBeenLastCalledWith({ type: 'success', text: 'Workspace switched to "Replacement".' });
+      }
+    },
+  );
+
+  it.each(['directory picker', 'file list'] as const)(
+    '%s merges against changes saved while imported attachments are being written', async path => {
+      const { render, onImportData, requestConfirm, saveAttachmentBlob } = await setup();
+      const original = makeNote('existing', 'Existing');
+      const api = render([original, makeNote('removed', 'Removed')], [{ id: 'old-folder', name: 'Old' }]);
+      let releaseAttachment!: () => void;
+      saveAttachmentBlob.mockImplementation(() => new Promise<void>(resolve => { releaseAttachment = resolve; }));
+      if (path === 'directory picker') {
+        const root = createMemRoot('Vault');
+        const file = await root.getFileHandle('image.png', { create: true });
+        const writer = await file.createWritable();
+        await writer.write('image');
+        await writer.close();
+        vi.stubGlobal('window', { showDirectoryPicker: vi.fn().mockResolvedValue(root) });
+        await api.importVaultFolder();
+      } else {
+        const file = new File(['image'], 'image.png', { type: 'image/png' });
+        Object.defineProperty(file, 'webkitRelativePath', { value: 'Vault/image.png' });
+        api.importFolderFiles([file] as unknown as FileList);
+      }
+      expect(requestConfirm).toHaveBeenCalledOnce();
+      const confirmation = requestConfirm.mock.calls[0][0];
+      const pendingImport = confirmation.onConfirm();
+      await vi.waitFor(() => expect(saveAttachmentBlob).toHaveBeenCalledOnce());
+      const edited = { ...original, content: 'Saved during attachment write' };
+      const added = makeNote('added', 'image');
+      const currentFolders = [{ id: 'vault-folder', name: 'Vault', source: 'obsidian-import' as const }];
+      render([edited, added], currentFolders);
+      releaseAttachment();
+      await pendingImport;
+
+      const [importedNotes, importedFolders, workspaceName, shouldPrune] = onImportData.mock.calls[0];
+      expect(importedNotes.find(note => note.id === 'existing')).toEqual(edited);
+      expect(importedNotes).toContainEqual(added);
+      expect(importedNotes.some(note => note.id === 'removed')).toBe(false);
+      expect(importedNotes.find(note => note.source === 'obsidian-import')).toMatchObject({
+        title: 'image (imported)', folder: 'vault-folder',
+      });
+      expect(importedFolders).toEqual(currentFolders);
+      expect(workspaceName).toBeUndefined();
+      expect(shouldPrune).toBe(false);
+    },
+  );
 });
 
 describe('selectNoaOwnedWorkspace', () => {
