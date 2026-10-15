@@ -6,11 +6,7 @@ import { GlobalTask, Note } from '../../types';
 import CalendarPanel from '../CalendarPanel';
 import { TagBrowser } from '../sidebar/TagBrowser';
 import { RailCard } from './RailCard';
-
-// Rail width, its inset from the window edge (clear of the editor's scrollbar), and the gap before the text.
-const RAIL_WIDTH = 280;
-const RAIL_RIGHT = 14;
-export const NOTE_RAIL_RESERVE_PX = RAIL_WIDTH + RAIL_RIGHT + 12;
+import { RAIL_RIGHT, RAIL_WIDTH } from './railLayout';
 
 interface NoteRailProps {
   notes: Note[];

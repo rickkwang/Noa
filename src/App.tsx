@@ -6,7 +6,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EditorFocusRequest } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { NOTE_RAIL_RESERVE_PX, NoteRail } from './components/rail/NoteRail';
+import { NOTE_RAIL_RESERVE_PX } from './components/rail/railLayout';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
 import Sidebar from './components/Sidebar';
@@ -38,17 +38,21 @@ const RightPanel = lazy(() => import('./components/RightPanel'));
 const SettingsModal = lazy(() => import('./components/settings/SettingsModal'));
 // lazy() suspends on its first render even when the chunk is cached, and React
 // then holds the fallback ~300ms before revealing. Once warmed (idle effect
-// below), hand it a thenable that resolves synchronously so the scene is
-// simply there when the last tab closes.
-type EmptyStateModule = typeof import('./components/emptyState/EmptyState');
-let emptyStateModule: EmptyStateModule | undefined;
-const loadEmptyState = () => import('./components/emptyState/EmptyState').then((mod) => (emptyStateModule = mod));
-const EmptyState = lazy(() => {
-  const ready = emptyStateModule;
-  return ready
-    ? ({ then: (resolve: (mod: EmptyStateModule) => void) => resolve(ready) } as unknown as Promise<EmptyStateModule>)
-    : loadEmptyState();
-});
+// below), hand it a thenable that resolves synchronously so the component is
+// simply there when it first mounts: the empty-state scene when the last tab
+// closes, the note rail when it is first opened.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- same bound as lazy() itself
+function warmableLazy<T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  type Mod = { default: T };
+  let ready: Mod | undefined;
+  const warm = () => load().then((mod) => (ready = mod));
+  const Component = lazy(() => (ready
+    ? ({ then: (resolve: (mod: Mod) => void) => resolve(ready!) } as unknown as Promise<Mod>)
+    : warm()));
+  return [Component, warm] as const;
+}
+const [EmptyState, loadEmptyState] = warmableLazy(() => import('./components/emptyState/EmptyState'));
+const [NoteRail, loadNoteRail] = warmableLazy(() => import('./components/rail/NoteRail').then((mod) => ({ default: mod.NoteRail })));
 const CommandPaletteDialog = lazy(() => import('./components/CommandPaletteDialog'));
 const NavigationConflictDialog = lazy(() => import('./components/NavigationConflictDialog'));
 const TemplatePickerDialog = lazy(() => import('./components/TemplatePickerDialog'));
@@ -691,7 +695,7 @@ export default function App() {
   // beat fetching it before anything renders (its Suspense fallback is null).
   // The right panel rides along, so the idle mount below (when it was
   // restored closed) finds its chunk already fetched. The empty-state scene
-  // too (see loadEmptyState).
+  // and the note rail too (see warmableLazy).
   useEffect(() => {
     if (typeof window.requestIdleCallback !== 'function') return;
     const id = window.requestIdleCallback(
@@ -699,6 +703,7 @@ export default function App() {
         void import('./components/settings/SettingsModal');
         void import('./components/RightPanel');
         void loadEmptyState();
+        void loadNoteRail();
       },
       { timeout: 5000 }
     );
@@ -1233,6 +1238,7 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
         {(showNoteRail || showNoteRailOverlay) && (
+          <Suspense fallback={null}>
           <NoteRail
             overlay={showNoteRailOverlay}
             onDismiss={dismissNoteRailOverlay}
@@ -1252,6 +1258,7 @@ export default function App() {
               setIsSearchOpen(true);
             }}
           />
+          </Suspense>
         )}
         </div>
 
