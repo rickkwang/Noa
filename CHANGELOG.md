@@ -7,6 +7,31 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.29] - 2026-10-15
+
+### Added
+- Editor Live Preview renders Markdown inline, including blocks and folds. Cmd+E toggles it, and Cmd+click follows links.
+- Backlinks show the surrounding context and jump to the matching line.
+- The graph has legible labels, quiet links, and eased focus and entry motion. Its filter panel matches Obsidian's controls.
+- Calendar and Tags move to a rail beside the editor, and the tag tree gains filter and sort.
+- Sidebar notes sort from a toolbar menu, with a two-way sort switch in the titlebar.
+- Images open in a viewer with pointer-anchored zoom and drag-to-pan.
+- Right-panel cards reorder by dragging their handle.
+- Settings offers font size presets.
+
+### Changed
+- Tasks use step-list styling, with a short settle when one is checked.
+- The export menu sits in the titlebar beside the rail and panel buttons.
+- Colours, corner radii, font sizes, shadows, and motion follow shared tokens across light and dark themes.
+- The sidebar icon rail, tabs, menus, and settings dialog share one restyled look.
+
+### Fixed
+- Vault files keep their exact paths, and imports are confirmed against the live workspace.
+- A new note keeps its initial baseline while it is still being written.
+- The default editor view is a preference, and the open view is kept per session.
+- Startup restores the session within the workspace being shown.
+- The desktop close button is centred on the sidebar icon rail.
+
 ## [1.0.28] - 2026-10-11
 
 ### Added
