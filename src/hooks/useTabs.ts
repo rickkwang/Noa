@@ -20,7 +20,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   // Entering tabs are a set (like closingTabIds): a single slot let a second open strip the first tab's animation mid-flight.
   // Value: the tab active when this one opened, used to suppress the adjacent divider during the entrance.
-  const [enteringTabs, setEnteringTabs] = useState<Map<string, string | null>>(() => new Map());
+  const [enteringTabs, setEnteringTabs] = useState<Set<string>>(() => new Set());
   const [closingTabIds, setClosingTabIds] = useState<Set<string>>(() => new Set());
   const [tabLimitWarning, setTabLimitWarning] = useState(false);
   const restoredOpenTabsRef = useRef(false);
@@ -40,7 +40,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     }
     setEnteringTabs((prev) => {
       if (!prev.has(id)) return prev;
-      const next = new Map(prev);
+      const next = new Set(prev);
       next.delete(id);
       return next;
     });
@@ -134,13 +134,13 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
     }, 3000);
   }, []);
 
-  const markEnteringTab = useCallback((id: string, fromId: string | null) => {
+  const markEnteringTab = useCallback((id: string) => {
     // Reduced motion disables the enter keyframes, so flagging the tab would leave it squeezed until the fallback fires.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     setEnteringTabs((prev) => {
-      if (prev.has(id) && prev.get(id) === fromId) return prev;
-      const next = new Map(prev);
-      next.set(id, fromId);
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
       return next;
     });
     const existing = enteringTabTimeoutsRef.current.get(id);
@@ -163,7 +163,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
       return next;
     });
     if (animate && !wasOpen && hadTabs) {
-      markEnteringTab(id, activeNoteIdRef.current || null);
+      markEnteringTab(id);
     }
   }, [markEnteringTab, showTabLimitWarning]);
 
@@ -251,7 +251,7 @@ export function useTabs({ notes, isLoaded, activeNoteId, setActiveNoteId }: UseT
   }, [openTabIds, notes]);
 
   const closingTabIdList = useMemo(() => Array.from(closingTabIds), [closingTabIds]);
-  const enteringTabIdList = useMemo(() => Array.from(enteringTabs.keys()), [enteringTabs]);
+  const enteringTabIdList = useMemo(() => Array.from(enteringTabs), [enteringTabs]);
 
   return {
     openTabs,
