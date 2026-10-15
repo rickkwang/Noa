@@ -17,9 +17,10 @@ interface EditorActionsProps {
 }
 
 /**
- * Note-level controls at the right end of the tab strip. The view-mode cycle
- * keeps its own button because it is the one control worth a single click;
- * export and history collapse into the overflow menu.
+ * Note-level controls at the right end of the editor toolbar. The view-mode
+ * cycle keeps its own button because it is the one control worth a single
+ * click; export and history collapse into one menu, which on desktop moves up
+ * into the titlebar (see exportSlot).
  */
 export function EditorActions({
   isDark,

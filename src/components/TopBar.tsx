@@ -142,7 +142,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
           transition: rightPanelEdgeTransition,
         }}
       >
-        {/* 2px gap: the 24px buttons then sit centre-over-centre on the editor toolbar's 22px view and export buttons. */}
+        {/* Export menu (portalled in by the editor), rail toggle and panel menu: 24px buttons, 2px apart. */}
         <div className="relative flex items-center gap-0.5" style={noDragRegion}>
           {isMobile ? (
             // The phone drawer picks its card from a strip inside the panel,
