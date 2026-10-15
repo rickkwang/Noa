@@ -1074,6 +1074,17 @@ export default function GraphView({
           )}
         </div>
       )}
+      {/* Nodes and labels dissolve into the card's top and bottom edges rather than being cut off there. Card-coloured
+          washes, not a mask: a mask on the container would fade the banner and focus list above too. Eased stops,
+          as the other edge fades use; below z-10 so those overlays stay crisp. */}
+      {(['top', 'bottom'] as const).map((edge) => (
+        <div
+          key={edge}
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-0 z-[5] h-7 ${edge === 'top' ? 'top-0' : 'bottom-0'}`}
+          style={{ background: `linear-gradient(to ${edge === 'top' ? 'bottom' : 'top'}, ${bgColor} 0%, color-mix(in srgb, ${bgColor} 84%, transparent) 25%, color-mix(in srgb, ${bgColor} 50%, transparent) 50%, color-mix(in srgb, ${bgColor} 16%, transparent) 75%, transparent 100%)` }}
+        />
+      ))}
       <nav aria-label="Graph nodes" className="absolute left-2 top-2 z-20">
         {graphData.nodes.filter((node) => !node.ghost).map((node) => {
           const degree = node.degree ?? 0;
