@@ -3,6 +3,9 @@ export const RIGHT_TABS = ['tasks', 'backlinks', 'outgoing', 'graph', 'propertie
 /** The titlebar menu that switches right-column cards on and off. */
 export const TITLEBAR_PANEL_TABS_SLOT_ID = 'noa-titlebar-panel-tabs';
 
+/** Where the open note's export menu sits in the titlebar, in one row with the rail and panel menu buttons. */
+export const TITLEBAR_NOTE_ACTIONS_SLOT_ID = 'noa-titlebar-note-actions';
+
 export type RightTab = typeof RIGHT_TABS[number];
 
 export const DEFAULT_RIGHT_TAB: RightTab = 'tasks';

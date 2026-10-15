@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Eye, Edit2, Upload } from '@/src/lib/icons';
 
 interface EditorActionsProps {
@@ -10,6 +11,9 @@ interface EditorActionsProps {
   onExportPdf: () => void;
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
+  /** Titlebar slot for the export menu. When set, the menu renders there at the titlebar's button size,
+   *  in one row with the rail and panel buttons; the view toggle stays with the editor. */
+  exportSlot?: HTMLElement | null;
 }
 
 /**
@@ -26,6 +30,7 @@ export function EditorActions({
   onExportPdf,
   onToggleHistory,
   isHistoryOpen,
+  exportSlot,
 }: EditorActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -57,36 +62,26 @@ export function EditorActions({
     isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[#2D2D2B]/90'
   }`;
 
-  return (
-    <div className="flex items-center gap-1 shrink-0">
-      <button
-        onClick={() => setViewMode(nextViewMode)}
-        className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
-          isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
-        }`}
-        title={`Switch to ${nextViewMode} view`}
-        aria-label={`Switch to ${nextViewMode} view`}
-        aria-description={`Current view: ${viewMode}`}
-      >
-        <NextViewModeIcon size={14} />
-      </button>
-
+  const inTitlebar = Boolean(exportSlot);
+  const exportMenu = (
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
+          className={`${inTitlebar ? 'flex h-6 w-6 items-center justify-center' : 'p-1'} rounded-md noa-press transition-colors cursor-pointer ${
             menuOpen || isHistoryOpen
               ? 'noa-ink-selected'
-              : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[var(--text-primary,#2D2D2B)]`
+              : inTitlebar
+                ? `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
+                : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[var(--text-primary,#2D2D2B)]`
           }`}
           title="More actions"
           aria-label="More actions"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
         >
-          {/* Not a second "more" glyph: the titlebar's panel menu sits right
-              above this one. Everything in here but history is an export. */}
-          <Upload size={14} />
+          {/* Not a second "more" glyph: the titlebar's panel menu sits beside
+              this one. Everything in here but history is an export. */}
+          <Upload size={inTitlebar ? 16 : 14} />
         </button>
         {menuOpen && (
           <div
@@ -117,6 +112,23 @@ export function EditorActions({
           </div>
         )}
       </div>
+  );
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <button
+        onClick={() => setViewMode(nextViewMode)}
+        className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
+          isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
+        }`}
+        title={`Switch to ${nextViewMode} view`}
+        aria-label={`Switch to ${nextViewMode} view`}
+        aria-description={`Current view: ${viewMode}`}
+      >
+        <NextViewModeIcon size={14} />
+      </button>
+
+      {exportSlot ? createPortal(exportMenu, exportSlot) : exportMenu}
     </div>
   );
 }

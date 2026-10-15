@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
+import { TITLEBAR_NOTE_ACTIONS_SLOT_ID } from '../constants/rightTabs';
 import { useAttachments } from '../hooks/useAttachments';
 import { useIsDark } from '../hooks/useIsDark';
 import { useNoteProperties } from '../hooks/useNoteProperties';
@@ -119,6 +120,11 @@ export default function Editor({
   onFocusRequestHandled,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  // Where the titlebar shows its own action buttons (desktop, not focus mode), the export menu joins that row.
+  const [titlebarExportSlot, setTitlebarExportSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setTitlebarExportSlot(reserveTitlebarActions ? document.getElementById(TITLEBAR_NOTE_ACTIONS_SLOT_ID) : null);
+  }, [reserveTitlebarActions]);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
@@ -575,6 +581,7 @@ export default function Editor({
 
   const editorActions = (
     <EditorActions
+      exportSlot={titlebarExportSlot}
       isDark={isDark}
       viewMode={viewMode}
       setViewMode={setViewMode}

@@ -1,5 +1,5 @@
 import React, { CSSProperties } from 'react';
-import { TITLEBAR_PANEL_TABS_SLOT_ID, type PaneBadges, type RightTab } from '../constants/rightTabs';
+import { TITLEBAR_NOTE_ACTIONS_SLOT_ID, TITLEBAR_PANEL_TABS_SLOT_ID, type PaneBadges, type RightTab } from '../constants/rightTabs';
 import { useIsDark } from '../hooks/useIsDark';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
@@ -158,6 +158,8 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             </button>
           ) : (
             <>
+            {/* The editor portals its export menu in here (empty when no note is open). */}
+            <div id={TITLEBAR_NOTE_ACTIONS_SLOT_ID} className="flex items-center empty:hidden" />
             {onToggleNoteRail && (
               <button
                 type="button"
