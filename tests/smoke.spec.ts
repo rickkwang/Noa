@@ -789,7 +789,10 @@ test('note rail opens beside the editor and its cards reorder by dragging the gr
   await page.getByRole('button', { name: 'Show calendar and tags' }).click();
   const rail = page.locator('[data-note-rail="true"]');
   await expect(rail).toBeVisible();
-  const titles = () => rail.locator('section h3').allTextContents();
+  // Visual order: cards are placed with CSS `order`, so DOM order never changes.
+  const titles = () => rail.evaluate((el) => [...el.querySelectorAll('section')]
+    .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+    .map((s) => s.querySelector('h3')?.textContent ?? ''));
   expect(await titles()).toEqual(['Calendar', 'Tags']);
 
   // Downward: the swap moves the held card's own DOM node, which must not cost it the pointer.
@@ -806,9 +809,11 @@ test('note rail opens beside the editor and its cards reorder by dragging the gr
   expect((await calendar.boundingBox())!.y).toBeGreaterThan(before + 30);
   await page.mouse.up();
   await expect.poll(titles).toEqual(['Tags', 'Calendar']);
+  // Reordering never moves a card's node: a moved node replays every entrance animation inside it.
+  expect(await rail.locator('section h3').allTextContents()).toEqual(['Calendar', 'Tags']);
 
   await page.reload();
-  await expect.poll(() => page.locator('[data-note-rail="true"] section h3').allTextContents()).toEqual(['Tags', 'Calendar']);
+  await expect.poll(titles).toEqual(['Tags', 'Calendar']);
 });
 
 test('note rail steps aside for the right panel and opens over the editor instead', async ({ page }) => {

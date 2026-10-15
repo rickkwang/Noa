@@ -161,7 +161,7 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
       ev.stopPropagation();
       finish(false);
     };
-    // On window, not the grip: a swap moves the held card's DOM node, which drops any pointer capture on it.
+    // On window, not the grip: the pointer leaves the grip as the cards swap under it.
     event.preventDefault();
     document.body.style.userSelect = 'none';
     // Every element's own cursor (the editor's text cursor, buttons) would override one set on body.
@@ -176,17 +176,18 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
     const held = drag?.id === id;
     return {
       onGripPointerDown: startDrag(id),
-      dragging: held,
       cardRef: (el: HTMLElement | null) => {
         if (el) {
           cardEls.current.set(id, el);
           el.dataset.dy = held ? String(drag!.dy) : '0';
         } else cardEls.current.delete(id);
       },
-      // Held: follows the pointer with no easing. Released: eases back into its slot.
+      first: order[0] === id,
+      // Held: follows the pointer with no easing. Released: eases back into its slot. The slot is a flex `order`, not
+      // a DOM position: moving the node would restart every CSS animation inside it (the tag rows' entrance).
       style: held
-        ? { transform: `translateY(${drag!.dy}px)`, transition: 'none', zIndex: 1 }
-        : { transition: 'transform var(--dur-base) var(--ease-out)' },
+        ? { order: order.indexOf(id), transform: `translateY(${drag!.dy}px)`, transition: 'none', zIndex: 1 }
+        : { order: order.indexOf(id), transition: 'transform var(--dur-base) var(--ease-out)' },
     };
   };
 
@@ -232,12 +233,12 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
         // panel's border and shadow.
         <div className="noa-rail-overlay pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-[10px]">
           <div ref={fadeRef} className="noa-edge-fade-y flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:none]">
-            {order.map(id => cards[id])}
+            {DEFAULT_ORDER.map(id => cards[id])}
           </div>
         </div>
       ) : (
         <div ref={fadeRef} className="noa-edge-fade-y flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-px pb-3 [scrollbar-width:none]">
-          {order.map(id => cards[id])}
+          {DEFAULT_ORDER.map(id => cards[id])}
         </div>
       )}
     </aside>

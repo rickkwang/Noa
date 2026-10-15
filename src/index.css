@@ -1339,7 +1339,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* Each later card keeps its 10px corners under a top-only rule, so the rule curves down at both ends like a tab
    edge instead of running straight across. */
 .noa-rail-overlay .noa-rail-card { box-shadow: none; }
-.noa-rail-overlay .noa-rail-card + .noa-rail-card { border-top: 1px solid var(--divider-subtle); }
+.noa-rail-overlay .noa-rail-card:not([data-rail-first]) { border-top: 1px solid var(--divider-subtle); }
 
 /* Rail calendar. Neutral ink throughout, as in the rest of the rail: washes for today, the range and hover,
    a solid ink fill for the open daily note. Only task dots carry a hue. */

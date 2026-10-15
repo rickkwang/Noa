@@ -9,7 +9,8 @@ interface RailCardProps {
   onToggle: () => void;
   /** Starts a reorder drag from the header's grip. */
   onGripPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  dragging?: boolean;
+  /** First in the rail's visual order (cards are ordered by CSS, so `:first-child` can't tell). */
+  first?: boolean;
   style?: React.CSSProperties;
   cardRef?: (el: HTMLElement | null) => void;
   children: React.ReactNode;
@@ -21,12 +22,12 @@ interface RailCardProps {
  * (the calendar's month, the tag filter) survives a collapse. A grip at the header's right edge,
  * shown on hover, drags the card to a new place in the rail.
  */
-export function RailCard({ title, summary, open, onToggle, onGripPointerDown, dragging = false, style, cardRef, children }: RailCardProps) {
+export function RailCard({ title, summary, open, onToggle, onGripPointerDown, first = false, style, cardRef, children }: RailCardProps) {
   const Chevron = open ? ChevronDown : ChevronRight;
   return (
     <section
       ref={cardRef}
-      data-dragging={dragging ? 'true' : undefined}
+      data-rail-first={first || undefined}
       className="noa-rail-card group/railcard relative shrink-0 rounded-[10px] py-2 font-ui"
       style={style}
     >
