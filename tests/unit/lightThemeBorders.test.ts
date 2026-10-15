@@ -142,14 +142,11 @@ describe('light theme border tokens', () => {
     expect(paneTabs).toContain(": '0 1px 2px rgba(45,45,43,0.1), 0 0 0 1px rgba(45,45,43,0.04)'");
   });
 
-  it('uses the shared divider for linked-mention separators and cards', async () => {
-    const previewPane = await readFile(previewPanePath, 'utf8');
+  it('draws the linked-mentions card with the shared divider ring', async () => {
+    const [previewPane, css] = await Promise.all([readFile(previewPanePath, 'utf8'), readFile(indexCssPath, 'utf8')]);
 
-    expect(previewPane).toContain("borderTop: '1px dashed var(--divider-subtle, #E6E2DA)'");
-    // Card hairline is the same divider at half weight; the shadow carries the edge.
-    expect(previewPane).toContain(
-      "border: '1px solid color-mix(in srgb, var(--divider-subtle, #E6E2DA) 50%, transparent)'"
-    );
+    expect(previewPane).toContain('<section className="noa-rail-card');
+    expect(css).toMatch(/\.noa-rail-card \{[^}]*box-shadow: 0 0 0 1px var\(--divider-subtle\)/);
   });
 
   it('draws no baseline beneath the editor tab strip', async () => {
@@ -249,7 +246,7 @@ describe('light theme border tokens', () => {
       readFile(indexCssPath, 'utf8'),
       readFile(fileURLToPath(new URL('../../src/main.tsx', import.meta.url)), 'utf8'),
     ]);
-    expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 83.5px; }');
+    expect(indexCss).toContain(':root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }');
     expect(indexCss).toContain(':root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }');
     expect(main).toContain("if (window.noaDesktop) document.documentElement.dataset.desktop = 'true';");
   });

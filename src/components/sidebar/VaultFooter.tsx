@@ -103,7 +103,7 @@ export function VaultFooter({
 
   return (
     <div
-      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t-[0.5px] pl-1.5 pr-1 pt-1.5 pb-2"
+      className="noa-sidebar-section-surface relative flex items-center gap-0.5 shrink-0 border-t-[0.5px] pl-2 pr-1 pt-1.5 pb-2"
       style={{ borderTopColor: 'var(--panel-divider, #2D2D2B)' }}
     >
       {isOpen && (
@@ -142,7 +142,7 @@ export function VaultFooter({
               <div className="flex h-7 items-center gap-2.5 rounded-md px-2 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
                 <Check size={13} className="shrink-0 text-[var(--sidebar-text-muted,#7B7974)]" />
                 <span className="truncate">{label}</span>
-                <span className="ml-auto shrink-0 text-micro uppercase tracking-wide text-[var(--sidebar-text-muted,#7B7974)]">Workspace</span>
+                <span className="ml-auto shrink-0 text-xs text-[var(--sidebar-text-muted,#7B7974)]">Workspace</span>
               </div>
 
               <div className="my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
@@ -209,7 +209,7 @@ export function VaultFooter({
       <button
         data-vault-btn
         onClick={() => setIsOpen(v => !v)}
-        className="noa-sidebar-hover-surface flex items-center min-w-0 rounded-lg pl-[7px] pr-3.5 py-1 text-caption font-ui text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#2D2D2B] transition-colors cursor-pointer"
+        className="noa-sidebar-hover-surface flex items-center min-w-0 h-8 rounded-lg pl-[7px] pr-3.5 text-caption font-ui text-[var(--sidebar-text-muted,#7B7974)] hover:text-[#2D2D2B] transition-colors cursor-pointer"
         title={vaultName ? `${label} · vault: ${vaultName} (${syncError || status})` : `${label} · no vault connected`}
         aria-haspopup="menu"
         aria-expanded={isOpen}

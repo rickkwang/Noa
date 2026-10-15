@@ -439,10 +439,10 @@ export default function Sidebar({
         </div>
       )}
       {/* Vertical rhythm by centre line: titlebar 22px, this row 60px, first tree row ~98px — two equal 38px steps. */}
-      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
+      <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New note  ⌘N"
           aria-label="New note"
         >
@@ -450,7 +450,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="New folder"
           aria-label="New folder"
         >
@@ -459,7 +459,7 @@ export default function Sidebar({
         {dailyNotesEnabled && (
         <button
           onClick={() => onOpenDailyNote?.()}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open today's daily note  ⌘⇧K"
           aria-label="Open today's daily note"
         >
@@ -472,7 +472,7 @@ export default function Sidebar({
             const randomNote = notes[Math.floor(Math.random() * notes.length)];
             onSelectNote(randomNote.id);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title="Open random note"
           aria-label="Open random note"
         >
@@ -483,7 +483,7 @@ export default function Sidebar({
             setFoldersExpandedByDefault((value) => !value);
             setFolderTreeResetKey((value) => value + 1);
           }}
-          className="p-1 rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] transition-colors noa-press"
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
@@ -492,12 +492,12 @@ export default function Sidebar({
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
           // The label already names the order, so a non-default sort needs no accent.
-          className="flex items-center gap-1 px-1.5 py-1 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] noa-press"
+          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#4A4947)] hover:text-[#2D2D2B] noa-press"
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
           <ArrowUpDown size={14} />
-          <span className="text-micro uppercase tracking-wide leading-none">
+          <span className="text-xs leading-none">
             {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
           </span>
         </button>
@@ -647,8 +647,8 @@ export default function Sidebar({
         <div className="pt-1 pb-2">
           {searchQuery ? (
               <div>
-                <div className="text-xs text-[var(--sidebar-text-muted,#7B7974)] mb-2 px-2 font-ui uppercase tracking-wider flex items-center justify-between">
-                  <span>Search Results ({searchResults.length})</span>
+                <div className="text-xs text-[var(--sidebar-text-muted,#7B7974)] mb-2 px-2 font-ui flex items-center justify-between">
+                  <span>Search results <span className="tabular-nums">{searchResults.length}</span></span>
                   {onClearSearch && (
                     <button
                       onClick={onClearSearch}
@@ -725,7 +725,7 @@ export default function Sidebar({
                 {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
                     {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
-                    <div className={`mx-1.5 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
+                    <div className={`mx-2 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
                       <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#7B7974)] font-ui">Obsidian Vault</span>
                     </div>
                     <div

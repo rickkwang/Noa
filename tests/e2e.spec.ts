@@ -213,7 +213,7 @@ test('search returns a note by title and content', async ({ page }) => {
   await expect(page.locator('.cm-noa-inline-title', { hasText: 'Welcome to Noa' })).toBeVisible();
   await page.getByTitle('Search notes').click();
   await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 });
 
 test('search result cards keep visible scroll chrome without changing horizontal rhythm', async ({ page }) => {
@@ -262,7 +262,7 @@ test('clicking a search result opens that note', async ({ page }) => {
 
   await page.getByTitle('Search notes').click();
   await page.getByPlaceholder('Search notes, tags...').fill('"Welcome to Noa"');
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 
   // Click the result row, not the file tree (which also lists the note and would pass vacuously).
   const resultRow = page.getByTestId('search-result').first();
@@ -277,11 +277,11 @@ test('search survives focus leaving the search field', async ({ page }) => {
 
   await page.getByTitle('Search notes').click();
   await searchInput.fill('Welcome');
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 
   await page.locator('.cm-content').last().click();
   await expect(searchInput).toHaveValue('Welcome');
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 });
 
 test('expanding search never scrolls its own icon sideways', async ({ page }) => {
@@ -316,11 +316,11 @@ test('search icon closes an open search field on a second click', async ({ page 
   const searchInput = page.getByPlaceholder('Search notes, tags...');
   await searchButton.click();
   await searchInput.fill('Welcome');
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toBeVisible();
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toBeVisible();
 
   await searchButton.click();
   await expect(searchInput).toBeHidden();
-  await expect(page.getByText(/Search Results \([1-9]\d*\)/)).toHaveCount(0);
+  await expect(page.getByText(/^Search results [1-9]\d*$/)).toHaveCount(0);
 });
 
 test('tab strip occupies the title-bar row instead of leaving a second header row', async ({ page }) => {

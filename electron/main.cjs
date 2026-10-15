@@ -182,10 +182,10 @@ function createWindow() {
     // Shown on first paint, after the theme bootstrap has darkened the page; otherwise the light backdrop flashes on dark launches.
     show: false,
     titleBarStyle: 'hidden',
-    // x centres the close button (14px) on the sidebar icon rail at 20px, so
+    // x centres the close button (14px) on the sidebar icon rail at 22px, so
     // it stacks over the compose and folder icons; y centres the buttons in
     // the 44px titlebar.
-    trafficLightPosition: isMac ? { x: 13, y: 15 } : undefined,
+    trafficLightPosition: isMac ? { x: 15, y: 15 } : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

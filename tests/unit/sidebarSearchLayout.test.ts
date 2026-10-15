@@ -28,7 +28,7 @@ describe('sidebar search result layout', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[9px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible"');
+    expect(source).toContain('className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible"');
     expect(source).not.toContain('className="h-8 border-b flex items-center px-2 gap-0.5 shrink-0 z-10 overflow-hidden"');
     expect(source).not.toContain('shrink-0 bg-[#EFEAE3] z-10 overflow-hidden');
     expect(source).not.toContain("borderBottomColor: 'var(--panel-divider, #2D2D2B)'");
@@ -66,7 +66,7 @@ describe('sidebar search result layout', () => {
 
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
-    expect(vaultSection).toContain('className={`mx-1.5 pl-2 pr-2 pb-3 ${');
+    expect(vaultSection).toContain('className={`mx-2 pl-2 pr-2 pb-3 ${');
     expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 2}px`");
   });
 
@@ -80,7 +80,7 @@ describe('sidebar search result layout', () => {
     expect(styles).toContain('.noa-sidebar-scroll {\n  scrollbar-gutter: stable;\n}');
     expect(styles).toContain('.noa-sidebar-scroll > * {\n  margin-right: -6px;\n}');
     expect(styles).toContain('::-webkit-scrollbar {\n  width: 6px;');
-    expect(fileNode).toContain('py-1 px-2 mx-1.5 rounded-lg');
+    expect(fileNode).toContain('py-1 px-2 mx-2 rounded-lg');
   });
 
   it('does not retain a right-edge scrollbar-gutter compensation on file rows', async () => {

@@ -64,7 +64,7 @@
 /* Titlebar clearance for macOS traffic lights (data-desktop set by main.tsx). Inset must track
    trafficLightPosition.x in electron/main.cjs. */
 :root { --noa-titlebar-inset: 0.5rem; }
-:root[data-desktop="true"] { --noa-titlebar-inset: 83.5px; }
+:root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }
 :root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 61.5px); }
 
 /* Must never be transitioned: an animated inherited registered property re-invalidates the whole subtree each frame.
