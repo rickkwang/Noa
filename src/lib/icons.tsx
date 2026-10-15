@@ -8,6 +8,8 @@ import {
   TextB,
   BookOpen as PhBookOpen,
   CalendarBlank,
+  ClockCounterClockwise,
+  TextAa,
   CalendarDots,
   Check as PhCheck,
   CheckCircle,
@@ -114,6 +116,9 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
 export const ChevronUp = icon(CaretUp);
 export const Circle = icon(PhCircle);
 export const Clock = icon(PhClock);
+// Note sort orders: last modified, title A–Z.
+export const SortModified = icon(ClockCounterClockwise);
+export const SortName = icon(TextAa);
 export const Code = icon(PhCode);
 export const Copy = icon(PhCopy);
 export const Database = icon(PhDatabase);

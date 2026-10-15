@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
 import { attachEdgeFade } from '../lib/edgeFade';
 import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
-import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import { Note, Folder as FolderType } from '../types';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, ArrowUpDown, Dices, X } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X } from '@/src/lib/icons';
+
+export type NoteSortOrder = 'updatedAt' | 'name';
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -94,6 +94,8 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
 
 interface SidebarProps {
   notes: Note[];
+  /** Owned by App: the switch for it lives in the titlebar. */
+  noteSortOrder: NoteSortOrder;
   folders: FolderType[];
   searchQuery: string;
   activeNoteId: string;
@@ -116,7 +118,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  notes, folders, searchQuery, activeNoteId,
+  notes, noteSortOrder, folders, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
@@ -148,11 +150,6 @@ export default function Sidebar({
   const noaFolderTree = useMemo(() => buildFolderTree(noaFolders), [noaFolders]);
   const vaultFolderTree = useMemo(() => buildFolderTree(vaultFolders), [vaultFolders]);
 
-  type NoteSortOrder = 'updatedAt' | 'createdAt' | 'name';
-  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
-    (lsGet(STORAGE_KEYS.NOTE_SORT_ORDER) as NoteSortOrder) || 'updatedAt'
-  );
-  useEffect(() => { lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); }, [noteSortOrder]);
 
   // Sorted once per notes/sort-order change, not per render.
   const notesByFolderId = useMemo(() => {
@@ -165,7 +162,6 @@ export default function Sidebar({
     });
     const compare: (a: Note, b: Note) => number =
       noteSortOrder === 'name' ? (a, b) => (a.title || '').localeCompare(b.title || '')
-      : noteSortOrder === 'createdAt' ? (a, b) => b.createdAt.localeCompare(a.createdAt)
       : (a, b) => b.updatedAt.localeCompare(a.updatedAt);
     map.forEach((list) => list.sort(compare));
     return map;
@@ -488,19 +484,6 @@ export default function Sidebar({
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
           {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
-        </button>
-        <button
-          onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          // The label already names the order, so a non-default sort needs no accent. Muted like a section label:
-          // a word reads heavier than the thin icon strokes beside it at the same ink.
-          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text-muted,#898781)] hover:text-[#2D2D2B] noa-press"
-          title="Click to cycle sort order"
-          aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
-        >
-          <ArrowUpDown size={14} />
-          <span className="text-xs leading-none">
-            {noteSortOrder === 'updatedAt' ? 'Modified' : noteSortOrder === 'createdAt' ? 'Created' : 'Name'}
-          </span>
         </button>
       </div>
 
