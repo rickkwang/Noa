@@ -85,7 +85,8 @@ export default function EmptyState({
   const Scene = scene === 'desk' ? DeskScene : IslandScene;
 
   return (
-    <div className="noa-empty-state flex-1 flex flex-col items-center justify-center select-none">
+    // Centred in the space the note rail leaves, like the editor's text column.
+    <div className="noa-empty-state flex-1 flex flex-col items-center justify-center select-none" style={{ paddingRight: 'calc(20px + var(--noa-rail-reserve, 0px))' }}>
       <div className={`noa-empty-scene nsc-${scene} nsc-ph-${phase}`}>
         <svg viewBox="0 0 150 96" shapeRendering="crispEdges" aria-hidden="true">
           <Scene key={scene} tier={tier} phase={phase} />

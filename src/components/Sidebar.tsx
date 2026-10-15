@@ -491,8 +491,9 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => setNoteSortOrder(o => o === 'updatedAt' ? 'createdAt' : o === 'createdAt' ? 'name' : 'updatedAt')}
-          // The label already names the order, so a non-default sort needs no accent.
-          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] noa-press"
+          // The label already names the order, so a non-default sort needs no accent. Muted like a section label:
+          // a word reads heavier than the thin icon strokes beside it at the same ink.
+          className="flex h-6 items-center gap-1 px-1.5 rounded-md noa-sidebar-hover-surface transition-colors ml-auto text-[var(--sidebar-text-muted,#898781)] hover:text-[#2D2D2B] noa-press"
           title="Click to cycle sort order"
           aria-label={`Sort notes, currently by ${noteSortOrder === 'updatedAt' ? 'modified' : noteSortOrder === 'createdAt' ? 'created' : 'name'}`}
         >
