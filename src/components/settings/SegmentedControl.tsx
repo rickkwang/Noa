@@ -12,8 +12,6 @@ interface SegmentedControlProps<T extends string> {
   options: readonly SegmentedControlOption<T>[];
   onChange: (value: T) => void;
   ariaLabel: string;
-  /** Icon-only 34×26 segments for toolbars, against the settings rows' 30px ones. */
-  compact?: boolean;
 }
 
 /**
@@ -32,7 +30,6 @@ export default function SegmentedControl<T extends string>({
   options,
   onChange,
   ariaLabel,
-  compact = false,
 }: SegmentedControlProps<T>) {
   const itemRefs = useRef(new Map<T, HTMLButtonElement>());
   // One shared pill slides between the segments rather than each segment
@@ -111,8 +108,8 @@ export default function SegmentedControl<T extends string>({
             aria-label={option.icon ? option.label : undefined}
             title={option.icon ? option.label : undefined}
             // z-index:auto so labels paint above the pill by DOM order; a positive z-index would escape the scroll pane's top fade (SettingsModal).
-            className={`relative flex items-center justify-center rounded-[7px] text-sm transition-colors ${
-              compact ? 'h-[26px] w-[34px]' : `h-[30px] ${option.icon ? 'px-2.5' : 'px-3'}`
+            className={`relative flex h-[30px] items-center justify-center rounded-[7px] text-sm transition-colors ${
+              option.icon ? 'px-2.5' : 'px-3'
             } ${
               selected
                 ? 'text-[var(--text-primary)]'

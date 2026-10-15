@@ -4,14 +4,7 @@ import { useIsDark } from '../hooks/useIsDark';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 import { PaneMenu } from './rightPanel/PaneMenu';
-import SegmentedControl from './settings/SegmentedControl';
-import type { NoteSortOrder } from './Sidebar';
-import { Search, PanelLeft, PanelRight, X, LayoutList, SortModified, SortName } from '@/src/lib/icons';
-
-const NOTE_SORT_OPTIONS = [
-  { value: 'updatedAt', label: 'Sort by last modified', icon: SortModified },
-  { value: 'name', label: 'Sort by name', icon: SortName },
-] as const;
+import { Search, PanelLeft, PanelRight, X, LayoutList } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -35,8 +28,6 @@ interface TopBarProps {
   isRightPanelOpen: boolean;
   /** The Calendar and Tags rail; its toggle sits beside the panel menu. */
   isNoteRailOpen?: boolean;
-  noteSortOrder?: NoteSortOrder;
-  onNoteSortOrderChange?: (order: NoteSortOrder) => void;
   onToggleNoteRail?: () => void;
   /** Set while the right column opens or closes, so the actions ride its edge. */
   rightPanelEdgeTransition?: string;
@@ -50,7 +41,7 @@ interface TopBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, noteSortOrder, onNoteSortOrderChange, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
+export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = themeSurfaces(isDark).primary;
   // Dark titlebar uses a bright neutral for "open" — coral reads too loud next to the traffic lights.
@@ -140,17 +131,6 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
       </div>
 
       {!isMobile && <div aria-hidden="true" className="min-w-0" />}
-
-      {/* Note order, at the end of the sidebar's titlebar row like the reference app's mode switch. Its right edge meets
-          the tree rows' (sidebar width less their 8px inset); it steps aside while search is open over that row. */}
-      {!isMobile && isSidebarOpen && !isSearchOpen && noteSortOrder && onNoteSortOrderChange && (
-        <div
-          className="absolute top-2 z-50 -translate-x-full"
-          style={{ ...noDragRegion, left: 'calc(var(--noa-sidebar-width, 325px) - 8px)' }}
-        >
-          <SegmentedControl compact ariaLabel="Sort notes" value={noteSortOrder} onChange={onNoteSortOrderChange} options={NOTE_SORT_OPTIONS} />
-        </div>
-      )}
 
       {/* Right actions stop at the column's left edge and travel with it. Positioned against the bar itself, not the grid cell, since the column can be wider than that cell. */}
       <div

@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
 import { attachEdgeFade } from '../lib/edgeFade';
 import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
+import { lsGet, lsSet } from '../lib/safeLocalStorage';
 import { builtinTemplates, applyTemplate } from '../lib/templates';
 import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import { Note, Folder as FolderType } from '../types';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X, ArrowUpDown, Check } from '@/src/lib/icons';
 
-export type NoteSortOrder = 'updatedAt' | 'name';
+type NoteSortOrder = 'updatedAt' | 'name';
+const NOTE_SORT_OPTIONS: readonly { value: NoteSortOrder; label: string }[] = [
+  { value: 'updatedAt', label: 'Last modified' },
+  { value: 'name', label: 'Name' },
+];
 
 // Per-template glyph for the folder "add note" menu, keyed by builtin template id.
 // A new builtin added without an entry here falls back to the generic note icon.
@@ -94,8 +100,6 @@ const SidebarNoteRow = React.memo(function SidebarNoteRow({
 
 interface SidebarProps {
   notes: Note[];
-  /** Owned by App: the switch for it lives in the titlebar. */
-  noteSortOrder: NoteSortOrder;
   folders: FolderType[];
   searchQuery: string;
   activeNoteId: string;
@@ -118,7 +122,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  notes, noteSortOrder, folders, searchQuery, activeNoteId,
+  notes, folders, searchQuery, activeNoteId,
   onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
@@ -149,6 +153,22 @@ export default function Sidebar({
   const vaultFolders = useMemo(() => folders.filter(isVaultFolder), [folders, isVaultFolder]);
   const noaFolderTree = useMemo(() => buildFolderTree(noaFolders), [noaFolders]);
   const vaultFolderTree = useMemo(() => buildFolderTree(vaultFolders), [vaultFolders]);
+
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() =>
+    // A retired order (the old 'createdAt') falls back to recency.
+    lsGet(STORAGE_KEYS.NOTE_SORT_ORDER) === 'name' ? 'name' : 'updatedAt'
+  );
+  useEffect(() => { lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); }, [noteSortOrder]);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isSortMenuOpen) return;
+    const close = (event: Event) => {
+      if (!sortMenuRef.current?.parentElement?.contains(event.target as Node)) setIsSortMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [isSortMenuOpen]);
 
 
   // Sorted once per notes/sort-order change, not per render.
@@ -485,6 +505,44 @@ export default function Sidebar({
         >
           {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
         </button>
+        {/* Sort order behind one quiet toolbar button: the menu names both orders and ticks the current one. */}
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setIsSortMenuOpen((open) => !open)}
+            className={`flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[#2D2D2B] transition-colors noa-press ${isSortMenuOpen ? 'noa-sidebar-active-surface' : ''}`}
+            title={`Sort notes: ${NOTE_SORT_OPTIONS.find((o) => o.value === noteSortOrder)?.label}`}
+            aria-label="Sort notes"
+            aria-haspopup="menu"
+            aria-expanded={isSortMenuOpen}
+          >
+            <ArrowUpDown size={14} />
+          </button>
+          {isSortMenuOpen && (
+            <div
+              ref={sortMenuRef}
+              role="menu"
+              aria-label="Sort notes"
+              className="absolute right-0 top-full z-50 mt-1 w-44 rounded-panel bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
+              onKeyDown={(e) => { if (e.key === 'Escape') setIsSortMenuOpen(false); }}
+            >
+              <div className="px-2.5 pb-1 pt-1.5 text-xs text-[var(--sidebar-text-muted,#898781)]">Sort by</div>
+              {NOTE_SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  role="menuitemradio"
+                  aria-checked={option.value === noteSortOrder}
+                  className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[#2D2D2B]"
+                  onClick={() => { setNoteSortOrder(option.value); setIsSortMenuOpen(false); }}
+                >
+                  <span className="flex w-3.5 shrink-0 justify-center">
+                    {option.value === noteSortOrder && <Check size={13} />}
+                  </span>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {pendingDelete && (

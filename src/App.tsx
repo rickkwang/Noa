@@ -9,7 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { NOTE_RAIL_RESERVE_PX, NoteRail } from './components/rail/NoteRail';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
-import Sidebar, { type NoteSortOrder } from './components/Sidebar';
+import Sidebar from './components/Sidebar';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
 import type { RightTab } from './constants/rightTabs';
@@ -28,7 +28,7 @@ import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
 import { headingLineIndex } from './lib/noteUtils';
-import { lsGet, lsGetBoolean, lsSet, lsSetBoolean } from './lib/safeLocalStorage';
+import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { hasVaultRows, VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 
@@ -79,13 +79,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   // Calendar and Tags rail at the editor's top right; toggled from the titlebar, remembered across launches.
   const [isNoteRailOpen, setIsNoteRailOpen] = useState(() => lsGetBoolean(STORAGE_KEYS.NOTE_RAIL_OPEN));
-  // The sidebar's note order; switched from the titlebar. A retired order (the old 'createdAt') falls back to recency.
-  const [noteSortOrder, setNoteSortOrderState] = useState<NoteSortOrder>(() =>
-    lsGet(STORAGE_KEYS.NOTE_SORT_ORDER) === 'name' ? 'name' : 'updatedAt');
-  const setNoteSortOrder = useCallback((order: NoteSortOrder) => {
-    setNoteSortOrderState(order);
-    lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, order);
-  }, []);
   // The rail shown over the editor while the right panel is open. Transient: never persisted.
   const [isNoteRailOverlayOpen, setIsNoteRailOverlayOpen] = useState(false);
   const dismissNoteRailOverlay = useCallback(() => setIsNoteRailOverlayOpen(false), []);
@@ -967,8 +960,6 @@ export default function App() {
         onSidebarPreviewLeave={scheduleSidebarPreviewClose}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
         isNoteRailOpen={showNoteRail || showNoteRailOverlay}
-        noteSortOrder={noteSortOrder}
-        onNoteSortOrderChange={setNoteSortOrder}
         onToggleNoteRail={isRightPanelOpen ? () => setIsNoteRailOverlayOpen(open => !open) : toggleNoteRail}
         isSidebarOpen={isSidebarOpen}
         isSidebarMaterialActive={isSidebarMaterialActive}
@@ -1076,7 +1067,6 @@ export default function App() {
             <div className="flex-1 min-h-0 overflow-hidden">
               <Sidebar
                 notes={workspaceNotes}
-                noteSortOrder={noteSortOrder}
                 folders={workspaceFolders}
                 searchQuery={searchQuery}
                 activeNoteId={activeNoteId}
