@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   NOTE_RAIL_OPEN: 'app-note-rail-open',
   NOTE_RAIL_CALENDAR_COLLAPSED: 'app-note-rail-calendar-collapsed',
   NOTE_RAIL_TAGS_COLLAPSED: 'app-note-rail-tags-collapsed',
+  NOTE_RAIL_ORDER: 'app-note-rail-order',
   LAST_AUTO_BACKUP_AT: 'noa:last-auto-backup-at',
   AUTO_BACKUP_LAST_ERROR: 'noa:auto-backup-last-error',
   // Import edits IndexedDB couldn't store; parked in localStorage since that store is independent of IndexedDB.

@@ -1070,7 +1070,8 @@ export const PreviewPane = React.memo(function PreviewPane({
     <div
       ref={scrollRef}
       className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
-      style={printMode ? undefined : { paddingRight: '2rem' }}
+      // Plus the note rail's reserve (0 while hidden), so the text gives way to the rail but the scrollbar stays at the edge.
+      style={printMode ? undefined : { paddingRight: 'calc(2rem + var(--noa-rail-reserve, 0px))' }}
     >
       <div className="flex-1">
         <div

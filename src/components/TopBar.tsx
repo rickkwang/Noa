@@ -142,7 +142,8 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
           transition: rightPanelEdgeTransition,
         }}
       >
-        <div className="relative flex items-center gap-1" style={noDragRegion}>
+        {/* 2px gap: the 24px buttons then sit centre-over-centre on the editor toolbar's 22px view and export buttons. */}
+        <div className="relative flex items-center gap-0.5" style={noDragRegion}>
           {isMobile ? (
             // The phone drawer picks its card from a strip inside the panel,
             // so here the button only has the drawer to open.
@@ -160,6 +161,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             {onToggleNoteRail && (
               <button
                 type="button"
+                data-note-rail-toggle
                 onClick={onToggleNoteRail}
                 title={isNoteRailOpen ? 'Hide calendar and tags' : 'Show calendar and tags'}
                 aria-label={isNoteRailOpen ? 'Hide calendar and tags' : 'Show calendar and tags'}

@@ -18,7 +18,11 @@ export function EditorToolbar({
   actions,
 }: EditorToolbarProps) {
   return (
-    <div className="h-7 border-b-[0.5px] flex items-center px-4 shrink-0 bg-[#F9F9F7] z-10 font-ui gap-2 text-[#2D2D2B]/70 relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderBottomColor: 'var(--panel-divider, #2D2D2B)' }}>
+    <div className="h-7 border-b-[0.5px] flex items-center px-4 shrink-0 bg-[#F9F9F7] z-10 font-ui gap-2 text-[#2D2D2B]/70 relative overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{
+      borderBottomColor: 'var(--panel-divider, #2D2D2B)',
+      // The row's line runs full width, but its trailing actions stop short of the note rail (0 while hidden).
+      paddingRight: 'calc(1rem + var(--noa-rail-reserve, 0px))',
+    }}>
       <button
         onClick={() => onInsertFormatting('**', '**')}
         className="p-1 hover:text-[#CC7D5E] hover:bg-[var(--bg-sidebar-raised,#ECEBE8)] noa-press transition-colors shrink-0"

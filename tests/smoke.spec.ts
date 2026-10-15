@@ -750,6 +750,62 @@ test('jumping to a task flashes the line it lands on, then clears', async ({ pag
   await expect(landed).toHaveCount(0, { timeout: 3000 });
 });
 
+test('note rail opens beside the editor and its cards reorder by dragging the grip', async ({ page }) => {
+  await page.goto('/');
+  // Docked only once the right panel is out of the way.
+  await page.getByRole('button', { name: 'Close panel' }).click();
+  await page.getByRole('button', { name: 'Show calendar and tags' }).click();
+  const rail = page.locator('[data-note-rail="true"]');
+  await expect(rail).toBeVisible();
+  const titles = () => rail.locator('section h3').allTextContents();
+  expect(await titles()).toEqual(['Calendar', 'Tags']);
+
+  // Downward: the swap moves the held card's own DOM node, which must not cost it the pointer.
+  const calendar = rail.locator('section', { has: page.getByRole('heading', { name: 'Calendar' }) });
+  await calendar.hover();
+  const grip = page.getByRole('button', { name: 'Move Calendar' });
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 500, { steps: 25 });
+  // Still held after the swap: the card keeps following the pointer.
+  const before = (await calendar.boundingBox())!.y;
+  await page.mouse.move(box.x + box.width / 2, box.y + 540, { steps: 4 });
+  expect((await calendar.boundingBox())!.y).toBeGreaterThan(before + 30);
+  await page.mouse.up();
+  await expect.poll(titles).toEqual(['Tags', 'Calendar']);
+
+  await page.reload();
+  await expect.poll(() => page.locator('[data-note-rail="true"] section h3').allTextContents()).toEqual(['Tags', 'Calendar']);
+});
+
+test('note rail steps aside for the right panel and opens over the editor instead', async ({ page }) => {
+  await page.goto('/');
+  const rail = page.locator('[data-note-rail="true"]');
+  const toggle = page.locator('[data-note-rail-toggle]');
+  // A fresh profile opens with the right panel showing; the docked rail stays out of its way.
+  await expect(page.getByRole('button', { name: 'Panels' })).toHaveAttribute('data-panel-open', 'true');
+  await toggle.click();
+  await expect(rail).toHaveAttribute('data-overlay', 'true');
+  await page.keyboard.press('Escape');
+  await expect(rail).toHaveCount(0);
+
+  await toggle.click();
+  await expect(rail).toHaveAttribute('data-overlay', 'true');
+  await page.mouse.click(120, 400);
+  await expect(rail).toHaveCount(0);
+
+  // The overlay never touched the docked preference: still closed once the panel goes.
+  await page.getByRole('button', { name: 'Close panel' }).click();
+  await expect(rail).toHaveCount(0);
+  await toggle.click();
+  await expect(rail).toBeVisible();
+  await expect(rail).not.toHaveAttribute('data-overlay', 'true');
+  await page.getByRole('button', { name: 'Panels' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Tasks', exact: true }).click();
+  await expect(rail).toHaveCount(0);
+});
+
 test('vault import entry is labeled as migration', async ({ page }) => {
   await page.goto('/');
   await page.getByTitle('Settings').click();

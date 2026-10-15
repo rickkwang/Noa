@@ -98,7 +98,6 @@ describe('sidebar surface tokens', () => {
     expect(fileNode).toContain("isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle'");
     expect(sidebar).toContain('noa-sidebar-hover-surface');
     expect(sidebar).toContain('noa-sidebar-hover-surface-subtle');
-    expect(calendar).toContain('noa-sidebar-hover-surface');
     for (const consumer of [sidebar, fileNode, calendar]) {
       expect(consumer).not.toMatch(/(?:hover:)?bg-\[#EFEAE3\](?:\/50)?/);
     }
@@ -115,28 +114,28 @@ describe('sidebar surface tokens', () => {
   });
 
   it('gives the calendar clear today, active-note, and keyboard interaction states', async () => {
-    const calendar = await readFile(calendarPath, 'utf8');
+    const [calendar, css] = await Promise.all([readFile(calendarPath, 'utf8'), readFile(indexCssPath, 'utf8')]);
 
     expect(calendar).toContain('const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(\', \');');
     expect(calendar).toContain('aria-label={ariaLabel}');
     expect(calendar).toContain('type="button"');
-    expect(calendar).toContain('w-8 h-8');
-    expect(calendar).toContain('bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20');
-    expect(calendar).toContain('bg-[#CC7D5E] text-white');
-    expect(calendar).toContain('text-xs font-medium font-ui');
-    // Kept at /75 (not /60): at /60 the numerals matched the weekday header's weight and the grid read flat.
-    expect(calendar).toContain("else cellClass += 'text-[#2D2D2B]/75';");
-    expect(calendar).toContain('text-[#2D2D2B]/50');
+    expect(calendar).toContain('data-today={dateStr === today || undefined}');
+    expect(calendar).toContain('data-active={isActive || undefined}');
+    // States are drawn from tokens in CSS, so no literal ink can survive into dark mode.
+    expect(calendar).not.toMatch(/#CC7D5E|#2D2D2B\]\//);
+    expect(css).toMatch(/\.noa-cal-day\[data-today\] \{[^}]*var\(--text-primary/);
+    expect(css).toMatch(/\.noa-cal-day\[data-active\] \{[^}]*background-color: var\(--text-primary/);
   });
 
-  it('keeps inactive tag filters in the muted warm hue system', async () => {
+  it('colours only the leading tags, with one neutral for the rest', async () => {
     const [css, tagBrowser] = await Promise.all([
       readFile(indexCssPath, 'utf8'),
       readFile(tagBrowserPath, 'utf8'),
     ]);
 
-    expect(css).toContain("[data-theme=\"dark\"] .noa-tag-row { --tag-fg: rgba(249,249,247,0.74);");
-    expect(tagBrowser).toContain("['--tag-h' as string]: tagHue(node.path)");
+    expect(css).toContain("[data-theme=\"dark\"] .noa-tag-row { --tag-fg: #C3C2B7; }");
+    expect(tagBrowser).toContain('data-swatch={swatchFor(node.path)}');
+    expect(css).toContain('.noa-tag-swatch[data-swatch="other"]');
     expect(tagBrowser).not.toContain('uppercase tracking-');
   });
 

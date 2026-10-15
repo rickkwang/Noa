@@ -62,7 +62,7 @@ export default function CalendarPanel({
   const month = viewMonth.getMonth();
   const today = formatDate('YYYY-MM-DD');
 
-  // Always six rows, so the bottom-anchored panel doesn't resize and move the nav arrows under the cursor.
+  // Always six rows, so the card keeps its height from month to month and what's below it doesn't shift.
   // getDay() is Sun-based; convert to Mon-based.
   const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
   const gridDates = useMemo(
@@ -235,169 +235,132 @@ export default function CalendarPanel({
   // The rail card supplies the title row; this is only its body.
   if (!isBodyMounted) return null;
   return (
-            <div className="select-none pt-1">
-              {/* Stays above the grid: the panel is bottom-anchored, so a row appearing below would shove the grid mid-drag. */}
-              {activeRange && (
-                // Neutral ink: the range is already tinted in the grid; a second accent here competed with it.
-                <div className="flex items-baseline gap-1.5 px-3 pb-2 text-xs leading-normal font-ui">
-                  <span className="truncate font-medium text-[var(--text-primary,#2D2D2B)]">
-                    {activeRange.start === activeRange.end
-                      ? shortDate(activeRange.start)
-                      : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
-                  </span>
-                  {/* "edited", not "notes": the filter runs on updatedAt. */}
-                  <span className="shrink-0 text-[var(--text-secondary,#8A8A86)]" title="Notes edited in this range">
-                    · {rangeNoteCount} {rangeNoteCount === 1 ? 'note' : 'notes'} edited
-                  </span>
-                </div>
+    <div className="select-none px-2 pt-1 pb-1.5 font-ui">
+      {/* Summary line, like the tags card: the month in ink, then the selected range (or the edited count) muted. */}
+      <div className="flex h-[26px] items-center gap-1">
+        <button
+          type="button"
+          onClick={goToToday}
+          title="Jump to today"
+          aria-label="Jump to today"
+          data-today={isViewingToday}
+          className="noa-cal-month min-w-0 truncate rounded-md px-1 text-left text-body leading-[19px]"
+        >
+          {monthName} <span className="noa-rail-muted">{year}</span>
+        </button>
+        <span className="ms-auto flex shrink-0">
+          <button type="button" onClick={prevMonth} aria-label="Previous month" className="noa-cal-nav noa-rail-muted flex size-[26px] items-center justify-center rounded-md">
+            <ChevronLeft size={14} />
+          </button>
+          <button type="button" onClick={nextMonth} aria-label="Next month" className="noa-cal-nav noa-rail-muted flex size-[26px] items-center justify-center rounded-md">
+            <ChevronRight size={14} />
+          </button>
+        </span>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 pt-1.5">
+        {WEEKDAYS.map(wd => (
+          <div key={wd} className="noa-rail-muted flex h-5 items-center justify-center text-xs leading-[15px]">{wd}</div>
+        ))}
+      </div>
+
+      {/* Day grid: seven equal columns across the card, 30px rows. */}
+      <div className="grid grid-cols-7 gap-y-0.5" onDragStart={e => e.preventDefault()}>
+        {gridDates.map((date) => {
+          const dateStr = toKey(date);
+          const meta = dayMeta.get(dateStr);
+          const isActive = dateStr === activeKey;
+          const inRange = !!activeRange && dateStr >= activeRange.start && dateStr <= activeRange.end;
+          const isRangeEdge = !!activeRange && (dateStr === activeRange.start || dateStr === activeRange.end);
+
+          // Up to two dots: notes (neutral; darker for a daily note), open tasks (amber, orange when overdue).
+          const noteDot = meta && (meta.daily || meta.notes > 0);
+          const taskDot = (meta?.due ?? 0) > 0;
+          const taskStatus = meta?.due
+            ? `${meta.due} task${meta.due > 1 ? 's' : ''} due${meta.overdue ? `, ${meta.overdue} overdue` : ''}`
+            : null;
+          const tip = [
+            meta?.daily ? 'daily note' : null,
+            meta?.notes ? `${meta.notes} note${meta.notes > 1 ? 's' : ''} edited` : null,
+            taskStatus,
+          ].filter(Boolean).join(' · ');
+          const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(', ');
+
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              // All states are styled in CSS from these attributes, so both themes read them the same way.
+              data-active={isActive || undefined}
+              data-today={dateStr === today || undefined}
+              data-range={inRange ? (isRangeEdge ? 'edge' : 'mid') : undefined}
+              // Neighbouring-month days recede, except inside a range, which keeps its days at full strength.
+              data-outside={(date.getMonth() !== month && !inRange) || undefined}
+              className="noa-cal-day relative flex h-[30px] items-center justify-center rounded-md text-xs tabular-nums"
+              onClick={(e) => handleDayClick(dateStr, e.shiftKey)}
+              onPointerDown={handlePointerDown(dateStr)}
+              onPointerEnter={handlePointerEnter(dateStr)}
+              title={tip || undefined}
+              aria-label={ariaLabel}
+              aria-current={dateStr === today ? 'date' : undefined}
+            >
+              <span className="leading-none">{date.getDate()}</span>
+              {!isActive && (noteDot || taskDot) && (
+                <span className="pointer-events-none absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px]">
+                  {noteDot && <span data-dot={meta!.daily ? 'daily' : 'note'} className="noa-cal-dot size-[3px] rounded-full" />}
+                  {taskDot && <span data-dot={meta!.overdue > 0 ? 'overdue' : 'due'} className="noa-cal-dot size-[3px] rounded-full" />}
+                </span>
               )}
+            </button>
+          );
+        })}
+      </div>
 
-              {/* Month navigation — the label doubles as "jump back to today" */}
-              <div className="flex items-center justify-between px-2 pb-2">
-                <button type="button" onClick={prevMonth} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface noa-press transition-colors cursor-pointer">
-                  <ChevronLeft size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={goToToday}
-                  title="Jump to today"
-                  aria-label="Jump to today"
-                  className={`px-2 py-1 rounded-md text-xs font-medium font-ui transition-colors cursor-pointer noa-sidebar-hover-surface ${isViewingToday ? 'text-[#2D2D2B]/80' : 'text-[#CC7D5E]'}`}
-                >
-                  <span className="font-semibold">{monthName}</span>
-                  <span className="ml-1 text-[#2D2D2B]/40">{year}</span>
-                </button>
-                <button type="button" onClick={nextMonth} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-[#2D2D2B]/50 noa-sidebar-hover-surface noa-press transition-colors cursor-pointer">
-                  <ChevronRight size={14} />
-                </button>
-              </div>
+      {/* The selected range, as a muted line under the grid; "edited", not "notes": the filter runs on updatedAt.
+          Only shown with a range: the rail is top-anchored, so it pushes the presets down, never the grid. */}
+      {activeRange ? (
+        <div className="flex h-[26px] items-center gap-1.5 px-1 text-xs leading-[15px]">
+          <span className="truncate text-[var(--text-primary,#2D2D2B)]">
+            {activeRange.start === activeRange.end
+              ? shortDate(activeRange.start)
+              : `${shortDate(activeRange.start)} – ${shortDate(activeRange.end)}`}
+          </span>
+          <span className="noa-rail-muted shrink-0 tabular-nums" title="Notes edited in this range">
+            {rangeNoteCount} {rangeNoteCount === 1 ? 'note' : 'notes'} edited
+          </span>
+          <button type="button" onClick={clearRange} aria-label="Clear date filter" className="noa-cal-nav noa-rail-muted ms-auto shrink-0 rounded-md px-1">
+            Clear
+          </button>
+        </div>
+      ) : <div className="h-1.5" />}
 
-              {/* Weekday headers */}
-              <div className="grid grid-cols-[repeat(7,2rem)] justify-between px-2 pb-1">
-                {WEEKDAYS.map(wd => (
-                  <div key={wd} className="flex items-center justify-center" style={{ fontSize: '10px' }}>
-                    <span className="font-medium text-[#2D2D2B]/50">{wd}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Day grid */}
-              {/* Fixed 32px tracks, space-between — not grid-cols-7. Seven flexible
-                  columns made a 32px cell's edge a function of the sidebar width,
-                  so the grid drifted away from the header, summary and chip rows,
-                  which sit at a fixed 12px. The sidebar cannot go below 320px and
-                  7x32 + 24 = 248, so the tracks always fit. */}
-              <div className="grid grid-cols-[repeat(7,2rem)] justify-between gap-y-1 px-2 pb-1" onDragStart={e => e.preventDefault()}>
-                {gridDates.map((date) => {
-                  const dateStr = toKey(date);
-                  const outside = date.getMonth() !== month;
-                  const meta = dayMeta.get(dateStr);
-                  const isToday = dateStr === today;
-                  const isActive = dateStr === activeKey;
-                  const hasNote = meta?.daily ?? false;
-                  const inRange = !!activeRange && dateStr >= activeRange.start && dateStr <= activeRange.end;
-                  const isRangeEdge = !!activeRange && (dateStr === activeRange.start || dateStr === activeRange.end);
-
-                  let cellClass = 'relative w-8 h-8 flex items-center justify-center text-xs font-ui rounded-md transition-colors cursor-pointer ';
-                  if (isActive) cellClass += 'bg-[#CC7D5E] text-white font-bold shadow-[0_1px_2px_rgba(204,125,94,0.4)]';
-                  else if (isToday) cellClass += 'bg-[#CC7D5E]/12 text-[#CC7D5E] font-bold hover:bg-[#CC7D5E]/20';
-                  // Only the range edges take accent ink; tinting every day drowned out today's marker.
-                  else if (inRange) cellClass += isRangeEdge
-                    ? 'bg-[#CC7D5E]/22 text-[#CC7D5E] font-bold'
-                    : 'bg-[#CC7D5E]/10 text-[#2D2D2B]/80';
-                  else if (hasNote) cellClass += 'text-[#2D2D2B]/80 noa-sidebar-hover-surface';
-                  // /75 keeps the grid distinct from the /50 weekday header.
-                  else cellClass += 'text-[#2D2D2B]/75';
-                  // Neighbouring-month days recede but stay usable; selection, today and range keep full strength.
-                  if (outside && !isActive && !isToday && !inRange) cellClass += ' opacity-40';
-
-                  // Up to two 4px dots: notes left (neutral; darker for a daily note), open tasks right (amber, red when overdue).
-                  const noteDot = meta && (meta.daily || meta.notes > 0);
-                  const taskDot = (meta?.due ?? 0) > 0;
-                  const taskStatus = meta?.due
-                    ? `${meta.due} task${meta.due > 1 ? 's' : ''} due${meta.overdue ? `, ${meta.overdue} overdue` : ''}`
-                    : null;
-                  const tip = [
-                    meta?.daily ? 'daily note' : null,
-                    meta?.notes ? `${meta.notes} note${meta.notes > 1 ? 's' : ''} edited` : null,
-                    taskStatus,
-                  ].filter(Boolean).join(' · ');
-                  const ariaLabel = [`Open ${dateStr}`, tip].filter(Boolean).join(', ');
-
-                  return (
-                    <button
-                      key={dateStr}
-                      type="button"
-                      className={cellClass}
-                      onClick={(e) => handleDayClick(dateStr, e.shiftKey)}
-                      onPointerDown={handlePointerDown(dateStr)}
-                      onPointerEnter={handlePointerEnter(dateStr)}
-                      title={tip || undefined}
-                      aria-label={ariaLabel}
-                      aria-current={isToday ? 'date' : undefined}
-                    >
-                      <span className="leading-none">{date.getDate()}</span>
-                      {!isActive && (noteDot || taskDot) && (
-                        <span className="absolute bottom-[3px] left-0 right-0 flex items-center justify-center gap-[2px] pointer-events-none">
-                          {noteDot && (
-                            <span
-                              className="w-1 h-1 rounded-full"
-                              // Neutral ink so notes never read as tasks, whose dots keep the status hues.
-                              style={{
-                                backgroundColor: meta!.daily
-                                  ? 'color-mix(in srgb, var(--text-primary, #2D2D2B) 55%, transparent)'
-                                  : 'color-mix(in srgb, var(--text-primary, #2D2D2B) 28%, transparent)',
-                              }}
-                            />
-                          )}
-                          {taskDot && (
-                            <span className={`w-1 h-1 rounded-full ${meta!.overdue > 0 ? 'bg-[#C24444]' : 'bg-[#D9862B]'}`} />
-                          )}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Segmented control: one track, the selected preset lifts out of it like the tag filter field. px-3 aligns with the text rows. */}
-              <div className="flex items-center gap-2 px-2 pt-1 text-caption font-ui">
-                <div className="noa-segmented-track relative flex flex-1 items-center rounded-lg p-0.5" role="group" aria-label="Date range presets">
-                  {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
-                  <span
-                    aria-hidden="true"
-                    className="noa-segment-indicator absolute top-0.5 bottom-0.5 left-0.5 rounded-md pointer-events-none"
-                    data-visible={selectedPresetIndex !== -1}
-                    data-slide={indicator.slide}
-                    style={{ width: `calc((100% - 4px) / ${PRESETS.length})`, transform: `translateX(${indicator.index * 100}%)` }}
-                  />
-                  {PRESETS.map((preset, i) => {
-                    const isSelected = i === selectedPresetIndex;
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => (isSelected ? clearRange() : applyRange(presetRange(preset)))}
-                        aria-pressed={isSelected}
-                        // No active:opacity: the preset already recolours on click, and a press-fade reads as flicker.
-                        className="noa-segment relative flex h-6 flex-1 items-center justify-center rounded-md cursor-pointer"
-                      >
-                        {preset}
-                      </button>
-                    );
-                  })}
-                </div>
-                {activeRange && (
-                  <button
-                    type="button"
-                    onClick={clearRange}
-                    aria-label="Clear date filter"
-                    className="ml-auto shrink-0 px-1 text-[#2D2D2B]/40 hover:text-[#2D2D2B]/80 transition-colors cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
+      <div>
+        <div className="noa-segmented-track relative flex items-center rounded-lg p-px text-xs" role="group" aria-label="Date range presets">
+          {/* One shared indicator slides between equal-width slots; no gap so translateX(i * 100%) lands exactly. */}
+          <span
+            aria-hidden="true"
+            className="noa-segment-indicator pointer-events-none absolute top-px bottom-px left-px rounded-[7px]"
+            data-visible={selectedPresetIndex !== -1}
+            data-slide={indicator.slide}
+            style={{ width: `calc((100% - 2px) / ${PRESETS.length})`, transform: `translateX(${indicator.index * 100}%)` }}
+          />
+          {PRESETS.map((preset, i) => {
+            const isSelected = i === selectedPresetIndex;
+            return (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => (isSelected ? clearRange() : applyRange(presetRange(preset)))}
+                aria-pressed={isSelected}
+                className="noa-segment relative flex h-6 flex-1 items-center justify-center rounded-[7px]"
+              >
+                {preset}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

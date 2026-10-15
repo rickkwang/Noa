@@ -6,11 +6,10 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EditorFocusRequest } from './components/Editor';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { NOTE_RAIL_RESERVE_PX, NoteRail } from './components/rail/NoteRail';
 import RecoveryDialog from './components/RecoveryDialog';
 import type { SettingsTab } from './components/settings/SettingsSidebar';
 import Sidebar from './components/Sidebar';
-import { NoteRail } from './components/rail/NoteRail';
-import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import ThemeInjector from './components/ThemeInjector';
 import TopBar from './components/TopBar';
 import type { RightTab } from './constants/rightTabs';
@@ -29,6 +28,7 @@ import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
 import { headingLineIndex } from './lib/noteUtils';
+import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
 import { hasVaultRows, VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
 
@@ -79,6 +79,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   // Calendar and Tags rail at the editor's top right; toggled from the titlebar, remembered across launches.
   const [isNoteRailOpen, setIsNoteRailOpen] = useState(() => lsGetBoolean(STORAGE_KEYS.NOTE_RAIL_OPEN));
+  // The rail shown over the editor while the right panel is open. Transient: never persisted.
+  const [isNoteRailOverlayOpen, setIsNoteRailOverlayOpen] = useState(false);
+  const dismissNoteRailOverlay = useCallback(() => setIsNoteRailOverlayOpen(false), []);
   const toggleNoteRail = useCallback(() => {
     setIsNoteRailOpen(open => { lsSetBoolean(STORAGE_KEYS.NOTE_RAIL_OPEN, !open); return !open; });
   }, []);
@@ -604,6 +607,11 @@ export default function App() {
   // Keep the graph/tasks bundle out of the first render: mount next frame if restored open, else while idle.
   // Once mounted it stays mounted, so every open is instant.
   const isPaneExpanded = expandedPane !== null && !isFocusMode;
+  // The overlay belongs to the right panel's session: closing the panel drops it, so reopening starts docked-only.
+  // Expanding the panel over the editor covers it, so that drops it too.
+  useEffect(() => {
+    if (!isRightPanelOpen || isPaneExpanded) setIsNoteRailOverlayOpen(false);
+  }, [isRightPanelOpen, isPaneExpanded]);
   const isRightPanelFloating = isPaneExpanded;
   const rightPanelColumnWidth = isPaneExpanded
     // 1px short of the sidebar: its divider sits on that pixel, and covering it
@@ -866,7 +874,11 @@ export default function App() {
     && !isDraggingSidebar;
 
   // Desktop only: on a phone there's no room beside the text, and focus mode hides all chrome.
-  const showNoteRail = isNoteRailOpen && !isMobile && !isFocusMode;
+  // While the right panel is open the docked rail steps aside (the editor is too narrow for both); the titlebar
+  // toggle then shows it as a transient overlay instead, and closing the panel brings the docked rail back.
+  const canShowNoteRail = !isMobile && !isFocusMode;
+  const showNoteRail = isNoteRailOpen && canShowNoteRail && !isRightPanelOpen;
+  const showNoteRailOverlay = isNoteRailOverlayOpen && canShowNoteRail && isRightPanelOpen;
 
   return (
     <>
@@ -948,8 +960,8 @@ export default function App() {
         onSidebarPreviewEnter={openSidebarPreview}
         onSidebarPreviewLeave={scheduleSidebarPreviewClose}
         onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
-        isNoteRailOpen={isNoteRailOpen}
-        onToggleNoteRail={toggleNoteRail}
+        isNoteRailOpen={showNoteRail || showNoteRailOverlay}
+        onToggleNoteRail={isRightPanelOpen ? () => setIsNoteRailOverlayOpen(open => !open) : toggleNoteRail}
         isSidebarOpen={isSidebarOpen}
         isSidebarMaterialActive={isSidebarMaterialActive}
         isRightPanelOpen={isRightPanelOpen}
@@ -1126,8 +1138,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* Editor plus the Calendar/Tags rail: the rail is a column of its own, so showing it narrows the editor. */}
-        <div className="relative flex min-w-0 flex-1">
+        {/* Editor plus the Calendar/Tags rail. The editor keeps its full width, so its scroller (and scrollbar) reach
+            the window's edge; the rail sits in that scroller's right margin, and the text column gives way by
+            --noa-rail-reserve. */}
+        <div
+          className="relative flex min-w-0 flex-1"
+          style={{ ['--noa-rail-reserve' as string]: showNoteRail ? `${NOTE_RAIL_RESERVE_PX}px` : '0px' } as React.CSSProperties}
+        >
         <ErrorBoundary>
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading editor…</div>}>
             {activeNoteId ? (
@@ -1185,8 +1202,10 @@ export default function App() {
             )}
           </Suspense>
         </ErrorBoundary>
-        {showNoteRail && (
+        {(showNoteRail || showNoteRailOverlay) && (
           <NoteRail
+            overlay={showNoteRailOverlay}
+            onDismiss={dismissNoteRailOverlay}
             notes={workspaceNotes}
             tasks={globalTasks}
             activeNoteId={activeNoteId ?? ''}

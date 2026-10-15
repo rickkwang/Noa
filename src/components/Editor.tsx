@@ -658,7 +658,7 @@ export default function Editor({
       >
         {/* Preview has no toolbar row, so controls float here; h-7 + pb-px match the row's height so they don't shift between modes. */}
         {viewMode === 'preview' && (
-          <div className="absolute top-0 right-4 z-20 h-7 pb-px flex items-center">
+          <div className="absolute top-0 z-20 h-7 pb-px flex items-center" style={{ right: 'calc(1rem + var(--noa-rail-reserve, 0px))' }}>
             {editorActions}
           </div>
         )}
@@ -684,7 +684,9 @@ export default function Editor({
             // scroll viewport) below the toolbar and clip the first line. Vertical room lives in .cm-content.
             // 0.375rem of the 2rem inset sits inside .cm-content instead, so Properties rows (whose border
             // hangs 0.375rem left of the text) aren't clipped by the scroller when the column hugs its edge.
-            padding: '0 0 0 1.625rem',
+            // Right inset is the note rail's reserve (0 while hidden): the text recentres beside the rail while the
+            // scroller itself still runs to the window edge.
+            padding: '0 var(--noa-rail-reserve, 0px) 0 1.625rem',
           }}
         >
           <div className="h-full" style={editorStyle}>
