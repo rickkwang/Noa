@@ -476,7 +476,7 @@ export default function Sidebar({
         // 26px tall, 6px corners, 10px side margins, the icon centred in a 28px slot and 13px text starting 32px in; a
         // hairline ring plus a 1px drop, hover deepens the well. Results filter the tree below as you type. No clear
         // button: Escape clears, and so does the results header's ×.
-        <div className="noa-sidebar-search mx-2.5 mb-2 mt-1 flex h-[26px] shrink-0 cursor-text items-center gap-0.5 rounded-[6px] px-0.5" onClick={() => search.inputRef.current?.focus()}>
+        <div className="noa-sidebar-search mx-2 mb-[9px] mt-[9px] flex h-[26px] shrink-0 cursor-text items-center gap-0.5 rounded-[6px]" onClick={() => search.inputRef.current?.focus()}>
           <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center text-[var(--sidebar-text-muted,#898781)]">
             <Search size={16} />
           </span>
