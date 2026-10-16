@@ -12,7 +12,7 @@ export interface FileNodeProps {
   defaultOpen?: boolean;
   isActive?: boolean;
   isSelected?: boolean;
-  onClick?: (e: React.MouseEvent) => void;
+  onClick?: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onDelete?: () => void;
   onRename?: (newName: string) => string | void;
   icon?: React.ElementType;
@@ -201,7 +201,18 @@ export const FileNode = React.memo(({
           openContextMenu(e.clientX, e.clientY);
         }}
         onKeyDown={(e) => {
-          if (isEditing || (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10'))) return;
+          if (isEditing) return;
+          // Enter and Space act like a click, but only on the row itself: keys from the rename field
+          // or a nested button belong to that element.
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            // Ignore auto-repeat, so a held key does not toggle a folder on every repeat.
+            if (e.repeat) return;
+            if (isFolder) setIsOpen(!isOpen);
+            if (onClick) onClick(e);
+            return;
+          }
+          if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
           e.preventDefault();
           const rect = e.currentTarget.getBoundingClientRect();
           openContextMenu(rect.left + 16, rect.bottom);
