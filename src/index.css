@@ -84,6 +84,12 @@ button {
   box-shadow: none;
 }
 
+/* Sidebar tree rows are focusable divs: same keyboard ring as buttons, without the browser default outline. */
+.noa-sidebar-tree-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-shadow);
+}
+
 /* One keyboard focus ring for buttons. Links and inputs keep their own treatment: inline links would draw a box per wrapped line, and the title-bar search is borderless on purpose. */
 :where(button, [role="button"]):focus-visible {
   outline: none;

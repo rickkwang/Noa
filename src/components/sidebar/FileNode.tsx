@@ -173,7 +173,7 @@ export const FileNode = React.memo(({
            hover class too would hand the background to the hover wash, whose
            `!important` out-specifies the fill (and Chromium freezes :hover at
            dragstart, so it never comes back mid-drag). */
-        className={`flex min-h-8 items-center justify-between py-1 px-2 mx-2 rounded-lg cursor-pointer select-none group ${
+        className={`noa-sidebar-tree-row flex min-h-8 items-center justify-between py-1 px-2 mx-2 rounded-lg cursor-pointer select-none group ${
           isDragging
             ? 'noa-sidebar-row-dragging'
             : isDropTarget
