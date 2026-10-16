@@ -5,6 +5,7 @@ import { decodeLinkPath, splitImageSize, TAG_REGEX } from '../../lib/noteUtils';
 import { frontmatterEnd } from './hiddenFrontmatter';
 import { isTightHeading } from './livePreviewFold';
 import { CheckboxWidget, horizontalRule, ImageWidget, InlineMathWidget, bullet } from './livePreviewWidgets';
+import { INLINE_MATH, texTokens, type TexTokenType } from './texHighlight';
 
 type SyntaxNode = ReturnType<typeof syntaxTree>['topNode'];
 
@@ -38,6 +39,16 @@ const highlightText = Decoration.mark({ class: 'cm-lp-highlight' });
 const tagText = Decoration.mark({ class: 'cm-lp-tag' });
 const footnoteText = Decoration.mark({ class: 'cm-lp-footnote' });
 const calloutTitle = Decoration.mark({ class: 'cm-lp-callout-title' });
+// Math source, shown while the cursor is in it: monospace italic, `$` delimiters in the accent, TeX tokens coloured.
+const mathSource = Decoration.mark({ class: 'cm-lp-math-src' });
+const mathDelimiter = Decoration.mark({ class: 'cm-lp-math-delim' });
+const texMarks: Record<TexTokenType, Decoration> = {
+  command: Decoration.mark({ class: 'cm-lp-tex-command' }),
+  variable: Decoration.mark({ class: 'cm-lp-tex-variable' }),
+  number: Decoration.mark({ class: 'cm-lp-tex-number' }),
+  bracket: Decoration.mark({ class: 'cm-lp-tex-bracket' }),
+  comment: Decoration.mark({ class: 'cm-lp-tex-comment' }),
+};
 
 // [[Target]] and [[Target|Alias]]. The lookbehind leaves embeds (![[file]]) to EMBED.
 const WIKILINK = /(?<!!)\[\[([^[\]\n|]+)(?:\|([^[\]\n]+))?\]\]/g;
@@ -45,8 +56,6 @@ const EMBED = /!\[\[([^[\]\n|]+)(?:\|([^[\]\n]+))?\]\]/g;
 const IMAGE_FILE = /\.(?:png|jpe?g|gif|webp|svg|avif|bmp)$/i;
 const HIGHLIGHT = /==([^=\n]+?)==/g;
 const FOOTNOTE_REF = /\[\^([^\]\s]+)\](?!:)/g;
-// $x$ with no space just inside the delimiters, and no digit right after the closing $ (so prices stay text).
-const INLINE_MATH = /(?<![\\$])\$(?![\s$])([^$\n]*?[^\s$\\])\$(?![\d$])/g;
 // Only at the start of a quote line: "> [!note]", not "> see [!note]".
 const CALLOUT_MARKER = /(?<=^\s*>\s*)\[![A-Za-z-]+\][+-]?/;
 const CODE_NODES = new Set(['InlineCode', 'FencedCode', 'CodeBlock', 'CodeText']);
@@ -163,6 +172,9 @@ function build(view: EditorView, bodyStart: number, context: LivePreviewContext,
   const touchesSpan = (start: number, end: number) =>
     !pointerSelection && selection.ranges.some((r: SelectionRange) => r.from < end && r.to > start);
   const trailingSpace = (end: number) => (doc.sliceString(end, end + 1) === ' ' ? 1 : 0);
+  const markTex = (start: number, tex: string) => {
+    for (const token of texTokens(tex)) mark(start + token.from, start + token.to, texMarks[token.type]);
+  };
 
   const defs = linkDefinitions(doc);
   const mathLines = mathBlocks(state, bodyStart);
@@ -277,7 +289,19 @@ function build(view: EditorView, bodyStart: number, context: LivePreviewContext,
   const lastLine = doc.lineAt(to).number;
   for (let n = firstLine; n <= lastLine; n++) {
     const line = doc.line(n);
-    if (inMathBlock(line)) continue;
+    if (inMathBlock(line)) {
+      // Drawn only while the block shows its source; otherwise the block widget covers these lines.
+      mark(line.from, line.to, mathSource);
+      let segmentFrom = 0;
+      for (const match of line.text.matchAll(/\$\$/g)) {
+        const at = match.index ?? 0;
+        markTex(line.from + segmentFrom, line.text.slice(segmentFrom, at));
+        mark(line.from + at, line.from + at + 2, mathDelimiter);
+        segmentFrom = at + 2;
+      }
+      markTex(line.from + segmentFrom, line.text.slice(segmentFrom));
+      continue;
+    }
 
     for (const match of line.text.matchAll(WIKILINK)) {
       const start = line.from + (match.index ?? 0);
@@ -337,8 +361,15 @@ function build(view: EditorView, bodyStart: number, context: LivePreviewContext,
     for (const match of line.text.matchAll(INLINE_MATH)) {
       const start = line.from + (match.index ?? 0);
       const end = start + match[0].length;
-      if (isInCode(state, start) || touchesSpan(start, end)) continue;
-      replaceWith(start, end, new InlineMathWidget(match[1]), true);
+      if (isInCode(state, start)) continue;
+      if (!touchesSpan(start, end)) {
+        replaceWith(start, end, new InlineMathWidget(match[1]), true);
+        continue;
+      }
+      mark(start, end, mathSource);
+      mark(start, start + 1, mathDelimiter);
+      mark(end - 1, end, mathDelimiter);
+      markTex(start + 1, match[1]);
     }
   }
 

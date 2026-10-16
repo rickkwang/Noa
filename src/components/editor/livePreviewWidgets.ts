@@ -111,10 +111,10 @@ export function inlineOffsetAtCoords(parent: HTMLElement, event: MouseEvent): nu
   return 0;
 }
 
-export function appendInline(parent: HTMLElement, text: string): void {
+export function appendInline(parent: HTMLElement, text: string, base = 0): void {
   const appendText = (from: number, to: number) => {
     const node = document.createTextNode(text.slice(from, to));
-    inlineSourceOffsets.set(node, { offset: from });
+    inlineSourceOffsets.set(node, { offset: base + from });
     parent.appendChild(node);
   };
   let last = 0;
@@ -126,10 +126,13 @@ export function appendInline(parent: HTMLElement, text: string): void {
       ? new InlineMathWidget(math).toDOM()
       : document.createElement(bold ? 'strong' : strike ? 's' : code ? 'code' : highlight ? 'mark' : italic ? 'em' : 'span');
     if (wikiTarget) el.className = 'cm-lp-wikilink';
-    if (math === undefined) el.textContent = bold ?? strike ?? code ?? highlight ?? italic ?? wikiAlias ?? wikiTarget;
     const prefix = wikiTarget ? (wikiAlias === undefined ? 2 : wikiTarget.length + 3)
       : bold || strike || highlight ? 2 : 1;
-    inlineSourceOffsets.set(el, { offset: index + prefix, math: math !== undefined });
+    // Emphasis can hold math, links or other emphasis (`**mass $M$**`); code and link text stay literal.
+    const nested = bold ?? strike ?? highlight ?? italic;
+    if (nested !== undefined) appendInline(el, nested, base + index + prefix);
+    else if (math === undefined) el.textContent = code ?? wikiAlias ?? wikiTarget;
+    inlineSourceOffsets.set(el, { offset: base + index + prefix, math: math !== undefined });
     parent.appendChild(el);
     last = index + match[0].length;
   }

@@ -80,7 +80,27 @@ const darkTheme = EditorView.theme({
   '.cm-lp-math-block': { textAlign: 'center' },
   '.cm-lp-mermaid': { textAlign: 'center' },
   '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
-  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid rgba(249,249,247,0.14)', padding: '0.3em 0.6em', textAlign: 'left' },
+  // The td holds the handles; its text sits in .cm-lp-cell, stretched to the row's height so a click anywhere in the
+  // cell opens it (Obsidian's tr height: 1px trick).
+  '.cm-lp-table tr': { height: '1px' },
+  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid rgba(249,249,247,0.14)', padding: '0', position: 'relative', height: 'inherit', textAlign: 'left' },
+  '.cm-lp-cell': { padding: '0.3em 0.6em', height: '100%', boxSizing: 'border-box', outline: 'none' },
+  '.cm-lp-table-selected': { backgroundColor: 'rgba(204,125,94,0.12)' },
+  '.cm-lp-table-drop': { boxShadow: 'inset 0 0 0 2px #CC7D5E' },
+  // The padding holds the handles (top, left) and the add buttons (bottom, right), as Obsidian's 16px widget padding
+  // does; the negative margin keeps the table as wide as the text column.
+  // Focused while a row or column is selected (for its keys); the selection tint is the only highlight.
+  '.cm-lp-table': { padding: '1rem', margin: '0 -1rem', outline: 'none' },
+  '.cm-lp-table-handle': { position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', color: 'var(--noa-tex-bracket)', opacity: '0', cursor: 'grab', userSelect: 'none' },
+  '.cm-lp-table-handle:hover': { opacity: '1' },
+  '.cm-lp-table-handle-active': { opacity: '1', backgroundColor: '#CC7D5E', color: '#FFFFFF' },
+  '.cm-lp-table-row-handle': { top: '0', right: '100%', width: 'calc(1rem - 2px)', height: '100%' },
+  '.cm-lp-table-column-handle': { bottom: '100%', left: '0', width: '100%', height: 'calc(1rem - 2px)' },
+  '.cm-lp-table-inner': { position: 'relative' },
+  '.cm-lp-table-btn': { position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', border: '1px solid rgba(249,249,247,0.14)', color: 'var(--noa-tex-bracket)', opacity: '0', transition: 'opacity 0s 0.1s', cursor: 'pointer', userSelect: 'none' },
+  '.cm-lp-table-btn:hover': { opacity: '1' },
+  '.cm-lp-table-add-row': { top: '100%', left: '0', width: '100%', height: '1rem', borderTop: 'none' },
+  '.cm-lp-table-add-column': { top: '0', left: '100%', width: '1rem', height: '100%', borderLeft: 'none' },
   '.cm-lp-table th': { fontWeight: 'var(--font-weight-content-bold)' },
   '.cm-lp-fold': { color: 'rgba(249,249,247,0.45)', cursor: 'pointer', opacity: '0', userSelect: 'none' },
   '.cm-lp-fold-closed': { opacity: '1' },
@@ -155,7 +175,27 @@ const lightTheme = EditorView.theme({
   '.cm-lp-math-block': { textAlign: 'center' },
   '.cm-lp-mermaid': { textAlign: 'center' },
   '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
-  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid #2D2D2B24', padding: '0.3em 0.6em', textAlign: 'left' },
+  // The td holds the handles; its text sits in .cm-lp-cell, stretched to the row's height so a click anywhere in the
+  // cell opens it (Obsidian's tr height: 1px trick).
+  '.cm-lp-table tr': { height: '1px' },
+  '.cm-lp-table th, .cm-lp-table td': { border: '1px solid #2D2D2B24', padding: '0', position: 'relative', height: 'inherit', textAlign: 'left' },
+  '.cm-lp-cell': { padding: '0.3em 0.6em', height: '100%', boxSizing: 'border-box', outline: 'none' },
+  '.cm-lp-table-selected': { backgroundColor: 'rgba(204,125,94,0.12)' },
+  '.cm-lp-table-drop': { boxShadow: 'inset 0 0 0 2px #CC7D5E' },
+  // The padding holds the handles (top, left) and the add buttons (bottom, right), as Obsidian's 16px widget padding
+  // does; the negative margin keeps the table as wide as the text column.
+  // Focused while a row or column is selected (for its keys); the selection tint is the only highlight.
+  '.cm-lp-table': { padding: '1rem', margin: '0 -1rem', outline: 'none' },
+  '.cm-lp-table-handle': { position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', color: 'var(--noa-tex-bracket)', opacity: '0', cursor: 'grab', userSelect: 'none' },
+  '.cm-lp-table-handle:hover': { opacity: '1' },
+  '.cm-lp-table-handle-active': { opacity: '1', backgroundColor: '#CC7D5E', color: '#FFFFFF' },
+  '.cm-lp-table-row-handle': { top: '0', right: '100%', width: 'calc(1rem - 2px)', height: '100%' },
+  '.cm-lp-table-column-handle': { bottom: '100%', left: '0', width: '100%', height: 'calc(1rem - 2px)' },
+  '.cm-lp-table-inner': { position: 'relative' },
+  '.cm-lp-table-btn': { position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', border: '1px solid #2D2D2B24', color: 'var(--noa-tex-bracket)', opacity: '0', transition: 'opacity 0s 0.1s', cursor: 'pointer', userSelect: 'none' },
+  '.cm-lp-table-btn:hover': { opacity: '1' },
+  '.cm-lp-table-add-row': { top: '100%', left: '0', width: '100%', height: '1rem', borderTop: 'none' },
+  '.cm-lp-table-add-column': { top: '0', left: '100%', width: '1rem', height: '100%', borderLeft: 'none' },
   '.cm-lp-table th': { fontWeight: 'var(--font-weight-content-bold)' },
   '.cm-lp-fold': { color: '#2D2D2B73', cursor: 'pointer', opacity: '0', userSelect: 'none' },
   '.cm-lp-fold-closed': { opacity: '1' },

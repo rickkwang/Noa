@@ -922,6 +922,36 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* Code blocks and tables render inside a wrapper div, so the wrapper is matched too (Obsidian's .el-pre / .el-table). */
 .prose :is(p, pre, table, ul, ol, blockquote, div:has(> :is(pre, table))) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
 
+/* ── Math source (Obsidian's stex colours): Live Preview marks (.cm-lp-tex-*) and, in a table cell open for editing,
+   the same colours painted through the CSS Custom Highlight API (livePreviewBlocks.tsx, paintCellMath). */
+:root {
+  --noa-tex-command: #e93147;
+  --noa-tex-variable: #00bfbc;
+  --noa-tex-number: #7852ee;
+  --noa-tex-bracket: rgba(45, 45, 43, 0.5);
+  --noa-tex-comment: rgba(45, 45, 43, 0.35);
+}
+[data-theme="dark"] {
+  --noa-tex-command: #fb464c;
+  --noa-tex-variable: #53dfdd;
+  --noa-tex-number: #a882ff;
+  --noa-tex-bracket: rgba(249, 249, 247, 0.5);
+  --noa-tex-comment: rgba(249, 249, 247, 0.35);
+}
+.cm-lp-math-src { font-family: var(--font-mono); font-style: italic; font-size: 0.875em; }
+.cm-lp-math-delim { color: var(--accent-color, #CC7D5E); }
+.cm-lp-tex-command { color: var(--noa-tex-command); }
+.cm-lp-tex-variable { color: var(--noa-tex-variable); }
+.cm-lp-tex-number { color: var(--noa-tex-number); }
+.cm-lp-tex-bracket { color: var(--noa-tex-bracket); }
+.cm-lp-tex-comment { color: var(--noa-tex-comment); }
+::highlight(noa-tex-delim) { color: var(--accent-color, #CC7D5E); }
+::highlight(noa-tex-command) { color: var(--noa-tex-command); }
+::highlight(noa-tex-variable) { color: var(--noa-tex-variable); }
+::highlight(noa-tex-number) { color: var(--noa-tex-number); }
+::highlight(noa-tex-bracket) { color: var(--noa-tex-bracket); }
+::highlight(noa-tex-comment) { color: var(--noa-tex-comment); }
+
 /* ── Inline title (file name): Obsidian h1 metrics; edit mode is a CM widget, preview the prose column's first child. */
 /* Padding, not margin: CodeMirror sizes a block widget by its box, so a margin there skews every click below it. */
 .cm-noa-inline-title, .noa-inline-title {
