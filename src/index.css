@@ -84,6 +84,12 @@ button {
   box-shadow: none;
 }
 
+/* One keyboard focus ring for buttons. Links and inputs keep their own treatment: inline links would draw a box per wrapped line, and the title-bar search is borderless on purpose. */
+:where(button, [role="button"]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-shadow);
+}
+
 /* The compact title-bar search is framed by its parent. Keep the input itself
    borderless so focus does not introduce a second accent rectangle. */
 .noa-titlebar-search-input {
@@ -122,6 +128,9 @@ body {
   /* Floating surfaces draw their edge as a 1px ring in the shadow not a border. */
   --shadow-floating: 0 0 0 1px rgba(11,11,11,0.10), 0 8px 24px 0 rgba(0,0,0,0.12), 0 2px 6px 0 rgba(0,0,0,0.08);
   --shadow-dialog: 0 0 0 1px rgba(11,11,11,0.10), 0 4px 8px 0 rgba(45,45,43,0.08), 0 12px 28px -2px rgba(45,45,43,0.10);
+  /* Keyboard focus ring, drawn inside the control: an outside ring is clipped by scroll containers that edge the control. */
+  --focus-ring-color: var(--accent-color, #CC7D5E);
+  --focus-shadow: inset 0 0 0 2px var(--focus-ring-color);
 }
 
 .noa-app-shell {

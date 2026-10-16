@@ -323,7 +323,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
             inert={!completedExpanded || undefined}
             className={`grid transition-[grid-template-rows] duration-200 ease-(--ease-out) motion-reduce:transition-none ${completedExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
           >
-          <div className="min-h-0 overflow-hidden">
+          <div className="min-h-0 overflow-hidden pl-1 -ml-1">
           <div>
             {completedTasks.slice(0, completedPageSize).map(task => (
                 <div key={task.id} className="group relative flex items-start gap-2.5 py-1.5 pr-6">
