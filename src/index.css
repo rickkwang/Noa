@@ -921,6 +921,21 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
 /* Code blocks and tables render inside a wrapper div, so the wrapper is matched too (Obsidian's .el-pre / .el-table). */
 .prose :is(p, pre, table, ul, ol, blockquote, div:has(> :is(pre, table))) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
+/* Paragraphs and lists sit one blank line apart (1lh), the same gap a blank line leaves in Live Preview, so the text
+   doesn't shift when switching views. Obsidian's reading view uses 1rem here and does shift. Top level only (a long
+   note's body sits one level down, in its [data-preview-chunk] wrappers): nested lists keep prose's own spacing. */
+.prose > :is(p, ul, ol),
+.prose > [data-preview-chunk] > :is(p, ul, ol) { margin-block: 1lh; }
+/* A tight list's items are consecutive lines in Live Preview; a loose list's (items holding <p>) keep prose's spacing. */
+.prose > :is(ul, ol) > li:not(:has(> p)),
+.prose > [data-preview-chunk] > :is(ul, ol) > li:not(:has(> p)) { margin-block: 0; }
+/* Those rules outrank the typography plugin's edge reset (and the first chunk's), so it is restated: no gap above the
+   first block or below the last, as in a PDF export, which has no inline title above the body. The first chunk also
+   follows the title and Properties; its content-visibility keeps margins from collapsing across it. */
+.prose > :first-child,
+.prose > [data-preview-chunk]:not([data-preview-chunk] ~ *) > :first-child { margin-top: 0; }
+.prose > :last-child,
+.prose > [data-preview-chunk]:last-child > :last-child { margin-bottom: 0; }
 
 /* ── Math source (Obsidian's stex colours): Live Preview marks (.cm-lp-tex-*) and, in a table cell open for editing,
    the same colours painted through the CSS Custom Highlight API (livePreviewBlocks.tsx, paintCellMath). */
