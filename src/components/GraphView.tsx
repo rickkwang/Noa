@@ -272,7 +272,7 @@ const LINK_ALPHA_DIM = 0.05;
 // Stays clear of the card edge when following the open note into view.
 const FOLLOW_MARGIN_PX = 32;
 
-// A small overshoot for a node growing in, in the spirit of --ease-overshoot (cubic-bezier(.34,1.3,.64,1)).
+// A small overshoot for a node growing in (back-out easing, peaks a few percent past 1).
 function easeOvershoot(t: number): number {
   const c1 = 1.1;
   const c3 = c1 + 1;

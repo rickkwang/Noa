@@ -987,6 +987,20 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   animation: scrollbar-fadeout-dark 0.6s ease-out;
 }
 
+/* Just-checked task: the accent fill fades in and the tick flips from ink to page colour at 75%. */
+@keyframes noa-task-check-in {
+  from { background-color: transparent; }
+}
+@keyframes noa-task-check-glyph {
+  0%, 74.9% { color: var(--text-primary, #2D2D2B); }
+  75%, to { color: var(--bg-primary, #FCFCFB); }
+}
+.noa-task-check-in { animation: noa-task-check-in calc(2 * var(--dur-snap)) linear both; }
+.noa-task-check-glyph { animation: noa-task-check-glyph calc(2 * var(--dur-snap)) linear both; }
+@media (prefers-reduced-motion: reduce) {
+  .noa-task-check-in, .noa-task-check-glyph { animation: none; }
+}
+
 /* ── Skeleton pulse ── */
 [data-theme="dark"] .animate-pulse { --tw-bg-opacity: 1; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10.animate-pulse,
