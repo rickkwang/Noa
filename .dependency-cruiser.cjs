@@ -50,6 +50,7 @@ module.exports = {
         pathNot: [
           '^vite/client$', // vite ambient type declaration
           '^mdast$', // @types/mdast type-only
+          '^hast$', // @types/hast type-only (installed with react-markdown)
           '^mermaid$', // dynamic import('mermaid')
         ],
       },

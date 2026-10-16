@@ -1,7 +1,6 @@
 import { syntaxTree } from '@codemirror/language';
 import { ChangeSpec, EditorState, Extension, Line, Range, StateField, Text } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
-import type { SyntaxNode } from '@lezer/common';
 import katex from 'katex';
 import { createRoot, type Root } from 'react-dom/client';
 import { frontmatterEnd } from './hiddenFrontmatter';
@@ -14,6 +13,8 @@ import { INLINE_MATH, texTokens, type TexTokenType } from './texHighlight';
 // state field, not a view plugin. They show source again whenever the cursor is inside them.
 
 type Alignment = 'left' | 'center' | 'right' | null;
+// @lezer/common's node type, reached through @codemirror/language so no undeclared package is imported.
+type SyntaxNode = ReturnType<typeof syntaxTree>['topNode'];
 type TableCell = { text: string; offset: number };
 
 // A cell open for editing shows its raw source; it commits back to the document when it loses focus or the user moves on.
