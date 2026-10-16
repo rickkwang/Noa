@@ -80,7 +80,7 @@ export function useSidebarPreview({
   }, [cancelSidebarPreviewClose, closeSidebarPreview]);
   const toggleSidebar = useCallback(() => {
     cancelSidebarPreviewClose();
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reduceMotion = document.documentElement.dataset.reduceMotion === 'true' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (!isSidebarOpen && isSidebarPreviewOpen && !reduceMotion) {
       setSidebarPreviewPhase('promoting-open');
       setIsSidebarOpen(true);

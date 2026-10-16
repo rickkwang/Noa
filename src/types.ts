@@ -145,6 +145,7 @@ export interface AppSettings {
     maxWidth: number;
     usePointerCursors: boolean;
     translucentSidebar: boolean;
+    reduceMotion: boolean;
     emptyStateScene: EmptyStateScene;
   };
   dailyNotes: {

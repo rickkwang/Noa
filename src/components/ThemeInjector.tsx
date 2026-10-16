@@ -69,6 +69,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     root.style.setProperty('--accent-color', '#CC7D5E');
     root.dataset.pointerCursors = settings.appearance.usePointerCursors ? 'enabled' : 'disabled';
     root.dataset.translucentSidebar = settings.appearance.translucentSidebar ? 'enabled' : 'disabled';
+    root.dataset.reduceMotion = settings.appearance.reduceMotion ? 'true' : 'false';
 
     // Main owns the exact alpha and vibrancy values; the renderer sends only
     // the preference plus the opaque theme fallback used when translucency is
@@ -79,7 +80,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       settings.appearance.theme,
     )
       ?.catch(() => { /* desktop-only; ignore if the bridge is unavailable */ });
-  }, [isDark, settings.appearance.theme, settings.appearance.translucentSidebar, settings.appearance.usePointerCursors]);
+  }, [isDark, settings.appearance.theme, settings.appearance.translucentSidebar, settings.appearance.usePointerCursors, settings.appearance.reduceMotion]);
 
   const fontFamilyStyle = resolveFontFamily(settings.appearance.fontFamily);
 

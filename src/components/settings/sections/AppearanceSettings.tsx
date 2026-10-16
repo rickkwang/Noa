@@ -145,6 +145,16 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             }))}
           />
         </SettingItem>
+        <SettingItem label="Reduce Motion" description="Turn off animations and transitions in the app, even when your system setting allows them.">
+          <SettingsToggle
+            checked={settings.appearance.reduceMotion}
+            label="Reduce Motion"
+            onChange={(checked) => updateSettings(s => ({
+              ...s,
+              appearance: { ...s.appearance, reduceMotion: checked },
+            }))}
+          />
+        </SettingItem>
       </SettingSection>
     </div>
   );

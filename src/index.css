@@ -998,6 +998,16 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   .noa-task-check-in, .noa-task-check-glyph { animation: none; }
 }
 
+/* In-app "Reduce Motion" (Settings > Appearance) wins over the system setting: every animation and transition finishes instantly. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* ── Skeleton pulse ── */
 [data-theme="dark"] .animate-pulse { --tw-bg-opacity: 1; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10.animate-pulse,

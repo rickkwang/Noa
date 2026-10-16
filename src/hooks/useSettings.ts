@@ -24,6 +24,7 @@ export const defaultSettings: AppSettings = {
     maxWidth: 680,
     usePointerCursors: true,
     translucentSidebar: false,
+    reduceMotion: false,
     emptyStateScene: 'island',
   },
   dailyNotes: {
@@ -152,6 +153,7 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
           maxWidth: setting(appearance, 'maxWidth', defaultSettings.appearance.maxWidth, isMaxWidth),
           usePointerCursors: setting(appearance, 'usePointerCursors', defaultSettings.appearance.usePointerCursors, isBoolean),
           translucentSidebar: setting(appearance, 'translucentSidebar', defaultSettings.appearance.translucentSidebar, isBoolean),
+          reduceMotion: setting(appearance, 'reduceMotion', defaultSettings.appearance.reduceMotion, isBoolean),
           emptyStateScene: setting(appearance, 'emptyStateScene', defaultSettings.appearance.emptyStateScene, isEmptyStateScene),
         },
         dailyNotes: {

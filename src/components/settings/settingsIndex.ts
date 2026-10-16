@@ -44,6 +44,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   { tab: 'appearance', section: 'Reading', label: 'Line Height', keywords: 'leading spacing' },
   { tab: 'appearance', section: 'Reading', label: 'Max Width', keywords: 'measure column line length' },
   { tab: 'appearance', section: 'Reading', label: 'Use Pointer Cursors', keywords: 'hand mouse hover' },
+  { tab: 'appearance', section: 'Reading', label: 'Reduce Motion', keywords: 'animation transition accessibility vestibular' },
 
   // Workspace
   { tab: 'workspace', section: 'Workspace', label: 'Workspace Name', keywords: 'rename label title' },

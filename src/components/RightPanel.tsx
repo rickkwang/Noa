@@ -431,7 +431,7 @@ export default function RightPanel({
     event.preventDefault();
     const handle = event.currentTarget;
     handle.setPointerCapture(event.pointerId);
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduceMotion = document.documentElement.dataset.reduceMotion === 'true' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const heldRect = held.getBoundingClientRect();
     const otherRect = other.getBoundingClientRect();
     const heldIsUpper = splitPair[0] === id;
