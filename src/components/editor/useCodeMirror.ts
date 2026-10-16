@@ -45,7 +45,7 @@ const darkTheme = EditorView.theme({
   // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
   // inherits — without this the Line Height setting never reaches edit mode.
   // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.06)', borderLeft: '2px solid rgba(204,125,94,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
@@ -106,7 +106,7 @@ const lightTheme = EditorView.theme({
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
   // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
   '.cm-line': { padding: '0' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.09)', borderLeft: '2px solid rgba(204,125,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },

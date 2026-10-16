@@ -168,12 +168,12 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
         className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30 has-[[role=menu]]:z-40' : 'z-40'}`}
         data-right-panel-anchor={isMobile ? undefined : 'true'}
         style={isMobile ? undefined : {
-          // 15px (not a round rem) lines the menu glyph up with the editor toolbar's last action.
+          // Keep a fixed inset at the trailing edge of the actions.
           right: isRightPanelOpen ? 'calc(var(--noa-right-panel-width, 360px) + 15px)' : '15px',
           transition: rightPanelEdgeTransition,
         }}
       >
-        {/* Export menu (portalled in by the editor), rail toggle and panel menu: 24px buttons, 2px apart. */}
+        {/* Note actions, rail toggle and panel menu share one row. */}
         <div className="relative flex items-center gap-0.5" style={noDragRegion}>
           {isMobile ? (
             // The phone drawer picks its card from a strip inside the panel,
@@ -189,7 +189,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
             </button>
           ) : (
             <>
-            {/* The editor portals its export menu in here (empty when no note is open). */}
+            {/* The editor portals its export and history menu here. */}
             <div id={TITLEBAR_NOTE_ACTIONS_SLOT_ID} className="flex items-center empty:hidden" />
             {onToggleNoteRail && (
               <button

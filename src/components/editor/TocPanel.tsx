@@ -29,7 +29,7 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
   if (headings.length === 0) return null;
 
   return (
-    <div className={`absolute right-4 top-[68px] z-40 w-56 bg-[var(--surface-page,#F9F9F7)] rounded-panel p-1 noa-floating-panel font-ui max-h-80 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`absolute right-0 top-full mt-1.5 z-50 w-56 bg-[var(--surface-page,#F9F9F7)] rounded-panel p-1 noa-floating-panel font-ui max-h-80 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="flex h-7 items-center justify-between pl-2 pr-1.5 text-caption text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
         <span>Outline</span>
         <button onClick={handleClose} className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] noa-press" aria-label="Close outline">

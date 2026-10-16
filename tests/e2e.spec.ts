@@ -1182,20 +1182,20 @@ test('Cmd+F exits focus mode and focuses the mounted search input', async ({ pag
 test('cyclic view control exposes the current editor mode', async ({ page }) => {
   await page.goto('/');
 
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
+  const modeButton = page.getByRole('button', { name: /Switch to (Live Preview|Reading view)/ });
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: Live Preview');
   await modeButton.click();
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: Reading view');
 });
 
 test('Cmd+E toggles between Live Preview and reading view', async ({ page }) => {
   await page.goto('/');
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
+  const modeButton = page.getByRole('button', { name: /Switch to (Live Preview|Reading view)/ });
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: Live Preview');
   await page.keyboard.press('ControlOrMeta+e');
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: preview');
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: Reading view');
   await page.keyboard.press('ControlOrMeta+e');
-  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: edit');
+  await expect(modeButton).toHaveAttribute('aria-description', 'Current view: Live Preview');
 });
 
 test('the title bar draws no baseline, with or without a note open', async ({ page }) => {
@@ -1360,7 +1360,7 @@ test('app chrome prevents accidental text selection while content remains select
   expect(await userSelect(editorContent)).toBe('text');
   await editorContent.evaluate((element) => element.setAttribute('contenteditable', 'false'));
   expect(await userSelect(editorContent)).toBe('text');
-  await page.getByRole('button', { name: 'Switch to preview view' }).click();
+  await page.getByRole('button', { name: 'Switch to Reading view' }).click();
   expect(await userSelect(page.locator('.noa-selectable').first())).toBe('text');
 
   await page.getByTitle('Settings').click();
@@ -1973,7 +1973,7 @@ test('preview remounts with the current note after every sidebar switch', async 
   await page.goto('/');
   // Dismiss the storage notice that overlays content.
   await page.getByRole('button', { name: 'Got it' }).click();
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
+  const modeButton = page.getByRole('button', { name: /Switch to (Live Preview|Reading view)/ });
   const preview = page.locator('.prose').last();
 
   const marker = `switch-${Date.now()}`;

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Edit2, Upload } from '@/src/lib/icons';
+import { TocPanel } from './TocPanel';
+import { Eye, Edit2, Upload, AlignLeft } from '@/src/lib/icons';
 
 interface EditorActionsProps {
   isDark: boolean;
@@ -11,17 +12,14 @@ interface EditorActionsProps {
   onExportPdf: () => void;
   onToggleHistory?: () => void;
   isHistoryOpen?: boolean;
-  /** Titlebar slot for the export menu. When set, the menu renders there at the titlebar's button size,
-   *  in one row with the rail and panel buttons; the view toggle stays with the editor. */
+  headings: { level: number; text: string; lineIndex: number }[];
+  isTocOpen: boolean;
+  onToggleToc: () => void;
+  onCloseToc: () => void;
+  onJumpToLine: (lineIndex: number) => void;
   exportSlot?: HTMLElement | null;
 }
 
-/**
- * Note-level controls at the right end of the editor toolbar. The view-mode
- * cycle keeps its own button because it is the one control worth a single
- * click; export and history collapse into one menu, which on desktop moves up
- * into the titlebar (see exportSlot).
- */
 export function EditorActions({
   isDark,
   viewMode,
@@ -31,18 +29,28 @@ export function EditorActions({
   onExportPdf,
   onToggleHistory,
   isHistoryOpen,
+  headings,
+  isTocOpen,
+  onToggleToc,
+  onCloseToc,
+  onJumpToLine,
   exportSlot,
 }: EditorActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !isTocOpen) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      if (!outlineRef.current?.contains(e.target as Node)) onCloseToc();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        onCloseToc();
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -50,39 +58,29 @@ export function EditorActions({
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, isTocOpen, onCloseToc]);
 
   const nextViewMode = viewMode === 'edit' ? 'preview' : 'edit';
-  // Show the destination rather than the already-active mode: a lone icon then
-  // visibly changes on every click.
+  const nextViewLabel = nextViewMode === 'edit' ? 'Live Preview' : 'Reading view';
   const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : Eye;
-
-  // Same row as the titlebar's panel menu (PaneMenu): every popup menu in the
-  // app shares one shape — 10px panel, 4px inset, 28px rounded rows.
+  const buttonClass = `flex h-6 w-6 items-center justify-center rounded-md noa-press transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default ${
+    isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'
+  } hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`;
   const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-body text-left transition-colors whitespace-nowrap ${
     isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)]'
   }`;
 
-  const inTitlebar = Boolean(exportSlot);
   const exportMenu = (
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className={`${inTitlebar ? 'flex h-6 w-6 items-center justify-center' : 'p-1'} rounded-md noa-press transition-colors cursor-pointer ${
-            menuOpen || isHistoryOpen
-              ? 'noa-ink-selected'
-              : inTitlebar
-                ? `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
-                : `${isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_50%,transparent)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]'} hover:text-[var(--text-primary,#2D2D2B)]`
-          }`}
+          className={`${buttonClass} ${menuOpen || isHistoryOpen ? 'noa-ink-selected' : ''}`}
           title="More actions"
           aria-label="More actions"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
         >
-          {/* Not a second "more" glyph: the titlebar's panel menu sits beside
-              this one. Everything in here but history is an export. */}
-          <Upload size={inTitlebar ? 16 : 14} />
+          <Upload size={16} />
         </button>
         {menuOpen && (
           <div
@@ -91,11 +89,7 @@ export function EditorActions({
           >
             {onToggleHistory && (
               <>
-                <button
-                  role="menuitem"
-                  onClick={() => { onToggleHistory(); setMenuOpen(false); }}
-                  className={itemClass}
-                >
+                <button role="menuitem" onClick={() => { onToggleHistory(); setMenuOpen(false); }} className={itemClass}>
                   Version History
                 </button>
                 <div className="mx-1 my-1 h-[0.5px] bg-[var(--divider-subtle)]" />
@@ -116,19 +110,29 @@ export function EditorActions({
   );
 
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-0.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div ref={outlineRef} className="relative">
+        <button
+          onClick={onToggleToc}
+          disabled={headings.length === 0}
+          className={`${buttonClass} ${isTocOpen ? 'noa-ink-selected' : ''}`}
+          title="Outline"
+          aria-label="Outline"
+          aria-expanded={isTocOpen}
+        >
+          <AlignLeft size={16} />
+        </button>
+        {isTocOpen && <TocPanel headings={headings} onJumpToLine={onJumpToLine} onClose={onCloseToc} />}
+      </div>
       <button
         onClick={() => setViewMode(nextViewMode)}
-        className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
-          isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_50%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]'
-        }`}
-        title={`Switch to ${nextViewMode} view`}
-        aria-label={`Switch to ${nextViewMode} view`}
-        aria-description={`Current view: ${viewMode}`}
+        className={buttonClass}
+        title={`Switch to ${nextViewLabel} (⌘E)`}
+        aria-label={`Switch to ${nextViewLabel}`}
+        aria-description={`Current view: ${viewMode === 'edit' ? 'Live Preview' : 'Reading view'}`}
       >
-        <NextViewModeIcon size={14} />
+        <NextViewModeIcon size={16} />
       </button>
-
       {exportSlot ? createPortal(exportMenu, exportSlot) : exportMenu}
     </div>
   );

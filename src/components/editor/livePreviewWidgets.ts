@@ -60,14 +60,26 @@ export class ImageWidget extends WidgetType {
   }
 }
 
+// Resolve the current decoration position at click time, since edits can move a reused widget.
+export function editWidgetOnMouseDown(element: HTMLElement, view: EditorView, offset: (event: MouseEvent) => number, widgetDOM = element): void {
+  element.addEventListener('mousedown', (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || view.state.readOnly) return;
+    event.preventDefault();
+    const anchor = view.posAtDOM(widgetDOM) + offset(event);
+    view.dispatch({ selection: { anchor }, scrollIntoView: true });
+    view.focus();
+  });
+}
+
 export class InlineMathWidget extends WidgetType {
   constructor(readonly tex: string) { super(); }
   eq(other: InlineMathWidget) { return other.tex === this.tex; }
-  toDOM() {
+  toDOM(view?: EditorView) {
     const el = document.createElement('span');
     el.className = 'cm-lp-math';
     // KaTeX escapes its input and marks bad TeX inline instead of throwing.
     el.innerHTML = katex.renderToString(this.tex, { throwOnError: false });
+    if (view) editWidgetOnMouseDown(el, view, () => 1);
     return el;
   }
 }
@@ -76,19 +88,46 @@ export const horizontalRule = new HorizontalRuleWidget();
 export const bullet = new BulletWidget();
 
 // Inline formatting inside table cells, which Live Preview renders rather than showing as source.
-const CELL_TOKEN = /\*\*(.+?)\*\*|~~(.+?)~~|`([^`]+)`|==(.+?)==|\*(.+?)\*|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+const CELL_TOKEN = /\*\*(.+?)\*\*|~~(.+?)~~|`([^`]+)`|==(.+?)==|\*(.+?)\*|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|(?<![\\$])\$(?![\s$])([^$\n]*?[^\s$\\])\$(?![\d$])/g;
+
+const inlineSourceOffsets = new WeakMap<Node, { offset: number; math?: boolean }>();
+
+export function inlineOffsetAtCoords(parent: HTMLElement, event: MouseEvent): number {
+  const caret = parent.ownerDocument.caretRangeFromPoint(event.clientX, event.clientY);
+  if (!caret || !parent.contains(caret.startContainer)) return 0;
+  for (let node: Node | null = caret.startContainer; node && node !== parent; node = node.parentNode) {
+    const source = inlineSourceOffsets.get(node);
+    if (!source) continue;
+    if (source.math) return source.offset;
+    const range = parent.ownerDocument.createRange();
+    range.selectNodeContents(node);
+    range.setEnd(caret.startContainer, caret.startOffset);
+    return source.offset + range.toString().length;
+  }
+  return 0;
+}
 
 export function appendInline(parent: HTMLElement, text: string): void {
+  const appendText = (from: number, to: number) => {
+    const node = document.createTextNode(text.slice(from, to));
+    inlineSourceOffsets.set(node, { offset: from });
+    parent.appendChild(node);
+  };
   let last = 0;
   for (const match of text.matchAll(CELL_TOKEN)) {
     const index = match.index ?? 0;
-    if (index > last) parent.appendChild(document.createTextNode(text.slice(last, index)));
-    const [, bold, strike, code, highlight, italic, wikiTarget, wikiAlias] = match;
-    const el = document.createElement(bold ? 'strong' : strike ? 's' : code ? 'code' : highlight ? 'mark' : italic ? 'em' : 'span');
+    if (index > last) appendText(last, index);
+    const [, bold, strike, code, highlight, italic, wikiTarget, wikiAlias, math] = match;
+    const el = math !== undefined
+      ? new InlineMathWidget(math).toDOM()
+      : document.createElement(bold ? 'strong' : strike ? 's' : code ? 'code' : highlight ? 'mark' : italic ? 'em' : 'span');
     if (wikiTarget) el.className = 'cm-lp-wikilink';
-    el.textContent = bold ?? strike ?? code ?? highlight ?? italic ?? wikiAlias ?? wikiTarget;
+    if (math === undefined) el.textContent = bold ?? strike ?? code ?? highlight ?? italic ?? wikiAlias ?? wikiTarget;
+    const prefix = wikiTarget ? (wikiAlias === undefined ? 2 : wikiTarget.length + 3)
+      : bold || strike || highlight ? 2 : 1;
+    inlineSourceOffsets.set(el, { offset: index + prefix, math: math !== undefined });
     parent.appendChild(el);
     last = index + match[0].length;
   }
-  if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+  if (last < text.length) appendText(last, text.length);
 }

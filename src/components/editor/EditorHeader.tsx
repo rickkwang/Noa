@@ -404,7 +404,7 @@ export function EditorHeader({
 
   return (
     <div
-      className={`h-11 flex items-center justify-between shrink-0 z-10 font-ui overflow-visible gap-3 relative ${liftTabStrip ? '-mt-11 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}
+      className={`h-11 flex items-center justify-between shrink-0 z-20 font-ui overflow-visible gap-3 relative ${liftTabStrip ? '-mt-11 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}
       style={{
         ...dragRegion,
         // 4px here plus the strip's own 4px puts the first pill 8px from the

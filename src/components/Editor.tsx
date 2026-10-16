@@ -14,15 +14,14 @@ import { AttachmentPanel } from './editor/AttachmentPanel';
 import { bodyCaretTarget } from './editor/bodyCaret';
 import { EditorActions } from './editor/EditorActions';
 import { EditorHeader } from './editor/EditorHeader';
-import { EditorToolbar } from './editor/EditorToolbar';
 import { FindReplacePanel } from './editor/FindReplacePanel';
 import { HistoryPanel } from './editor/HistoryPanel';
 import { type OpenableLink } from './editor/livePreview';
 import { MentionDropdown } from './editor/MentionDropdown';
 import { PreviewPane } from './editor/PreviewPane';
 import { PropertiesBlock } from './editor/PropertiesBlock';
+import { getPreviewScrollAnchor, restorePreviewScrollAnchor, scrollPreviewToLine, type ScrollAnchor } from './editor/scrollAnchor';
 import { SlashCommandDropdown, type SlashCommand } from './editor/SlashCommandDropdown';
-import { TocPanel } from './editor/TocPanel';
 import { useCodeMirror } from './editor/useCodeMirror';
 
 const ATTACHMENT_PASTE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -120,7 +119,7 @@ export default function Editor({
   onFocusRequestHandled,
 }: EditorProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  // Where the titlebar shows its own action buttons (desktop, not focus mode), the export menu joins that row.
+  // Keep exports in the titlebar; outline and view controls stay with the note.
   const [titlebarExportSlot, setTitlebarExportSlot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     setTitlebarExportSlot(reserveTitlebarActions ? document.getElementById(TITLEBAR_NOTE_ACTIONS_SLOT_ID) : null);
@@ -137,6 +136,9 @@ export default function Editor({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editPaneRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<ScrollAnchor>({ lineIndex: 0, progress: 0, top: true });
+  const scrollViewRef = useRef<{ noteId?: string; mode: 'edit' | 'preview' }>({ mode: viewMode });
   const isDark = useIsDark(settings.appearance.theme);
   // Lives under CodeMirror's inline title widget, so Properties sit below the title and scroll with the note.
   const [propertiesSlot] = useState(() => document.createElement('div'));
@@ -235,6 +237,64 @@ export default function Editor({
     return () => window.cancelAnimationFrame(frame);
   }, [jumpToLine, lineJumpRequest, note?.content, note?.id, onLineJumpHandled, viewMode]);
 
+  // Restore the source position across layouts without changing the selection or undo history.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    const container = viewMode === 'preview' ? previewScrollRef.current : view?.scrollDOM;
+    const noteId = note?.id;
+    if (!noteId || !view || !container) return;
+    const previous = scrollViewRef.current;
+    const switched = previous.noteId === noteId && previous.mode !== viewMode;
+    if (previous.noteId !== noteId) scrollAnchorRef.current = { lineIndex: 0, progress: 0, top: true };
+    scrollViewRef.current = { noteId, mode: viewMode };
+    const anchor = scrollAnchorRef.current;
+    let disposed = false;
+    const capture = () => {
+      if (viewMode === 'preview') {
+        scrollAnchorRef.current = getPreviewScrollAnchor(container);
+      } else {
+        const height = Math.max(0, container.getBoundingClientRect().top - view.documentTop);
+        const block = view.lineBlockAtHeight(height);
+        const firstLine = view.state.doc.lineAt(block.from).number;
+        const lineCount = view.state.doc.lineAt(block.to).number - firstLine + 1;
+        const position = (block.height > 0 ? Math.max(0, Math.min(0.999999, (height - block.top) / block.height)) : 0) * lineCount;
+        scrollAnchorRef.current = {
+          lineIndex: firstLine - 1 + Math.floor(position),
+          progress: position % 1,
+          top: container.scrollTop === 0,
+        };
+      }
+    };
+    const frame = window.requestAnimationFrame(() => {
+      if (switched && lineJumpRequest?.noteId !== noteId) {
+        if (viewMode === 'preview') {
+          restorePreviewScrollAnchor(container, anchor);
+        } else if (anchor.top) {
+          container.scrollTop = 0;
+        } else {
+          const line = view.state.doc.line(Math.min(view.state.doc.lines, anchor.lineIndex + 1));
+          view.requestMeasure({
+            read: () => view.lineBlockAt(line.from),
+            write: (block) => {
+              if (disposed) return;
+              const firstLine = view.state.doc.lineAt(block.from).number - 1;
+              const lineCount = view.state.doc.lineAt(block.to).number - firstLine;
+              const progress = (anchor.lineIndex - firstLine + anchor.progress) / lineCount;
+              container.scrollTop = view.documentTop - container.getBoundingClientRect().top + container.scrollTop + block.top + block.height * progress;
+            },
+          });
+        }
+      }
+      capture();
+      container.addEventListener('scroll', capture, { passive: true });
+    });
+    return () => {
+      disposed = true;
+      window.cancelAnimationFrame(frame);
+      container.removeEventListener('scroll', capture);
+    };
+  }, [editorViewRef, note?.id, previewNote?.id, viewMode, isDark, lineJumpRequest?.noteId]);
+
   // ⌘F / Ctrl+F opens Find & Replace when the editor is focused
   useEffect(() => {
     const container = editorContainerRef.current;
@@ -299,6 +359,7 @@ export default function Editor({
     setIsFindReplaceOpen(false);
     setIsEditingTitle(false);
     setImageError(null);
+    setIsTocOpen(false);
     // Keyed on note id, not the note object, so title edits don't trigger the reset.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);
@@ -590,6 +651,17 @@ export default function Editor({
       onExportPdf={() => setPrintNote(note)}
       onToggleHistory={onRestoreSnapshot ? () => setIsHistoryOpen(v => !v) : undefined}
       isHistoryOpen={isHistoryOpen}
+      headings={tocHeadings}
+      isTocOpen={isTocOpen}
+      onToggleToc={() => setIsTocOpen(v => !v)}
+      onCloseToc={() => setIsTocOpen(false)}
+      onJumpToLine={(lineIndex) => {
+        if (viewMode === 'preview') {
+          if (previewScrollRef.current) scrollPreviewToLine(previewScrollRef.current, lineIndex);
+        } else {
+          jumpToLine(lineIndex);
+        }
+      }}
     />
   );
 
@@ -623,24 +695,6 @@ export default function Editor({
         readOnly={readOnly}
       />
 
-      {viewMode !== 'preview' && (
-        <EditorToolbar
-          onInsertFormatting={insertFormatting}
-          hasToc={tocHeadings.length > 0}
-          isTocOpen={isTocOpen}
-          onToggleToc={() => setIsTocOpen((v) => !v)}
-          actions={editorActions}
-        />
-      )}
-
-      {isTocOpen && (
-        <TocPanel
-          headings={tocHeadings}
-          onJumpToLine={jumpToLine}
-          onClose={() => setIsTocOpen(false)}
-        />
-      )}
-
       {isFindReplaceOpen && viewMode !== 'preview' && (
         <FindReplacePanel
           editorViewRef={editorViewRef}
@@ -660,12 +714,12 @@ export default function Editor({
       <div
         className="flex-1 flex overflow-hidden z-10 relative"
       >
-        {/* Preview has no toolbar row, so controls float here; h-7 + pb-px match the row's height so they don't shift between modes. */}
-        {viewMode === 'preview' && (
-          <div className="absolute top-0 z-20 h-7 pb-px flex items-center" style={{ right: 'calc(1rem + var(--noa-rail-reserve, 0px))' }}>
-            {editorActions}
-          </div>
-        )}
+        <div
+          className="absolute top-1 right-3 z-30"
+          style={{ right: 'calc(0.75rem + var(--noa-rail-reserve, 0px))', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          {editorActions}
+        </div>
         {isHistoryOpen && onRestoreSnapshot && (
           <HistoryPanel
             noteId={note.id}
@@ -739,6 +793,7 @@ export default function Editor({
         {viewMode === 'preview' && previewNote && (
           <PreviewPane
             note={previewNote}
+            scrollContainerRef={previewScrollRef}
             allNotes={deferredAllNotes}
             folders={folders}
             settings={settings}

@@ -1,5 +1,6 @@
 import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
+import type { Root as HastRoot } from 'hast';
 import type { ListItem, Root, Text, Parent, RootContent } from 'mdast';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
@@ -25,9 +26,23 @@ import { Note, Folder, AppSettings } from '../../types';
 import { ImageViewer } from './ImageViewer';
 import { MermaidBlock } from './MermaidBlock';
 import { canReusePreviewContextNotes } from './previewMemo';
+import { scrollPreviewToLine } from './scrollAnchor';
 import { Copy, Check, FileText } from '@/src/lib/icons';
 
-function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+interface SourceLineProps {
+  'data-source-line'?: number;
+  'data-source-end-line'?: number;
+}
+
+function sourceLineProps(props: object): SourceLineProps {
+  const source = props as SourceLineProps;
+  return {
+    'data-source-line': source['data-source-line'],
+    'data-source-end-line': source['data-source-end-line'],
+  };
+}
+
+function CodeBlock({ children, isDark, ...sourceProps }: { children: React.ReactNode; isDark: boolean } & SourceLineProps) {
   const [copied, setCopied] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
   const handleCopy = useCallback(() => {
@@ -38,7 +53,7 @@ function CodeBlock({ children, isDark }: { children: React.ReactNode; isDark: bo
     }).catch(() => {});
   }, []);
   return (
-    <div style={{ position: 'relative' }}>
+    <div {...sourceProps} style={{ position: 'relative' }}>
       {/* Match the editor's fenced-code treatment (.cm-code-line in
           useCodeMirror.ts): coral tint + coral left rule. */}
       <pre
@@ -240,15 +255,41 @@ function decodeAnchor(raw: string): string {
 const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkEmptyTask, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
 const REHYPE_PLUGINS: MarkdownOptions['rehypePlugins'] = [rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]];
 
-// One chunk of a large note's preview. Memoized so a render pass where the
-// chunk text and components are unchanged skips the markdown re-parse, and so
-// React's concurrent renderer can yield between chunks instead of parsing the
-// whole document in one long task (which froze tab-switch animations).
-const MarkdownChunk = React.memo(function MarkdownChunk({ markdown, components }: { markdown: string; components: Components }) {
+// Only top-level blocks map to source lines; embedded notes have their own source.
+type SourceLines = { start: number; end: number }[];
+
+function rehypeSourceLines({ lineOffset, sourceLines }: { lineOffset: number; sourceLines: SourceLines }) {
+  return (tree: HastRoot) => {
+    tree.children = tree.children.map(node => {
+      if (node.type !== 'element' || !node.position) return node;
+      const properties = {
+        'data-source-line': sourceLines[lineOffset + node.position.start.line - 1]?.start,
+        'data-source-end-line': sourceLines[lineOffset + node.position.end.line - 1]?.end,
+      };
+      const code = node.tagName === 'pre' ? node.children.find(child => child.type === 'element') : undefined;
+      const classes = node.properties.className;
+      const codeClasses = code?.type === 'element' ? code.properties.className : undefined;
+      // KaTeX replaces the math node, so retain its source position on a plain wrapper.
+      if ((Array.isArray(classes) && classes.includes('math-display')) ||
+          (Array.isArray(codeClasses) && codeClasses.includes('language-math'))) {
+        return { type: 'element', tagName: 'div', properties, children: [node] };
+      }
+      Object.assign(node.properties, properties);
+      return node;
+    });
+  };
+}
+
+// Memoized chunks avoid reparsing unchanged text and let rendering yield between chunks.
+const MarkdownChunk = React.memo(function MarkdownChunk({ markdown, components, lineOffset, sourceLines }: { markdown: string; components: Components; lineOffset?: number; sourceLines: SourceLines }) {
+  const rehypePlugins = useMemo<MarkdownOptions['rehypePlugins']>(
+    () => lineOffset === undefined ? REHYPE_PLUGINS : [[rehypeSourceLines, { lineOffset, sourceLines }], ...REHYPE_PLUGINS!],
+    [lineOffset, sourceLines],
+  );
   return (
     <Markdown
       remarkPlugins={REMARK_PLUGINS}
-      rehypePlugins={REHYPE_PLUGINS}
+      rehypePlugins={rehypePlugins}
       components={components}
       urlTransform={urlTransform}
     >
@@ -287,6 +328,7 @@ interface PreviewPaneProps {
   /** A pending [[Note#Heading]] jump; the Reading view scrolls to that heading and clears it. */
   lineJumpRequest?: { noteId: string; lineIndex: number; requestId: number } | null;
   onLineJumpHandled?: (requestId: number) => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 // Three tones, drawn from the app palette (ink / gold / coral) rather than a
@@ -342,7 +384,7 @@ function extractTextFromNode(node: React.ReactNode): string {
 // Matches: [!TYPE], [!TYPE]-, [!TYPE]+, [!TYPE]- Custom Title, [!TYPE]+ Custom Title
 const CALLOUT_HEADER_RE = /^\[!([A-Za-z]+)\]([+-]?)\s*(.*)?$/;
 
-function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+function CalloutBlockquote({ children, isDark, ...sourceProps }: { children: React.ReactNode; isDark: boolean } & SourceLineProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const childArray = React.Children.toArray(children);
   // react-markdown emits "\n" whitespace text nodes between a blockquote's block
@@ -423,7 +465,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
 
   if (!config) {
     return (
-      <blockquote className="noa-blockquote">
+      <blockquote {...sourceProps} className="noa-blockquote">
         {children}
       </blockquote>
     );
@@ -435,7 +477,7 @@ function CalloutBlockquote({ children, isDark }: { children: React.ReactNode; is
   const toneColor = isDark ? tone.dark : tone.light;
 
   return (
-    <div style={{
+    <div {...sourceProps} style={{
       borderLeft: `3px solid ${toneColor}`,
       background: isDark ? tone.darkBg : tone.lightBg,
       borderRadius: '0 4px 4px 0',
@@ -538,11 +580,32 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   }, [componentNotes]);
   const linkIndex = useMemo(() => buildLinkIndex(componentNotes, folders ?? []), [componentNotes, folders]);
 
-  const previewMarkdown = useMemo(() => {
+  const { markdown: previewMarkdown, sourceLines } = useMemo(() => {
     const findAttachment = (ref: string) => findNoteAttachment({ attachments: note.attachments, vaultPath: note.vaultPath }, ref);
 
-    // Step 0: strip %%comments%% at the string level, as Obsidian does before parsing.
-    const withoutComments = mapAttachmentReferences(stripTaskMarkers(splitFrontmatter(note.content).body).replace(/%%[\s\S]*?%%/g, ''), (target, wiki) => {
+    // Map rendered lines separately so removing comments cannot change Markdown structure.
+    const { body } = splitFrontmatter(note.content);
+    const frontmatterLines = note.content.slice(0, note.content.length - body.length).split('\n').length - 1;
+    const source = '\n'.repeat(frontmatterLines) + stripTaskMarkers(body);
+    const sourceLines: SourceLines = [{ start: 0, end: 0 }];
+    let sourceLine = 0;
+    let last = 0;
+    const mapLines = (text: string) => {
+      const count = text.split('\n').length - 1;
+      for (let index = 0; index < count; index++) {
+        sourceLine++;
+        sourceLines.push({ start: sourceLine, end: sourceLine });
+      }
+    };
+    const uncommented = source.replace(/%%[\s\S]*?%%/g, (comment: string, offset: number) => {
+      mapLines(source.slice(last, offset));
+      sourceLine += comment.split('\n').length - 1;
+      sourceLines[sourceLines.length - 1].end = sourceLine;
+      last = offset + comment.length;
+      return '';
+    });
+    mapLines(source.slice(last));
+    const withoutComments = mapAttachmentReferences(uncommented, (target, wiki) => {
       const attachment = wiki ? undefined : findAttachment(target);
       return attachment ? `note-attachment://id/${encodeURIComponent(attachment.id)}` : undefined;
     });
@@ -580,7 +643,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
     }));
 
     // Step 2: rewrite [[title]] and [[title|alias]] wiki-links
-    return transformProse(withAttachments, (seg) => seg.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
+    const markdown = transformProse(withAttachments, (seg) => seg.replace(/\[\[(.*?)\]\]/g, (_, raw) => {
       const safeRaw = String(raw ?? '').trim();
       const pipeIdx = safeRaw.indexOf('|');
       // Tolerate table-escaped pipes: [[Note\|display]] → target "Note".
@@ -612,6 +675,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
       const encoded = encodeURIComponent(realTitle);
       return `[${displayText}](note-internal://title/${encoded}${anchorSuffix})`;
     }));
+    return { markdown, sourceLines };
   }, [note.id, note.folder, note.vaultPath, note.content, note.attachments, linkIndex]);
 
   const markdownComponents = useMemo((): Components => {
@@ -749,8 +813,8 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         return <ZoomableImage src={src} alt={size.alt} width={size.width} height={size.height} />;
       },
       ...HEADING_COMPONENTS,
-      blockquote: ({ children }) => (
-        <CalloutBlockquote isDark={isDark}>{children}</CalloutBlockquote>
+      blockquote: ({ children, ...props }) => (
+        <CalloutBlockquote isDark={isDark} {...sourceLineProps(props)}>{children}</CalloutBlockquote>
       ),
 
       mark: ({ children }: { children?: React.ReactNode }) => (
@@ -761,8 +825,8 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           padding: '0 2px',
         }}>{children}</mark>
       ),
-      hr: () => (
-        <hr style={{ border: 'none', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', margin: '1.5rem 0' }} />
+      hr: (props) => (
+        <hr {...sourceLineProps(props)} style={{ border: 'none', borderTop: '1px solid var(--divider-subtle, #E6E2DA)', margin: '1.5rem 0' }} />
       ),
       code: ({ className, children }) => {
         const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? '';
@@ -774,15 +838,15 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           <code className={className}>{children}</code>
         );
       },
-      pre: ({ children }) => {
-        // If the pre wraps a mermaid code block, render it directly without the CodeBlock chrome
+      pre: ({ children, ...props }) => {
+        // Retain source positions around Mermaid without adding code-block chrome.
         const childArray = React.Children.toArray(children);
         const codeChild = childArray.find(
           (c): c is React.ReactElement<{ className?: string }> =>
             React.isValidElement(c) && (c as React.ReactElement<{ className?: string }>).props?.className?.includes('language-mermaid') === true
         );
-        if (codeChild) return <>{children}</>;
-        return <CodeBlock isDark={isDark}>{children}</CodeBlock>;
+        if (codeChild) return <div {...sourceLineProps(props)}>{children}</div>;
+        return <CodeBlock isDark={isDark} {...sourceLineProps(props)}>{children}</CodeBlock>;
       },
       del: ({ children }) => (
         <del style={{ textDecoration: 'line-through', opacity: 0.55 }}>{children}</del>
@@ -814,8 +878,8 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
         }
         return <section {...props}>{children}</section>;
       },
-      table: ({ children }) => (
-        <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
+      table: ({ children, ...props }) => (
+        <div {...sourceLineProps(props)} style={{ overflowX: 'auto', margin: '1rem 0' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9em' }}>{children}</table>
         </div>
       ),
@@ -888,25 +952,30 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
   // Chunk only the top-level note: embeds render inside a <span> (see
   // NoteEmbed), where block wrappers would be invalid, and embedded sections
   // are small anyway.
-  const chunks = useMemo(
-    () => (depth === 0 ? splitMarkdownForChunkedPreview(previewMarkdown) : [previewMarkdown]),
-    [depth, previewMarkdown]
-  );
+  const chunks = useMemo(() => {
+    let lineOffset = 0;
+    return (depth === 0 ? splitMarkdownForChunkedPreview(previewMarkdown) : [previewMarkdown]).map(markdown => {
+      const chunk = { markdown, lineOffset: depth === 0 ? lineOffset : undefined };
+      lineOffset += markdown.split('\n').length - 1;
+      return chunk;
+    });
+  }, [depth, previewMarkdown]);
 
   if (chunks.length === 1) {
-    return <MarkdownChunk markdown={previewMarkdown} components={markdownComponents} />;
+    return <MarkdownChunk markdown={previewMarkdown} components={markdownComponents} lineOffset={chunks[0].lineOffset} sourceLines={sourceLines} />;
   }
   return (
     <>
       {chunks.map((chunk, i) => (
         <div
           key={i}
+          data-preview-chunk=""
           style={printMode ? undefined : chunkWrapperStyle}
           // Replicate the typography plugin's `.prose > :first-child { mt-0 }`,
           // which the wrapper div would otherwise absorb.
           className={i === 0 ? '[&>:first-child]:mt-0' : undefined}
         >
-          <MarkdownChunk markdown={chunk} components={markdownComponents} />
+          <MarkdownChunk markdown={chunk.markdown} components={markdownComponents} lineOffset={chunk.lineOffset} sourceLines={sourceLines} />
         </div>
       ))}
     </>
@@ -1037,8 +1106,10 @@ export const PreviewPane = React.memo(function PreviewPane({
   properties,
   lineJumpRequest,
   onLineJumpHandled,
+  scrollContainerRef,
 }: PreviewPaneProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = scrollContainerRef ?? internalScrollRef;
   const isDark = useIsDark(settings.appearance.theme);
 
   const backlinks: BacklinkItem[] = useMemo(
@@ -1054,23 +1125,21 @@ export const PreviewPane = React.memo(function PreviewPane({
     if (!el || printMode) return;
     const fade = attachEdgeFade(el);
     return () => fade.dispose();
-  }, [printMode]);
+  }, [printMode, scrollRef]);
 
   // Runs once the note's headings are in the DOM. The Editor mounts the pane a frame after a note switch,
   // so the heading cannot be looked up from the Editor's own effect.
   useEffect(() => {
     if (!lineJumpRequest || lineJumpRequest.noteId !== note.id) return;
-    const heading = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(note.content.split('\n')[lineJumpRequest.lineIndex] ?? '')?.[1];
-    const slug = heading ? headingSlug(heading) : '';
-    if (slug) scrollRef.current?.querySelector(`#${CSS.escape(slug)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (scrollRef.current) scrollPreviewToLine(scrollRef.current, lineJumpRequest.lineIndex);
     onLineJumpHandled?.(lineJumpRequest.requestId);
-  }, [lineJumpRequest, note.content, note.id, onLineJumpHandled]);
+  }, [lineJumpRequest, note.content, note.id, onLineJumpHandled, scrollRef]);
 
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[var(--surface-page,#F9F9F7)]'}
-      // Plus the note rail's reserve (0 while hidden), so the text gives way to the rail but the scrollbar stays at the edge.
+      className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 min-h-0 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[var(--surface-page,#F9F9F7)]'}
+      // Reserve room for the note rail while keeping the scrollbar at the container edge.
       style={printMode ? undefined : { paddingRight: 'calc(2rem + var(--noa-rail-reserve, 0px))' }}
     >
       <div className="flex-1">
@@ -1105,7 +1174,7 @@ export const PreviewPane = React.memo(function PreviewPane({
         // The max-width/centering lives on a plain block child, not on the flex
         // item itself: auto cross-axis margins cancel `align-self: stretch`,
         // which would collapse the item to fit-content.
-        <div className="mt-24 w-full">
+        <div className="mt-24 w-full shrink-0">
           {/* A rail-style card: hairline ring, a 26px header, and rows that take an ink wash on hover. */}
           <section className="noa-rail-card rounded-[10px] py-2 font-ui" style={contentMaxWidthStyle}>
             <h3 className="flex h-[26px] items-center gap-1.5 px-3 text-xs leading-[15px] font-[500] text-[var(--text-primary,#2D2D2B)]">

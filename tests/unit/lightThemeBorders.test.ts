@@ -41,10 +41,10 @@ describe('light theme border tokens', () => {
   });
 
   it('routes structural lines through the shared divider without flattening interactive utilities', async () => {
-    const [themeInjector, indexCss, editorToolbar] = await Promise.all([
+    const [themeInjector, indexCss, editorActions] = await Promise.all([
       readFile(themeInjectorPath, 'utf8'),
       readFile(indexCssPath, 'utf8'),
-      readFile(new URL('../../src/components/editor/EditorToolbar.tsx', import.meta.url), 'utf8'),
+      readFile(editorActionsPath, 'utf8'),
     ]);
 
     expect(themeInjector).not.toContain('background-color: var(--divider-subtle) !important;');
@@ -53,7 +53,7 @@ describe('light theme border tokens', () => {
     expect(themeInjector).not.toContain('.hover\\:border-\\[\\#2D2D2B\\]:hover { border-color: var(--border-strong) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .border-\\[\\#2D2D2B\\]\\/40  { border-color: rgba(249,249,247,0.30) !important; }');
     expect(indexCss).toContain('[data-theme="dark"] .hover\\:border-\\[\\#2D2D2B\\]\\/50:hover { border-color: rgba(249,249,247,0.38) !important; }');
-    expect(editorToolbar).toContain('w-[0.5px] h-4 bg-[var(--divider-subtle)]');
+    expect(editorActions).toContain('h-[0.5px] bg-[var(--divider-subtle)]');
   });
 
   it('scopes all ordinary settings-panel borders to the divider token', async () => {
@@ -200,9 +200,9 @@ describe('light theme border tokens', () => {
 
     expect(editorActions).toContain("const nextViewMode = viewMode === 'edit' ? 'preview' : 'edit';");
     expect(editorActions).toContain('onClick={() => setViewMode(nextViewMode)}');
-    expect(editorActions).toContain('aria-label={`Switch to ${nextViewMode} view`}');
+    expect(editorActions).toContain('aria-label={`Switch to ${nextViewLabel}`}');
     expect(editorActions).toContain("const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : Eye;");
-    expect(editorActions).toContain('<NextViewModeIcon size={14} />');
+    expect(editorActions).toContain('<NextViewModeIcon size={16} />');
     expect(editorActions).not.toContain('<ViewModeIcon size={14} />');
     expect(editorActions).not.toContain('aria-label="Edit only"');
     expect(editorActions).not.toContain('aria-label="Preview only"');

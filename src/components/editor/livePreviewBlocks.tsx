@@ -5,28 +5,37 @@ import katex from 'katex';
 import { createRoot, type Root } from 'react-dom/client';
 import { frontmatterEnd } from './hiddenFrontmatter';
 import { livePreviewRefresh, mathBlocks, type LivePreviewContext } from './livePreview';
-import { appendInline } from './livePreviewWidgets';
+import { appendInline, editWidgetOnMouseDown, inlineOffsetAtCoords } from './livePreviewWidgets';
 import { MermaidBlock } from './MermaidBlock';
 
 // Block widgets (tables, `$$` math, Mermaid) replace whole lines, which CodeMirror only accepts from a
 // state field, not a view plugin. They show source again whenever the cursor is inside them.
 
 type Alignment = 'left' | 'center' | 'right' | null;
+type TableCell = { text: string; offset: number };
 
 class TableWidget extends WidgetType {
-  constructor(readonly rows: string[][], readonly aligns: Alignment[]) { super(); }
+  constructor(readonly rows: TableCell[][], readonly aligns: Alignment[]) { super(); }
   eq(other: TableWidget) { return JSON.stringify(other.rows) === JSON.stringify(this.rows) && JSON.stringify(other.aligns) === JSON.stringify(this.aligns); }
-  toDOM() {
+  toDOM(view: EditorView) {
     const wrap = document.createElement('div');
     wrap.className = 'cm-lp-block cm-lp-table';
     const table = document.createElement('table');
     const [header, ...body] = this.rows;
-    const addRow = (parent: HTMLElement, cells: string[], cellTag: 'th' | 'td') => {
+    const addRow = (parent: HTMLElement, cells: TableCell[], cellTag: 'th' | 'td') => {
       const tr = document.createElement('tr');
-      cells.forEach((text, i) => {
+      cells.forEach(({ text, offset }, i) => {
         const cell = document.createElement(cellTag);
         if (this.aligns[i]) cell.style.textAlign = this.aligns[i]!;
-        appendInline(cell, text);
+        appendInline(cell, text.replace(/\\\|/g, '|'));
+        editWidgetOnMouseDown(cell, view, (event) => {
+          const visibleOffset = inlineOffsetAtCoords(cell, event);
+          let sourceOffset = 0;
+          for (let visible = 0; visible < visibleOffset; visible++, sourceOffset++) {
+            if (text[sourceOffset] === '\\' && text[sourceOffset + 1] === '|') sourceOffset++;
+          }
+          return offset + sourceOffset;
+        }, wrap);
         tr.appendChild(cell);
       });
       parent.appendChild(tr);
@@ -42,12 +51,13 @@ class TableWidget extends WidgetType {
 }
 
 class MathBlockWidget extends WidgetType {
-  constructor(readonly tex: string) { super(); }
-  eq(other: MathBlockWidget) { return other.tex === this.tex; }
-  toDOM() {
+  constructor(readonly tex: string, readonly contentOffset: number) { super(); }
+  eq(other: MathBlockWidget) { return other.tex === this.tex && other.contentOffset === this.contentOffset; }
+  toDOM(view: EditorView) {
     const el = document.createElement('div');
     el.className = 'cm-lp-block cm-lp-math-block';
     el.innerHTML = katex.renderToString(this.tex, { displayMode: true, throwOnError: false });
+    editWidgetOnMouseDown(el, view, () => this.contentOffset);
     return el;
   }
 }
@@ -104,15 +114,23 @@ function build(state: EditorState, getContext: () => LivePreviewContext): Decora
         const end = doc.lineAt(node.to);
         if (touches(start.from, end.to)) return false;
         // Cells come from the parse tree, so a table inside a quote or list has no "> " prefix in its first cell.
-        const rows: string[][] = [];
+        const rows: TableCell[][] = [];
         let delimiter = '';
         for (let child = node.node.firstChild; child; child = child.nextSibling) {
           if (child.name === 'TableDelimiter') delimiter = doc.sliceString(child.from, child.to);
           if (child.name !== 'TableHeader' && child.name !== 'TableRow') continue;
-          const cells: string[] = [];
-          for (let cell = child.firstChild; cell; cell = cell.nextSibling) {
-            if (cell.name === 'TableCell') cells.push(doc.sliceString(cell.from, cell.to).trim().replace(/\\\|/g, '|'));
+          const cells: TableCell[] = [];
+          const addCell = (from: number, to: number) => {
+            const raw = doc.sliceString(from, to);
+            cells.push({ text: raw.trim(), offset: from - start.from + raw.length - raw.trimStart().length });
+          };
+          let cellFrom = child.from;
+          for (let part = child.firstChild; part; part = part.nextSibling) {
+            if (part.name !== 'TableDelimiter') continue;
+            if (part.from !== child.from) addCell(cellFrom, part.from);
+            cellFrom = part.to;
           }
+          if (doc.sliceString(cellFrom, child.to).trim()) addCell(cellFrom, child.to);
           rows.push(cells);
         }
         const aligns = splitRow(delimiter).map(alignmentOf);
@@ -136,7 +154,11 @@ function build(state: EditorState, getContext: () => LivePreviewContext): Decora
 
   for (const block of mathBlocks(state, bodyStart)) {
     if (touches(block.from, block.to)) continue;
-    blockReplace(block.from, block.to, new MathBlockWidget(block.tex));
+    const openingLine = doc.lineAt(block.from);
+    const contentOffset = openingLine.text.trim() === '$$'
+      ? openingLine.to + 1 - block.from
+      : openingLine.text.indexOf('$$') + 2;
+    blockReplace(block.from, block.to, new MathBlockWidget(block.tex, contentOffset));
   }
 
   return Decoration.set(decos, true);

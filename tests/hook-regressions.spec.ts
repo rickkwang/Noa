@@ -100,7 +100,7 @@ test('Mermaid preview retains readable SVG labels and styling', async ({ page })
   await page.goto('/');
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   await page.locator('.cm-content').fill('```mermaid\ngraph TD; A[Start] --> B[Finish]\n```');
-  await page.getByRole('button', { name: 'Switch to preview view' }).click();
+  await page.getByRole('button', { name: 'Switch to Reading view' }).click();
   const label = page.locator('svg text').filter({ hasText: 'Start' });
   await expect(label).toBeVisible();
   await expect(page.locator('svg text').filter({ hasText: 'Finish' })).toBeVisible();

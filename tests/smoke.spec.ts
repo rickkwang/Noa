@@ -146,13 +146,14 @@ async function waitForAttachmentPersisted(page: import('@playwright/test').Page,
 type EditorMode = 'edit' | 'preview';
 
 async function ensureEditorMode(page: import('@playwright/test').Page, targetMode: EditorMode) {
-  const modeButton = page.getByRole('button', { name: /Switch to (edit|preview) view/ });
+  const modeButton = page.getByRole('button', { name: /Switch to (Live Preview|Reading view)/ });
+  const targetLabel = targetMode === 'edit' ? 'Live Preview' : 'Reading view';
   await expect(modeButton).toBeVisible();
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (await modeButton.getAttribute('aria-description') === `Current view: ${targetMode}`) return;
+    if (await modeButton.getAttribute('aria-description') === `Current view: ${targetLabel}`) return;
     await modeButton.click();
   }
-  await expect(modeButton).toHaveAttribute('aria-description', `Current view: ${targetMode}`);
+  await expect(modeButton).toHaveAttribute('aria-description', `Current view: ${targetLabel}`);
 }
 
 async function ensureEditMode(page: import('@playwright/test').Page) {
@@ -428,7 +429,7 @@ test('wiki-link preview mode is reachable', async ({ page }) => {
   await page.locator('.cm-content').first().click();
   await page.keyboard.type(`Jump to [[${linkedTitle}]]`);
   await ensurePreviewMode(page);
-  await expect(page.getByRole('button', { name: 'Switch to edit view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Switch to Live Preview' })).toBeVisible();
 });
 
 test('preview renders headings, table, math, callout, footnote, and task list', async ({ page }) => {
@@ -1621,7 +1622,7 @@ test('phone width gives the editor the screen and keeps the right panel an overl
   // Before, the in-flow right panel squeezed the editor to 78px wide.
   await expect(page.locator('.noa-top-scroll-fade')).toHaveCount(0);
   expect((await editor.boundingBox())!.width).toBeGreaterThan(300);
-  await expect(page.getByRole('button', { name: 'Switch to preview view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Switch to Reading view' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Toggle right panel' }).click();
   await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible();
