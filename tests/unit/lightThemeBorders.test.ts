@@ -178,7 +178,7 @@ describe('light theme border tokens', () => {
     expect(editorHeader).not.toContain('onToggleHistory');
     expect(editorHeader).not.toContain('setViewMode');
 
-    expect(editorActions).toContain('<Upload size={inTitlebar ? 16 : 14} />');
+    expect(editorActions).toContain('<Upload size={16} />');
     expect(editorActions).toContain('aria-haspopup="menu"');
     expect(editorActions).toContain('Version History');
     expect(editorActions).toContain('Export as Markdown');
