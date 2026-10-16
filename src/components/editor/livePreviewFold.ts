@@ -1,5 +1,6 @@
 import { foldGutter, foldService, syntaxTree } from '@codemirror/language';
-import type { EditorState, Extension, Line } from '@codemirror/state';
+import { RangeSetBuilder, type EditorState, type Extension, type Line, type Text } from '@codemirror/state';
+import { GutterMarker, gutterLineClass } from '@codemirror/view';
 
 // A heading folds the lines under it, up to the next heading of the same or a higher level.
 const HEADING = /^(#{1,6})\s/;
@@ -25,8 +26,29 @@ const headingFold = foldService.of((state, lineStart) => {
   return end > line.to ? { from: line.to, to: end } : null;
 });
 
+// Obsidian's Live Preview spacing: a heading line gets 1rem above it (.cm-lp-heading), except right after a heading
+// and a blank line. With the blank line's own height this matches the Reading view's 2.5rem before a heading.
+export const isTightHeading = (doc: Text, lineNumber: number): boolean =>
+  lineNumber > 2 && doc.line(lineNumber - 1).text.trim() === '' && /^#{1,6}(\s|$)/.test(doc.line(lineNumber - 2).text);
+
+// The gutter row takes the heading line's top padding too, so the fold marker sits beside the text, not above it.
+// A `#` line that isn't a real heading (inside a code block) gets no marker, so the padding there shows nothing.
+class HeadingGutterSpace extends GutterMarker {
+  override elementClass = 'cm-lp-heading';
+}
+const headingGutterSpace = new HeadingGutterSpace();
+const headingGutterSpacing = gutterLineClass.compute(['doc'], (state) => {
+  const builder = new RangeSetBuilder<GutterMarker>();
+  for (let n = 1; n <= state.doc.lines; n++) {
+    const line = state.doc.line(n);
+    if (HEADING.test(line.text) && !isTightHeading(state.doc, n)) builder.add(line.from, line.from, headingGutterSpace);
+  }
+  return builder.finish();
+});
+
 export const livePreviewFolding: Extension = [
   headingFold,
+  headingGutterSpacing,
   foldGutter({
     markerDOM: (open) => {
       const el = document.createElement('span');

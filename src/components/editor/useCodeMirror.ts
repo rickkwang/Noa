@@ -44,9 +44,19 @@ const darkTheme = EditorView.theme({
   '&.cm-focused': { outline: 'none !important' },
   // CodeMirror's base theme pins the scroller at 1.4, which .cm-content then
   // inherits — without this the Line Height setting never reaches edit mode.
-  // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
-  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
+  // The text sits 2rem in on each side, as in the reading view: 1.625rem here plus .cm-content's padding. The side
+  // padding stays inside .cm-content so a click there still lands in the editor, and the 0.375rem on its left keeps
+  // Properties rows (which hang that far left of the text) clear of the scroller's clip.
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem' },
   '.cm-line': { padding: '0' },
+  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
+  '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
+  '.cm-lp-h2': { fontSize: '1.602em', lineHeight: '1.2' },
+  '.cm-lp-h3': { fontSize: '1.424em', lineHeight: '1.3' },
+  '.cm-lp-h4': { fontSize: '1.266em', lineHeight: '1.4' },
+  '.cm-lp-h5': { fontSize: '1.125em', lineHeight: '1.5' },
+  '.cm-lp-h6': { lineHeight: '1.5' },
+  '.cm-lp-heading': { paddingTop: '1rem' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.06)', borderLeft: '2px solid rgba(204,125,94,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
@@ -54,7 +64,8 @@ const darkTheme = EditorView.theme({
   '.cm-lp-quote': { borderLeft: '3px solid rgba(249,249,247,0.2)', paddingLeft: '0.9em' },
   '.cm-lp-wikilink': { color: '#CC7D5E', textDecoration: 'underline' },
   '.cm-lp-bullet': { display: 'inline-block', width: '1.4em', textAlign: 'center', color: 'rgba(249,249,247,0.6)' },
-  '.cm-lp-hr': { display: 'block', borderTop: '1px solid rgba(249,249,247,0.14)', margin: '0.9em 0' },
+  '.cm-lp-hr': { display: 'block', padding: '0.9em 0' },
+  '.cm-lp-hr::after': { content: "''", display: 'block', borderTop: '1px solid rgba(249,249,247,0.14)' },
   '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid rgba(249,249,247,0.45)', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
   '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
   '.cm-lp-link': { color: '#CC7D5E', textDecoration: 'underline' },
@@ -63,9 +74,9 @@ const darkTheme = EditorView.theme({
   '.cm-lp-footnote': { color: '#CC7D5E', fontSize: '0.75em', verticalAlign: 'super', fontWeight: 'var(--font-weight-content-bold)' },
   '.cm-lp-callout': { backgroundColor: 'rgba(249,249,247,0.04)', borderLeft: '3px solid rgba(204,125,94,0.6)', paddingLeft: '0.9em' },
   '.cm-lp-callout-title': { fontWeight: 'var(--font-weight-content-bold)' },
-  '.cm-lp-image': { display: 'block', margin: '0.5em 0' },
+  '.cm-lp-image': { display: 'block', padding: '0.5em 0' },
   '.cm-lp-image img': { display: 'block', maxWidth: '100%', height: 'auto', borderRadius: '4px' },
-  '.cm-lp-block': { display: 'block', margin: '0.6em 0', overflowX: 'auto' },
+  '.cm-lp-block': { display: 'block', padding: '0.6em 0', overflowX: 'auto' },
   '.cm-lp-math-block': { textAlign: 'center' },
   '.cm-lp-mermaid': { textAlign: 'center' },
   '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
@@ -78,18 +89,21 @@ const darkTheme = EditorView.theme({
   '.cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.25)' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(204,125,94,0.38)' },
   '.cm-activeLine': { backgroundColor: 'rgba(249,249,247,0.03)' },
-  '.cm-gutters': { position: 'absolute', left: '0', top: '0', bottom: '0', width: '1.25rem', backgroundColor: 'transparent', border: 'none' },
+  // CodeMirror pins the gutter with an inline position: sticky, so it stays in the flex flow; the negative margin
+  // hangs it in the scroller's left inset instead of pushing the text column right. A sticky inset of 0 would
+  // clamp it back inside that inset (sticky honours scroller padding), and lines wrap, so there's nothing to pin.
+  '.cm-gutters': { width: '1.25rem', marginInlineStart: '-1.25rem', insetInlineStart: 'auto', backgroundColor: 'transparent', border: 'none' },
   '.cm-placeholder': { color: 'rgba(249,249,247,0.28)' },
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
-  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
-  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
+  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight.
+  { tag: tags.heading1, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading2, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading3, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading4, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading5, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading6, fontWeight: 'var(--font-weight-content-bold)' },
   // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
@@ -105,9 +119,19 @@ const lightTheme = EditorView.theme({
   '.cm-content': { caretColor: '#2D2D2B', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', padding: '2rem 2rem 3.5rem 0.375rem' },
   '.cm-focused': { outline: 'none !important' },
   '&.cm-focused': { outline: 'none !important' },
-  // Gutters sit in the 1.25rem the scroller reserves on the left; the margin keeps the text column where it was.
-  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.25rem', marginLeft: '-1.25rem' },
+  // The text sits 2rem in on each side, as in the reading view: 1.625rem here plus .cm-content's padding. The side
+  // padding stays inside .cm-content so a click there still lands in the editor, and the 0.375rem on its left keeps
+  // Properties rows (which hang that far left of the text) clear of the scroller's clip.
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem' },
   '.cm-line': { padding: '0' },
+  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
+  '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
+  '.cm-lp-h2': { fontSize: '1.602em', lineHeight: '1.2' },
+  '.cm-lp-h3': { fontSize: '1.424em', lineHeight: '1.3' },
+  '.cm-lp-h4': { fontSize: '1.266em', lineHeight: '1.4' },
+  '.cm-lp-h5': { fontSize: '1.125em', lineHeight: '1.5' },
+  '.cm-lp-h6': { lineHeight: '1.5' },
+  '.cm-lp-heading': { paddingTop: '1rem' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.09)', borderLeft: '2px solid rgba(204,125,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
   '.cm-code-line-first': { paddingTop: '0.5rem', borderTopLeftRadius: '4px' },
   '.cm-code-line-last': { paddingBottom: '0.5rem', borderBottomLeftRadius: '4px' },
@@ -115,7 +139,8 @@ const lightTheme = EditorView.theme({
   '.cm-lp-quote': { borderLeft: '3px solid #2D2D2B33', paddingLeft: '0.9em' },
   '.cm-lp-wikilink': { color: '#CC7D5E', textDecoration: 'underline' },
   '.cm-lp-bullet': { display: 'inline-block', width: '1.4em', textAlign: 'center', color: '#2D2D2B99' },
-  '.cm-lp-hr': { display: 'block', borderTop: '1px solid #2D2D2B24', margin: '0.9em 0' },
+  '.cm-lp-hr': { display: 'block', padding: '0.9em 0' },
+  '.cm-lp-hr::after': { content: "''", display: 'block', borderTop: '1px solid #2D2D2B24' },
   '.cm-lp-checkbox': { display: 'inline-block', boxSizing: 'border-box', width: '0.95em', height: '0.95em', margin: '0 0.45em 0 0', border: '1.5px solid #2D2D2B73', borderRadius: '3px', verticalAlign: '-0.12em', cursor: 'pointer' },
   '.cm-lp-checkbox-checked': { backgroundColor: '#CC7D5E', borderColor: '#CC7D5E' },
   '.cm-lp-link': { color: '#CC7D5E', textDecoration: 'underline' },
@@ -124,9 +149,9 @@ const lightTheme = EditorView.theme({
   '.cm-lp-footnote': { color: '#CC7D5E', fontSize: '0.75em', verticalAlign: 'super', fontWeight: 'var(--font-weight-content-bold)' },
   '.cm-lp-callout': { backgroundColor: 'rgba(45,45,43,0.04)', borderLeft: '3px solid rgba(204,125,94,0.6)', paddingLeft: '0.9em' },
   '.cm-lp-callout-title': { fontWeight: 'var(--font-weight-content-bold)' },
-  '.cm-lp-image': { display: 'block', margin: '0.5em 0' },
+  '.cm-lp-image': { display: 'block', padding: '0.5em 0' },
   '.cm-lp-image img': { display: 'block', maxWidth: '100%', height: 'auto', borderRadius: '4px' },
-  '.cm-lp-block': { display: 'block', margin: '0.6em 0', overflowX: 'auto' },
+  '.cm-lp-block': { display: 'block', padding: '0.6em 0', overflowX: 'auto' },
   '.cm-lp-math-block': { textAlign: 'center' },
   '.cm-lp-mermaid': { textAlign: 'center' },
   '.cm-lp-table table': { borderCollapse: 'collapse', width: '100%' },
@@ -139,18 +164,21 @@ const lightTheme = EditorView.theme({
   '.cm-selectionBackground': { backgroundColor: '#CC7D5E40' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: '#CC7D5E60' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
-  '.cm-gutters': { position: 'absolute', left: '0', top: '0', bottom: '0', width: '1.25rem', backgroundColor: 'transparent', border: 'none' },
+  // CodeMirror pins the gutter with an inline position: sticky, so it stays in the flex flow; the negative margin
+  // hangs it in the scroller's left inset instead of pushing the text column right. A sticky inset of 0 would
+  // clamp it back inside that inset (sticky honours scroller padding), and lines wrap, so there's nothing to pin.
+  '.cm-gutters': { width: '1.25rem', marginInlineStart: '-1.25rem', insetInlineStart: 'auto', backgroundColor: 'transparent', border: 'none' },
   '.cm-placeholder': { color: '#2D2D2B50' },
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
-  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
-  { tag: tags.heading1, fontSize: '1.802em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading2, fontSize: '1.602em', lineHeight: '1.2', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading3, fontSize: '1.424em', lineHeight: '1.3', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading4, fontSize: '1.266em', lineHeight: '1.4', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading5, fontSize: '1.125em', lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading6, lineHeight: '1.5', fontWeight: 'var(--font-weight-content-bold)' },
+  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight.
+  { tag: tags.heading1, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading2, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading3, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading4, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading5, fontWeight: 'var(--font-weight-content-bold)' },
+  { tag: tags.heading6, fontWeight: 'var(--font-weight-content-bold)' },
   // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
@@ -161,10 +189,11 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.quote, fontStyle: 'italic', color: '#2D2D2B80' },
 ]);
 
-// Caps the content column to a reading width. Padding stays in the base theme's .cm-content shorthand so
-// this compartment's ordering can't clobber it (see the editPane note in Editor.tsx).
+// Caps the text column to a reading width. Padding stays in the base theme's .cm-content shorthand so
+// this compartment's ordering can't clobber it; the cap adds that side padding back (0.375rem + 2rem) so the
+// text itself is as wide as the reading view's.
 const buildWidthTheme = (w: number) => EditorView.theme({
-  '.cm-content': { maxWidth: `${w}px`, margin: '0 auto', boxSizing: 'border-box' },
+  '.cm-content': { maxWidth: `calc(${w}px + 2.375rem)`, margin: '0 auto', boxSizing: 'border-box' },
 });
 
 const buildReadOnlyExtensions = (readOnly: boolean) => [

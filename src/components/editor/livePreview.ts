@@ -3,6 +3,7 @@ import { EditorState, Range, SelectionRange, StateEffect } from '@codemirror/sta
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
 import { decodeLinkPath, splitImageSize, TAG_REGEX } from '../../lib/noteUtils';
 import { frontmatterEnd } from './hiddenFrontmatter';
+import { isTightHeading } from './livePreviewFold';
 import { CheckboxWidget, horizontalRule, ImageWidget, InlineMathWidget, bullet } from './livePreviewWidgets';
 
 type SyntaxNode = ReturnType<typeof syntaxTree>['topNode'];
@@ -23,6 +24,14 @@ export const livePreviewRefresh = StateEffect.define<null>();
 const hideMarkup = Decoration.replace({});
 const quoteLine = Decoration.line({ class: 'cm-lp-quote' });
 const calloutLine = Decoration.line({ class: 'cm-lp-callout' });
+// The heading's size sits on the line, as Obsidian does: sized on an inner span, the line keeps the body's line
+// height as a strut and stands taller than the Reading view's heading.
+const headingLines = [1, 2, 3, 4, 5, 6].map((level) => ({
+  spaced: Decoration.line({ class: `cm-lp-h${level} cm-lp-heading` }),
+  tight: Decoration.line({ class: `cm-lp-h${level}` }),
+  // A heading inside a list item or quote sizes only its own text, so the bullet or quote bar keeps its size.
+  nested: Decoration.mark({ class: `cm-lp-h${level}` }),
+}));
 const linkText = Decoration.mark({ class: 'cm-lp-link' });
 const wikiLinkText = Decoration.mark({ class: 'cm-lp-wikilink' });
 const highlightText = Decoration.mark({ class: 'cm-lp-highlight' });
@@ -111,7 +120,8 @@ export function mathBlocks(state: EditorState, bodyStart: number): { from: numbe
   return blocks;
 }
 
-function build(view: EditorView, bodyStart: number, context: LivePreviewContext): { decorations: DecorationSet; atomic: DecorationSet } {
+// `pointerSelection`: the caret came from a mouse click. Markup stays hidden then, so the text under the pointer does not move.
+function build(view: EditorView, bodyStart: number, context: LivePreviewContext, pointerSelection: boolean): { decorations: DecorationSet; atomic: DecorationSet } {
   const { state } = view;
   const { doc, selection } = state;
   if (view.visibleRanges.length === 0) return { decorations: Decoration.none, atomic: Decoration.none };
@@ -145,12 +155,13 @@ function build(view: EditorView, bodyStart: number, context: LivePreviewContext)
 
   // Block markup reveals per line: the line the cursor (or any part of the selection) sits on.
   const touchesLine = (pos: number) => {
+    if (pointerSelection) return false;
     const line = doc.lineAt(pos);
     return selection.ranges.some((r: SelectionRange) => r.from <= line.to && r.to >= line.from);
   };
   // Inline markup reveals only while the cursor is inside the span, so typing past a closing ** hides it again.
   const touchesSpan = (start: number, end: number) =>
-    selection.ranges.some((r: SelectionRange) => r.from < end && r.to > start);
+    !pointerSelection && selection.ranges.some((r: SelectionRange) => r.from < end && r.to > start);
   const trailingSpace = (end: number) => (doc.sliceString(end, end + 1) === ' ' ? 1 : 0);
 
   const defs = linkDefinitions(doc);
@@ -180,9 +191,13 @@ function build(view: EditorView, bodyStart: number, context: LivePreviewContext)
       const { name } = node;
 
       if (/^ATXHeading[1-6]$/.test(name)) {
+        const line = doc.lineAt(node.from);
+        const deco = headingLines[Number(name.slice(-1)) - 1];
+        if (node.from !== line.from) mark(node.from, node.to, deco.nested);
+        else all.push((isTightHeading(doc, line.number) ? deco.tight : deco.spaced).range(line.from));
         if (touchesLine(node.from)) return;
-        const [mark] = childrenNamed(node.node, ['HeaderMark']);
-        if (mark) hide(mark.from, mark.to + trailingSpace(mark.to));
+        const [headerMark] = childrenNamed(node.node, ['HeaderMark']);
+        if (headerMark) hide(headerMark.from, headerMark.to + trailingSpace(headerMark.to));
       } else if (name in INLINE_MARKS) {
         if (touchesSpan(node.from, node.to)) return;
         for (const markNode of childrenNamed(node.node, [INLINE_MARKS[name]])) hide(markNode.from, markNode.to);
@@ -339,15 +354,20 @@ export const livePreview = (getContext: () => LivePreviewContext) => ViewPlugin.
     atomic: DecorationSet;
     // Frontmatter's end depends only on the document, so it is not rescanned on cursor moves.
     bodyStart: number;
+    // Set by the last caret move: a click keeps markup hidden, a key press or an edit reveals it again.
+    pointerSelection = false;
     constructor(view: EditorView) {
       this.bodyStart = frontmatterEnd(view.state) ?? 0;
-      ({ decorations: this.decorations, atomic: this.atomic } = build(view, this.bodyStart, getContext()));
+      ({ decorations: this.decorations, atomic: this.atomic } = build(view, this.bodyStart, getContext(), false));
     }
     update(update: ViewUpdate) {
       if (update.docChanged) this.bodyStart = frontmatterEnd(update.state) ?? 0;
+      if (update.docChanged || update.selectionSet) {
+        this.pointerSelection = !update.docChanged && update.transactions.some((tr) => tr.isUserEvent('select.pointer'));
+      }
       const refresh = update.transactions.some((tr) => tr.effects.some((e) => e.is(livePreviewRefresh)));
       if (update.docChanged || update.viewportChanged || update.selectionSet || refresh) {
-        ({ decorations: this.decorations, atomic: this.atomic } = build(update.view, this.bodyStart, getContext()));
+        ({ decorations: this.decorations, atomic: this.atomic } = build(update.view, this.bodyStart, getContext(), this.pointerSelection));
       }
     }
   },

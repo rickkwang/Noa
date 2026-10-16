@@ -5,19 +5,21 @@ import katex from 'katex';
 
 class HorizontalRuleWidget extends WidgetType {
   eq() { return true; }
-  toDOM() {
+  toDOM(view: EditorView) {
     const el = document.createElement('span');
     el.className = 'cm-lp-hr';
+    editWidgetOnMouseDown(el, view, () => 0);
     return el;
   }
 }
 
 class BulletWidget extends WidgetType {
   eq() { return true; }
-  toDOM() {
+  toDOM(view: EditorView) {
     const el = document.createElement('span');
     el.className = 'cm-lp-bullet';
     el.textContent = '•';
+    editWidgetOnMouseDown(el, view, () => 0);
     return el;
   }
 }
@@ -44,7 +46,7 @@ export class CheckboxWidget extends WidgetType {
 export class ImageWidget extends WidgetType {
   constructor(readonly src: string, readonly alt: string, readonly width?: number) { super(); }
   eq(other: ImageWidget) { return other.src === this.src && other.alt === this.alt && other.width === this.width; }
-  toDOM() {
+  toDOM(view: EditorView) {
     const wrap = document.createElement('span');
     wrap.className = 'cm-lp-image';
     const img = document.createElement('img');
@@ -56,6 +58,8 @@ export class ImageWidget extends WidgetType {
       wrap.textContent = this.alt || 'image';
     });
     wrap.appendChild(img);
+    // Inside the "![" puts the caret in the source, which reveals it, as clicking an embed does in Obsidian.
+    editWidgetOnMouseDown(wrap, view, () => 1);
     return wrap;
   }
 }

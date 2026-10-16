@@ -919,14 +919,16 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 
 /* ── Preview heading spacing: Obsidian's model: 1rem above and below, 2.5rem section break after body content. rem keeps it constant across sizes. */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
-.prose :is(p, pre, table, ul, ol) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
+/* Code blocks and tables render inside a wrapper div, so the wrapper is matched too (Obsidian's .el-pre / .el-table). */
+.prose :is(p, pre, table, ul, ol, blockquote, div:has(> :is(pre, table))) + :is(h1, h2, h3, h4, h5, h6) { margin-top: 2.5rem; }
 
 /* ── Inline title (file name): Obsidian h1 metrics; edit mode is a CM widget, preview the prose column's first child. */
+/* Padding, not margin: CodeMirror sizes a block widget by its box, so a margin there skews every click below it. */
 .cm-noa-inline-title, .noa-inline-title {
   font-size: 1.802em;
   line-height: 1.2;
   font-weight: var(--font-weight-content-bold);
-  margin-bottom: 0.5em;
+  padding-bottom: 0.5em;
 }
 .prose .noa-inline-title + * { margin-top: 0; }
 

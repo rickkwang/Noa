@@ -16,6 +16,7 @@ import { EditorActions } from './editor/EditorActions';
 import { EditorHeader } from './editor/EditorHeader';
 import { FindReplacePanel } from './editor/FindReplacePanel';
 import { HistoryPanel } from './editor/HistoryPanel';
+import { remeasureTitle } from './editor/inlineTitle';
 import { type OpenableLink } from './editor/livePreview';
 import { MentionDropdown } from './editor/MentionDropdown';
 import { PreviewPane } from './editor/PreviewPane';
@@ -247,6 +248,8 @@ export default function Editor({
     const switched = previous.noteId === noteId && previous.mode !== viewMode;
     if (previous.noteId !== noteId) scrollAnchorRef.current = { lineIndex: 0, progress: 0, top: true };
     scrollViewRef.current = { noteId, mode: viewMode };
+    // The edit pane is display:none in reading view, so the title was drawn at 0 height if the editor mounted there.
+    if (viewMode !== 'preview') remeasureTitle(view);
     const anchor = scrollAnchorRef.current;
     let disposed = false;
     const capture = () => {
@@ -738,13 +741,10 @@ export default function Editor({
           style={{
             display: viewMode === 'preview' ? 'none' : undefined,
             flex: '1',
-            // Horizontal inset only: vertical padding here would push CodeMirror's .cm-scroller (the real
-            // scroll viewport) below the toolbar and clip the first line. Vertical room lives in .cm-content.
-            // 0.375rem of the 2rem inset sits inside .cm-content instead, so Properties rows (whose border
-            // hangs 0.375rem left of the text) aren't clipped by the scroller when the column hugs its edge.
-            // Right inset is the note rail's reserve (0 while hidden): the text recentres beside the rail while the
-            // scroller itself still runs to the window edge.
-            padding: '0 var(--noa-rail-reserve, 0px) 0 1.625rem',
+            // The side insets live on .cm-scroller and .cm-content (matching the reading view), vertical room in .cm-content:
+            // vertical padding here would push the scroller (the real scroll viewport) below the toolbar.
+            // Right inset is the note rail's reserve (0 while hidden), so the text recentres beside the rail.
+            padding: '0 var(--noa-rail-reserve, 0px) 0 0',
           }}
         >
           <div className="h-full" style={editorStyle}>
