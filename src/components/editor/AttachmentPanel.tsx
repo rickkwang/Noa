@@ -80,7 +80,7 @@ export function AttachmentPanel({
   if (attachments.length === 0 && !isDragOver) {
     return (
       <div
-        className="group bg-[#F9F9F7] shrink-0"
+        className="group bg-[var(--surface-page,#F9F9F7)] shrink-0"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -89,7 +89,7 @@ export function AttachmentPanel({
           <button
             disabled={readOnly || mutationsDisabled}
             onClick={() => fileInputRef.current?.click()}
-            className="text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-micro uppercase tracking-widest text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:text-[var(--accent-color,#CC7D5E)] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
             title={mutationsDisabledReason ?? 'Add Attachment'}
           >
             + Attachments
@@ -108,7 +108,7 @@ export function AttachmentPanel({
 
   return (
     <div
-      className={`bg-[#F9F9F7] shrink-0 transition-colors ${isDragOver ? 'bg-[#CC7D5E]/10' : ''}`}
+      className={`bg-[var(--surface-page,#F9F9F7)] shrink-0 transition-colors ${isDragOver ? 'bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)]' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -117,17 +117,17 @@ export function AttachmentPanel({
       <div className="flex items-center gap-2 px-4 py-1.5">
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center gap-1.5 text-micro uppercase tracking-widest text-[#2D2D2B]/50 hover:text-[#2D2D2B] transition-colors noa-press"
+          className="flex items-center gap-1.5 text-micro uppercase tracking-widest text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
           title={isOpen ? 'Collapse Attachments' : 'Expand Attachments'}
         >
           <span>{isOpen ? '▾' : '▸'}</span>
           <span>Attachments</span>
-          <span className="ml-0.5 text-[#CC7D5E]">({attachments.length})</span>
+          <span className="ml-0.5 text-[var(--accent-color,#CC7D5E)]">({attachments.length})</span>
         </button>
         <button
           disabled={readOnly || mutationsDisabled}
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto text-micro uppercase tracking-widest text-[#2D2D2B]/40 hover:text-[#CC7D5E] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
+          className="ml-auto text-micro uppercase tracking-widest text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:text-[var(--accent-color,#CC7D5E)] transition-colors noa-press disabled:opacity-30 disabled:cursor-not-allowed"
           title={mutationsDisabledReason ?? 'Add Attachment'}
         >
           + Add
@@ -151,7 +151,7 @@ export function AttachmentPanel({
       )}
 
       {mutationsDisabled && mutationsDisabledReason && (
-        <p className="px-4 pb-1 text-micro text-[#2D2D2B]/50 font-ui">
+        <p className="px-4 pb-1 text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] font-ui">
           {mutationsDisabledReason}
         </p>
       )}
@@ -160,7 +160,7 @@ export function AttachmentPanel({
       {isOpen && (
         <div className="px-4 pb-2 space-y-0.5">
           {attachments.length === 0 ? (
-            <div className="text-xs text-[#2D2D2B]/30 font-ui py-1">
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_30%,transparent)] font-ui py-1">
               Drag files here, or click "+ Add" to upload images.
             </div>
           ) : (
@@ -173,12 +173,12 @@ export function AttachmentPanel({
                   <button
                   disabled={readOnly}
                   onClick={() => onInsertReference(att.filename, att.mimeType)}
-                  className="flex-1 text-left text-xs font-ui text-[#2D2D2B]/70 hover:text-[#CC7D5E] truncate transition-colors disabled:hover:text-[#2D2D2B]/70 disabled:cursor-default"
+                  className="flex-1 text-left text-xs font-ui text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--accent-color,#CC7D5E)] truncate transition-colors disabled:hover:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] disabled:cursor-default"
                   title={`Insert reference: ${att.filename}`}
                 >
                   {att.filename}
                 </button>
-                <span className="text-micro text-[#2D2D2B]/30 shrink-0">{formatBytes(att.size)}</span>
+                <span className="text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_30%,transparent)] shrink-0">{formatBytes(att.size)}</span>
                 {confirmDeleteId === att.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -200,7 +200,7 @@ export function AttachmentPanel({
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-micro text-[#2D2D2B]/40 hover:text-[#2D2D2B] noa-press"
+                      className="text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] noa-press"
                     >
                       Cancel
                     </button>
@@ -209,7 +209,7 @@ export function AttachmentPanel({
                   <button
                     disabled={readOnly || mutationsDisabled}
                     onClick={() => setConfirmDeleteId(att.id)}
-                    className="text-micro text-[#2D2D2B]/20 hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] noa-press shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
+                    className="text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_20%,transparent)] hover:text-[#D45555] opacity-0 group-hover:opacity-100 transition-[color,opacity] noa-press shrink-0 disabled:opacity-0 disabled:cursor-not-allowed"
                     title={mutationsDisabledReason ?? 'Delete Attachment'}
                   >
                     ✕

@@ -21,10 +21,10 @@ export default function NavigationConflictDialog({
   const { dialogRef, onKeyDown } = useDialogKeyboard(onClose);
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose a note" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-lg bg-[var(--surface-page,#F9F9F7)] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="border-b-[0.5px] border-[var(--divider-subtle)] px-4 py-3 bg-[var(--bg-sidebar-raised,#ECEBE8)]">
-          <div className="text-xs uppercase tracking-wider text-[#2D2D2B]/60 font-bold">Duplicate Title</div>
-          <div className="text-sm text-[#2D2D2B] mt-1">
+          <div className="text-xs uppercase tracking-wider text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] font-bold">Duplicate Title</div>
+          <div className="text-sm text-[var(--text-primary,#2D2D2B)] mt-1">
             Multiple notes match "<span className="font-bold">{title}</span>". Select one:
           </div>
         </div>
@@ -36,10 +36,10 @@ export default function NavigationConflictDialog({
               <button
                 key={id}
                 onClick={() => onSelect(id)}
-                className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
+                className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[var(--surface-page,#F9F9F7)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
               >
-                <div className="text-sm font-bold text-[#2D2D2B] truncate">{note.title}</div>
-                <div className="text-xs text-[#2D2D2B]/60 mt-0.5">
+                <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] truncate">{note.title}</div>
+                <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] mt-0.5">
                   {folderNameById.get(note.folder) ?? 'No Folder'} · Created {new Date(note.createdAt).toLocaleString()}
                 </div>
               </button>
@@ -49,7 +49,7 @@ export default function NavigationConflictDialog({
         <div className="border-t-[0.5px] border-[var(--divider-subtle)] px-4 py-2 flex justify-end">
           <button
             onClick={onClose}
-            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-chip px-2 py-1 text-[#2D2D2B]/70 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
+            className="text-xs uppercase tracking-wider font-bold border border-[var(--divider-subtle)] rounded-chip px-2 py-1 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
           >
             Cancel
           </button>

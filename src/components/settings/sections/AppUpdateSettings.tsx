@@ -11,7 +11,7 @@ export default function AppUpdateSettings() {
   const statusColor =
     status.state === 'error' ? 'text-[#C24444]' :
     status.state === 'available' || status.state === 'downloaded' || status.state === 'ready' ? 'text-[#37876B]' :
-    'text-[#2D2D2B]/70';
+    'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]';
 
   const installLabel =
     status.downloadUrl ? 'Open Release Page' :
@@ -29,7 +29,7 @@ export default function AppUpdateSettings() {
   return (
     <SettingSection title="App Update" description="Desktop app version and update channel status.">
       {!isDesktop && (
-        <div className="border border-[var(--divider-subtle)] rounded-chip px-3 py-2 text-xs text-[#2D2D2B]/70">
+        <div className="border border-[var(--divider-subtle)] rounded-chip px-3 py-2 text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
           You are using web mode. In-app updates are available in the Electron desktop build.
         </div>
       )}

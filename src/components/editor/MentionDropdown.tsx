@@ -99,7 +99,7 @@ function renderHighlighted(title: string, matchIndices: number[]) {
   for (let i = 0; i < title.length; i++) chars.push(title[i]);
   return chars.map((ch, i) =>
     set.has(i)
-      ? <span key={i} className="text-[#CC7D5E] font-bold">{ch}</span>
+      ? <span key={i} className="text-[var(--accent-color,#CC7D5E)] font-bold">{ch}</span>
       : <span key={i}>{ch}</span>
   );
 }
@@ -166,10 +166,10 @@ export function MentionDropdown({
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] rounded-panel p-1 noa-floating-panel font-ui w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[var(--surface-page,#F9F9F7)] rounded-panel p-1 noa-floating-panel font-ui w-64 max-h-48 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: mentionQuery.y, left: mentionQuery.x }}
     >
-      <div className="flex h-6 items-center px-2 text-caption text-[#2D2D2B]/50">
+      <div className="flex h-6 items-center px-2 text-caption text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
         Link to note
       </div>
       {items.map((item, i) => {
@@ -179,7 +179,7 @@ export function MentionDropdown({
             key={item.kind === 'existing' ? item.id : `create:${item.title}`}
             ref={active ? selectedRef : undefined}
             // Token-based wash, not a literal hex, so it follows the dark-mode remap.
-            className={`flex h-7 items-center px-2 rounded-md cursor-pointer truncate text-[#2D2D2B]/90 ${active ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)]' : ''}`}
+            className={`flex h-7 items-center px-2 rounded-md cursor-pointer truncate text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)] ${active ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)]' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault();
               onInsert(item.title, mentionQuery.index);
@@ -188,7 +188,7 @@ export function MentionDropdown({
           >
             {item.kind === 'create' ? (
               <>
-                <span className="text-micro uppercase tracking-wider mr-2 text-[#CC7D5E]">New</span>
+                <span className="text-micro uppercase tracking-wider mr-2 text-[var(--accent-color,#CC7D5E)]">New</span>
                 <span className="truncate text-body">{item.title}</span>
               </>
             ) : (

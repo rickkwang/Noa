@@ -150,21 +150,21 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   const doneCount = tasks.reduce((n, t) => n + (t.completed ? 1 : 0), 0);
 
   // ─── Theme tokens ──────────────────────────────────────────────────────
-  const txt = isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]';
-  const dim = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[#2D2D2B]/30';
+  const txt = isDark ? 'text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[var(--text-primary,#2D2D2B)]';
+  const dim = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
+  const dimmer = isDark ? 'text-[rgba(249,249,247,0.3)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_30%,transparent)]';
   const rowHover = 'hover:bg-transparent';
   const checkboxBorder = isDark ? 'border-[rgba(249,249,247,0.48)]' : 'border-[#2D2D2B]/50';
-  const noteLink = isDark ? 'text-[rgba(249,249,247,0.42)]' : 'text-[#2D2D2B]/40';
+  const noteLink = isDark ? 'text-[rgba(249,249,247,0.42)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]';
   const showMoreBtn = isDark
     ? 'border-[rgba(249,249,247,0.15)] text-[rgba(249,249,247,0.3)] hover:border-[rgba(249,249,247,0.4)] hover:text-[rgba(249,249,247,0.6)]'
-    : 'border-[#2D2D2B]/20 text-[#2D2D2B]/40 hover:border-[#2D2D2B]/40 hover:text-[#2D2D2B]';
+    : 'border-[#2D2D2B]/20 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:border-[#2D2D2B]/40 hover:text-[var(--text-primary,#2D2D2B)]';
   const lowRail = isDark ? 'bg-[rgba(249,249,247,0.25)]' : 'bg-[#2D2D2B]/25';
-  const filterHoverIdle = isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/80';
+  const filterHoverIdle = isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)]';
 
   function priorityRailColor(p: string): string | null {
     if (p === 'high') return 'bg-[#D45555]/70';
-    if (p === 'medium') return 'bg-[#CC7D5E]';
+    if (p === 'medium') return 'bg-[var(--accent-color,#CC7D5E)]';
     if (p === 'low') return lowRail;
     return null;
   }
@@ -177,7 +177,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
         <Check size={9} weight="bold" className={`text-[var(--bg-primary,#FCFCFB)] ${justChecked ? 'noa-task-check-glyph' : ''}`} />
       </div>
     ) : (
-      <div className={`w-[15px] h-[15px] rounded-full border transition-colors duration-200 hover:border-[#CC7D5E] hover:bg-[#CC7D5E]/10 ${checkboxBorder}`} />
+      <div className={`w-[15px] h-[15px] rounded-full border transition-colors duration-200 hover:border-[var(--accent-color,#CC7D5E)] hover:bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)] ${checkboxBorder}`} />
     );
   }
 
@@ -186,7 +186,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
       <button onClick={() => onNavigateToNoteById(task.noteId, task.lineIndex)}
         aria-label={`Open source note: ${task.noteTitle}`}
         title={task.noteTitle}
-        className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none hover:text-[#CC7D5E] noa-press ${noteLink}`}>
+        className={`absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none hover:text-[var(--accent-color,#CC7D5E)] noa-press ${noteLink}`}>
         <ExternalLink size={11} />
       </button>
     );
@@ -208,7 +208,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               onClick={() => { onChange(opt); setActivePageSize(TASKS_PAGE_SIZE); }}
               className={`px-1.5 py-0.5 border rounded-chip capitalize transition-colors ${
                 value === opt
-                  ? 'border-[#CC7D5E] text-[#CC7D5E]'
+                  ? 'border-[var(--accent-color,#CC7D5E)] text-[var(--accent-color,#CC7D5E)]'
                   : `border-transparent ${dim} ${filterHoverIdle}`
               }`}
             >
@@ -241,7 +241,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
               <span className={dim}>{total} done</span>
             </div>
             {overdueCount > 0 && <span className="text-[#D45555]">{overdueCount} overdue</span>}
-            {todayCount > 0 && <span className="text-[#CC7D5E]">{todayCount} due today</span>}
+            {todayCount > 0 && <span className="text-[var(--accent-color,#CC7D5E)]">{todayCount} due today</span>}
           </div>
 
           {/* ─── Filter strip — each row only when some task carries that
@@ -286,7 +286,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
                   {renderOpenSource(task)}
                   {task.dueDate && !task.completed && (
                     <div className={`mt-0.5 text-caption tabular-nums ${
-                      isOverdue ? 'text-[#D45555]' : isToday || isSoon ? 'text-[#CC7D5E]' : dim
+                      isOverdue ? 'text-[#D45555]' : isToday || isSoon ? 'text-[var(--accent-color,#CC7D5E)]' : dim
                     }`}>
                       {isOverdue ? 'Overdue · ' : isToday ? 'Today · ' : ''}{task.dueDate}
                     </div>

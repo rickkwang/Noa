@@ -59,7 +59,7 @@ export default function AutoBackupSection({
   if (!isFileSystemSupported()) {
     return (
       <SettingSection title="Automatic Backup" description="Automatically save a snapshot to a folder on your disk every day.">
-        <div className="py-3 text-xs text-[#2D2D2B]/70">
+        <div className="py-3 text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
           Not supported in this browser. Use Chrome or the Noa desktop app.
         </div>
       </SettingSection>
@@ -92,13 +92,13 @@ export default function AutoBackupSection({
       </SettingItem>
 
       <SettingItem label="Last Automatic Backup" description={lastAutoBackupAt ? new Date(lastAutoBackupAt).toLocaleString() : 'No automatic backup has run yet.'}>
-        <div className="text-xs font-bold text-[#2D2D2B]">
+        <div className="text-xs font-bold text-[var(--text-primary,#2D2D2B)]">
           {formatRelative(lastAutoBackupAt)}
         </div>
       </SettingItem>
 
       <SettingItem label="Retention" description={`The ${DEFAULT_KEEP_BACKUPS} most recent backup files are kept; older files are deleted automatically.`}>
-        <div className="text-xs text-[#2D2D2B]/60">Keep {DEFAULT_KEEP_BACKUPS}</div>
+        <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Keep {DEFAULT_KEEP_BACKUPS}</div>
       </SettingItem>
 
       {status === 'needs-reauth' && hasBackupHandle && (

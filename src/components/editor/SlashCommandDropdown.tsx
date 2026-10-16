@@ -82,10 +82,10 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
 
   return (
     <div
-      className={`absolute z-50 bg-[#F9F9F7] rounded-panel p-1 noa-floating-panel font-ui w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute z-50 bg-[var(--surface-page,#F9F9F7)] rounded-panel p-1 noa-floating-panel font-ui w-56 max-h-64 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}
       style={{ top: slashQuery.y, left: slashQuery.x }}
     >
-      <div className="flex h-6 items-center px-2 text-caption text-[#2D2D2B]/50">
+      <div className="flex h-6 items-center px-2 text-caption text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
         Insert block
       </div>
       {filtered.map((cmd, i) => (
@@ -102,8 +102,8 @@ export function SlashCommandDropdown({ slashQuery, onInsert, onDismiss }: SlashC
           onMouseEnter={() => setSelectedIndex(i)}
         >
           <div className="flex-1 min-w-0">
-            <div className="text-body text-[#2D2D2B]/90 truncate">{cmd.label}</div>
-            <div className="text-caption truncate text-[#2D2D2B]/50">{cmd.description}</div>
+            <div className="text-body text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)] truncate">{cmd.label}</div>
+            <div className="text-caption truncate text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">{cmd.description}</div>
           </div>
         </div>
       ))}

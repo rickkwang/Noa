@@ -110,7 +110,7 @@ export function VaultFooter({
         <div
           data-vault-menu
           role="menu"
-          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-panel bg-[#F9F9F7] noa-floating-panel p-1 flex flex-col"
+          className="absolute bottom-full left-1 z-50 mb-1 w-[calc(100%-0.5rem)] min-w-[190px] rounded-panel bg-[var(--surface-page,#F9F9F7)] noa-floating-panel p-1 flex flex-col"
         >
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">
@@ -122,7 +122,7 @@ export function VaultFooter({
               <div className="flex items-center gap-1.5">
                 <button
                   role="menuitem"
-                  className="flex-1 rounded-md px-2 py-1 text-xs font-ui bg-[#CC7D5E] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
+                  className="flex-1 rounded-md px-2 py-1 text-xs font-ui bg-[var(--accent-color,#CC7D5E)] text-[var(--bg-primary,#FCFCFB)] transition-opacity hover:opacity-90"
                   onClick={() => run(onSwitchVault)}
                 >
                   Continue

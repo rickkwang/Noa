@@ -120,7 +120,7 @@ export default function DataSettings({
   return (
     <div className="space-y-10">
       {isWorking && (
-        <div className="border border-[#CC7D5E] bg-[#F9F9F7] rounded-chip px-3 py-2 font-ui text-sm text-[#2D2D2B] flex items-center gap-2">
+        <div className="border border-[var(--accent-color,#CC7D5E)] bg-[var(--surface-page,#F9F9F7)] rounded-chip px-3 py-2 font-ui text-sm text-[var(--text-primary,#2D2D2B)] flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded-full border border-[#2D2D2B] border-t-transparent animate-spin shrink-0" />
           <span>
             {transfer.importingData
@@ -138,9 +138,9 @@ export default function DataSettings({
         </div>
       )}
       {confirmState && (
-        <div ref={confirmRef} className="border border-[#CC7D5E] bg-[#CC7D5E]/10 rounded p-3 flex flex-col gap-2 font-ui">
+        <div ref={confirmRef} className="border border-[var(--accent-color,#CC7D5E)] bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)] rounded p-3 flex flex-col gap-2 font-ui">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm text-[#2D2D2B] flex-1">{confirmState.message}</p>
+            <p className="text-sm text-[var(--text-primary,#2D2D2B)] flex-1">{confirmState.message}</p>
             <div className="flex gap-2 shrink-0">
               <SettingsButton
                 variant="primary"
@@ -159,7 +159,7 @@ export default function DataSettings({
           </div>
           {confirmState.conflictSummary && (
             <div className="mt-2 space-y-2">
-              <p className="text-xs text-[#2D2D2B]/70">
+              <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
                 {confirmState.conflictSummary.sameIdCount + confirmState.conflictSummary.dupeTitleCount} conflict(s) —{' '}
                 {confirmState.conflictSummary.sameIdCount} same ID,{' '}
                 {confirmState.conflictSummary.dupeTitleCount} similar title,{' '}
@@ -190,9 +190,9 @@ export default function DataSettings({
                         }}
                         className="mt-0.5 accent-[#CC7D5E]"
                       />
-                      <span className="text-xs text-[#2D2D2B]">
+                      <span className="text-xs text-[var(--text-primary,#2D2D2B)]">
                         <span className="font-bold">{labels[s]}</span>
-                        <span className="text-[#2D2D2B]/60 ml-1">— {descriptions[s]}</span>
+                        <span className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] ml-1">— {descriptions[s]}</span>
                       </span>
                     </label>
                   );
@@ -202,7 +202,7 @@ export default function DataSettings({
           )}
           {confirmState.inputLabel && (
             <div className="flex items-center gap-2 mt-1">
-              <label className="text-xs text-[#2D2D2B]/70 shrink-0">{confirmState.inputLabel}</label>
+              <label className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] shrink-0">{confirmState.inputLabel}</label>
               <input
                 type="text"
                 value={confirmState.inputValue ?? ''}
@@ -222,7 +222,7 @@ export default function DataSettings({
           ref={messageRef}
           className={`border rounded-chip p-3 flex items-center justify-between font-ui text-sm ${
             message.type === 'success'
-              ? 'border-[#CC7D5E] bg-[#CC7D5E]/10 text-[#2D2D2B]'
+              ? 'border-[var(--accent-color,#CC7D5E)] bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)] text-[var(--text-primary,#2D2D2B)]'
               : 'border-[#D45555]/60 bg-[#D45555]/10 text-[#A93B3B]'
           }`}
         >

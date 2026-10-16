@@ -87,7 +87,7 @@ export const FileNode = React.memo(({
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const menuItemClass = 'noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[#2D2D2B]';
+  const menuItemClass = 'noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]';
 
   useEffect(() => {
     setIsOpen(defaultOpen);
@@ -231,7 +231,7 @@ export const FileNode = React.memo(({
               }}
               onBlur={handleRenameSubmit}
               onKeyDown={handleKeyDown}
-              className="bg-transparent border-b border-[#2D2D2B] outline-none w-full text-[#2D2D2B] font-ui"
+              className="bg-transparent border-b border-[#2D2D2B] outline-none w-full text-[var(--text-primary,#2D2D2B)] font-ui"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -244,7 +244,7 @@ export const FileNode = React.memo(({
           {isFolder && onAddFolder && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddFolder(); }}
-              className="hover:text-[#CC7D5E] p-1"
+              className="hover:text-[var(--accent-color,#CC7D5E)] p-1"
               title="Add subfolder"
             >
               <FolderPlus size={14} />
@@ -254,7 +254,7 @@ export const FileNode = React.memo(({
             <button
               {...addButtonProps}
               onClick={(e) => { e.stopPropagation(); onAdd(); }}
-              className="hover:text-[#CC7D5E] p-1"
+              className="hover:text-[var(--accent-color,#CC7D5E)] p-1"
               title="Add"
             >
               <Plus size={14} />
@@ -276,7 +276,7 @@ export const FileNode = React.memo(({
           ref={menuRef}
           role="menu"
           aria-label={`${name} actions`}
-          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-panel bg-[#F9F9F7] p-1 font-ui noa-floating-panel"
+          className="fixed z-[90] w-44 max-h-[calc(100vh-16px)] overflow-y-auto rounded-panel bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel"
           style={{ left: menuPosition.x, top: menuPosition.y }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setMenuPosition(null);

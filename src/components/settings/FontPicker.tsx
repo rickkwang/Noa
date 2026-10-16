@@ -216,11 +216,11 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
         className={`flex items-center max-w-full border border-[#2D2D2B] rounded-chip pl-3 pr-9 py-1.5 text-sm font-medium text-left outline-none relative hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] ${open ? 'bg-[var(--bg-sidebar-raised,#ECEBE8)]' : 'bg-[var(--bg-primary,#F9F9F7)]'}`}
       >
         <span className="min-w-0 truncate">{currentLabel}</span>
-        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D2D2B]/70" />
+        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-64 z-50 bg-[#F9F9F7] rounded-panel noa-floating-panel overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 w-64 z-50 bg-[var(--surface-page,#F9F9F7)] rounded-panel noa-floating-panel overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--divider-subtle)]">
             <Search size={13} className="shrink-0 text-[var(--text-secondary)]" />
             <input
@@ -266,14 +266,14 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
                     style={{ fontFamily: resolveFontFamily(option.value) }}
                   >
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                    {isSelected && <Check size={13} className="shrink-0 text-[#CC7D5E]" />}
+                    {isSelected && <Check size={13} className="shrink-0 text-[var(--accent-color,#CC7D5E)]" />}
                   </button>
                 </li>
               );
             })}
 
             {filtered.length === 0 && (
-              <li role="presentation" className="px-2 py-2 text-xs text-[#2D2D2B]/50">
+              <li role="presentation" className="px-2 py-2 text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
                 {loading ? 'Reading installed fonts…' : 'No matching fonts.'}
               </li>
             )}
@@ -281,7 +281,7 @@ export default function FontPicker({ value, onChange }: FontPickerProps) {
 
           {/* A stored list is already usable, so only a first-ever read shows progress. */}
           {(error || (loading && systemFonts.length === 0)) && filtered.length > 0 && (
-            <div className="px-3 py-1.5 border-t border-[var(--divider-subtle)] text-caption text-[#2D2D2B]/50">
+            <div className="px-3 py-1.5 border-t border-[var(--divider-subtle)] text-caption text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
               {error ?? 'Reading installed fonts…'}
             </div>
           )}

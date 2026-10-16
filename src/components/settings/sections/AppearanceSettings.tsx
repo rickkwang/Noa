@@ -90,7 +90,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         </SettingItem>
         <SettingItem label="Line Height" description="Spacing between lines of text.">
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2B]/70">{settings.editor.lineHeight}</span>
+            <span className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">{settings.editor.lineHeight}</span>
             <input
               type="range"
               min="1.2"
@@ -120,7 +120,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
       <SettingSection title="Reading">
         <SettingItem label="Max Width" description="Maximum width of the editor content area.">
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-[#2D2D2B]/70">{settings.appearance.maxWidth}px</span>
+            <span className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">{settings.appearance.maxWidth}px</span>
             <input
               type="range"
               min="600"

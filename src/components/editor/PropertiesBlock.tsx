@@ -91,7 +91,7 @@ function TextValue({ value, readOnly, autoFocus, onCommit }: { value: string; re
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="noa-property-link text-[#CC7D5E] underline underline-offset-2"
+              className="noa-property-link text-[var(--accent-color,#CC7D5E)] underline underline-offset-2"
             >
               {value}
             </a>

@@ -870,14 +870,14 @@ export default function GraphView({
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden flex items-center justify-center">
       {overPerfThreshold && !perfBannerDismissed && (
-        <div className="absolute top-2 left-2 right-2 z-10 border border-[#CC7D5E]/60 bg-[#F9F9F7]/90 px-3 py-1.5 text-xs text-[#2D2D2B]/70 font-ui flex items-center justify-between gap-2">
+        <div className="absolute top-2 left-2 right-2 z-10 border border-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_60%,transparent)] bg-[color-mix(in_srgb,var(--surface-page,#F9F9F7)_90%,transparent)] px-3 py-1.5 text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] font-ui flex items-center justify-between gap-2">
           <span>Graph contains {graphData.nodes.length} nodes and may render slowly.</span>
           <span className="flex items-center gap-2 shrink-0">
             {onEnableHideIsolated && (
               <button
                 type="button"
                 onClick={onEnableHideIsolated}
-                className="transition-colors hover:text-[#CC7D5E] underline underline-offset-2"
+                className="transition-colors hover:text-[var(--accent-color,#CC7D5E)] underline underline-offset-2"
               >
                 Hide isolated nodes
               </button>
@@ -886,7 +886,7 @@ export default function GraphView({
               type="button"
               onClick={() => setPerfBannerDismissed(true)}
               aria-label="Dismiss performance warning"
-              className="transition-colors hover:text-[#CC7D5E] leading-none"
+              className="transition-colors hover:text-[var(--accent-color,#CC7D5E)] leading-none"
             >
               ×
             </button>
@@ -1065,7 +1065,7 @@ export default function GraphView({
             <button
               type="button"
               onClick={onClearFilters}
-              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-micro font-ui transition-colors hover:text-[#CC7D5E] ${
+              className={`noa-graph-control-surface noa-graph-control-button pointer-events-auto h-5 rounded-md px-2 text-micro font-ui transition-colors hover:text-[var(--accent-color,#CC7D5E)] ${
                 isDark ? 'text-[rgba(249,249,247,0.7)]' : 'text-[rgba(45,45,43,0.7)]'
               }`}
             >
@@ -1098,7 +1098,7 @@ export default function GraphView({
               onFocus={() => setHoveredNodeId(String(node.id))}
               onBlur={() => setHoveredNodeId(null)}
               className={`sr-only focus:not-sr-only focus:block focus:max-w-56 focus:truncate focus:rounded-md focus:border focus:px-2 focus:py-1 focus:text-xs focus:font-ui focus:outline-none ${
-                isDark ? 'focus:bg-[var(--bg-secondary)] focus:text-[#F9F9F7]' : 'focus:bg-[#FCFCFB] focus:text-[#2D2D2B]'
+                isDark ? 'focus:bg-[var(--bg-secondary)] focus:text-[var(--ink-on-dark,#F9F9F7)]' : 'focus:bg-[#FCFCFB] focus:text-[var(--text-primary,#2D2D2B)]'
               }`}
             >
               {node.name}

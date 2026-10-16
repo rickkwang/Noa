@@ -165,7 +165,7 @@ describe('light theme border tokens', () => {
   it('keeps the tab strip on the editor canvas instead of a separate tinted surface', async () => {
     const editorHeader = await readFile(editorHeaderPath, 'utf8');
 
-    expect(editorHeader).toContain("isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'");
+    expect(editorHeader).toContain("isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'");
   });
 
   it('collapses export and version history into one overflow menu', async () => {

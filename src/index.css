@@ -626,7 +626,7 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   box-shadow: var(--shadow-floating);
 }
 /* Menus and popovers: 12px corners and, in light mode, a white sheet that lifts off the page. !important because
-   ThemeInjector rewrites their bg-[#F9F9F7] to the page surface in both themes. */
+   the page-surface token (--surface-page) is set per theme in ThemeInjector. */
 .noa-floating-panel.rounded-panel { border-radius: 12px; }
 :root:not([data-theme="dark"]) .noa-floating-panel.rounded-panel { background-color: #FFFFFF !important; }
 .noa-floating-panel.rounded-dialog {
@@ -677,7 +677,6 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
    `bg-[var(--text-primary,#2D2D2B)]` (keep the fallback: --text-primary is undefined until ThemeInjector runs). */
 
 /* ── Backgrounds ── */
-[data-theme="dark"] .bg-\[\#F9F9F7\]    { background-color: var(--bg-primary) !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]    { background-color: var(--bg-secondary) !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]\/30 { background-color: rgba(37,37,35,0.50) !important; }
 [data-theme="dark"] .bg-\[\#EFEAE3\]\/50 { background-color: rgba(37,37,35,0.70) !important; }
@@ -685,8 +684,6 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .bg-\[\#CC7D5E\]\/10 { background-color: rgba(204,125,94,0.12) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/10 { background-color: rgba(249,249,247,0.06) !important; }
 [data-theme="dark"] .bg-\[\#2D2D2B\]\/20 { background-color: rgba(249,249,247,0.10) !important; }
-[data-theme="dark"] .bg-\[\#F9F9F7\]\/80 { background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent) !important; }
-[data-theme="dark"] .bg-\[\#F9F9F7\]\/90 { background-color: color-mix(in srgb, var(--bg-primary) 90%, transparent) !important; }
 
 /* ── Text ── */
 [data-theme="dark"] .text-\[\#2D2D2B\]      { color: #F0EFEC !important; }

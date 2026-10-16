@@ -298,8 +298,8 @@ export default function SettingsModal({
                         ['Escape', 'Clear search / close panel'],
                       ].map(([key, desc]) => (
                         <tr key={key}>
-                          <td className="py-1.5 pr-4 font-medium text-[#CC7D5E] whitespace-nowrap w-44 align-top">{key}</td>
-                          <td className="py-1.5 text-[#2D2D2B]/60">{desc}</td>
+                          <td className="py-1.5 pr-4 font-medium text-[var(--accent-color,#CC7D5E)] whitespace-nowrap w-44 align-top">{key}</td>
+                          <td className="py-1.5 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">{desc}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -377,7 +377,7 @@ export default function SettingsModal({
                       <span>{diagnosticsState === 'exporting' ? 'Preparing…' : 'Export Diagnostics'}</span>
                     </SettingsButton>
                     {diagnosticsState === 'success' && (
-                      <span className="text-xs text-[#2D2D2B]/70">Saved to your downloads.</span>
+                      <span className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">Saved to your downloads.</span>
                     )}
                     {diagnosticsState === 'error' && (
                       <span className="text-xs text-[#A93B3B]">Export failed. Try again.</span>

@@ -14,15 +14,15 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
   const { dialogRef, onKeyDown } = useDialogKeyboard(() => { if (!connecting) onDismiss(); });
   return (
     <div className="fixed inset-0 z-[80] bg-black/30 flex items-center justify-center px-4">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Connect a Markdown folder" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden font-ui">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Connect a Markdown folder" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm bg-[var(--surface-page,#F9F9F7)] noa-floating-panel slide-down rounded-dialog overflow-hidden font-ui">
         <div className="px-5 pt-5 pb-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_6%,transparent)] text-[#2D2D2B]/70">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_6%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
               <FolderOpen size={15} />
             </span>
-            <h2 className="text-[15px] font-medium text-[#2D2D2B]">Connect a Markdown folder</h2>
+            <h2 className="text-[15px] font-medium text-[var(--text-primary,#2D2D2B)]">Connect a Markdown folder</h2>
           </div>
-          <div className="mt-3 space-y-2 text-body leading-relaxed text-[#2D2D2B]/70">
+          <div className="mt-3 space-y-2 text-body leading-relaxed text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
             <p>Open existing Markdown files and save edits back to that folder.</p>
             <p>New notes created in Noa stay in this app, not in the connected folder. Export a backup to keep a separate copy.</p>
           </div>
@@ -34,7 +34,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
           <button
             onClick={onDismiss}
             disabled={connecting}
-            className="h-8 rounded-lg px-3 text-body text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors disabled:opacity-50"
+            className="h-8 rounded-lg px-3 text-body text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors disabled:opacity-50"
           >
             Continue without a folder
           </button>

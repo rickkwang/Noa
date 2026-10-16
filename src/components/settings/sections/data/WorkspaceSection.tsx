@@ -125,7 +125,7 @@ export default function WorkspaceSection({
           stacked
         >
           <div className="space-y-3">
-            <p className="text-sm text-[#2D2D2B]">New notes created in Noa stay in this app, not in the connected folder.</p>
+            <p className="text-sm text-[var(--text-primary,#2D2D2B)]">New notes created in Noa stay in this app, not in the connected folder.</p>
             {fsHandle ? (
               <div className="flex items-center gap-2">
                 <SettingsButton onClick={onDisconnectFolder} disabled={connectingFs}>
@@ -146,14 +146,14 @@ export default function WorkspaceSection({
               </SettingsButton>
             )}
 
-            <p className="text-xs text-[#2D2D2B]/60 leading-relaxed">
+            <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] leading-relaxed">
               {fsLastSyncAt && `Last successful sync: ${new Date(fsLastSyncAt).toLocaleString()}. `}
               {fsHandle
                 ? 'Edits to notes from this folder write to disk. External changes are checked when Noa regains focus and every 60 seconds while visible. Retry Sync refreshes now.'
                 : `Sync status: ${syncStatusLabel}.`}
             </p>
             {fsSyncError && (
-              <p className="text-xs text-[#2D2D2B] border border-[#CC7D5E]/50 bg-[#F9F9F7] rounded-chip px-2 py-1">
+              <p className="text-xs text-[var(--text-primary,#2D2D2B)] border border-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_50%,transparent)] bg-[var(--surface-page,#F9F9F7)] rounded-chip px-2 py-1">
                 Sync error: {fsSyncError}
               </p>
             )}

@@ -623,7 +623,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           const anchor = decodeAnchor(rawAnchor);
           return (
             <span
-              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer underline underline-offset-2 font-bold`}
+              className={`${isDark ? 'text-[var(--accent-color,#CC7D5E)]' : 'text-[var(--accent-color,#CC7D5E)]'} cursor-pointer underline underline-offset-2 font-bold`}
               onClick={() => {
                 // A heading in this note scrolls the reading view; the editor is not switched to.
                 if (noteId === note.id && anchor) {
@@ -644,7 +644,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           const noteTitle = decodeURIComponent(encoded);
           return (
             <span
-              className={`${isDark ? 'text-[#CC7D5E]' : 'text-[#CC7D5E]'} cursor-pointer underline underline-offset-2 font-bold`}
+              className={`${isDark ? 'text-[var(--accent-color,#CC7D5E)]' : 'text-[var(--accent-color,#CC7D5E)]'} cursor-pointer underline underline-offset-2 font-bold`}
               onClick={() => onNavigateToNoteLegacy(noteTitle)}
             >
               {children}
@@ -660,7 +660,7 @@ const NoteMarkdownBody = React.memo(function NoteMarkdownBody({
           if (mdTargetId) {
             return (
               <span
-                className="text-[#CC7D5E] cursor-pointer underline underline-offset-2 font-bold"
+                className="text-[var(--accent-color,#CC7D5E)] cursor-pointer underline underline-offset-2 font-bold"
                 onClick={() => onNavigateToNoteById(mdTargetId, parseMarkdownLinkAnchor(href ?? '') ?? undefined)}
               >
                 {children}
@@ -1069,7 +1069,7 @@ export const PreviewPane = React.memo(function PreviewPane({
   return (
     <div
       ref={scrollRef}
-      className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[#F9F9F7]'}
+      className={printMode ? 'noa-selectable block' : 'noa-selectable noa-top-scroll-fade flex-1 pt-8 pb-8 pl-8 overflow-y-auto [scrollbar-gutter:stable] flex flex-col bg-[var(--surface-page,#F9F9F7)]'}
       // Plus the note rail's reserve (0 while hidden), so the text gives way to the rail but the scrollbar stays at the edge.
       style={printMode ? undefined : { paddingRight: 'calc(2rem + var(--noa-rail-reserve, 0px))' }}
     >
@@ -1077,8 +1077,8 @@ export const PreviewPane = React.memo(function PreviewPane({
         <div
           className={`w-full h-full prose prose-sm max-w-none prose-headings:font-bold prose-a:underline prose-a:underline-offset-2 prose-code:px-1 prose-code:rounded-sm prose-pre:rounded-none prose-code:before:content-none prose-code:after:content-none ${
             isDark
-              ? 'text-[#F9F9F7] prose-headings:text-[#F9F9F7] prose-p:text-[#F9F9F7] prose-li:text-[#F9F9F7] prose-strong:text-[#F9F9F7] prose-em:text-[#F9F9F7] prose-blockquote:text-[#F9F9F7] prose-ol:text-[#F9F9F7] prose-ul:text-[#F9F9F7] prose-a:text-[#CC7D5E] prose-pre:text-[#F9F9F7] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/10 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#F9F9F7] prose-hr:border-[var(--divider-subtle)] prose-th:text-[#F9F9F7] prose-td:text-[#F9F9F7]'
-              : 'text-[#2D2D2B] prose-headings:text-[#2D2D2B] prose-a:text-[#CC7D5E] prose-pre:text-[#2D2D2B] prose-code:text-[#CC7D5E] prose-code:bg-[#CC7D5E]/15 prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[#2D2D2B]'
+              ? 'text-[var(--ink-on-dark,#F9F9F7)] prose-headings:text-[var(--ink-on-dark,#F9F9F7)] prose-p:text-[var(--ink-on-dark,#F9F9F7)] prose-li:text-[var(--ink-on-dark,#F9F9F7)] prose-strong:text-[var(--ink-on-dark,#F9F9F7)] prose-em:text-[var(--ink-on-dark,#F9F9F7)] prose-blockquote:text-[var(--ink-on-dark,#F9F9F7)] prose-ol:text-[var(--ink-on-dark,#F9F9F7)] prose-ul:text-[var(--ink-on-dark,#F9F9F7)] prose-a:text-[var(--accent-color,#CC7D5E)] prose-pre:text-[var(--ink-on-dark,#F9F9F7)] prose-code:text-[var(--accent-color,#CC7D5E)] prose-code:bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)] prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[var(--ink-on-dark,#F9F9F7)] prose-hr:border-[var(--divider-subtle)] prose-th:text-[var(--ink-on-dark,#F9F9F7)] prose-td:text-[var(--ink-on-dark,#F9F9F7)]'
+              : 'text-[var(--text-primary,#2D2D2B)] prose-headings:text-[var(--text-primary,#2D2D2B)] prose-a:text-[var(--accent-color,#CC7D5E)] prose-pre:text-[var(--text-primary,#2D2D2B)] prose-code:text-[var(--accent-color,#CC7D5E)] prose-code:bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_15%,transparent)] prose-pre:[&_code]:bg-transparent prose-pre:[&_code]:text-[var(--text-primary,#2D2D2B)]'
           }`}
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >

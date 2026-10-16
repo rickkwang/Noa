@@ -45,22 +45,22 @@ export default function RecoveryDialog({ message, onRetry, onImportBackup, onRes
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4"
     >
-      <div className="w-full max-w-xl bg-[#F9F9F7] noa-floating-panel p-4 font-ui space-y-3 slide-down rounded-dialog">
+      <div className="w-full max-w-xl bg-[var(--surface-page,#F9F9F7)] noa-floating-panel p-4 font-ui space-y-3 slide-down rounded-dialog">
         <h3 id="recovery-dialog-title" className="text-sm font-bold tracking-wider uppercase">Recovery Needed</h3>
-        <p id="recovery-dialog-message" className="text-sm text-[#2D2D2B]/80">{message}</p>
-        <p className="text-xs text-[#2D2D2B]/60">{LOCAL_DATA_BOUNDARY_COPY}</p>
-        <p id="recovery-dialog-actions" className="text-xs text-[#2D2D2B]/60">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
+        <p id="recovery-dialog-message" className="text-sm text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)]">{message}</p>
+        <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">{LOCAL_DATA_BOUNDARY_COPY}</p>
+        <p id="recovery-dialog-actions" className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Choose an action: retry loading, import a JSON backup, or reset to a new workspace.</p>
         <div className="flex flex-wrap gap-2">
           <button
             ref={retryButtonRef}
             onClick={onRetry}
-            className="px-3 py-1 text-xs font-bold bg-[#F9F9F7] border border-[var(--divider-subtle)] rounded-chip hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
+            className="px-3 py-1 text-xs font-bold bg-[var(--surface-page,#F9F9F7)] border border-[var(--divider-subtle)] rounded-chip hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
           >
             Retry Read
           </button>
           <button
             onClick={() => importInputRef.current?.click()}
-            className="px-3 py-1 text-xs font-bold bg-[#CC7D5E] text-white border border-[var(--divider-subtle)] rounded-chip hover:opacity-90"
+            className="px-3 py-1 text-xs font-bold bg-[var(--accent-color,#CC7D5E)] text-white border border-[var(--divider-subtle)] rounded-chip hover:opacity-90"
           >
             Import Backup
           </button>

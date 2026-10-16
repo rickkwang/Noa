@@ -18,6 +18,10 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
     // take over it must go, or it covers the native material under the translucent sidebar.
     root.style.removeProperty('background-color');
     root.style.setProperty('--bg-primary', surfaces.primary);
+    // Page surface: the colour the old remap gave the literal #F9F9F7 classes, in both themes.
+    root.style.setProperty('--surface-page', 'var(--bg-primary)');
+    // Light ink for text on dark surfaces. Fixed in both themes: it is only used in dark branches.
+    root.style.setProperty('--ink-on-dark', '#F9F9F7');
     root.style.setProperty('--bg-secondary', surfaces.secondary);
     // Opaque sidebar floor; --sidebar-material-color is the separate translucent tint.
     root.style.setProperty('--bg-sidebar', surfaces.sidebar);
@@ -84,13 +88,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   return (
     <style>{`
       /* CSS variable-based overrides — work in both light and dark */
-      .bg-\\[\\#F9F9F7\\]     { background-color: var(--bg-primary) !important; }
       .bg-\\[\\#EFEAE3\\]     { background-color: var(--bg-secondary) !important; }
       .bg-\\[\\#CC7D5E\\]     { background-color: var(--accent-color) !important; }
-      .bg-\\[\\#F9F9F7\\]\\/50 { background-color: color-mix(in srgb, var(--bg-primary) 50%, transparent) !important; }
-      .bg-\\[\\#F9F9F7\\]\\/60 { background-color: color-mix(in srgb, var(--bg-primary) 60%, transparent) !important; }
-      .bg-\\[\\#F9F9F7\\]\\/80 { background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent) !important; }
-      .bg-\\[\\#F9F9F7\\]\\/90 { background-color: color-mix(in srgb, var(--bg-primary) 90%, transparent) !important; }
       .bg-\\[\\#EFEAE3\\]\\/30 { background-color: color-mix(in srgb, var(--bg-secondary) 30%, transparent) !important; }
       .bg-\\[\\#EFEAE3\\]\\/50 { background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent) !important; }
       .bg-\\[\\#CC7D5E\\]\\/10 { background-color: color-mix(in srgb, var(--accent-color) 10%, transparent) !important; }

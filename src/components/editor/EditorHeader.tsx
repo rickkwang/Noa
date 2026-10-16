@@ -404,7 +404,7 @@ export function EditorHeader({
 
   return (
     <div
-      className={`h-11 flex items-center justify-between shrink-0 z-10 font-ui overflow-visible gap-3 relative ${liftTabStrip ? '-mt-11 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+      className={`h-11 flex items-center justify-between shrink-0 z-10 font-ui overflow-visible gap-3 relative ${liftTabStrip ? '-mt-11 noa-editor-header-floor' : ''} ${liftTabStrip && reserveTitlebarTraffic ? 'noa-editor-header-floor-reserved' : ''} ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}
       style={{
         ...dragRegion,
         // 4px here plus the strip's own 4px puts the first pill 8px from the
@@ -534,8 +534,8 @@ export function EditorHeader({
                         // The active tab's wash comes from .editor-tab[data-active-tab] in index.css, so the
                         // dark-mode colour remap can't touch it.
                         isActiveTab
-                          ? `z-[1] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`
-                          : isDark ? 'text-[#F9F9F7]/70 hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'
+                          ? `z-[1] ${isDark ? 'text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[var(--text-primary,#2D2D2B)]'}`
+                          : isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_70%,transparent)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'
                       }`}
                       style={tabDrag ? {
                         ...noDragRegion,
@@ -555,7 +555,7 @@ export function EditorHeader({
                           onCompositionStart={handleCompositionStart}
                           onCompositionEnd={handleCompositionEnd}
                           disabled={readOnly}
-                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[#F9F9F7] border-[#CC7D5E]' : 'text-[#2D2D2B] border-[#CC7D5E]'}`}
+                          className={`text-xs font-bold bg-transparent outline-none border-b w-28 min-w-0 ${isDark ? 'text-[var(--ink-on-dark,#F9F9F7)] border-[var(--accent-color,#CC7D5E)]' : 'text-[var(--text-primary,#2D2D2B)] border-[var(--accent-color,#CC7D5E)]'}`}
                         />
                       ) : (
                         <span
@@ -600,11 +600,11 @@ export function EditorHeader({
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
                     disabled={readOnly}
-                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[#F9F9F7] border-[#CC7D5E]' : 'text-[#2D2D2B] border-[#CC7D5E]'}`}
+                    className={`text-xs font-bold bg-transparent outline-none border-b w-28 shrink min-w-0 ${isDark ? 'text-[var(--ink-on-dark,#F9F9F7)] border-[var(--accent-color,#CC7D5E)]' : 'text-[var(--text-primary,#2D2D2B)] border-[var(--accent-color,#CC7D5E)]'}`}
                   />
                 ) : (
                   <span
-                    className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]'}`}
+                    className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[var(--text-primary,#2D2D2B)]'}`}
                     onClick={readOnly ? undefined : () => onSetEditingTitle(true)}
                     title={readOnly ? note.title : 'Click to rename'}
                   >
@@ -624,7 +624,7 @@ export function EditorHeader({
         {onNewTab && (
           <button
             onClick={onNewTab}
-            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center noa-press ${isDark ? 'text-[#F9F9F7]/30 hover:text-[#F9F9F7]/75 hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : 'text-[#2D2D2B]/35 hover:text-[#2D2D2B]/80 hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'}`}
+            className={`flex items-center justify-center w-6 h-6 ml-1 rounded-md shrink-0 self-center noa-press ${isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_30%,transparent)] hover:text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_75%,transparent)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_35%,transparent)] hover:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'}`}
             style={noDragRegion}
             title="New tab"
             aria-label="New tab"

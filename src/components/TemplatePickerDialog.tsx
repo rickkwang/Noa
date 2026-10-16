@@ -20,12 +20,12 @@ export default function TemplatePickerDialog({
   const allTemplates = [...builtinTemplates, ...userTemplates];
   return (
     <div className="fixed inset-0 z-[65] bg-black/30 flex items-center justify-center px-4" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose template" tabIndex={-1} onKeyDown={onKeyDown} className="outline-none w-full max-w-sm bg-[var(--surface-page,#F9F9F7)] noa-floating-panel slide-down rounded-dialog overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="border-b-[0.5px] border-[var(--divider-subtle)] px-4 py-3 bg-[var(--bg-sidebar-raised,#ECEBE8)] flex items-center justify-between">
           <div>
-            <div className="text-sm text-[#2D2D2B] font-bold">Choose template</div>
+            <div className="text-sm text-[var(--text-primary,#2D2D2B)] font-bold">Choose template</div>
           </div>
-          <button aria-label="Close template picker" onClick={onClose} className="text-[#2D2D2B]/50 hover:text-[#2D2D2B] text-lg leading-none noa-press">×</button>
+          <button aria-label="Close template picker" onClick={onClose} className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] text-lg leading-none noa-press">×</button>
         </div>
         <div className="p-2 space-y-1 max-h-80 overflow-y-auto [scrollbar-gutter:stable]">
           {allTemplates.map(t => (
@@ -37,11 +37,11 @@ export default function TemplatePickerDialog({
                 }
                 onClose();
               }}
-              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
+              className="w-full text-left border border-[var(--divider-subtle)] rounded-md px-3 py-2 bg-[var(--surface-page,#F9F9F7)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]"
             >
-              <div className="text-sm font-bold text-[#2D2D2B]">{t.name}</div>
+              <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)]">{t.name}</div>
               {t.content && (
-                <div className="text-xs text-[#2D2D2B]/50 mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] mt-0.5 truncate">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
               )}
             </button>
           ))}

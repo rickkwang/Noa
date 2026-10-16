@@ -31,7 +31,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
         aria-label="Command palette"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="outline-none w-full max-w-xl bg-[#F9F9F7] noa-floating-panel slide-down rounded-dialog overflow-hidden"
+        className="outline-none w-full max-w-xl bg-[var(--surface-page,#F9F9F7)] noa-floating-panel slide-down rounded-dialog overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b-[0.5px] border-[var(--divider-subtle)] px-4 py-3">
@@ -69,7 +69,7 @@ export default function CommandPaletteDialog({ palette }: { palette: CommandPale
         </div>
         <div id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto [scrollbar-gutter:stable] p-2 space-y-1">
           {palette.items.length === 0 ? (
-            <div className="px-2 py-3 text-xs text-[#2D2D2B]/60">No matching commands.</div>
+            <div className="px-2 py-3 text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">No matching commands.</div>
           ) : (
             palette.items.map((item, index) => (
               <button

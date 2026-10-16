@@ -76,7 +76,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = themeSurfaces(isDark).primary;
   // Titlebar buttons only answer the pointer: a ~9% ink block on hover, never a lasting "open" fill or colour.
-  const idleInk = isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]';
+  const idleInk = isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]';
   const buttonClass = `flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${idleInk} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_9%,transparent)]`;
   return (
     <div
@@ -118,7 +118,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               // Prevent focus: the 28px icon overflows the 26px shell by 2px, and focusing it would scroll the shell and jerk the icon mid-expand.
               onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleSearch}
-              className="flex h-7 w-7 shrink-0 items-center justify-center text-[#2D2D2B]/70 hover:text-[#CC7D5E] noa-press transition-colors cursor-pointer"
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--accent-color,#CC7D5E)] noa-press transition-colors cursor-pointer"
               title="Search notes"
               aria-label="Search notes"
               aria-pressed={isSearchOpen}
@@ -151,7 +151,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
               <button
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => onSearchChange('')}
-                className="ml-1 shrink-0 rounded p-0.5 text-[#2D2D2B]/40 hover:text-[#CC7D5E] noa-press"
+                className="ml-1 shrink-0 rounded p-0.5 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:text-[var(--accent-color,#CC7D5E)] noa-press"
                 aria-label="Clear search"
               >
                 <X size={12} />
@@ -203,7 +203,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 className={`noa-press flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${
                   isNoteRailOpen
                     ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_10%,transparent)] text-[var(--text-primary,#2D2D2B)]'
-                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
+                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
                 }`}
               >
                 <LayoutList size={16} />
@@ -216,7 +216,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 badges={paneBadges}
                 isDark={isDark}
                 // Colour only, no background wash: the button jumps to the column's new edge in the same frame, and a fading wash would linger as a ghost.
-                triggerClassName={`transition-[color] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'}`}
+                triggerClassName={`transition-[color] cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'}`}
                 isPanelOpen={isRightPanelOpen}
                 onTogglePanel={onToggleRightPanel}
               />

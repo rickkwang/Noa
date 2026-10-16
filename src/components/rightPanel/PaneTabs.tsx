@@ -36,7 +36,7 @@ export function PaneTabs({ activePanes, onSelect, badges, isDark }: PaneSwitchPr
             className={`relative flex items-center justify-center transition-colors flex-1 h-6 rounded-md ${
               isActive
                 ? ''
-                : isDark ? 'hover:text-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : 'hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+                : isDark ? 'hover:text-[var(--ink-on-dark,#F9F9F7)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : 'hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
             }`}
             style={style}
           >
@@ -44,7 +44,7 @@ export function PaneTabs({ activePanes, onSelect, badges, isDark }: PaneSwitchPr
             {badge > 0 && (
               <span
                 aria-label={`${badge} pending`}
-                className="absolute top-0 right-1 text-micro font-bold leading-none tabular-nums text-[#CC7D5E]"
+                className="absolute top-0 right-1 text-micro font-bold leading-none tabular-nums text-[var(--accent-color,#CC7D5E)]"
               >
                 {badge > 9 ? '9+' : badge}
               </span>

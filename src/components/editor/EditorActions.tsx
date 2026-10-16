@@ -60,7 +60,7 @@ export function EditorActions({
   // Same row as the titlebar's panel menu (PaneMenu): every popup menu in the
   // app shares one shape — 10px panel, 4px inset, 28px rounded rows.
   const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-body text-left transition-colors whitespace-nowrap ${
-    isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[#2D2D2B]/90'
+    isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)]'
   }`;
 
   const inTitlebar = Boolean(exportSlot);
@@ -72,8 +72,8 @@ export function EditorActions({
             menuOpen || isHistoryOpen
               ? 'noa-ink-selected'
               : inTitlebar
-                ? `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/70 hover:text-[#2D2D2B]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
-                : `${isDark ? 'text-[#F9F9F7]/50' : 'text-[#2D2D2B]/60'} hover:text-[var(--text-primary,#2D2D2B)]`
+                ? `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
+                : `${isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_50%,transparent)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]'} hover:text-[var(--text-primary,#2D2D2B)]`
           }`}
           title="More actions"
           aria-label="More actions"
@@ -87,7 +87,7 @@ export function EditorActions({
         {menuOpen && (
           <div
             role="menu"
-            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-panel font-ui noa-floating-panel ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+            className={`absolute right-0 top-full mt-1.5 z-50 flex flex-col p-1 min-w-[168px] rounded-panel font-ui noa-floating-panel ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}
           >
             {onToggleHistory && (
               <>
@@ -120,7 +120,7 @@ export function EditorActions({
       <button
         onClick={() => setViewMode(nextViewMode)}
         className={`p-1 rounded-md noa-press transition-colors cursor-pointer ${
-          isDark ? 'text-[#F9F9F7]/50 hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/60 hover:text-[#CC7D5E]'
+          isDark ? 'text-[color-mix(in_srgb,var(--ink-on-dark,#F9F9F7)_50%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]'
         }`}
         title={`Switch to ${nextViewMode} view`}
         aria-label={`Switch to ${nextViewMode} view`}

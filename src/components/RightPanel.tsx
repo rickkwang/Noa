@@ -143,8 +143,8 @@ function PaneCard({
   // 20px in a 28px row: the hover wash clears the card's top edge and rounded corner.
   const controlClass = `flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[var(--ink-on-dark,#F9F9F7)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_45%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
   }`;
   return (
     <section
@@ -326,8 +326,8 @@ export default function RightPanel({
   // Mirrors PaneCard's own header controls.
   const graphToggleClass = `relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer ${
     isDark
-      ? 'text-[rgba(249,249,247,0.45)] hover:text-[#F9F9F7] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
-      : 'text-[#2D2D2B]/45 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      ? 'text-[rgba(249,249,247,0.45)] hover:text-[var(--ink-on-dark,#F9F9F7)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_45%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
   }`;
 
   // Once opened, the graph stays mounted while closed so its simulation and viewport survive.
@@ -601,11 +601,11 @@ export default function RightPanel({
                       // The same floating surface as the app's popup menus (PaneMenu):
                       // 10px corners, hairline, floating shadow, card colour. The
                       // field is one compact 28px row.
-                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg pl-2 pr-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
-                        <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[#2D2D2B]/40'}`} />
+                      <div className={`noa-floating-panel absolute right-0 top-full z-30 mt-1.5 flex h-7 w-44 items-center gap-1.5 rounded-lg pl-2 pr-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}>
+                        <Search size={11} className={`shrink-0 ${isDark ? 'text-[rgba(249,249,247,0.4)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]'}`} />
                         <input autoFocus type="text" value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                           aria-label="Filter graph nodes" placeholder="Filter nodes…"
-                          className={`min-w-0 flex-1 bg-transparent text-xs leading-normal outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+                          className={`min-w-0 flex-1 bg-transparent text-xs leading-normal outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_35%,transparent)]'}`}
                           style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }} />
                         {graphSearch && (
                           <button type="button" onClick={() => setGraphSearch('')}
@@ -643,8 +643,8 @@ export default function RightPanel({
           >
             <div className="flex-1 min-h-0 flex flex-col">
               {showGraphGuide && (
-                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[#2D2D2B]/80'}`}>
-                  <div className={`font-bold uppercase tracking-[0.14em] text-micro mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/60'}`}>Graph Guide</div>
+                <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)]'}`}>
+                  <div className={`font-bold uppercase tracking-[0.14em] text-micro mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]'}`}>Graph Guide</div>
                   <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
                   <button
                     onClick={() => {
@@ -653,7 +653,7 @@ export default function RightPanel({
                     }}
                     // Same button as the storage notice's "Got it" (App.tsx), except the hover wash: this card's
                     // light floor is already the sidebar-raised surface, so it takes the stronger divider tone.
-                    className="mt-2 text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[var(--divider-subtle)] transition-colors"
+                    className="mt-2 text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[var(--divider-subtle)] transition-colors"
                   >
                     Got it
                   </button>
@@ -727,7 +727,7 @@ export default function RightPanel({
   };
 
   return (
-    <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}>
+    <div className={`w-full h-full min-h-0 flex flex-col shrink-0 relative ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}>
       {single && (
         <div className="h-10 shrink-0 flex items-center px-2">
           <div
@@ -840,8 +840,8 @@ function GraphInfoPanel({
       return !open;
     });
   };
-  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
-  const strong = isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[#2D2D2B]/85';
+  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
+  const strong = isDark ? 'text-[rgba(249,249,247,0.85)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_85%,transparent)]';
   const summary = [
     { label: 'notes', value: stats.totalNotes },
     { label: 'links', value: stats.totalLinks },
@@ -854,7 +854,7 @@ function GraphInfoPanel({
     return (
       <button key={id} onClick={() => onNavigateToNoteById(id)}
         aria-current={current ? 'page' : undefined}
-        className={`flex h-7 w-full items-center gap-2 rounded-md px-1.5 text-left text-body transition-colors hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] ${current ? strong : isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[#2D2D2B]/75'}`}>
+        className={`flex h-7 w-full items-center gap-2 rounded-md px-1.5 text-left text-body transition-colors hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] ${current ? strong : isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_75%,transparent)]'}`}>
         <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${current ? 'bg-[var(--accent-color,#CC7D5E)]' : isDark ? 'bg-[rgba(249,249,247,0.3)]' : 'bg-[#2D2D2B]/25'}`} />
         <span className="truncate">{title}</span>
         <span className={`ml-auto shrink-0 text-caption tabular-nums ${muted}`}>{degree}</span>
@@ -873,8 +873,8 @@ function GraphInfoPanel({
       title={isOpen ? 'Hide connections' : 'Show connections'}
       className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors ${
         isDark
-          ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#F9F9F7]'
-          : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#2D2D2B]'
+          ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[var(--ink-on-dark,#F9F9F7)]'
+          : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'
       }`}
     >
       {isOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
@@ -987,14 +987,14 @@ function GraphDrawerSection({ title, meta, isDark, defaultOpen = true, children 
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
   return (
     <section>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex w-full items-center justify-between text-caption font-medium transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[#2D2D2B]/75'}`}
+        className={`flex w-full items-center justify-between text-caption font-medium transition-colors cursor-pointer ${muted} ${isDark ? 'hover:text-[rgba(249,249,247,0.8)]' : 'hover:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_75%,transparent)]'}`}
       >
         <span>{title}</span>
         <span className="flex items-center gap-1.5 font-normal">
@@ -1042,9 +1042,9 @@ function GraphFilterPanel({
   onRestoreDefaults,
 }: GraphFilterPanelProps) {
   const [groupDraft, setGroupDraft] = useState('');
-  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
   const labelCls = `text-caption w-16 shrink-0 whitespace-nowrap ${muted}`;
-  const resetCls = `text-caption cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/55 hover:text-[#CC7D5E]'}`;
+  const resetCls = `text-caption cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[var(--accent-color,#CC7D5E)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_55%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]'}`;
   const toggleTag = (t: string) => {
     onTagFilterChange(tagFilter.includes(t) ? tagFilter.filter((x) => x !== t) : [...tagFilter, t]);
   };
@@ -1096,8 +1096,8 @@ function GraphFilterPanel({
               aria-pressed={active}
               className={`relative flex-1 h-5 rounded text-caption transition-colors duration-200 cursor-pointer ${
                 active
-                  ? (isDark ? 'text-[#F9F9F7]' : 'text-[#2D2D2B]')
-                  : isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#F9F9F7]' : 'text-[#2D2D2B]/50 hover:text-[#2D2D2B]'
+                  ? (isDark ? 'text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[var(--text-primary,#2D2D2B)]')
+                  : isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'
               }`}
             >
               {label}
@@ -1167,7 +1167,7 @@ function GraphFilterPanel({
                         ? ''
                         : isDark
                           ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.65)] hover:bg-[rgba(249,249,247,0.1)]'
-                          : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:bg-[rgba(45,45,43,0.09)]'
+                          : 'bg-[rgba(45,45,43,0.05)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:bg-[rgba(45,45,43,0.09)]'
                     }`}
                     // An ink wash, not a solid fill, so the colour-legend dot stays readable.
                     style={active
@@ -1189,13 +1189,13 @@ function GraphFilterPanel({
         {groups.map((group, index) => (
           <div key={`${index}-${group.query}`} className="flex items-center gap-2">
             <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.color }} />
-            <span className={`min-w-0 flex-1 truncate text-caption ${isDark ? 'text-[rgba(249,249,247,0.8)]' : 'text-[#2D2D2B]/80'}`}>{group.query}</span>
+            <span className={`min-w-0 flex-1 truncate text-caption ${isDark ? 'text-[rgba(249,249,247,0.8)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)]'}`}>{group.query}</span>
             <button
               type="button"
               onClick={() => onGroupsChange(groups.filter((_, i) => i !== index))}
               aria-label={`Remove group ${group.query}`}
               title="Remove group"
-              className={`text-body leading-none cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[#CC7D5E]' : 'text-[#2D2D2B]/50 hover:text-[#CC7D5E]'}`}
+              className={`text-body leading-none cursor-pointer ${isDark ? 'text-[rgba(249,249,247,0.5)] hover:text-[var(--accent-color,#CC7D5E)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]'}`}
             >
               ×
             </button>
@@ -1208,7 +1208,7 @@ function GraphFilterPanel({
           onKeyDown={(e) => { if (e.key === 'Enter') addGroup(); }}
           aria-label="New group search"
           placeholder="Add group by title or tag…"
-          className={`h-7 w-full rounded-md border border-[var(--divider-subtle)] bg-transparent px-2 text-caption outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[#2D2D2B]/35'}`}
+          className={`h-7 w-full rounded-md border border-[var(--divider-subtle)] bg-transparent px-2 text-caption outline-none ${isDark ? 'placeholder:text-[rgba(249,249,247,0.35)]' : 'placeholder:text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_35%,transparent)]'}`}
           style={{ color: isDark ? '#F9F9F7' : '#2D2D2B' }}
         />
       </GraphDrawerSection>
@@ -1224,7 +1224,7 @@ function GraphFilterPanel({
           <button
             type="button"
             onClick={onAnimate}
-            className={`h-5 rounded-md px-2 text-caption cursor-pointer transition-colors ${isDark ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.7)] hover:text-[#CC7D5E]' : 'bg-[rgba(45,45,43,0.05)] text-[#2D2D2B]/70 hover:text-[#CC7D5E]'}`}
+            className={`h-5 rounded-md px-2 text-caption cursor-pointer transition-colors ${isDark ? 'bg-[rgba(249,249,247,0.06)] text-[rgba(249,249,247,0.7)] hover:text-[var(--accent-color,#CC7D5E)]' : 'bg-[rgba(45,45,43,0.05)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--accent-color,#CC7D5E)]'}`}
           >
             Play time-lapse
           </button>

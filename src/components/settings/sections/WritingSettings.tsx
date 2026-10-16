@@ -134,7 +134,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
                 className={settingsFieldClass('px-3 py-1.5 w-40')}
               />
               {settings.dailyNotes.dateFormat.trim() && (
-                <p className="text-xs text-[#2D2D2B]/60">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
+                <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Today: {formatDate(settings.dailyNotes.dateFormat)}</p>
               )}
             </div>
         </SettingItem>
@@ -157,7 +157,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{t.name}</div>
                 {t.content && (
-                  <div className="text-xs text-[#2D2D2B]/50 truncate mt-0.5">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
+                  <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)] truncate mt-0.5">{t.content.slice(0, 60)}{t.content.length > 60 ? '…' : ''}</div>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -185,7 +185,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
               onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
             >
               <div>
-                <div className="text-xs font-medium text-[#2D2D2B]/70 mb-1.5">Name</div>
+                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] mb-1.5">Name</div>
                 <input
                   type="text"
                   value={editName}
@@ -198,7 +198,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
                 />
               </div>
               <div>
-                <div className="text-xs font-medium text-[#2D2D2B]/70 mb-1.5">Content</div>
+                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] mb-1.5">Content</div>
                 <textarea
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
@@ -210,7 +210,7 @@ export default function WritingSettings({ group, settings, updateSettings, defau
               </div>
               <div className="flex items-center justify-end gap-2">
                 {!editName.trim() && (
-                  <span className="mr-auto text-xs text-[#2D2D2B]/60">Name is required</span>
+                  <span className="mr-auto text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Name is required</span>
                 )}
                 <SettingsButton variant="ghost" size="compact" onClick={cancelEdit}>
                   Cancel
@@ -230,13 +230,13 @@ export default function WritingSettings({ group, settings, updateSettings, defau
             // caption stranded above a separate button.
             <button
               onClick={openNew}
-              className={`w-full rounded border border-dashed border-[var(--border-strong)] px-3 text-xs font-medium text-[#2D2D2B]/70 transition-colors hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[#2D2D2B] ${
+              className={`w-full rounded border border-dashed border-[var(--border-strong)] px-3 text-xs font-medium text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] ${
                 userTemplates.length === 0 ? 'flex flex-col items-center gap-1 py-6' : 'py-2'
               }`}
             >
               <span>+ New Template</span>
               {userTemplates.length === 0 && (
-                <span className="text-caption font-normal text-[#2D2D2B]/50">
+                <span className="text-caption font-normal text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]">
                   A reusable starting point for new notes
                 </span>
               )}

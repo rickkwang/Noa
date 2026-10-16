@@ -25,7 +25,7 @@ export default function ImportSection({ jsonInputRef, onImportJsonInput }: Impor
           onChange={onImportJsonInput}
         />
       </SettingItem>
-      <p className="text-xs text-[#2D2D2B]/60">
+      <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">
         To migrate an Obsidian vault or restore a Vault ZIP, use Import Vault Folder in the Workspace tab.
       </p>
     </SettingSection>

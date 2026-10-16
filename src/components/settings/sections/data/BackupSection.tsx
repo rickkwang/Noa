@@ -46,16 +46,16 @@ export default function BackupSection({
     <SettingSection title="Backup" description="Export your data for safekeeping.">
       <div className="pb-2 space-y-1 text-xs">
         <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
-        <div className="text-[#2D2D2B]/60">
+        <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">
           Last export: {formatExportTimestamp(lastExportAt)}
           {daysSinceExport !== null ? ` (${daysSinceExport} day(s) ago)` : ''}
         </div>
-        <div className="text-[#2D2D2B]/60">Backup health is based on JSON or Vault exports.</div>
-        <div className="text-[#2D2D2B]/60">Recommended cadence: export JSON or Vault at least every 7 days.</div>
+        <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Backup health is based on JSON or Vault exports.</div>
+        <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Recommended cadence: export JSON or Vault at least every 7 days.</div>
       </div>
       {showStorage && storageEstimate && (
         <div className="pb-2 space-y-1">
-          <div className="text-xs text-[#2D2D2B]/60 font-ui">
+          <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] font-ui">
             Storage used: {formatBytes(storageEstimate.usageBytes)} / ~{formatBytes(storageEstimate.quotaBytes)} (estimated)
           </div>
           <div className="h-1 w-full bg-[#2D2D2B]/10 rounded-full overflow-hidden">

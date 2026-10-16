@@ -918,7 +918,7 @@ export default function App() {
     <div
       inert={loadError ? true : undefined}
       aria-hidden={loadError ? true : undefined}
-      className="noa-app-shell h-screen w-screen flex flex-col bg-[#F9F9F7] text-[#2D2D2B] font-ui overflow-hidden relative selection:bg-[#CC7D5E] selection:text-white"
+      className="noa-app-shell h-screen w-screen flex flex-col bg-[var(--surface-page,#F9F9F7)] text-[var(--text-primary,#2D2D2B)] font-ui overflow-hidden relative selection:bg-[var(--accent-color,#CC7D5E)] selection:text-white"
       data-sidebar-dock-motion={isSidebarDockMotionLive ? 'true' : undefined}
       data-layout-motion={!isMobile && isSidebarMoving ? 'true' : undefined}
       data-sidebar-moving={!isMobile && isSidebarMoving ? 'true' : undefined}
@@ -1182,7 +1182,7 @@ export default function App() {
           style={{ ['--noa-rail-reserve' as string]: showNoteRail ? `${NOTE_RAIL_RESERVE_PX}px` : '0px' } as React.CSSProperties}
         >
         <ErrorBoundary>
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading editor…</div>}>
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] text-sm">Loading editor…</div>}>
             {activeNoteId ? (
               <Editor
                 note={activeNote}
@@ -1348,7 +1348,7 @@ export default function App() {
             )}
             {hasMountedRightPanel && <div className="flex-1 min-h-0 overflow-hidden" data-noa-right-panel-content>
               <ErrorBoundary>
-              <Suspense fallback={<div className="h-full flex items-center justify-center text-[#2D2D2B]/60 text-sm">Loading panel…</div>}>
+              <Suspense fallback={<div className="h-full flex items-center justify-center text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] text-sm">Loading panel…</div>}>
                 <RightPanel
                   tasks={globalTasks}
                   onToggleTask={handleToggleTaskGuarded}
@@ -1377,27 +1377,27 @@ export default function App() {
       </div>
       <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-ui">
         {saveError && (
-          <div role="alert" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
-            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Action failed</div>
-            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">{saveError}</div>
+          <div role="alert" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Action failed</div>
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed mb-3">{saveError}</div>
             <button
               onClick={clearSaveError}
-              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press rounded"
+              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press rounded"
             >
               Dismiss
             </button>
           </div>
         )}
         {externalUpdateNotice && (
-          <div role="status" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
-            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder updated</div>
-            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed">{externalUpdateNotice}</div>
+          <div role="status" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Folder updated</div>
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed">{externalUpdateNotice}</div>
           </div>
         )}
         {fsSyncError && fsHandle && (
-          <div role="alert" className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
-            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Folder sync failed</div>
-            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
+          <div role="alert" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Folder sync failed</div>
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed mb-3">
               {needsReauth
                 ? 'Vault access is paused. Reconnect the folder before editing; cached notes are read-only.'
                 : autoRetryExhausted
@@ -1408,7 +1408,7 @@ export default function App() {
               <button
                 disabled={syncStatus === 'syncing'}
                 onClick={needsReauth ? reconnect : retry}
-                className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
               >
                 {needsReauth ? 'Reconnect Folder' : 'Retry Sync'}
               </button>
@@ -1416,7 +1416,7 @@ export default function App() {
                 <button
                   disabled={syncStatus === 'syncing'}
                   onClick={() => { void handleDisconnectFolderAndDismissOnboarding().catch(() => {}); }}
-                  className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                  className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors noa-press disabled:opacity-50 disabled:cursor-not-allowed rounded"
                 >
                   Disconnect
                 </button>
@@ -1425,9 +1425,9 @@ export default function App() {
           </div>
         )}
         {showStorageNotice && !showVaultOnboarding && (
-          <div className="pointer-events-auto bg-[#F9F9F7] px-4 py-3 rounded-md noa-floating-panel">
-            <div className="text-sm font-bold text-[#2D2D2B] mb-1">Local storage only</div>
-            <div className="text-xs text-[#2D2D2B]/70 leading-relaxed mb-3">
+          <div className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Local storage only</div>
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed mb-3">
               {LOCAL_DATA_BOUNDARY_COPY}
             </div>
             <button
@@ -1435,7 +1435,7 @@ export default function App() {
                 setShowStorageNotice(false);
                 try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
               }}
-              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[#2D2D2B]/60 hover:text-[#2D2D2B] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors"
+              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors"
             >
               Got it
             </button>
@@ -1511,7 +1511,7 @@ export default function App() {
       {isFocusMode && (
         <button
           onClick={exitFocusMode}
-          className="fixed top-3 right-4 z-50 text-[#2D2D2B]/40 hover:text-[#2D2D2B] text-xs font-ui px-2 py-1 border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 bg-[#F9F9F7]/80 backdrop-blur-sm noa-press transition-opacity"
+          className="fixed top-3 right-4 z-50 text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] text-xs font-ui px-2 py-1 border border-[#2D2D2B]/20 hover:border-[#2D2D2B]/50 bg-[color-mix(in_srgb,var(--surface-page,#F9F9F7)_80%,transparent)] backdrop-blur-sm noa-press transition-opacity"
           title="Exit focus mode (Esc)"
         >
           Esc

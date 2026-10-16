@@ -82,11 +82,11 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
     };
   }, [isOpen]);
 
-  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[#2D2D2B]/50';
+  const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
   const rowClass = `flex h-7 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-body transition-colors ${
     isDark
       ? 'text-[rgba(249,249,247,0.9)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
-      : 'text-[#2D2D2B]/90 hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
+      : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
   }`;
   return (
     <div ref={rootRef} className="relative flex items-center">
@@ -112,7 +112,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
         <div
           role="menu"
           aria-label="Panels"
-          className={`noa-pane-menu noa-floating-panel absolute right-0 top-full z-50 mt-1.5 w-48 rounded-panel p-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#F9F9F7]'}`}
+          className={`noa-pane-menu noa-floating-panel absolute right-0 top-full z-50 mt-1.5 w-48 rounded-panel p-1 font-ui ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[var(--surface-page,#F9F9F7)]'}`}
         >
           {PANE_TABS.map((tab) => {
             const isActive = activePanes.includes(tab.id);

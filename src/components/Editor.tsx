@@ -547,12 +547,12 @@ export default function Editor({
 
   if (!note) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#F9F9F7] font-ui select-none">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[var(--surface-page,#F9F9F7)] font-ui select-none">
         <div className="flex flex-col gap-8 w-56">
           {/* Wordmark */}
           <div className="flex flex-col gap-1">
-            <div className="text-4xl font-bold text-[#2D2D2B]/75 tracking-tight">Noa</div>
-            <div className="text-micro text-[#2D2D2B]/30 uppercase tracking-widest">your private writing space</div>
+            <div className="text-4xl font-bold text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_75%,transparent)] tracking-tight">Noa</div>
+            <div className="text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_30%,transparent)] uppercase tracking-widest">your private writing space</div>
           </div>
 
           {/* Shortcuts */}
@@ -563,15 +563,15 @@ export default function Editor({
               { key: '⌘K', desc: 'Command palette' },
             ].map(({ key, desc }) => (
               <div key={key} className="flex items-center gap-3">
-                <span className="text-micro font-bold text-[#CC7D5E]/60 tracking-widest w-7">{key}</span>
-                <span className="text-[#2D2D2B]/15">·</span>
-                <span className="text-xs text-[#2D2D2B]/40">{desc}</span>
+                <span className="text-micro font-bold text-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_60%,transparent)] tracking-widest w-7">{key}</span>
+                <span className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_15%,transparent)]">·</span>
+                <span className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_40%,transparent)]">{desc}</span>
               </div>
             ))}
           </div>
 
           {/* Footer */}
-          <div className="text-micro text-[#2D2D2B]/20 tracking-wide">
+          <div className="text-micro text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_20%,transparent)] tracking-wide">
             Notes stored locally · Export regularly
           </div>
         </div>
@@ -595,7 +595,7 @@ export default function Editor({
 
   return (
     <div
-      className="flex-1 flex flex-col min-w-0 bg-[#F9F9F7] relative"
+      className="flex-1 flex flex-col min-w-0 bg-[var(--surface-page,#F9F9F7)] relative"
     >
       <EditorHeader
         note={note}
