@@ -8,7 +8,6 @@ import { findNoteAttachment } from '../lib/attachmentUtils';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
 import { buildLinkIndex, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget } from '../lib/noteUtils';
-import { themeSurfaces } from '../lib/themePalette';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { bodyCaretTarget } from './editor/bodyCaret';
@@ -752,16 +751,11 @@ export default function Editor({
           </div>
           {viewMode !== 'preview' && createPortal(renderProperties('edit'), propertiesSlot)}
 
-          {/* Opaque stats card: the pane itself doesn't scroll, so a transparent overlay would show text drifting behind it. */}
+          {/* Plain muted caption in the bottom-right corner, on the page colour. Opaque so scrolled text cannot show through it.
+              Clear of the note rail reserve (same inset as the editor toolbar). */}
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 h-7 flex items-center px-4 rounded-t-lg text-xs font-ui pointer-events-none"
-            style={{
-              color: isDark ? 'rgba(249,249,247,0.4)' : 'rgba(45,45,43,0.4)',
-              backgroundColor: themeSurfaces(isDark).primary,
-              borderTop: '1px solid var(--divider-subtle, #E6E2DA)',
-              borderLeft: '1px solid var(--divider-subtle, #E6E2DA)',
-              borderRight: '1px solid var(--divider-subtle, #E6E2DA)',
-            }}
+            className="absolute bottom-0 z-10 h-7 flex items-center px-2 text-xs font-ui whitespace-nowrap pointer-events-none text-[var(--text-secondary,#7B7974)] bg-[var(--bg-primary,#FCFCFB)]"
+            style={{ right: 'calc(0.75rem + var(--noa-rail-reserve, 0px))' }}
           >
             {stats.words} words · {stats.chars} chars
           </div>
