@@ -135,6 +135,9 @@ export default function DataSettings({
         <div className="text-sm leading-5 text-[var(--settings-text-muted)]">
           {LOCAL_DATA_BOUNDARY_COPY}
           <div className="mt-1">{LOCAL_DATA_RECOMMENDED_FLOW_COPY}</div>
+          {fsHandle && (
+            <div className="mt-1">While a folder is connected, exports and auto-backup cover Noa's local notes only. The connected folder isn't included. Back it up separately.</div>
+          )}
         </div>
       )}
       {confirmState && (

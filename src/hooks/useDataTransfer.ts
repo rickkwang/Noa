@@ -1027,7 +1027,7 @@ export function useDataTransfer({
       await onConnectFolder();
       notify({
         type: 'success',
-        text: 'Connected to local folder. Imported vault notes will sync automatically.',
+        text: 'Connected to local folder. Vault notes sync automatically; Noa\'s local notes are hidden until you disconnect.',
       });
     } catch (error) {
       const appError = fromSyncError(error);

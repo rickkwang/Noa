@@ -91,8 +91,11 @@ export const FileNode = React.memo(({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuItemClass = 'noa-sidebar-hover-surface flex h-8 w-full items-center rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]';
 
+  // `defaultOpen` is a one-way trigger: turning it on opens this node, while
+  // turning it off must not close a branch the user opened by hand. Collapse
+  // all remounts the tree instead, so the closed state comes from useState.
   useEffect(() => {
-    setIsOpen(defaultOpen);
+    if (defaultOpen) setIsOpen(true);
   }, [defaultOpen]);
 
   useEffect(() => {

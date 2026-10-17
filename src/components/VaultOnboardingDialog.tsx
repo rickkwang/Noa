@@ -24,7 +24,7 @@ export default function VaultOnboardingDialog({ connecting, error, onConnect, on
           </div>
           <div className="mt-3 space-y-2 text-body leading-relaxed text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)]">
             <p>Open existing Markdown files and save edits back to that folder.</p>
-            <p>New notes created in Noa stay in this app, not in the connected folder. Export a backup to keep a separate copy.</p>
+            <p>The connected folder becomes your workspace: edits and new notes are written to it. Noa's local notes are hidden, not deleted, until you disconnect. Back up this folder separately; Noa exports only its local notes.</p>
           </div>
           {error && (
             <p className="mt-3 text-xs text-[#A93B3B] bg-[#D45555]/10 rounded-md px-2.5 py-1.5">{error}</p>

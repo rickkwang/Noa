@@ -125,7 +125,7 @@ test.describe('setup keyboard behavior', () => {
     await page.goto('/');
     const dialog = page.getByRole('dialog', { name: 'Connect a Markdown folder' });
     await expect(dialog).toBeFocused();
-    await expect(dialog).toContainText('New notes created in Noa stay in this app');
+    await expect(dialog).toContainText('local notes are hidden, not deleted, until you disconnect');
     await page.keyboard.press('Shift+Tab');
     await expect(dialog.getByRole('button').last()).toBeFocused();
     await page.keyboard.press('Tab');

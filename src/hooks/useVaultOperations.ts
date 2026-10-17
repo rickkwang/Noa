@@ -6,6 +6,7 @@ import {
   computeFolderIdsToDelete,
   partitionFolderDeleteOutcomes,
   selectUnclaimedOperations,
+  wouldBreakVaultLinks,
 } from '../lib/vaultOps';
 import type { Folder, Note, VaultPendingOperation } from '../types';
 
@@ -69,51 +70,75 @@ export function useVaultOperations({
     return true;
   }, [isVaultEntityOperationPending, setSaveError]);
 
-  const handleDeleteNote = useCallback((id: string) => {
-    const note = notesRef.current.find((item) => item.id === id);
-    if (blockVaultCacheWrite(note?.origin === 'vault')) return;
-    if (!note) return;
-    const entityKey = `note:${note.id}`;
-    const needsVaultReservation = note.origin === 'vault';
-    if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
-    if (needsVaultReservation && !reserveVaultStructuralOperation(entityKey)) {
-      setSaveError('A vault file operation is still pending. Retry sync before deleting this note.');
-      return;
+  const handleDeleteNotes = useCallback(async (ids: string[]): Promise<Note[]> => {
+    if (!isDataReady) return [];
+    const targets = [...new Set(ids)]
+      .map((id) => notesRef.current.find((note) => note.id === id))
+      .filter((note): note is Note => Boolean(note));
+    if (targets.length === 0) return [];
+    const vaultNotes = targets.filter((note) => note.origin === 'vault');
+    if (vaultNotes.length > 0 && blockVaultCacheWrite(true)) return [];
+    const busyEntity = vaultNotes.find((note) => isVaultEntityOperationPending(`note:${note.id}`));
+    if (busyEntity) {
+      blockPendingVaultEntityOperation(`note:${busyEntity.id}`);
+      return [];
     }
-    const operation: VaultPendingOperation | undefined = needsVaultReservation ? {
-      key: `${entityKey}:delete:${crypto.randomUUID()}`,
-      entityKey,
-      kind: 'delete-note',
-      phase: 'prepared',
-      note,
-      folders: folders.filter((folder) => folder.origin === 'vault'),
-    } : undefined;
-    void (async () => {
-      try {
-        if (operation) await prepareVaultStructuralOperations([operation]);
+    const reservationKey = vaultNotes.length > 0 ? `delete-notes:${vaultNotes[0].id}` : null;
+    if (reservationKey && !reserveVaultStructuralOperation(reservationKey)) {
+      setSaveError('A vault file operation is still pending. Retry sync before deleting these notes.');
+      return [];
+    }
+    const noteOperations = buildVaultNoteDeleteOperations(
+      vaultNotes,
+      folders.filter((folder) => folder.origin === 'vault'),
+      new Set(vaultNotes.map((note) => note.folder)),
+    );
+    const preparedOperations = [...noteOperations.values()];
+    const handedOffOperationKeys = new Set<string>();
+    const deletedNotes: Note[] = [];
+    try {
+      if (preparedOperations.length > 0) await prepareVaultStructuralOperations(preparedOperations);
+      for (const note of targets) {
+        const operation = noteOperations.get(note.id);
         const deleted = await deleteNoteWithLocalFirst({
-          id,
+          id: note.id,
           deleteLocal: _handleDeleteNote,
           closeTab: closeTabById,
-          syncDelete: () => syncNoteOnDelete(note, operation),
+          syncDelete: () => {
+            if (operation) {
+              syncNoteOnDelete(note, operation);
+              handedOffOperationKeys.add(operation.key);
+            }
+          },
         });
-        if (!deleted && operation) await cancelVaultStructuralOperations([operation]);
-      } catch (error) {
-        if (operation) {
-          await cancelVaultStructuralOperations([operation]).catch(() => {
-            releaseVaultStructuralOperation(entityKey);
-          });
-        }
-        console.error('[App] handleDeleteNote failed:', error);
-        setSaveError(error instanceof Error ? error.message : 'Failed to prepare the vault note delete.');
+        if (deleted) deletedNotes.push(note);
+        else if (operation) await cancelVaultStructuralOperations([operation]);
       }
-    })();
-  }, [_handleDeleteNote, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, closeTabById, folders, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncNoteOnDelete]);
+    } catch (error) {
+      const unclaimedOperations = selectUnclaimedOperations(preparedOperations, handedOffOperationKeys);
+      if (unclaimedOperations.length > 0) {
+        await cancelVaultStructuralOperations(unclaimedOperations).catch(() => {});
+      }
+      setSaveError(error instanceof Error ? error.message : 'Failed to delete the notes.');
+    } finally {
+      if (reservationKey) releaseVaultStructuralOperation(reservationKey);
+    }
+    return deletedNotes;
+  }, [_handleDeleteNote, blockPendingVaultEntityOperation, blockVaultCacheWrite, cancelVaultStructuralOperations, closeTabById, folders, isDataReady, isVaultEntityOperationPending, prepareVaultStructuralOperations, releaseVaultStructuralOperation, reserveVaultStructuralOperation, setSaveError, syncNoteOnDelete]);
+
+  const handleDeleteNote = useCallback((id: string) => handleDeleteNotes([id]), [handleDeleteNotes]);
 
   const handleRenameFolder = useCallback((id: string, newName: string) => {
     const oldFolder = folders.find((folder) => folder.id === id);
     if (!oldFolder) return;
     if (blockVaultCacheWrite(oldFolder.origin === 'vault')) return;
+    const previousName = oldFolder.name;
+    const nextName = newName.trim() || 'Untitled Folder';
+    const nextFolders = buildRenamedFolderList(folders, id, previousName, nextName, oldFolder.origin === 'vault');
+    if (oldFolder.origin === 'vault' && wouldBreakVaultLinks(notesRef.current, folders, notesRef.current, nextFolders)) {
+      setSaveError('Renaming this folder would break existing vault links. Update the links in your vault editor before renaming it.');
+      return;
+    }
     const entityKey = `folder:${id}`;
     const needsVaultReservation = oldFolder.origin === 'vault';
     if (needsVaultReservation && blockPendingVaultEntityOperation(entityKey)) return;
@@ -121,10 +146,6 @@ export function useVaultOperations({
       setSaveError('A vault file operation is still pending. Retry sync before changing this folder.');
       return;
     }
-    const previousName = oldFolder.name;
-    const nextName = newName.trim() || 'Untitled Folder';
-    const nextFolders = buildRenamedFolderList(folders, id, previousName, nextName, oldFolder.origin === 'vault');
-
     if (!needsVaultReservation) {
       void _handleRenameFolder(id, newName).catch(() => {});
       return;
@@ -247,6 +268,7 @@ export function useVaultOperations({
 
   return {
     handleDeleteNote,
+    handleDeleteNotes,
     handleRenameFolder,
     handleDeleteFolder,
     handleDisconnectFolder,

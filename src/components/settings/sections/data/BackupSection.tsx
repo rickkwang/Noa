@@ -1,11 +1,12 @@
 import { StorageEstimate } from '../../../../hooks/useStorageEstimate';
+import { useStoragePersistence } from '../../../../hooks/useStoragePersistence';
 import { formatExportTimestamp } from '../../../../lib/exportTimestamp';
 import { formatBytes } from '../../../../lib/formatBytes';
 import { BackupHealthStatus } from '../../../../types';
 import SettingItem from '../../SettingItem';
 import SettingsButton from '../../SettingsButton';
 import SettingSection from '../../SettingSection';
-import { Download, FileArchive, FileText, Loader2 } from '@/src/lib/icons';
+import { Download, FileArchive, FileText, HardDrive, Loader2 } from '@/src/lib/icons';
 
 interface BackupSectionProps {
   exportingZip: boolean;
@@ -30,6 +31,7 @@ export default function BackupSection({
   daysSinceExport,
   lastExportAt,
 }: BackupSectionProps) {
+  const persistence = useStoragePersistence();
   const showStorage = storageEstimate?.supported === true;
   const healthLabel = backupHealth === 'healthy'
     ? 'Healthy'
@@ -42,14 +44,14 @@ export default function BackupSection({
       ? 'text-[#A26721]'
       : 'text-[#A93B3B]';
   return (
-    <SettingSection title="Backup" description="Export your data for safekeeping.">
+    <SettingSection title="Backup" description="Export Noa’s local notes for safekeeping. Connected folders need a separate backup.">
       <div className="pb-2 space-y-1 text-xs">
-        <div className={`font-bold ${healthColor}`}>Backup health: {healthLabel}</div>
+        <div className={`font-bold ${healthColor}`}>Local backup health: {healthLabel}</div>
         <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">
           Last export: {formatExportTimestamp(lastExportAt)}
           {daysSinceExport !== null ? ` (${daysSinceExport} day(s) ago)` : ''}
         </div>
-        <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Backup health is based on JSON or Vault exports.</div>
+        <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Local backup health is based on JSON or Vault exports of Noa’s local notes.</div>
         <div className="text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]">Recommended cadence: export JSON or Vault at least every 7 days.</div>
       </div>
       {showStorage && storageEstimate && (
@@ -73,7 +75,21 @@ export default function BackupSection({
           )}
         </div>
       )}
-      <SettingItem label="Export JSON Backup" description="Complete backup including metadata and settings.">
+      {persistence.status === 'persisted' && (
+        <div className="pb-2 text-xs text-[#37876B] font-bold">Local storage is protected from automatic cleanup.</div>
+      )}
+      {persistence.status === 'not-persisted' && (
+        <div className="pb-2 space-y-1.5">
+          <p className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] font-ui">
+            Browsers can evict local notes when disk space runs low. Protect storage to keep them.
+          </p>
+          <SettingsButton size="compact" onClick={() => { void persistence.protect(); }} disabled={persistence.requesting}>
+            {persistence.requesting ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
+            <span>{persistence.requesting ? 'Protecting…' : 'Protect Storage'}</span>
+          </SettingsButton>
+        </div>
+      )}
+      <SettingItem label="Export JSON Backup" description="Notes, folders, and attachments in one JSON file. App settings are not included.">
         <SettingsButton variant="primary" onClick={onExportJson}>
           <Download size={14} />
           <span>Export JSON</span>

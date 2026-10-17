@@ -94,7 +94,8 @@ describe('sidebar search result layout', () => {
   it('uses a subtle semantic branch line and one resting text weight for folders and notes', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain('border-l-[0.5px] border-transparent');
+    expect(fileNode).toContain('border-l-[0.5px] transition-colors duration-200');
+    expect(fileNode).toContain("hasActiveDescendant ? 'border-[var(--divider-subtle)]' : 'border-transparent");
     expect(fileNode).toContain('group-hover/tree:border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
     // 425 vs 400 is not visibly different; rows keep one resting weight and active is marked by background alone.
@@ -145,7 +146,7 @@ describe('sidebar search result layout', () => {
     expect(app).toContain('className="flex-1 min-h-0 overflow-hidden"');
     // Guards the height chain (h-full + min-h-0 + flex-col), not the class list's leading position.
     expect(sidebar).toMatch(/className="[^"]*\bw-full h-full min-h-0 flex flex-col/);
-    expect(sidebar).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
+    expect(sidebar).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade group/tree flex-1 min-h-0 overflow-y-auto overflow-x-hidden');
     expect(rightPanel).toContain('className={`w-full h-full min-h-0 flex flex-col');
   });
 });

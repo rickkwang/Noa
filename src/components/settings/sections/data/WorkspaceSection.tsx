@@ -125,7 +125,7 @@ export default function WorkspaceSection({
           stacked
         >
           <div className="space-y-3">
-            <p className="text-sm text-[var(--text-primary,#2D2D2B)]">New notes created in Noa stay in this app, not in the connected folder.</p>
+            <p className="text-sm text-[var(--text-primary,#2D2D2B)]">With a folder connected, it becomes your workspace: edits and new notes are written to it. Noa's local notes are hidden until you disconnect, and are not deleted.</p>
             {fsHandle ? (
               <div className="flex items-center gap-2">
                 <SettingsButton onClick={onDisconnectFolder} disabled={connectingFs}>

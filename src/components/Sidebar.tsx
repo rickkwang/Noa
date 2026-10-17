@@ -120,6 +120,8 @@ interface SidebarProps {
   onSelectNote: (id: string) => void;
   onCreateNote: (folderId: string, initialContent?: string) => void;
   onDeleteNote: (id: string) => void;
+  /** Deletes a whole selection in one vault operation; falls back to per-note onDeleteNote. */
+  onDeleteNotes?: (ids: string[]) => void;
   onRenameNote: (id: string, newName: string) => void;
   onDuplicateNote: (id: string) => void;
   onMoveNote: (id: string, folderId: string) => void;
@@ -139,7 +141,7 @@ interface SidebarProps {
 
 export default function Sidebar({
   notes, folders, searchQuery, activeNoteId,
-  onSelectNote, onCreateNote, onDeleteNote, onRenameNote, onDuplicateNote,
+  onSelectNote, onCreateNote, onDeleteNote, onDeleteNotes, onRenameNote, onDuplicateNote,
   onMoveNote, onCreateFolder, onRenameFolder, onDeleteFolder,
   onOpenDailyNote, dailyNotesEnabled = true, vault,
   onImportNote, onClearSearch, search, caseSensitive = false, fuzzySearch = true,
@@ -210,6 +212,27 @@ export default function Sidebar({
     () => (notesByFolderId.get('') || []).filter((note) => note.origin === 'vault'),
     [notesByFolderId]
   );
+
+  // The active note's folders open automatically, so opening a note from search
+  // or the quick switcher never leaves it hidden inside a collapsed branch.
+  // "Collapse all" turns this off until the active note changes again.
+  const [revealActiveBranch, setRevealActiveBranch] = useState(true);
+  useEffect(() => { setRevealActiveBranch(true); }, [activeNoteId]);
+  const activeAncestorFolderIds = useMemo(() => {
+    const ids = new Set<string>();
+    const activeNote = notes.find((note) => note.id === activeNoteId);
+    if (!activeNote?.folder) return ids;
+    const inVault = activeNote.origin === 'vault';
+    const folderByName = new Map(
+      folders.filter((folder) => (folder.origin === 'vault') === inVault).map((folder) => [folder.name, folder]),
+    );
+    let folder = folders.find((item) => item.id === activeNote.folder);
+    while (folder) {
+      ids.add(folder.id);
+      folder = folderByName.get(getFolderParentPath(folder.name));
+    }
+    return ids;
+  }, [activeNoteId, folders, notes]);
 
   // Stable handlers for SidebarNoteRow (see the memo note above).
   const handleNoteRowSelect = useCallback((id: string, multi: boolean) => {
@@ -313,7 +336,7 @@ export default function Sidebar({
         name={leafName}
         isFolder
         hasActiveDescendant={subtreeHoldsNote(node, notesByFolderId, activeId)}
-        defaultOpen={foldersExpandedByDefault}
+        defaultOpen={foldersExpandedByDefault || (revealActiveBranch && activeAncestorFolderIds.has(node.folder.id))}
           icon={Folder}
           onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
           onAddFolder={() => onCreateFolder(node.folder.id)}
@@ -353,7 +376,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onDuplicateNote, onRenameNote, renameFolderWithValidation, selectedNoteIds, templateMenuFolderId]);
+  }, [activeAncestorFolderIds, draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onDuplicateNote, onRenameNote, renameFolderWithValidation, revealActiveBranch, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!blankMenu) return;
@@ -529,7 +552,7 @@ export default function Sidebar({
               ref={actionsMenuRef}
               role="menu"
               aria-label="Sidebar actions"
-              className="absolute right-0 top-full z-50 mt-1 w-52 rounded-panel bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel"
+              className="absolute right-0 top-full z-50 mt-1 w-52 !rounded-[10px] bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel rounded-panel"
               onKeyDown={(e) => { if (e.key === 'Escape') setIsActionsMenuOpen(false); }}
             >
               {dailyNotesEnabled && (
@@ -562,6 +585,7 @@ export default function Sidebar({
                 className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]"
                 onClick={() => {
                   setIsActionsMenuOpen(false);
+                  if (foldersExpandedByDefault) setRevealActiveBranch(false);
                   setFoldersExpandedByDefault((value) => !value);
                   setFolderTreeResetKey((value) => value + 1);
                 }}
@@ -600,8 +624,8 @@ export default function Sidebar({
               ? (() => {
                   const target = folders.find((folder) => folder.id === pendingDelete.id);
                   const count = target ? getFolderSubtreeNoteCount(target.id) : notes.filter(n => n.folder === pendingDelete.id).length;
+                  const targetIsVault = target ? isVaultFolder(target) : false;
                   if (count > 0) {
-                    const targetIsVault = target ? isVaultFolder(target) : false;
                     const subtreeIds = new Set(
                       folders
                         .filter((f) =>
@@ -613,7 +637,9 @@ export default function Sidebar({
                     const preview = affectedNotes.slice(0, 5);
                     return (
                       <>
-                        <span>{`This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`}</span>
+                        <span>{targetIsVault
+                          ? `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. Those notes will be permanently deleted from the connected folder on disk; other files are kept.`
+                          : `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`}</span>
                         <ul className="mt-1 list-disc list-inside">
                           {preview.map((n) => (
                             <li key={n.id} className="truncate">{n.title}</li>
@@ -623,9 +649,17 @@ export default function Sidebar({
                       </>
                     );
                   }
-                  return 'This cannot be undone.';
+                  return targetIsVault
+                    ? 'The folder on disk will be removed if it is empty; other files are kept. This cannot be undone.'
+                    : 'This cannot be undone.';
                 })()
-              : 'This cannot be undone.'}
+              : (() => {
+                  const note = notes.find((n) => n.id === pendingDelete.id);
+                  if (note?.origin === 'vault') {
+                    return `This will permanently delete "${note.vaultPath ?? `${note.title}.md`}" from the connected folder on disk. This cannot be undone.`;
+                  }
+                  return 'You can undo this right after deleting.';
+                })()}
           </p>
           <div className="flex gap-2">
             <button
@@ -671,9 +705,13 @@ export default function Sidebar({
             ) : (
               <>
                 <span className="text-xs text-[#C24444]">Delete {selectedNoteIds.size} note{selectedNoteIds.size !== 1 ? 's' : ''}?</span>
+                {notes.some((n) => selectedNoteIds.has(n.id) && n.origin === 'vault') && (
+                  <span className="text-xs text-[#C24444]">Connected-folder notes will be permanently deleted from disk and cannot be undone.</span>
+                )}
                 <button
                   onClick={() => {
-                    selectedNoteIds.forEach(id => onDeleteNote(id));
+                    if (onDeleteNotes) onDeleteNotes([...selectedNoteIds]);
+                    else selectedNoteIds.forEach((id) => onDeleteNote(id));
                     setSelectedNoteIds(new Set());
                     setPendingBulkDelete(false);
                   }}
@@ -698,7 +736,7 @@ export default function Sidebar({
           ref={blankMenuRef}
           role="menu"
           aria-label="Sidebar actions"
-          className="fixed z-[90] w-44 rounded-panel bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel"
+          className="fixed z-[90] w-44 !rounded-[10px] bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel rounded-panel"
           style={{ left: blankMenu.x, top: blankMenu.y }}
           onKeyDown={(e) => { if (e.key === 'Escape') setBlankMenu(null); }}
         >

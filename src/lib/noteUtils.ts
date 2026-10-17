@@ -64,6 +64,18 @@ export const extractLinks = (content: string): string[] => {
     if (target) targets.add(target);
   });
 
+  const definitions = new Map<string, string>();
+  for (const match of sanitized.matchAll(/^ {0,3}\[([^\]\n]+)\]:[ \t]*(<[^>\n]+>|[^\s]+)/gm)) {
+    const target = parseMarkdownLinkTarget(match[2]);
+    const label = match[1].trim().replace(/\s+/g, ' ').toLowerCase();
+    if (target && !definitions.has(label)) definitions.set(label, target);
+  }
+  for (const match of sanitized.matchAll(/(?<!\[)\[([^\][\n]+)\](?:\[([^\]\n]*)\])?(?![[(:])/g)) {
+    const label = (match[2] || match[1]).trim().replace(/\s+/g, ' ').toLowerCase();
+    const target = definitions.get(label);
+    if (target) targets.add(target);
+  }
+
   return Array.from(targets);
 };
 

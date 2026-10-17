@@ -5,6 +5,7 @@ import {
   computeFolderIdsToDelete,
   partitionFolderDeleteOutcomes,
   selectUnclaimedOperations,
+  wouldBreakVaultLinks,
 } from '../../src/lib/vaultOps';
 import type { Folder, Note, VaultPendingOperation } from '../../src/types';
 
@@ -28,6 +29,47 @@ const vaultNote: Note = {
 };
 
 const noaNote: Note = { ...vaultNote, id: 'note-2', folder: 'nf-1', origin: undefined };
+
+describe('vault structural link protection', () => {
+  const target = { ...vaultNote, id: 'target', title: 'Target', folder: 'vf-1' };
+  const source = { ...vaultNote, id: 'source', title: 'Source', folder: '', content: '[[projects/Target#Heading|Label]] and [target](projects/Target.md)' };
+  const folders = [vaultRoot, unrelated];
+
+  it('detects a renamed target even when cached linkRefs are missing', () => {
+    expect(wouldBreakVaultLinks([source, target], folders, [source, { ...target, title: 'Renamed' }])).toBe(true);
+  });
+
+  it('protects reference-style Markdown links that the reading view resolves', () => {
+    const reference = { ...source, content: '[Evidence][ref]\n\n[ref]: projects/Target.md' };
+    expect(wouldBreakVaultLinks([reference, target], folders, [reference, { ...target, title: 'Renamed' }])).toBe(true);
+    const unused = { ...source, content: '[ref]: projects/Target.md' };
+    expect(wouldBreakVaultLinks([unused, target], folders, [unused, { ...target, title: 'Renamed' }])).toBe(false);
+  });
+
+  it('detects path links broken by moving their target', () => {
+    expect(wouldBreakVaultLinks([source, target], folders, [source, { ...target, folder: unrelated.id }])).toBe(true);
+  });
+
+  it('detects outgoing relative links broken by moving their source', () => {
+    const relative = { ...source, folder: 'vf-1', content: '[target](./Target.md)' };
+    expect(wouldBreakVaultLinks([relative, target], folders, [{ ...relative, folder: unrelated.id }, target])).toBe(true);
+  });
+
+  it('allows unreferenced renames and ignores code, external URLs and already missing targets', () => {
+    const code = { ...source, content: '`[[Target]]` [web](https://example.com/Target.md) [[Missing]]' };
+    expect(wouldBreakVaultLinks([code, target], folders, [code, { ...target, title: 'Renamed' }])).toBe(false);
+  });
+
+  it('does not treat hidden local notes as vault link targets', () => {
+    const local = { ...target, origin: undefined };
+    expect(wouldBreakVaultLinks([source, local], folders, [source, { ...local, title: 'Renamed' }])).toBe(false);
+  });
+
+  it('allows a folder rename when title-only links keep their target', () => {
+    const simple = { ...source, content: '[[Target]]' };
+    expect(wouldBreakVaultLinks([simple, target], folders, [simple, target], [{ ...vaultRoot, name: 'renamed' }, unrelated])).toBe(false);
+  });
+});
 
 describe('buildRenamedFolderList', () => {
   it('renames the target and rewrites same-domain descendant prefixes', () => {

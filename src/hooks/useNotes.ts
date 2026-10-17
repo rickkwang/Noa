@@ -33,6 +33,10 @@ import { useNoteImport, type LoadErrorState } from './useNoteImport';
 
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
+// Deleted notes can be restored by the session Undo notice. Attachment blobs are
+// pruned only after this window, and the prune re-reads the live note list so a
+// note restored before it fires keeps its attachments.
+const ATTACHMENT_UNDO_PRUNE_MS = 20_000;
 
 /** useTabs persists the strip; null when it never has (or the value is unreadable). */
 function readSavedOpenTabIds(): string[] | null {
@@ -380,7 +384,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
 
 ## Data Safety
 
-New notes stay **in this Noa app or browser profile**. Edits to notes from a connected folder are saved back to that folder. New notes are not added to it.
+Without a connected folder, notes live **in this Noa app or browser profile**. With a folder connected, that folder is your workspace: edits and new notes are written to it. Noa's local notes are hidden until you disconnect, and are not deleted.
 Export regularly: use Settings → Data → Export JSON Backup.`,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -799,12 +803,16 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       setSaveError('Failed to delete note.');
       return false;
     }
-    // Prune against the post-deletion list; a pre-deletion snapshot races with sibling deletes sharing a blob.
-    const remaining = notesRef.current.filter(n => n.id !== id);
-    const validIds = new Set(
-      remaining.flatMap(n => (n.attachments ?? []).map(a => a.id))
-    );
-    storage.pruneOrphanedAttachments(validIds, candidateIds).catch(() => {});
+    // Session Undo keeps the note's attachment blobs for a grace window; prune
+    // later against the live list so a restored note re-validates its blobs.
+    if (candidateIds.size > 0) {
+      setTimeout(() => {
+        const liveIds = new Set(
+          notesRef.current.flatMap(n => (n.attachments ?? []).map(a => a.id))
+        );
+        storage.pruneOrphanedAttachments(liveIds, candidateIds).catch(() => {});
+      }, ATTACHMENT_UNDO_PRUNE_MS);
+    }
     // A deliberately deleted note must not resurface from the import rescue
     // parking lot on next launch.
     unparkRescuedNote(id);
@@ -821,9 +829,41 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       snapshotFirstScheduled.current.delete(id);
     }
     storage.deleteSnapshotsForNote(id).catch(() => {});
-    setNotes(prev => syncLinkRefs(prev.filter(n => n.id !== id), prev));
+    setNotes(prev => {
+      const next = syncLinkRefs(prev.filter(n => n.id !== id), prev);
+      // Keep the ref current for the deferred attachment prune; React may defer
+      // the effect that would otherwise sync it.
+      notesRef.current = next;
+      return next;
+    });
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
+  }, [syncLinkRefs]);
+
+  /**
+   * Session Undo for the delete notice: put restored notes back into storage and
+   * the live list. External vault snapshots and notes still present are skipped.
+   */
+  const handleRestoreNotes = useCallback(async (restored: Note[]): Promise<Note[]> => {
+    const missing = restored.filter((note) => note.origin !== 'vault' && !notesRef.current.some((existing) => existing.id === note.id));
+    if (missing.length === 0) return [];
+    const saved: Note[] = [];
+    try {
+      for (const note of missing) {
+        await storage.saveNote(note);
+        saved.push(note);
+      }
+    } catch {
+      setSaveError('Failed to restore some deleted notes. Storage may be full.');
+    }
+    if (saved.length === 0) return [];
+    setNotes((prev) => {
+      const next = [...prev, ...saved.filter((note) => !prev.some((existing) => existing.id === note.id))];
+      const withRefs = syncLinkRefs(next, prev);
+      notesRef.current = withRefs;
+      return withRefs;
+    });
+    return saved;
   }, [syncLinkRefs]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
@@ -1274,6 +1314,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     handleNavigateToNote,
     handleNavigateToNoteById,
     handleDeleteNote,
+    handleRestoreNotes,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,

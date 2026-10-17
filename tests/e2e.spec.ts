@@ -427,7 +427,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
       === getComputedStyle(document.querySelector<HTMLElement>('.noa-sidebar-surface')!).backgroundColor
   ))).toBe(true);
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const collapsedEditorBox = await editor.boundingBox();
   expect(collapsedEditorBox).not.toBeNull();
 
@@ -442,7 +442,7 @@ test('hovering the collapsed sidebar toggle previews the sidebar in its expanded
     .toBe('rgb(251, 251, 249)');
   await expect.poll(() => sidebar.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe('rgba(0, 0, 0, 0)');
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
 
   const [previewShellBox, previewSidebarBox, previewEditorBox] = await Promise.all([
     previewShell.boundingBox(),
@@ -495,13 +495,13 @@ test('dark mode sidebar preview uses the docked sidebar plane without creating a
     getComputedStyle(element).backgroundColor
   ))).toBe('rgb(43, 43, 41)');
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   await page.mouse.move(700, 400);
   await toggle.hover();
 
   const previewShell = page.locator('[data-sidebar-preview-shell="true"]');
   await expect(previewShell).toBeVisible();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const palette = await previewShell.evaluate((shell) => {
     const rootStyle = getComputedStyle(document.documentElement);
     const sidebar = document.querySelector<HTMLElement>('.noa-sidebar-surface');
@@ -555,7 +555,7 @@ test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing
   expect(expandedEditorBox).not.toBeNull();
 
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const collapsedEditorBox = await editor.boundingBox();
   expect(collapsedEditorBox).not.toBeNull();
   await page.mouse.move(700, 400);
@@ -587,7 +587,7 @@ test('clicking the sidebar toggle keeps the preview fixed while smoothly pushing
   expect(promotionMidpoint.editorX).toBeGreaterThan(collapsedEditorBox!.x);
   expect(promotionMidpoint.editorX).toBeLessThan(expandedEditorBox!.x);
   expect(Math.abs(promotionMidpoint.separatorX - (expandedSidebarBox!.x + expandedSidebarBox!.width))).toBeLessThan(0.5);
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   expect(await editor.boundingBox()).toEqual(expandedEditorBox);
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(0);
@@ -600,7 +600,7 @@ test('entering focus mode cancels an in-flight sidebar preview promotion', async
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   const editor = page.locator('.cm-editor').first();
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const collapsedEditorBox = await editor.boundingBox();
   expect(collapsedEditorBox).not.toBeNull();
 
@@ -612,7 +612,7 @@ test('entering focus mode cancels an in-flight sidebar preview promotion', async
 
   await expect(page.getByRole('button', { name: 'Esc' })).toBeVisible();
   expect(await page.locator('[data-sidebar-promotion-spacer="true"]').count()).toBe(0);
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   expect((await editor.boundingBox())!.x).toBe(collapsedEditorBox!.x);
 });
 
@@ -667,7 +667,7 @@ test('direct sidebar toggle wipes the separator across stationary content', asyn
   expect(closing.contentX).toBe(expandedSidebarBox!.x);
   expect(closing.contentWidth).toBe(expandedSidebarBox!.width);
   expect(closing.opacity).toBe(1);
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   await expect(separator).toHaveCSS('opacity', '0');
 
   await toggle.evaluate((element) => (element as HTMLButtonElement).click());
@@ -757,7 +757,7 @@ test('the hover preview leaves the column surface where it puts it', async ({ pa
   await toggle.click();
   await expect(page.locator('[data-sidebar-container]')).toHaveCSS('width', '0px');
   expect(await motion()).toContain('container:width');
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
 
   // Preview needs a genuine leave-and-reenter (closing by click leaves the pointer on the toggle).
   await page.mouse.move(900, 500);
@@ -976,7 +976,7 @@ test('a second toggle during preview promotion reverses without moving the edito
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   const editor = page.locator('.cm-editor').first();
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const collapsedEditorX = (await editor.boundingBox())!.x;
   await page.mouse.move(700, 400);
   await toggle.hover();
@@ -1045,7 +1045,7 @@ test('resizing a preview keeps it open until the pointer is released', async ({ 
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   await page.mouse.move(700, 400);
   await toggle.hover();
 
@@ -1069,10 +1069,10 @@ test('reversing a preview exit continues from its current visual progress', asyn
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   await page.mouse.move(700, 400);
   await toggle.hover();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   const shell = page.locator('[data-sidebar-preview-shell="true"]');
   await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 1000);
   await shell.evaluate((element) => element.addEventListener('transitionrun', () => {
@@ -1111,7 +1111,7 @@ test('enabling reduced motion settles active sidebar preview transitions', async
 
   const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
   await toggle.click();
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
+  await page.waitForFunction(() => document.getAnimations().every((animation) => !(animation.timeline instanceof DocumentTimeline) || animation.playState === 'finished'));
   await page.mouse.move(700, 400);
   await toggle.hover();
   await expect(page.locator('[data-sidebar-preview="true"]')).toHaveCount(1);

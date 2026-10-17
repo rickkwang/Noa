@@ -1,4 +1,5 @@
 import type { Folder, Note, VaultPendingOperation } from '../types';
+import { buildLinkIndex, extractLinks, resolveLinkTarget } from './noteUtils';
 import { isDescendantPath } from './pathUtils';
 
 /**
@@ -95,4 +96,24 @@ export function selectUnclaimedOperations(
   handedOffOperationKeys: ReadonlySet<string>,
 ): VaultPendingOperation[] {
   return preparedOperations.filter((operation) => !handedOffOperationKeys.has(operation.key));
+}
+
+export function wouldBreakVaultLinks(
+  notes: Note[],
+  folders: Folder[],
+  nextNotes: Note[],
+  nextFolders: Folder[] = folders,
+): boolean {
+  const vaultNotes = notes.filter((note) => note.origin === 'vault');
+  const nextVaultNotes = nextNotes.filter((note) => note.origin === 'vault');
+  const before = buildLinkIndex(vaultNotes, folders.filter((folder) => folder.origin === 'vault'));
+  const after = buildLinkIndex(nextVaultNotes, nextFolders.filter((folder) => folder.origin === 'vault'));
+  return vaultNotes.some((note) => {
+    const next = nextVaultNotes.find((item) => item.id === note.id);
+    if (!next) return false;
+    return extractLinks(note.content).some((link) => {
+      const target = resolveLinkTarget(link, before, note.folder);
+      return target !== null && resolveLinkTarget(link, after, next.folder) !== target;
+    });
+  });
 }

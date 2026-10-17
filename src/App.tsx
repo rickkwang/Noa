@@ -31,7 +31,9 @@ import { useVaultOperations } from './hooks/useVaultOperations';
 import { headingLineIndex } from './lib/noteUtils';
 import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
+import { wouldBreakVaultLinks } from './lib/vaultOps';
 import { hasVaultRows, VAULT_ROOT_FOLDER_ID } from './lib/workspaceOwnership';
+import type { Note } from './types';
 
 const Editor = lazy(() => import('./components/Editor'));
 const RightPanel = lazy(() => import('./components/RightPanel'));
@@ -145,6 +147,7 @@ export default function App() {
     handleNavigateToNote,
     handleNavigateToNoteById,
     handleDeleteNote: _handleDeleteNote,
+    handleRestoreNotes,
     handleCreateFolder: _handleCreateFolder,
     handleRenameFolder: _handleRenameFolder,
     handleDeleteFolder: _handleDeleteFolder,
@@ -332,9 +335,14 @@ export default function App() {
     const note = notesRef.current.find((item) => item.id === id);
     if (blockVaultCacheWrite(note?.origin === 'vault')) return;
     if (!note) return;
+    if (note.origin === 'vault' && wouldBreakVaultLinks(notesRef.current, folders,
+      notesRef.current.map((item) => item.id === id ? { ...item, title: newTitle } : item))) {
+      setSaveError('Renaming this note would break existing vault links. Rename it in your vault editor with link updates enabled.');
+      return;
+    }
     _handleRenameNote(id, newTitle);
     syncNoteOnRename(note, newTitle);
-  }, [_handleRenameNote, blockVaultCacheWrite, syncNoteOnRename]);
+  }, [_handleRenameNote, blockVaultCacheWrite, folders, setSaveError, syncNoteOnRename]);
 
   const [editorFocusRequest, setEditorFocusRequest] = useState<EditorFocusRequest | null>(null);
   const editorFocusRequestIdRef = useRef(0);
@@ -429,9 +437,14 @@ export default function App() {
     const note = notesRef.current.find((item) => item.id === id);
     if (!note || note.folder === folderId) return;
     if (blockVaultCacheWrite(note.origin === 'vault')) return;
+    if (note.origin === 'vault' && wouldBreakVaultLinks(notesRef.current, folders,
+      notesRef.current.map((item) => item.id === id ? { ...item, folder: folderId } : item))) {
+      setSaveError('Moving this note would break existing vault links. Move it in your vault editor with link updates enabled.');
+      return;
+    }
     _handleMoveNote(id, folderId);
     syncNoteOnMove(note, folderId);
-  }, [_handleMoveNote, blockVaultCacheWrite, syncNoteOnMove]);
+  }, [_handleMoveNote, blockVaultCacheWrite, folders, setSaveError, syncNoteOnMove]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parentFolder = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : undefined;
@@ -443,6 +456,7 @@ export default function App() {
 
   const {
     handleDeleteNote,
+    handleDeleteNotes,
     handleRenameFolder,
     handleDeleteFolder,
     handleDisconnectFolder,
@@ -718,18 +732,22 @@ export default function App() {
     }
   }, [activeNoteId]);
 
-  const primaryNoaFolderId = useMemo(
-    () => folders.find((f) => f.origin !== 'vault' && (f.source ?? 'noa') === 'noa')?.id ?? 'diary',
-    [folders]
-  );
   // Connecting a vault can leave a hidden Noa note active; show the empty state instead of a blank editor.
   useEffect(() => {
     if (!vaultConnected || !activeNoteId || !isDataReady) return;
     const active = notes.find((note) => note.id === activeNoteId);
     if (active && active.origin !== 'vault') setActiveNoteId('');
   }, [activeNoteId, isDataReady, notes, setActiveNoteId, vaultConnected]);
-  // Every "new note" entry point creates in the workspace being shown.
-  const defaultCreateFolderId = vaultConnected ? VAULT_ROOT_FOLDER_ID : primaryNoaFolderId;
+  // New notes land in the active note's folder (the root when none is open) so
+  // they are visible immediately; a connected vault always creates at its root.
+  const defaultCreateFolderId = useMemo(() => {
+    if (vaultConnected) return VAULT_ROOT_FOLDER_ID;
+    const active = activeNoteId ? workspaceNotes.find((note) => note.id === activeNoteId) : undefined;
+    if (!active || active.origin === 'vault' || !active.folder) return '';
+    return folders.some((folder) => folder.id === active.folder && folder.origin !== 'vault')
+      ? active.folder
+      : '';
+  }, [activeNoteId, folders, vaultConnected, workspaceNotes]);
 
   const handleTabChange = useCallback((id: string) => {
     if (id === activeNoteId) return;
@@ -832,6 +850,55 @@ export default function App() {
       console.error('[Noa] Failed to flush saves on note select:', err);
     });
   }, [openTabForNote, setActiveNoteId, isMobile, setIsSidebarOpen, flushAllPendingSaves]);
+
+  // Undo covers local notes only. Vault files use permanent deletion and
+  // must never be recreated from a session snapshot.
+  const [undoableDelete, setUndoableDelete] = useState<Note[] | null>(null);
+  const undoNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setUndoableDelete(null);
+    if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current);
+    return () => { if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current); };
+  }, [fsHandle]);
+
+  const armUndoNotice = useCallback((deleted: Note[]) => {
+    if (vaultWorkspaceRef.current) return;
+    const localNotes = deleted.filter((note) => note.origin !== 'vault');
+    if (localNotes.length === 0) return;
+    if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current);
+    setUndoableDelete(localNotes.map((note) => ({
+      ...note,
+      attachments: note.attachments?.map((attachment) => ({ ...attachment })),
+    })));
+    undoNoticeTimerRef.current = setTimeout(() => {
+      setUndoableDelete(null);
+      undoNoticeTimerRef.current = null;
+    }, 8000);
+  }, []);
+
+  const handleDeleteNoteWithUndo = useCallback((id: string) => {
+    void handleDeleteNote(id).then(armUndoNotice);
+  }, [armUndoNotice, handleDeleteNote]);
+
+  const handleDeleteNotesWithUndo = useCallback((ids: string[]) => {
+    void handleDeleteNotes(ids).then(armUndoNotice);
+  }, [armUndoNotice, handleDeleteNotes]);
+
+  const handleUndoDelete = useCallback(() => {
+    const batch = undoableDelete;
+    if (!batch) return;
+    setUndoableDelete(null);
+    if (undoNoticeTimerRef.current) {
+      clearTimeout(undoNoticeTimerRef.current);
+      undoNoticeTimerRef.current = null;
+    }
+    void (async () => {
+      const restored = await handleRestoreNotes(batch);
+      if (restored.length === 0) return;
+      handleSidebarSelectNote(restored[0].id);
+    })();
+  }, [undoableDelete, handleRestoreNotes, handleSidebarSelectNote]);
 
   const workspaceNoteIds = useMemo(() => new Set(workspaceNotes.map((note) => note.id)), [workspaceNotes]);
   const navigateHistory = useCallback((dir: -1 | 1) => {
@@ -1109,7 +1176,8 @@ export default function App() {
                 activeNoteId={activeNoteId}
                 onSelectNote={handleSidebarSelectNote}
                 onCreateNote={handleSidebarCreateNote}
-                onDeleteNote={handleDeleteNote}
+                onDeleteNote={handleDeleteNoteWithUndo}
+                onDeleteNotes={handleDeleteNotesWithUndo}
                 onRenameNote={handleRenameNote}
                 onDuplicateNote={handleDuplicateNote}
                 onMoveNote={handleMoveNote}
@@ -1379,6 +1447,24 @@ export default function App() {
         </div>
       </div>
       <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-ui">
+        {undoableDelete && (
+          <div role="status" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
+            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">
+              {undoableDelete.length === 1 ? 'Note deleted' : 'Notes deleted'}
+            </div>
+            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed mb-3">
+              {undoableDelete.length === 1
+                ? `"${undoableDelete[0].title}" was deleted from Noa.`
+                : `${undoableDelete.length} notes were deleted from Noa.`}
+            </div>
+            <button
+              onClick={handleUndoDelete}
+              className="text-xs font-bold bg-[var(--accent-color,#CC7D5E)] text-white border border-[#2D2D2B] px-3 py-1.5 rounded-chip hover:opacity-90 noa-press"
+            >
+              Undo
+            </button>
+          </div>
+        )}
         {saveError && (
           <div role="alert" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Action failed</div>
