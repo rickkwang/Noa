@@ -63,9 +63,7 @@ export function EditorActions({
   const nextViewMode = viewMode === 'edit' ? 'preview' : 'edit';
   const nextViewLabel = nextViewMode === 'edit' ? 'Live Preview' : 'Reading view';
   const NextViewModeIcon = nextViewMode === 'edit' ? Edit2 : Eye;
-  const buttonClass = `flex h-6 w-6 items-center justify-center rounded-md noa-press transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default ${
-    isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'
-  } hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`;
+  const buttonClass = 'flex h-6 w-6 items-center justify-center rounded-md noa-press transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default text-[var(--icon-ink,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_7.5%,transparent)]';
   const itemClass = `flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-body text-left transition-colors whitespace-nowrap ${
     isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[rgba(249,249,247,0.9)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)]'
   }`;

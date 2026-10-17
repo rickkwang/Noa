@@ -40,6 +40,8 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       // Solid sidebar text tiers (primary is --text-primary): alpha text over the translucent material washes out.
       root.style.setProperty('--sidebar-text', '#C3C2B7');
       root.style.setProperty('--sidebar-text-muted', '#898781');
+      // Resting icon ink: the secondary text tier, one step below primary (as Claude's desktop icons).
+      root.style.setProperty('--icon-ink', '#C3C2B7');
       root.style.setProperty('--divider-subtle', 'color-mix(in srgb, var(--text-primary) 8%, transparent)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');
       root.style.setProperty('--border-strong', 'color-mix(in srgb, var(--text-primary) 16%, transparent)');
@@ -56,6 +58,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
       root.style.setProperty('--text-secondary', '#7B7974');
       root.style.setProperty('--sidebar-text', '#52514E');
       root.style.setProperty('--sidebar-text-muted', '#898781');
+      root.style.setProperty('--icon-ink', '#52514E');
       // Hairlines: near-black at 10%, strong at 20%.
       root.style.setProperty('--divider-subtle', 'rgba(11,11,11,0.10)');
       root.style.setProperty('--border-default', 'var(--divider-subtle)');

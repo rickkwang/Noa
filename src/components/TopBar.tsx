@@ -75,9 +75,8 @@ function HistoryButtons({ history, liveIds, navigate, buttonClass }: NonNullable
 export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, onSidebarPreviewEnter, onSidebarPreviewLeave, onToggleRightPanel, activePanes, onTogglePane, paneBadges, isRightPanelCovering, isSidebarOpen, isSidebarMaterialActive, isRightPanelOpen, isNoteRailOpen = false, onToggleNoteRail, rightPanelEdgeTransition, isMobile, searchQuery, onSearchChange, isSearchOpen, onToggleSearch, onCloseSearch, onSearchBlur, searchInputRef, hideSearch = false, noteHistory }: TopBarProps) {
   const isDark = useIsDark(settings.appearance.theme);
   const titlebarBaseColor = themeSurfaces(isDark).primary;
-  // Titlebar buttons only answer the pointer: a ~9% ink block on hover, never a lasting "open" fill or colour.
-  const idleInk = isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]';
-  const buttonClass = `flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${idleInk} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_9%,transparent)]`;
+  // Titlebar buttons only answer the pointer: a 7.5% ink block on hover, never a lasting "open" fill or colour.
+  const buttonClass = `flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors text-[var(--icon-ink,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_7.5%,transparent)]`;
   return (
     <div
       data-titlebar="true"
@@ -205,8 +204,8 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                 // Pressed is an ink wash under the glyph rather than a colour change, so it reads as a held toggle.
                 className={`noa-press flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors ${
                   isNoteRailOpen
-                    ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_10%,transparent)] text-[var(--text-primary,#2D2D2B)]'
-                    : `${isDark ? 'text-[rgba(249,249,247,0.7)] hover:text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] hover:text-[var(--text-primary,#2D2D2B)]'} hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]`
+                    ? 'bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_15%,transparent)] text-[var(--text-primary,#2D2D2B)]'
+                    : 'text-[var(--icon-ink,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_7.5%,transparent)]'
                 }`}
               >
                 <LayoutList size={16} />
