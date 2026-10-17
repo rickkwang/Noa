@@ -660,14 +660,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   background-color: transparent;
 }
 
-/* Semantic sidebar states, opted into explicitly. The shared ink scale: 10% for the active row, 5% on hover;
+/* Semantic sidebar states, opted into explicitly. The shared ink scale: 10% for the active row, 7.5% on hover;
    text-primary flips with the theme, so one rule serves both. Hover rules stay !important to beat base-surface utilities. */
 .noa-sidebar-active-surface {
   background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 10%, transparent) !important;
 }
 .noa-sidebar-hover-surface:hover,
 .noa-sidebar-hover-surface-subtle:hover {
-  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 5%, transparent) !important;
+  background-color: color-mix(in srgb, var(--text-primary, #2D2D2B) 7.5%, transparent) !important;
 }
 
 .noa-floating-panel {

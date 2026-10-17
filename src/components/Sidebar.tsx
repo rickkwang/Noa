@@ -61,6 +61,12 @@ function isInlinePreviewableAttachment(file: File): boolean {
 }
 
 const NOA_ROOT_DROP_TARGET_ID = '__root_noa__';
+
+// Whether a folder or any folder below it holds the note; drives the kept branch guides.
+function subtreeHoldsNote(node: FolderTreeNode, notesByFolderId: Map<string, Note[]>, noteId: string): boolean {
+  return (notesByFolderId.get(node.folder.id) || []).some((n) => n.id === noteId)
+    || node.children.some((child) => subtreeHoldsNote(child, notesByFolderId, noteId));
+}
 const IMPORT_ROOT_DROP_TARGET_ID = '__root_import__';
 
 interface SidebarNoteRowProps {
@@ -306,6 +312,7 @@ export default function Sidebar({
         <FileNode
         name={leafName}
         isFolder
+        hasActiveDescendant={subtreeHoldsNote(node, notesByFolderId, activeId)}
         defaultOpen={foldersExpandedByDefault}
           icon={Folder}
           onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}

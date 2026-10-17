@@ -31,6 +31,8 @@ export interface FileNodeProps {
   isDragging?: boolean;
   addButtonProps?: Record<string, unknown>;
   depth?: number;
+  // The active note sits somewhere below this folder: its branch guide stays visible.
+  hasActiveDescendant?: boolean;
 }
 
 export interface FolderTreeNode {
@@ -78,7 +80,7 @@ export const FileNode = React.memo(({
   name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText,
   onAdd, onAddFolder, onNewNote, onDuplicate, onCopyLink, draggable, onDragStart, onDragEnter, onDragOver,
-  onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0,
+  onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0, hasActiveDescendant = false,
 }: FileNodeProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isEditing, setIsEditing] = useState(false);
@@ -335,7 +337,7 @@ export const FileNode = React.memo(({
           }}
         >
           {/* Guides show only while the tree is hovered or focused; at rest the tree stays quiet. */}
-          <div className="overflow-hidden border-l-[0.5px] border-transparent transition-colors duration-200 group-hover/tree:border-[var(--divider-subtle)]">
+          <div className={`overflow-hidden border-l-[0.5px] transition-colors duration-200 ${hasActiveDescendant ? 'border-[var(--divider-subtle)]' : 'border-transparent group-hover/tree:border-[var(--divider-subtle)]'}`}>
             {children}
           </div>
         </div>
