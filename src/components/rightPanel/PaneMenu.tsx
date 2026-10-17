@@ -3,9 +3,9 @@ import { RIGHT_TAB_LABELS, type PaneBadges, type RightTab } from '../../constant
 import { Check, CheckSquare, MoreHorizontal, Network, PanelRight, SlidersHorizontal } from '@/src/lib/icons';
 
 // Backlinks: single link with a bold arrow pointing IN (incoming links)
-function BacklinksIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+function BacklinksIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M14.5 8.5l1-1a4 4 0 0 1 5.66 5.66l-2.83 2.83a4 4 0 0 1-5.66 0" />
       <path d="M12 16l-8-8" />
       <path d="M4 13v-5h5" />
@@ -14,9 +14,9 @@ function BacklinksIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: 
 }
 
 // Outgoing: single link with a bold arrow pointing OUT (outgoing links)
-function OutgoingIcon({ size = 14, strokeWidth = 2, className = '' }: { size?: number; strokeWidth?: number; className?: string }) {
+function OutgoingIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M9.5 15.5l-1 1a4 4 0 0 1-5.66-5.66l2.83-2.83a4 4 0 0 1 5.66 0" />
       <path d="M12 8l8 8" />
       <path d="M20 11v5h-5" />
@@ -32,7 +32,7 @@ export const PANE_TABS = [
   { id: 'graph', icon: Network },
   { id: 'tasks', icon: CheckSquare },
   { id: 'properties', icon: SlidersHorizontal },
-] as const satisfies ReadonlyArray<{ id: RightTab; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }> }>;
+] as const satisfies ReadonlyArray<{ id: RightTab; icon: React.ComponentType<{ size?: number; stroke?: number; className?: string }> }>;
 
 export function badgeFor(id: RightTab, badges: PaneBadges): number {
   return id === 'backlinks' || id === 'outgoing' || id === 'tasks' ? badges[id] : 0;
@@ -129,7 +129,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
                 }}
                 className={rowClass}
               >
-                <tab.icon size={15} className={`shrink-0 ${muted}`} strokeWidth={1.75} />
+                <tab.icon size={15} className={`shrink-0 ${muted}`} stroke={1.75} />
                 <span className="mr-auto truncate">{RIGHT_TAB_LABELS[tab.id]}</span>
                 {badge > 0 && (
                   <span aria-hidden="true" className={`text-caption tabular-nums ${muted}`}>{badge > 99 ? '99+' : badge}</span>

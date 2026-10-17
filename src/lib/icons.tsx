@@ -1,99 +1,100 @@
-// Central icon mapping: Phosphor Icons re-exported under the legacy lucide-react
+// Central icon mapping: Tabler Icons re-exported under the legacy lucide-react
 // names so call sites are unchanged. To swap a shape, change its mapping here only.
 import {
-  Article,
-  Warning,
-  TextAlignLeft,
-  ArrowsDownUp,
-  ArrowLeft as PhArrowLeft,
-  ArrowRight as PhArrowRight,
-  TextB,
-  BookOpen as PhBookOpen,
-  CalendarBlank,
-  CalendarDots,
-  Check as PhCheck,
-  CheckCircle,
-  CheckSquare as PhCheckSquare,
-  CaretDown,
-  CaretLeft,
-  CaretRight,
-  CaretUpDown,
-  CaretUp,
-  Circle as PhCircle,
-  Clock as PhClock,
-  Code as PhCode,
-  Copy as PhCopy,
-  Database as PhDatabase,
-  DiceFive,
-  DotsThree,
-  DownloadSimple,
-  PencilSimple,
-  ArrowSquareOut,
-  Eye as PhEye,
-  FileZip,
-  FileText as PhFileText,
-  Funnel,
-  Folder as PhFolder,
-  FolderOpen as PhFolderOpen,
-  FolderPlus as PhFolderPlus,
-  Tag as PhTag,
-  HardDrives,
-  Info as PhInfo,
-  TextItalic,
-  List as PhList,
-  CircleNotch,
-  ArrowsOutSimple,
-  ArrowsInSimple,
-  Graph,
-  Palette as PhPalette,
-  SidebarSimple,
-  PenNib,
-  Plus as PhPlus,
-  PlusSquare as PhPlusSquare,
-  ArrowsClockwise,
-  ArrowCounterClockwise,
-  MagnifyingGlass,
-  Monitor as PhMonitor,
-  Moon as PhMoon,
-  Sun as PhSun,
-  Gear,
-  SlidersHorizontal as PhSlidersHorizontal,
-  NotePencil,
-  Trash,
-  Link as PhLink,
-  LinkBreak,
-  UploadSimple,
-  Users as PhUsers,
-  X as PhX,
-} from '@phosphor-icons/react';
-import type { Icon, IconProps } from '@phosphor-icons/react';
+  IconAdjustmentsHorizontal,
+  IconAlertTriangle,
+  IconAlignLeft,
+  IconArrowBackUp,
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowsDiagonal,
+  IconArrowsDiagonalMinimize2,
+  IconArrowsDownUp,
+  IconBold,
+  IconBook,
+  IconBrush,
+  IconCalendar,
+  IconCalendarEvent,
+  IconCheck,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronUp,
+  IconCircle,
+  IconCircleCheck,
+  IconClock,
+  IconCode,
+  IconCopy,
+  IconDatabase,
+  IconDeviceDesktop,
+  IconDice5,
+  IconDots,
+  IconDownload,
+  IconExternalLink,
+  IconEye,
+  IconFileText,
+  IconFileZip,
+  IconFilter,
+  IconFolder,
+  IconFolderOpen,
+  IconFolderPlus,
+  IconInfoCircle,
+  IconItalic,
+  IconLayoutList,
+  IconLayoutSidebar,
+  IconLayoutSidebarRight,
+  IconLink,
+  IconList,
+  IconLoader2,
+  IconMoon,
+  IconNetwork,
+  IconNotebook,
+  IconPalette,
+  IconPencil,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconSelector,
+  IconServer,
+  IconSettings,
+  IconSquareCheck,
+  IconSquarePlus,
+  IconSun,
+  IconTag,
+  IconTrash,
+  IconUnlink,
+  IconUpload,
+  IconUsers,
+  IconX,
+} from '@tabler/icons-react';
+import type { Icon, IconProps } from '@tabler/icons-react';
 
-// Default to 24px, regular weight; call sites can still override props.
+// Default to 24px with a 1.5 stroke; call sites that need a heavier glyph pass their own stroke.
 function icon(Cmp: Icon) {
   return function WrappedIcon(props: IconProps) {
-    return <Cmp size={24} weight="regular" {...props} />;
+    return <Cmp size={24} stroke={1.5} {...props} />;
   };
 }
 
-export const AlertTriangle = icon(Warning);
-export const AlignLeft = icon(TextAlignLeft);
-export const ArrowUpDown = icon(ArrowsDownUp);
-export const ArrowLeft = icon(PhArrowLeft);
-export const ArrowRight = icon(PhArrowRight);
-export const Bold = icon(TextB);
-export const BookOpen = icon(PhBookOpen);
-export const Calendar = icon(CalendarBlank);
+export const AlertTriangle = icon(IconAlertTriangle);
+export const AlignLeft = icon(IconAlignLeft);
+export const ArrowUpDown = icon(IconArrowsDownUp);
+export const ArrowLeft = icon(IconArrowLeft);
+export const ArrowRight = icon(IconArrowRight);
+export const Bold = icon(IconBold);
+export const BookOpen = icon(IconBook);
+export const Calendar = icon(IconCalendar);
 // Sidebar month-view toggle (Calendar is the "open today's daily note" icon).
-export const CalendarMonth = icon(CalendarDots);
-export const Check = icon(PhCheck);
-export const CheckCircle2 = icon(CheckCircle);
-export const CheckSquare = icon(PhCheckSquare);
-export const ChevronDown = icon(CaretDown);
-export const ChevronLeft = icon(CaretLeft);
-export const ChevronRight = icon(CaretRight);
-export const ChevronsUpDown = icon(CaretUpDown);
+export const CalendarMonth = icon(IconCalendarEvent);
+export const Check = icon(IconCheck);
+export const CheckCircle2 = icon(IconCircleCheck);
+export const CheckSquare = icon(IconSquareCheck);
+export const ChevronDown = icon(IconChevronDown);
+export const ChevronLeft = icon(IconChevronLeft);
+export const ChevronRight = icon(IconChevronRight);
+export const ChevronsUpDown = icon(IconSelector);
 // Inward twin of ChevronsUpDown ("collapse all folders"), drawn by hand because
-// Phosphor has no such glyph: same 256 grid, 16-unit stroke, carets flipped.
+// Tabler has no such glyph: same 256 grid, 16-unit stroke (1.5 at 24px), carets flipped.
 export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
   return (
     <svg
@@ -115,52 +116,52 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
     </svg>
   );
 }
-export const ChevronUp = icon(CaretUp);
-export const Circle = icon(PhCircle);
-export const Clock = icon(PhClock);
-export const Code = icon(PhCode);
-export const Copy = icon(PhCopy);
-export const Database = icon(PhDatabase);
-export const Dices = icon(DiceFive);
-export const Download = icon(DownloadSimple);
-export const Edit2 = icon(PencilSimple);
-export const ExternalLink = icon(ArrowSquareOut);
-export const Eye = icon(PhEye);
-export const FileArchive = icon(FileZip);
-export const FileText = icon(PhFileText);
-export const Filter = icon(Funnel);
-export const Folder = icon(PhFolder);
-export const FolderOpen = icon(PhFolderOpen);
-export const FolderPlus = icon(PhFolderPlus);
-export const Tag = icon(PhTag);
-export const HardDrive = icon(HardDrives);
-export const Info = icon(PhInfo);
-export const Italic = icon(TextItalic);
-export const List = icon(PhList);
-export const LayoutList = icon(Article);
-export const Loader2 = icon(CircleNotch);
-export const Maximize2 = icon(ArrowsOutSimple);
-export const Minimize2 = icon(ArrowsInSimple);
-export const Monitor = icon(PhMonitor);
-export const Moon = icon(PhMoon);
-export const MoreHorizontal = icon(DotsThree);
-export const Network = icon(Graph);
-export const Palette = icon(PhPalette);
-export const PanelLeft = icon(SidebarSimple);
-export const PanelRight = icon(SidebarSimple);
-export const PenTool = icon(PenNib);
-export const Plus = icon(PhPlus);
-export const PlusSquare = icon(PhPlusSquare);
-export const RefreshCcw = icon(ArrowsClockwise);
-export const RotateCcw = icon(ArrowCounterClockwise);
-export const Search = icon(MagnifyingGlass);
-export const Settings = icon(Gear);
-export const SlidersHorizontal = icon(PhSlidersHorizontal);
-export const Sun = icon(PhSun);
-export const SquarePen = icon(NotePencil);
-export const Trash2 = icon(Trash);
-export const Link = icon(PhLink);
-export const Unlink = icon(LinkBreak);
-export const Upload = icon(UploadSimple);
-export const Users = icon(PhUsers);
-export const X = icon(PhX);
+export const ChevronUp = icon(IconChevronUp);
+export const Circle = icon(IconCircle);
+export const Clock = icon(IconClock);
+export const Code = icon(IconCode);
+export const Copy = icon(IconCopy);
+export const Database = icon(IconDatabase);
+export const Dices = icon(IconDice5);
+export const Download = icon(IconDownload);
+export const Edit2 = icon(IconPencil);
+export const ExternalLink = icon(IconExternalLink);
+export const Eye = icon(IconEye);
+export const FileArchive = icon(IconFileZip);
+export const FileText = icon(IconFileText);
+export const Filter = icon(IconFilter);
+export const Folder = icon(IconFolder);
+export const FolderOpen = icon(IconFolderOpen);
+export const FolderPlus = icon(IconFolderPlus);
+export const Tag = icon(IconTag);
+export const HardDrive = icon(IconServer);
+export const Info = icon(IconInfoCircle);
+export const Italic = icon(IconItalic);
+export const List = icon(IconList);
+export const LayoutList = icon(IconLayoutList);
+export const Loader2 = icon(IconLoader2);
+export const Maximize2 = icon(IconArrowsDiagonal);
+export const Minimize2 = icon(IconArrowsDiagonalMinimize2);
+export const Monitor = icon(IconDeviceDesktop);
+export const Moon = icon(IconMoon);
+export const MoreHorizontal = icon(IconDots);
+export const Network = icon(IconNetwork);
+export const Palette = icon(IconPalette);
+export const PanelLeft = icon(IconLayoutSidebar);
+export const PanelRight = icon(IconLayoutSidebarRight);
+export const PenTool = icon(IconBrush);
+export const Plus = icon(IconPlus);
+export const PlusSquare = icon(IconSquarePlus);
+export const RefreshCcw = icon(IconRefresh);
+export const RotateCcw = icon(IconArrowBackUp);
+export const Search = icon(IconSearch);
+export const Settings = icon(IconSettings);
+export const SlidersHorizontal = icon(IconAdjustmentsHorizontal);
+export const Sun = icon(IconSun);
+export const SquarePen = icon(IconNotebook);
+export const Trash2 = icon(IconTrash);
+export const Link = icon(IconLink);
+export const Unlink = icon(IconUnlink);
+export const Upload = icon(IconUpload);
+export const Users = icon(IconUsers);
+export const X = icon(IconX);

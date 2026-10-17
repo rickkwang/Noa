@@ -40,7 +40,7 @@ export function PaneTabs({ activePanes, onSelect, badges, isDark }: PaneSwitchPr
             }`}
             style={style}
           >
-            <tab.icon size={15} className="shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+            <tab.icon size={15} className="shrink-0" stroke={isActive ? 2.25 : 1.75} />
             {badge > 0 && (
               <span
                 aria-label={`${badge} pending`}

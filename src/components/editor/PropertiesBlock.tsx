@@ -158,7 +158,7 @@ function ListValue({ items, isTags, readOnly, autoFocus, onCommit }: { items: st
           {item}
           {!readOnly && (
             <button type="button" aria-label={`Remove ${item}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onCommit(items.filter((i) => i !== item))} className="flex items-center opacity-45 hover:opacity-100">
-              <X size="0.8em" weight="bold" />
+              <X size="0.8em" stroke={2.5} />
             </button>
           )}
         </span>

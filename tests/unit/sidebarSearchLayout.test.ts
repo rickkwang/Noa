@@ -15,7 +15,7 @@ describe('sidebar search result layout', () => {
       readFile(indexCssPath, 'utf8'),
     ]);
 
-    expect(source).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
+    expect(source).toContain('className="noa-sidebar-scroll noa-sidebar-scroll-fade group/tree flex-1 min-h-0 overflow-y-auto overflow-x-hidden"');
     expect(source).not.toContain('[scrollbar-gutter:stable]');
     expect(source).toContain('noa-search-hit mx-2 rounded-lg px-3 py-2 cursor-pointer font-ui');
     expect(styles).not.toContain('scrollbar-width: none;');
@@ -68,7 +68,7 @@ describe('sidebar search result layout', () => {
     expect(vaultSection).toContain('Obsidian Vault');
     expect(vaultSection).not.toContain('border-t');
     expect(vaultSection).toContain('className={`mx-2 pl-2 pr-2 pb-3 ${');
-    expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 2}px`");
+    expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 3.5}px`");
   });
 
   it('keeps the sidebar scrollbar gutter, its pull-back, and the row margin all at 6px', async () => {
@@ -81,7 +81,7 @@ describe('sidebar search result layout', () => {
     expect(styles).toContain('.noa-sidebar-scroll {\n  scrollbar-gutter: stable;\n}');
     expect(styles).toContain('.noa-sidebar-scroll > * {\n  margin-right: -6px;\n}');
     expect(styles).toContain('::-webkit-scrollbar {\n  width: 6px;');
-    expect(fileNode).toContain('py-1 px-2 mx-2 rounded-lg');
+    expect(fileNode).toContain("py-0 px-2 ${depth === 0 ? 'mx-2' : 'mr-2'} rounded-lg");
   });
 
   it('does not retain a right-edge scrollbar-gutter compensation on file rows', async () => {
@@ -94,7 +94,8 @@ describe('sidebar search result layout', () => {
   it('uses a subtle semantic branch line and one resting text weight for folders and notes', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain('border-l-[0.5px] border-[var(--divider-subtle)]');
+    expect(fileNode).toContain('border-l-[0.5px] border-transparent');
+    expect(fileNode).toContain('group-hover/tree:border-[var(--divider-subtle)]');
     expect(fileNode).not.toContain('border-l border-[#2D2D2B]/15');
     // 425 vs 400 is not visibly different; rows keep one resting weight and active is marked by background alone.
     expect(fileNode).not.toContain("font-bold");
@@ -118,7 +119,7 @@ describe('sidebar search result layout', () => {
   it('anchors each branch line to its folder icon center at every depth', async () => {
     const fileNode = await readFile(fileNodePath, 'utf8');
 
-    expect(fileNode).toContain("marginLeft: depth === 0 ? '19.5px' : '14.5px'");
+    expect(fileNode).toContain("marginLeft: depth === 0 ? '21.5px' : '10px'");
     expect(fileNode).not.toContain("marginLeft: '18px'");
   });
 

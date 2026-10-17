@@ -1,4 +1,4 @@
-import type { IconProps } from '@phosphor-icons/react';
+import type { IconProps } from '@tabler/icons-react';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 
 interface SegmentedControlOption<T extends string> {

@@ -500,7 +500,7 @@ export default function Sidebar({
           title="New folder"
           aria-label="New folder"
         >
-          <FolderPlus size={16} />
+          <FolderPlus size={14} />
         </button>
         {dailyNotesEnabled && (
         <button
@@ -509,7 +509,7 @@ export default function Sidebar({
           title="Open today's daily note  ⌘⇧K"
           aria-label="Open today's daily note"
         >
-          <Calendar size={13.5} />
+          <Calendar size={14} />
         </button>
         )}
         <button
@@ -522,7 +522,7 @@ export default function Sidebar({
           title="Open random note"
           aria-label="Open random note"
         >
-          <Dices size={14.5} />
+          <Dices size={14} />
         </button>
         <button
           onClick={() => {
@@ -533,7 +533,7 @@ export default function Sidebar({
           title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
           aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
         >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={13.5} /> : <ChevronsUpDown size={13.5} />}
+          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
         </button>
         {/* Sort order behind one quiet toolbar button: the menu names both orders and ticks the current one. */}
         <div className="relative ml-auto">
@@ -706,7 +706,7 @@ export default function Sidebar({
       {/* Main Content Section */}
       <div
         ref={treeScrollRef}
-        className="noa-sidebar-scroll noa-sidebar-scroll-fade flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        className="noa-sidebar-scroll noa-sidebar-scroll-fade group/tree flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
         // Rows stop propagation of their own context menu, so this only sees blank space.
         onContextMenu={searchQuery ? undefined : (e) => {
           e.preventDefault();

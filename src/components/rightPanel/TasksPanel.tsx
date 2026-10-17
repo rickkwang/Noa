@@ -172,7 +172,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   function renderCheckbox(done: boolean, justChecked = false) {
     return done ? (
       <div className={`w-[15px] h-[15px] rounded-full flex items-center justify-center bg-[var(--accent-color,#CC7D5E)] transition-colors duration-200 ${justChecked ? 'noa-task-check-in' : ''}`}>
-        <Check size={9} weight="bold" className={`text-[var(--bg-primary,#FCFCFB)] ${justChecked ? 'noa-task-check-glyph' : ''}`} />
+        <Check size={9} stroke={2.5} className={`text-[var(--bg-primary,#FCFCFB)] ${justChecked ? 'noa-task-check-glyph' : ''}`} />
       </div>
     ) : (
       <div className={`w-[15px] h-[15px] rounded-full border transition-colors duration-200 hover:border-[var(--accent-color,#CC7D5E)] hover:bg-[color-mix(in_srgb,var(--accent-color,#CC7D5E)_10%,transparent)] ${checkboxBorder}`} />

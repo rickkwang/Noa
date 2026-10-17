@@ -614,7 +614,7 @@ export function EditorHeader({
             title="New tab"
             aria-label="New tab"
           >
-            <Plus size={13} strokeWidth={2} />
+            <Plus size={13} stroke={2} />
           </button>
         )}
       </div>

@@ -173,7 +173,7 @@ export const FileNode = React.memo(({
            hover class too would hand the background to the hover wash, whose
            `!important` out-specifies the fill (and Chromium freezes :hover at
            dragstart, so it never comes back mid-drag). */
-        className={`noa-sidebar-tree-row flex min-h-8 items-center justify-between py-1 px-2 mx-2 rounded-lg cursor-pointer select-none group ${
+        className={`noa-sidebar-tree-row flex min-h-[26px] items-center justify-between py-0 px-2 ${depth === 0 ? 'mx-2' : 'mr-2'} rounded-lg cursor-pointer select-none group ${
           isDragging
             ? 'noa-sidebar-row-dragging'
             : isDropTarget
@@ -183,7 +183,7 @@ export const FileNode = React.memo(({
                 : (isActive ? 'noa-sidebar-active-surface' : 'noa-sidebar-hover-surface-subtle')
         }`}
         style={{
-          paddingLeft: `${depth === 0 ? 7 : 2}px`,
+          paddingLeft: `${depth === 0 ? 7 : 3.5}px`,
         }}
         draggable={draggable}
         tabIndex={0}
@@ -229,7 +229,7 @@ export const FileNode = React.memo(({
           <span className={`mr-2 shrink-0 ${isActive && !isDragging ? 'text-[var(--text-primary,#2D2D2B)]' : ''}`}>
             {(() => {
               const RenderIcon = isFolder ? (isOpen ? FolderOpen : Folder) : Icon;
-              return <RenderIcon size={14} weight="regular" />;
+              return <RenderIcon size={14} />;
             })()}
           </span>
           {isEditing ? (
@@ -251,7 +251,7 @@ export const FileNode = React.memo(({
             </span>
           )}
         </div>
-        <div className="noa-sidebar-row-actions flex items-center opacity-0 group-hover:opacity-100 shrink-0 ml-2">
+        <div className="noa-sidebar-row-actions flex items-center opacity-0 group-hover:opacity-100 group-hover:delay-100 transition-opacity duration-150 ease-out shrink-0 ml-2">
           {isFolder && onAddFolder && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddFolder(); }}
@@ -328,13 +328,14 @@ export const FileNode = React.memo(({
           style={{
             display: 'grid',
             gridTemplateRows: isOpen ? '1fr' : '0fr',
-            // Anchor the child branch to this row's 14px icon center: 6px row
-            // margin + (7px root / 2px child padding) + 7px half-icon, minus
-            // the border's own half-pixel so the line's center lands on it.
-            marginLeft: depth === 0 ? '19.5px' : '14.5px',
+            // Anchor the child branch's guide to this row's 14px icon center. The guide is a 1px border on the branch,
+            // so the branch's rows start 1px inside it: root rows sit at 22px (8px margin + 7px padding + 7px half-icon).
+            // Nested rows use a 3.5px padding and a 10px branch margin, which steps each level 11px (half icon + 4px).
+            marginLeft: depth === 0 ? '21.5px' : '10px',
           }}
         >
-          <div className="overflow-hidden border-l-[0.5px] border-[var(--divider-subtle)]">
+          {/* Guides show only while the tree is hovered or focused; at rest the tree stays quiet. */}
+          <div className="overflow-hidden border-l-[0.5px] border-transparent transition-colors duration-200 group-hover/tree:border-[var(--divider-subtle)]">
             {children}
           </div>
         </div>
