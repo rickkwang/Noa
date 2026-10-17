@@ -1,7 +1,7 @@
 import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/mhchem.min.js';
 import type { Root as HastRoot } from 'hast';
-import type { ListItem, Root, Text, Parent, RootContent } from 'mdast';
+import type { Html, ListItem, Root, Text, Parent, RootContent, TableCell } from 'mdast';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
@@ -232,6 +232,20 @@ function remarkEmptyTask() {
   };
 }
 
+// Raw HTML stays escaped, but `<br>` in a table cell is how a cell, which must stay on one source line, gets a line
+// break (Obsidian renders it). Only that case becomes a Markdown break, matching the editor, which renders `<br>` in
+// table cells but not in paragraphs; nothing else is let through.
+function remarkBr() {
+  return (tree: Root) => {
+    visit(tree, 'tableCell', (cell: TableCell) => {
+      visit(cell, 'html', (node: Html, index: number | undefined, parent: Parent | undefined) => {
+        if (index == null || !parent || !/^<br\s*\/?>$/i.test(node.value)) return;
+        parent.children.splice(index, 1, { type: 'break' } as RootContent);
+      });
+    });
+  };
+}
+
 // Module-level so every <Markdown> render (and MarkdownChunk's memo) sees the
 // same plugin identities.
 // Headings carry the slug of their text, so in-note anchors ([[#Heading]], [text](#heading)) can scroll to them.
@@ -252,7 +266,7 @@ function decodeAnchor(raw: string): string {
   }
 }
 
-const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkEmptyTask, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
+const REMARK_PLUGINS: MarkdownOptions['remarkPlugins'] = [remarkGfm, remarkBr, remarkEmptyTask, remarkBreaks, remarkMath, remarkEmoji, remarkMark, remarkTag];
 const REHYPE_PLUGINS: MarkdownOptions['rehypePlugins'] = [rehypeHighlight, [rehypeKatex, { throwOnError: false, errorColor: '#CC7D5E' }]];
 
 // Only top-level blocks map to source lines; embedded notes have their own source.

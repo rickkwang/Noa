@@ -92,7 +92,8 @@ export const horizontalRule = new HorizontalRuleWidget();
 export const bullet = new BulletWidget();
 
 // Inline formatting inside table cells, which Live Preview renders rather than showing as source.
-const CELL_TOKEN = /\*\*(.+?)\*\*|~~(.+?)~~|`([^`]+)`|==(.+?)==|\*(.+?)\*|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|(?<![\\$])\$(?![\s$])([^$\n]*?[^\s$\\])\$(?![\d$])/g;
+// `$$…$$` and `<br>` in a cell render as the Reading view draws them: math inline, and a line break.
+const CELL_TOKEN = /\*\*(.+?)\*\*|~~(.+?)~~|`([^`]+)`|==(.+?)==|\*(.+?)\*|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|(?<![\\$])\$(?![\s$])([^$\n]*?[^\s$\\])\$(?![\d$])|\$\$([^$\n]+?)\$\$|<br\s*\/?>/gi;
 
 const inlineSourceOffsets = new WeakMap<Node, { offset: number; math?: boolean }>();
 
@@ -121,13 +122,19 @@ export function appendInline(parent: HTMLElement, text: string, base = 0): void 
   for (const match of text.matchAll(CELL_TOKEN)) {
     const index = match.index ?? 0;
     if (index > last) appendText(last, index);
-    const [, bold, strike, code, highlight, italic, wikiTarget, wikiAlias, math] = match;
+    const [token, bold, strike, code, highlight, italic, wikiTarget, wikiAlias, inlineMath, displayMath] = match;
+    if (token[0] === '<') {
+      parent.appendChild(document.createElement('br'));
+      last = index + token.length;
+      continue;
+    }
+    const math = inlineMath ?? displayMath;
     const el = math !== undefined
       ? new InlineMathWidget(math).toDOM()
       : document.createElement(bold ? 'strong' : strike ? 's' : code ? 'code' : highlight ? 'mark' : italic ? 'em' : 'span');
     if (wikiTarget) el.className = 'cm-lp-wikilink';
     const prefix = wikiTarget ? (wikiAlias === undefined ? 2 : wikiTarget.length + 3)
-      : bold || strike || highlight ? 2 : 1;
+      : bold || strike || highlight || displayMath ? 2 : 1;
     // Emphasis can hold math, links or other emphasis (`**mass $M$**`); code and link text stay literal.
     const nested = bold ?? strike ?? highlight ?? italic;
     if (nested !== undefined) appendInline(el, nested, base + index + prefix);

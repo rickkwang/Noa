@@ -64,12 +64,15 @@ function paintCellMath(cell: HTMLElement | null) {
     range.setEnd(...end);
     groups.set(type, [...(groups.get(type) ?? []), range]);
   };
-  for (const match of (cell?.textContent ?? '').matchAll(INLINE_MATH)) {
+  const text = cell?.textContent ?? '';
+  // A cell renders `$$…$$` as well as `$…$` (appendInline), so both are coloured.
+  for (const match of [...text.matchAll(INLINE_MATH), ...text.matchAll(/\$\$([^$\n]+?)\$\$/g)]) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
-    add('delim', start, start + 1);
-    add('delim', end - 1, end);
-    for (const token of texTokens(match[1])) add(token.type, start + 1 + token.from, start + 1 + token.to);
+    const delim = (match[0].length - match[1].length) / 2;
+    add('delim', start, start + delim);
+    add('delim', end - delim, end);
+    for (const token of texTokens(match[1])) add(token.type, start + delim + token.from, start + delim + token.to);
   }
   for (const type of TEX_HIGHLIGHTS) registry.set(`noa-tex-${type}`, new Highlight(...(groups.get(type) ?? [])));
 }
