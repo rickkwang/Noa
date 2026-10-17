@@ -1446,7 +1446,7 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div aria-label="Notifications" role="region" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto pointer-events-none font-ui">
+      <div aria-label="Notifications" role="region" className="fixed bottom-[-8px] right-[-8px] z-50 flex flex-col gap-2 w-[calc(100%+1rem)] max-w-[calc(24rem+3rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-6 pointer-events-none font-ui">
         {undoableDelete && (
           <div role="status" className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
             <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">
@@ -1514,9 +1514,9 @@ export default function App() {
           </div>
         )}
         {showStorageNotice && !showVaultOnboarding && (
-          <div className="pointer-events-auto bg-[var(--surface-page,#F9F9F7)] px-4 py-3 rounded-md noa-floating-panel">
-            <div className="text-sm font-bold text-[var(--text-primary,#2D2D2B)] mb-1">Local storage only</div>
-            <div className="text-xs text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_70%,transparent)] leading-relaxed mb-3">
+          <div className="pointer-events-auto bg-[var(--bg-card,#FFFFFF)] p-5 rounded-[10px] border border-[var(--divider-subtle)] shadow-[0_8px_24px_#0000001f,0_2px_6px_#00000014]">
+            <div className="text-sm font-bold leading-[18px] text-[var(--text-primary,#2D2D2B)] mb-1">Local storage only</div>
+            <div className="text-body text-[var(--text-secondary,#7B7974)] mb-3">
               {LOCAL_DATA_BOUNDARY_COPY}
             </div>
             <button
@@ -1524,7 +1524,7 @@ export default function App() {
                 setShowStorageNotice(false);
                 try { localStorage.setItem(STORAGE_KEYS.STORAGE_NOTICE_SEEN, '1'); } catch { /* quota exceeded */ }
               }}
-              className="text-xs font-bold border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors"
+              className="text-body font-normal border border-[var(--divider-subtle)] px-3 py-1.5 rounded text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)] transition-colors"
             >
               Got it
             </button>
