@@ -11,7 +11,7 @@ import { VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import { Note, Folder as FolderType } from '../types';
 import { FileNode, buildFolderTree, FolderTreeNode } from './sidebar/FileNode';
 import { VaultFooter, VaultFooterProps } from './sidebar/VaultFooter';
-import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X, ArrowUpDown, Check, Search } from '@/src/lib/icons';
+import { FileText, Plus, Folder, FolderPlus, BookOpen, Calendar, SquarePen, Users, ChevronsUpDown, ChevronsDownUp, Dices, X, MoreHorizontal, Check, Search } from '@/src/lib/icons';
 
 export interface SidebarSearchField {
   inputRef: React.RefObject<HTMLInputElement | null>;
@@ -175,16 +175,16 @@ export default function Sidebar({
     lsGet(STORAGE_KEYS.NOTE_SORT_ORDER) === 'name' ? 'name' : 'updatedAt'
   );
   useEffect(() => { lsSet(STORAGE_KEYS.NOTE_SORT_ORDER, noteSortOrder); }, [noteSortOrder]);
-  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!isSortMenuOpen) return;
+    if (!isActionsMenuOpen) return;
     const close = (event: Event) => {
-      if (!sortMenuRef.current?.parentElement?.contains(event.target as Node)) setIsSortMenuOpen(false);
+      if (!actionsMenuRef.current?.parentElement?.contains(event.target as Node)) setIsActionsMenuOpen(false);
     };
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
-  }, [isSortMenuOpen]);
+  }, [isActionsMenuOpen]);
 
 
   // Sorted once per notes/sort-order change, not per render.
@@ -493,9 +493,13 @@ export default function Sidebar({
       )}
       {/* Vertical rhythm by centre line: titlebar 22px, this row 60px, first tree row ~98px — two equal 38px steps. */}
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
+        {/* The toolbar doubles as the workspace heading; low-frequency view actions live behind ⋯. */}
+        <span className="min-w-0 flex-1 truncate pl-2 text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">
+          {blankCreateTarget === VAULT_ROOT_FOLDER_ID ? 'Obsidian Vault' : 'Notes'}
+        </span>
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
           title="New note  ⌘N"
           aria-label="New note"
         >
@@ -503,73 +507,79 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => onCreateFolder(blankCreateTarget === VAULT_ROOT_FOLDER_ID ? VAULT_ROOT_FOLDER_ID : undefined)}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
+          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
           title="New folder"
           aria-label="New folder"
         >
           <FolderPlus size={14} />
         </button>
-        {dailyNotesEnabled && (
-        <button
-          onClick={() => onOpenDailyNote?.()}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
-          title="Open today's daily note  ⌘⇧K"
-          aria-label="Open today's daily note"
-        >
-          <Calendar size={14} />
-        </button>
-        )}
-        <button
-          onClick={() => {
-            if (notes.length === 0) return;
-            const randomNote = notes[Math.floor(Math.random() * notes.length)];
-            onSelectNote(randomNote.id);
-          }}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
-          title="Open random note"
-          aria-label="Open random note"
-        >
-          <Dices size={14} />
-        </button>
-        <button
-          onClick={() => {
-            setFoldersExpandedByDefault((value) => !value);
-            setFolderTreeResetKey((value) => value + 1);
-          }}
-          className="flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press"
-          title={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
-          aria-label={foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
-        >
-          {foldersExpandedByDefault ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
-        </button>
-        {/* Sort order behind one quiet toolbar button: the menu names both orders and ticks the current one. */}
-        <div className="relative ml-auto">
+        <div className="relative">
           <button
-            onClick={() => setIsSortMenuOpen((open) => !open)}
-            className={`flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press ${isSortMenuOpen ? 'noa-sidebar-active-surface' : ''}`}
-            title={`Sort notes: ${NOTE_SORT_OPTIONS.find((o) => o.value === noteSortOrder)?.label}`}
-            aria-label="Sort notes"
+            onClick={() => setIsActionsMenuOpen((open) => !open)}
+            className={`flex size-6 items-center justify-center rounded-md noa-sidebar-hover-surface text-[var(--sidebar-text-muted,#898781)] hover:text-[var(--text-primary,#2D2D2B)] transition-colors noa-press ${isActionsMenuOpen ? 'noa-sidebar-active-surface' : ''}`}
+            title="More"
+            aria-label="More sidebar actions"
             aria-haspopup="menu"
-            aria-expanded={isSortMenuOpen}
+            aria-expanded={isActionsMenuOpen}
           >
-            <ArrowUpDown size={14} />
+            <MoreHorizontal size={14} />
           </button>
-          {isSortMenuOpen && (
+          {isActionsMenuOpen && (
             <div
-              ref={sortMenuRef}
+              ref={actionsMenuRef}
               role="menu"
-              aria-label="Sort notes"
-              className="absolute right-0 top-full z-50 mt-1 w-44 rounded-panel bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel"
-              onKeyDown={(e) => { if (e.key === 'Escape') setIsSortMenuOpen(false); }}
+              aria-label="Sidebar actions"
+              className="absolute right-0 top-full z-50 mt-1 w-52 rounded-panel bg-[var(--surface-page,#F9F9F7)] p-1 font-ui noa-floating-panel"
+              onKeyDown={(e) => { if (e.key === 'Escape') setIsActionsMenuOpen(false); }}
             >
-              <div className="px-2.5 pb-1 pt-1.5 text-xs text-[var(--sidebar-text-muted,#898781)]">Sort by</div>
+              {dailyNotesEnabled && (
+                <button
+                  role="menuitem"
+                  className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]"
+                  onClick={() => { setIsActionsMenuOpen(false); onOpenDailyNote?.(); }}
+                  aria-label="Open today's daily note"
+                >
+                  <Calendar size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
+                  <span className="flex-1">Today's note</span>
+                  <span className="text-xs text-[var(--sidebar-text-muted,#898781)]">⌘⇧K</span>
+                </button>
+              )}
+              <button
+                role="menuitem"
+                className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)] disabled:pointer-events-none disabled:opacity-40"
+                disabled={notes.length === 0}
+                onClick={() => {
+                  setIsActionsMenuOpen(false);
+                  if (notes.length === 0) return;
+                  onSelectNote(notes[Math.floor(Math.random() * notes.length)].id);
+                }}
+              >
+                <Dices size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
+                Random note
+              </button>
+              <button
+                role="menuitem"
+                className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]"
+                onClick={() => {
+                  setIsActionsMenuOpen(false);
+                  setFoldersExpandedByDefault((value) => !value);
+                  setFolderTreeResetKey((value) => value + 1);
+                }}
+              >
+                {foldersExpandedByDefault
+                  ? <ChevronsDownUp size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
+                  : <ChevronsUpDown size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />}
+                {foldersExpandedByDefault ? 'Collapse all folders' : 'Expand all folders'}
+              </button>
+              <div className="mx-2.5 my-1 h-px bg-[var(--divider-subtle)]" />
+              <div className="px-2.5 pb-1 pt-1 text-xs text-[var(--sidebar-text-muted,#898781)]">Sort by</div>
               {NOTE_SORT_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   role="menuitemradio"
                   aria-checked={option.value === noteSortOrder}
                   className="noa-sidebar-hover-surface flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-body text-[var(--text-primary,#2D2D2B)]"
-                  onClick={() => { setNoteSortOrder(option.value); setIsSortMenuOpen(false); }}
+                  onClick={() => { setNoteSortOrder(option.value); setIsActionsMenuOpen(false); }}
                 >
                   <span className="flex w-3.5 shrink-0 justify-center">
                     {option.value === noteSortOrder && <Check size={13} />}
@@ -802,10 +812,12 @@ export default function Sidebar({
                 {/* Connected vault section — ownership is origin, not import provenance. */}
                 {(vaultFolderTree.length > 0 || rootVaultNotes.length > 0) && (
                   <>
-                    {/* Top padding only separates it from Noa rows above; with none, the toolbar gap already does. */}
+                    {/* Only labelled when Noa rows sit above it; otherwise the toolbar heading already names the vault. */}
+                    {(noaFolderTree.length > 0 || rootNoaNotes.length > 0) && (
                     <div className={`mx-2 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
                       <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">Obsidian Vault</span>
                     </div>
+                    )}
                     <div
                       onDragEnter={markVaultRootTarget}
                       onDragOver={markVaultRootTarget}
