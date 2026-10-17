@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSidebarDrag } from '../hooks/useSidebarDrag';
 import { useSidebarSearch } from '../hooks/useSidebarSearch';
-import { attachEdgeFade } from '../lib/edgeFade';
 import { classifyFolderImportFile } from '../lib/importUtils';
 import { getFolderLeafName, getFolderParentPath } from '../lib/pathUtils';
 import { lsGet, lsSet } from '../lib/safeLocalStorage';
@@ -435,28 +434,12 @@ export default function Sidebar({
     }
   };
 
-  // The toolbar seam appears once the tree scrolls under it; the fade writes to the sidebar root since the overlay is the scroller's sibling.
-  const sidebarRootRef = useRef<HTMLDivElement>(null);
+  // The toolbar seam's fade is driven by the tree's scroll timeline in CSS (see .noa-sidebar-fade-scope).
   const treeScrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const scroller = treeScrollRef.current;
-    const root = sidebarRootRef.current;
-    if (!scroller || !root) return;
-    const fade = attachEdgeFade(scroller, { target: root, end: true });
-    // The bottom edge moves when folders expand/collapse or the window resizes, with no scroll event.
-    const observer = new ResizeObserver(fade.refresh);
-    observer.observe(scroller);
-    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
-    return () => {
-      observer.disconnect();
-      fade.dispose();
-    };
-  }, []);
 
   return (
     <div 
-      ref={sidebarRootRef}
-      className="noa-sidebar-surface w-full h-full min-h-0 flex flex-col shrink-0 relative"
+      className="noa-sidebar-surface noa-sidebar-fade-scope w-full h-full min-h-0 flex flex-col shrink-0 relative"
       // Suppresses hover surfaces and row actions while a tree drag is in
       // flight, the way Obsidian gates them behind `body:not(.is-grabbing)`.
       data-grabbing={draggingId ? 'true' : undefined}

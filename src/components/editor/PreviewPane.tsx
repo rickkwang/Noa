@@ -16,7 +16,6 @@ import { visit } from 'unist-util-visit';
 import { useAttachments } from '../../hooks/useAttachments';
 import { useIsDark } from '../../hooks/useIsDark';
 import { findNoteAttachment, mapAttachmentReferences } from '../../lib/attachmentUtils';
-import { attachEdgeFade } from '../../lib/edgeFade';
 import { splitFrontmatter } from '../../lib/frontmatter';
 import { splitMarkdownForChunkedPreview } from '../../lib/markdownChunks';
 import { buildLinkIndex, getBacklinks, headingSlug, isImageSize, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget, sliceHeadingSection, splitImageSize } from '../../lib/noteUtils';
@@ -1132,14 +1131,6 @@ export const PreviewPane = React.memo(function PreviewPane({
   );
 
   const visitedIds = useMemo(() => new Set([note.id]), [note.id]);
-
-  // Top fade is written straight to the DOM so scroll never re-renders the markdown body.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || printMode) return;
-    const fade = attachEdgeFade(el);
-    return () => fade.dispose();
-  }, [printMode, scrollRef]);
 
   // Runs once the note's headings are in the DOM. The Editor mounts the pane a frame after a note switch,
   // so the heading cannot be looked up from the Editor's own effect.

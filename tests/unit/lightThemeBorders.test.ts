@@ -120,7 +120,7 @@ describe('light theme border tokens', () => {
     expect(previewPane).toContain("var(--divider-subtle, #E6E2DA)");
     expect(previewPane).not.toContain("rgba(45,45,43,0.2)");
     expect(previewPane).not.toContain("var(--border-strong, #AAA397)");
-    // The fade ramp scales off --noa-fade-top (written by lib/edgeFade), so it has no height until the note scrolls.
+    // The fade ramp scales off --noa-fade-top, which a scroll-driven animation writes, so it has no height until the note scrolls.
     expect(previewPane).toContain('noa-top-scroll-fade');
     expect(indexCss).toContain('.noa-top-scroll-fade {');
     expect(indexCss).toContain('calc(var(--noa-fade-top, 0) *');

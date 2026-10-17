@@ -227,47 +227,63 @@ body {
   background-color: var(--bg-sidebar, #F4F4F2);
 }
 /* Stops 6px short of the right edge to clear the scrollbar gutter (must match ::-webkit-scrollbar width).
-   A colored overlay (not a mask) on a fixed 32px band, faded by opacity. */
+   A colored overlay (not a mask) on a fixed 28px band with the stops of a 28px fade. Its opacity is the tree's top
+   edge, driven by the tree's own scroll timeline (see .noa-sidebar-fade-scope), so it appears once rows scroll under it. */
 .noa-sidebar-toolbar-mask::after {
   content: '';
   position: absolute;
   right: 6px;
-  bottom: -32px;
+  bottom: -28px;
   left: 0;
-  height: 32px;
+  height: 28px;
   pointer-events: none;
   opacity: var(--noa-fade-top, 0);
+  animation-name: noa-fade-top-in;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: --noa-sidebar-tree;
+  animation-range: 0px 28px;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 100%, transparent) 0px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 96%, transparent) 4px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 84%, transparent) 8px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 68%, transparent) 12px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 50%, transparent) 16px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 32%, transparent) 20px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 16%, transparent) 24px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 4%, transparent) 28px,
-    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 0%, transparent) 32px);
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 100%, transparent) 0%,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 85%, transparent) 13%,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 50%, transparent) 40%,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 15%, transparent) 70%,
+    color-mix(in srgb, var(--bg-sidebar, #F4F4F2) 0%, transparent) 100%);
 }
 
-/* ── Shared edge-fade curve ──
-   Scroll-edge fades use a smoothstep driven by --noa-fade-top/left/right (0→1, written by lib/edgeFade).
-   Eased, not linear (linear kinks read as edges). Long relative to text (≥ ~3 line-heights, so glyphs aren't sliced).
-   Stops are restated per surface: var() in a custom property is substituted at declaration, so a :root ramp would freeze. */
+/* The sidebar root exposes the tree's scroll timeline to the toolbar overlay, which is the list's sibling. */
+.noa-sidebar-fade-scope {
+  timeline-scope: --noa-sidebar-tree;
+}
 
-/* Preview pane: leading edge dissolves under the tab strip. At rest the ramp has zero height.
-   The right-edge solid strip keeps the scrollbar fully opaque; its 6px must match ::-webkit-scrollbar. */
+/* ── Scroll-edge fades ──
+   Each edge is a number from 0 to 1 that a scroll-driven animation writes from the scroll position itself: no
+   script runs per scroll frame. The top (left) edge eases in over the first 28px of scroll and the
+   bottom (right) edge eases out over the last 28px. Both are gone at rest, and a surface with nothing to scroll has
+   no fade. The ramp is restated per surface: var() in a custom property is substituted at declaration, so a :root
+   ramp would freeze. */
+@property --noa-fade-top { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --noa-fade-bottom { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --noa-fade-left { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --noa-fade-right { syntax: '<number>'; inherits: false; initial-value: 0; }
+@keyframes noa-fade-top-in { from { --noa-fade-top: 0; } to { --noa-fade-top: 1; } }
+@keyframes noa-fade-bottom-out { from { --noa-fade-bottom: 1; } to { --noa-fade-bottom: 0; } }
+@keyframes noa-fade-left-in { from { --noa-fade-left: 0; } to { --noa-fade-left: 1; } }
+@keyframes noa-fade-right-out { from { --noa-fade-right: 1; } to { --noa-fade-right: 0; } }
+
+/* Preview pane: leading edge dissolves under the tab strip. The right-edge solid strip keeps the scrollbar fully
+   opaque; its 6px must match ::-webkit-scrollbar. */
 .noa-top-scroll-fade {
   --noa-fade-ramp:
     rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
-    rgb(0 0 0 / 0.04) calc(var(--noa-fade-top, 0) * 12px),
-    rgb(0 0 0 / 0.16) calc(var(--noa-fade-top, 0) * 24px),
-    rgb(0 0 0 / 0.32) calc(var(--noa-fade-top, 0) * 36px),
-    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 48px),
-    rgb(0 0 0 / 0.68) calc(var(--noa-fade-top, 0) * 60px),
-    rgb(0 0 0 / 0.84) calc(var(--noa-fade-top, 0) * 72px),
-    rgb(0 0 0 / 0.96) calc(var(--noa-fade-top, 0) * 84px),
-    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 96px);
+    rgb(0 0 0 / 0.05) calc(var(--noa-fade-top, 0) * 4.2px),
+    rgb(0 0 0 / 0.15) calc(var(--noa-fade-top, 0) * 8.4px),
+    rgb(0 0 0 / 0.3) calc(var(--noa-fade-top, 0) * 12.6px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 16.8px),
+    rgb(0 0 0 / 0.7) calc(var(--noa-fade-top, 0) * 21px),
+    rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 25.2px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 28px);
   -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   -webkit-mask-size: 100% 100%, 6px 100%;
@@ -276,42 +292,47 @@ body {
   mask-position: top left, top right;
   -webkit-mask-repeat: no-repeat, no-repeat;
   mask-repeat: no-repeat, no-repeat;
+  animation-name: noa-fade-top-in;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(self block);
+  animation-range: 0px 28px;
+  scroll-padding-top: 28px;
 }
 
-/* The tab strip's two overflow edges. A mask rather than a colored overlay
-   because the header background is themed at runtime and an overlay would have
-   to match it exactly. 24px rather than the vertical 96px: this ramp crosses
-   letters sideways, which is the ordinary look of a clipped strip, and a long
-   one would swallow a whole tab label. Both edges are independent — scrolling
-   away from the left edge eases its ramp in while the right one eases out as
-   the last tab arrives. */
+/* The tab strip's two overflow edges. A mask rather than a colored overlay because the header background is themed
+   at runtime and an overlay would have to match it exactly. Both edges are independent: scrolling away from the left
+   edge eases its ramp in while the right one eases out as the last tab arrives. */
 .noa-edge-fade-x {
   --noa-fade-ramp:
     rgb(0 0 0 / 0) calc(var(--noa-fade-left, 0) * 0px),
-    rgb(0 0 0 / 0.04) calc(var(--noa-fade-left, 0) * 3px),
-    rgb(0 0 0 / 0.16) calc(var(--noa-fade-left, 0) * 6px),
-    rgb(0 0 0 / 0.32) calc(var(--noa-fade-left, 0) * 9px),
-    rgb(0 0 0 / 0.5) calc(var(--noa-fade-left, 0) * 12px),
-    rgb(0 0 0 / 0.68) calc(var(--noa-fade-left, 0) * 15px),
-    rgb(0 0 0 / 0.84) calc(var(--noa-fade-left, 0) * 18px),
-    rgb(0 0 0 / 0.96) calc(var(--noa-fade-left, 0) * 21px),
-    rgb(0 0 0 / 1) calc(var(--noa-fade-left, 0) * 24px),
-    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-right, 0) * 24px),
-    rgb(0 0 0 / 0.96) calc(100% - var(--noa-fade-right, 0) * 21px),
-    rgb(0 0 0 / 0.84) calc(100% - var(--noa-fade-right, 0) * 18px),
-    rgb(0 0 0 / 0.68) calc(100% - var(--noa-fade-right, 0) * 15px),
-    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-right, 0) * 12px),
-    rgb(0 0 0 / 0.32) calc(100% - var(--noa-fade-right, 0) * 9px),
-    rgb(0 0 0 / 0.16) calc(100% - var(--noa-fade-right, 0) * 6px),
-    rgb(0 0 0 / 0.04) calc(100% - var(--noa-fade-right, 0) * 3px),
+    rgb(0 0 0 / 0.05) calc(var(--noa-fade-left, 0) * 4.2px),
+    rgb(0 0 0 / 0.15) calc(var(--noa-fade-left, 0) * 8.4px),
+    rgb(0 0 0 / 0.3) calc(var(--noa-fade-left, 0) * 12.6px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-left, 0) * 16.8px),
+    rgb(0 0 0 / 0.7) calc(var(--noa-fade-left, 0) * 21px),
+    rgb(0 0 0 / 0.85) calc(var(--noa-fade-left, 0) * 25.2px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-left, 0) * 28px),
+    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-right, 0) * 28px),
+    rgb(0 0 0 / 0.85) calc(100% - var(--noa-fade-right, 0) * 25.2px),
+    rgb(0 0 0 / 0.7) calc(100% - var(--noa-fade-right, 0) * 21px),
+    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-right, 0) * 16.8px),
+    rgb(0 0 0 / 0.3) calc(100% - var(--noa-fade-right, 0) * 12.6px),
+    rgb(0 0 0 / 0.15) calc(100% - var(--noa-fade-right, 0) * 8.4px),
+    rgb(0 0 0 / 0.05) calc(100% - var(--noa-fade-right, 0) * 4.2px),
     rgb(0 0 0 / 0) calc(100% - var(--noa-fade-right, 0) * 0px);
   -webkit-mask-image: linear-gradient(to right, var(--noa-fade-ramp));
   mask-image: linear-gradient(to right, var(--noa-fade-ramp));
+  animation-name: noa-fade-left-in, noa-fade-right-out;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(self inline), scroll(self inline);
+  animation-range: 0px 28px, calc(100% - 28px) 100%;
+  scroll-padding-inline: 28px;
 }
 
-/* Right-panel card bodies: both vertical edges dissolve over 28px with a seven-step
-   ramp (5/15/30/50/70/85% opacity at 15/30/45/60/75/87% of the length). Each edge grows in over the first 28px of
-   scroll and is gone at rest (lib/edgeFade, travel 28). The 6px solid strip keeps the scrollbar opaque; it must match ::-webkit-scrollbar. */
+/* Right-panel card bodies: both vertical edges dissolve over 28px. The 6px solid strip keeps the scrollbar opaque;
+   it must match ::-webkit-scrollbar. */
 .noa-edge-fade-y {
   --noa-fade-ramp:
     rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
@@ -319,12 +340,12 @@ body {
     rgb(0 0 0 / 0.15) calc(var(--noa-fade-top, 0) * 8.4px),
     rgb(0 0 0 / 0.3) calc(var(--noa-fade-top, 0) * 12.6px),
     rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 16.8px),
-    rgb(0 0 0 / 0.7) calc(var(--noa-fade-top, 0) * 21.0px),
-    rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 24.36px),
+    rgb(0 0 0 / 0.7) calc(var(--noa-fade-top, 0) * 21px),
+    rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 25.2px),
     rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 28px),
     rgb(0 0 0 / 1) calc(100% - var(--noa-fade-bottom, 0) * 28px),
-    rgb(0 0 0 / 0.85) calc(100% - var(--noa-fade-bottom, 0) * 24.36px),
-    rgb(0 0 0 / 0.7) calc(100% - var(--noa-fade-bottom, 0) * 21.0px),
+    rgb(0 0 0 / 0.85) calc(100% - var(--noa-fade-bottom, 0) * 25.2px),
+    rgb(0 0 0 / 0.7) calc(100% - var(--noa-fade-bottom, 0) * 21px),
     rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-bottom, 0) * 16.8px),
     rgb(0 0 0 / 0.3) calc(100% - var(--noa-fade-bottom, 0) * 12.6px),
     rgb(0 0 0 / 0.15) calc(100% - var(--noa-fade-bottom, 0) * 8.4px),
@@ -338,6 +359,27 @@ body {
   mask-position: top left, top right;
   -webkit-mask-repeat: no-repeat, no-repeat;
   mask-repeat: no-repeat, no-repeat;
+  animation-name: noa-fade-top-in, noa-fade-bottom-out;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(self block), scroll(self block);
+  animation-range: 0px 28px, calc(100% - 28px) 100%;
+  scroll-padding-block: 28px;
+}
+
+/* A keyboard focus inside a scroller would be dimmed by its edge fade, so the fade steps aside while focus is there. */
+.noa-top-scroll-fade:has(:focus-visible),
+.noa-edge-fade-x:has(:focus-visible),
+.noa-edge-fade-y:has(:focus-visible),
+.noa-sidebar-scroll-fade:has(:focus-visible) {
+  --noa-fade-top: 0 !important;
+  --noa-fade-bottom: 0 !important;
+  --noa-fade-left: 0 !important;
+  --noa-fade-right: 0 !important;
+  scroll-padding: 0 !important;
+}
+.noa-sidebar-fade-scope:has(.noa-sidebar-scroll-fade:has(:focus-visible)) .noa-sidebar-toolbar-mask::after {
+  --noa-fade-top: 0 !important;
 }
 
 /* Inside the settings dialog the shared 8% divider is too faint to read: its
@@ -1139,21 +1181,35 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   margin-right: -6px;
 }
 
-/* Top edge of the sidebar list. Driven by --noa-fade-top (lib/edgeFade, attached in Sidebar). At rest the
-   ramp collapses to zero height, so the first row is not dimmed until the list scrolls.
-   The right-edge solid strip keeps the scrollbar opaque; its 6px must match ::-webkit-scrollbar. */
+/* Top and bottom edges of the sidebar list, on the shared 28px curve. The list is the timeline's source (see
+   .noa-sidebar-fade-scope); its own edges are driven by its own scroll position. At rest the ramp collapses, so the
+   first row is not dimmed until the list scrolls. The right-edge solid strip keeps the scrollbar opaque; its 6px must
+   match ::-webkit-scrollbar. */
 .noa-sidebar-scroll-fade {
+  scroll-timeline: --noa-sidebar-tree block;
+  scroll-padding-block: 28px;
   --noa-fade-ramp:
     rgb(0 0 0 / 0) calc(var(--noa-fade-top, 0) * 0px),
-    rgb(0 0 0 / 0.16) calc(var(--noa-fade-top, 0) * 4px),
-    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 8px),
-    rgb(0 0 0 / 0.84) calc(var(--noa-fade-top, 0) * 12px),
-    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 16px),
-    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-bottom, 0) * 16px),
-    rgb(0 0 0 / 0.84) calc(100% - var(--noa-fade-bottom, 0) * 12px),
-    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-bottom, 0) * 8px),
-    rgb(0 0 0 / 0.16) calc(100% - var(--noa-fade-bottom, 0) * 4px),
-    rgb(0 0 0 / 0) 100%;
+    rgb(0 0 0 / 0.05) calc(var(--noa-fade-top, 0) * 4.2px),
+    rgb(0 0 0 / 0.15) calc(var(--noa-fade-top, 0) * 8.4px),
+    rgb(0 0 0 / 0.3) calc(var(--noa-fade-top, 0) * 12.6px),
+    rgb(0 0 0 / 0.5) calc(var(--noa-fade-top, 0) * 16.8px),
+    rgb(0 0 0 / 0.7) calc(var(--noa-fade-top, 0) * 21px),
+    rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 25.2px),
+    rgb(0 0 0 / 1) calc(var(--noa-fade-top, 0) * 28px),
+    rgb(0 0 0 / 1) calc(100% - var(--noa-fade-bottom, 0) * 28px),
+    rgb(0 0 0 / 0.85) calc(100% - var(--noa-fade-bottom, 0) * 25.2px),
+    rgb(0 0 0 / 0.7) calc(100% - var(--noa-fade-bottom, 0) * 21px),
+    rgb(0 0 0 / 0.5) calc(100% - var(--noa-fade-bottom, 0) * 16.8px),
+    rgb(0 0 0 / 0.3) calc(100% - var(--noa-fade-bottom, 0) * 12.6px),
+    rgb(0 0 0 / 0.15) calc(100% - var(--noa-fade-bottom, 0) * 8.4px),
+    rgb(0 0 0 / 0.05) calc(100% - var(--noa-fade-bottom, 0) * 4.2px),
+    rgb(0 0 0 / 0) calc(100% - var(--noa-fade-bottom, 0) * 0px);
+  animation-name: noa-fade-top-in, noa-fade-bottom-out;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(self block), scroll(self block);
+  animation-range: 0px 28px, calc(100% - 28px) 100%;
   -webkit-mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   mask-image: linear-gradient(to bottom, var(--noa-fade-ramp)), linear-gradient(to bottom, black, black);
   -webkit-mask-size: 100% 100%, 6px 100%;

@@ -1,172 +1,63 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { attachEdgeFade, FADE_TRAVEL_PX } from '../../src/lib/edgeFade';
+import { describe, expect, it } from 'vitest';
 
-/* Scroll-edge fade driver, tested against fakes. Contract the CSS depends on:
-   0 at rest (so "no fade until scrolled" needs no extra rule), 1 past the
-   travel distance, and one write per frame however many scroll events fire. */
+/* Scroll-edge fades are CSS only: a scroll-driven animation writes each edge from the scroll position, so no script
+   runs per scroll frame. These pin the contract the surfaces depend on. */
 
-type FakeStyle = {
-  setProperty: (name: string, value: string) => void;
-  removeProperty: (name: string) => void;
-  props: Record<string, string>;
+const cssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
+
+const ruleBody = (css: string, selector: string) => {
+  const start = css.indexOf(`${selector} {`);
+  if (start < 0) throw new Error(`no rule for ${selector}`);
+  return css.slice(start, css.indexOf('\n}', start));
 };
 
-const fakeStyle = (): FakeStyle => {
-  const props: Record<string, string> = {};
-  return {
-    props,
-    setProperty: (name, value) => { props[name] = value; },
-    removeProperty: (name) => { delete props[name]; },
-  };
-};
-
-const fakeScroller = (metrics: Partial<Record<'scrollTop' | 'scrollLeft' | 'scrollHeight' | 'clientHeight' | 'scrollWidth' | 'clientWidth', number>> = {}) => {
-  const listeners = new Set<() => void>();
-  const el = {
-    scrollTop: 0,
-    scrollLeft: 0,
-    scrollHeight: 1000,
-    clientHeight: 500,
-    scrollWidth: 1000,
-    clientWidth: 500,
-    ...metrics,
-    style: fakeStyle(),
-    addEventListener: (_type: string, fn: () => void) => { listeners.add(fn); },
-    removeEventListener: (_type: string, fn: () => void) => { listeners.delete(fn); },
-  };
-  return { el, fire: () => listeners.forEach(fn => fn()), listenerCount: () => listeners.size };
-};
-
-let frames: Array<() => void> = [];
-let nextFrameId = 1;
-const flush = () => { const queued = frames; frames = []; queued.forEach(fn => fn()); };
-
-beforeEach(() => {
-  frames = [];
-  nextFrameId = 1;
-  globalThis.requestAnimationFrame = ((fn: FrameRequestCallback) => {
-    frames.push(() => fn(0));
-    return nextFrameId++;
-  }) as typeof globalThis.requestAnimationFrame;
-  globalThis.cancelAnimationFrame = (() => { frames = []; }) as typeof globalThis.cancelAnimationFrame;
-});
-
-afterEach(() => { frames = []; });
-
-describe('attachEdgeFade', () => {
-  it('writes 0 at rest, so an unscrolled surface needs no separate rule', () => {
-    const { el } = fakeScroller();
-    attachEdgeFade(el as unknown as HTMLElement);
-    expect(el.style.props['--noa-fade-top']).toBe('0.000');
-  });
-
-  it('ramps to 1 across the travel distance and clamps beyond it', () => {
-    const { el, fire } = fakeScroller();
-    attachEdgeFade(el as unknown as HTMLElement);
-
-    el.scrollTop = FADE_TRAVEL_PX / 2;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-top']).toBe('0.500');
-
-    el.scrollTop = FADE_TRAVEL_PX * 4;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-top']).toBe('1.000');
-  });
-
-  it('reaches full strength over a caller-set travel, on both edges', () => {
-    const { el, fire } = fakeScroller();
-    attachEdgeFade(el as unknown as HTMLElement, { end: true, travel: 28 });
-
-    el.scrollTop = 14;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-top']).toBe('0.500');
-
-    el.scrollTop = 500 - 7;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-top']).toBe('1.000');
-    expect(el.style.props['--noa-fade-bottom']).toBe('0.250');
-  });
-
-  it('clamps the rubber-band overscroll that macOS reports as a negative offset', () => {
-    const { el, fire } = fakeScroller();
-    attachEdgeFade(el as unknown as HTMLElement);
-    el.scrollTop = -40;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-top']).toBe('0.000');
-  });
-
-  it('coalesces a scroll burst into one write', () => {
-    const { el, fire } = fakeScroller();
-    attachEdgeFade(el as unknown as HTMLElement);
-    el.scrollTop = 32;
-
-    fire(); fire(); fire();
-    expect(frames).toHaveLength(1);
-    flush();
-    expect(el.style.props['--noa-fade-top']).toBe('0.500');
-  });
-
-  it('tracks both edges on the horizontal axis, easing the far one out at the end', () => {
-    const { el, fire } = fakeScroller({ scrollWidth: 1000, clientWidth: 500 });
-    attachEdgeFade(el as unknown as HTMLElement, { axis: 'x', end: true });
-    expect(el.style.props['--noa-fade-left']).toBe('0.000');
-    expect(el.style.props['--noa-fade-right']).toBe('1.000');
-
-    el.scrollLeft = 500 - FADE_TRAVEL_PX / 2;
-    fire(); flush();
-    expect(el.style.props['--noa-fade-left']).toBe('1.000');
-    expect(el.style.props['--noa-fade-right']).toBe('0.500');
-  });
-
-  it('reports no far-edge fade when there is nothing to scroll', () => {
-    const { el } = fakeScroller({ scrollWidth: 500, clientWidth: 500 });
-    attachEdgeFade(el as unknown as HTMLElement, { axis: 'x', end: true });
-    expect(el.style.props['--noa-fade-right']).toBe('0.000');
-  });
-
-  it('writes to a target that is not the scroller, for overlays on a sibling', () => {
-    const { el } = fakeScroller();
-    const target = { style: fakeStyle() };
-    el.scrollTop = FADE_TRAVEL_PX;
-    attachEdgeFade(el as unknown as HTMLElement, { target: target as unknown as HTMLElement });
-    expect(target.style.props['--noa-fade-top']).toBe('1.000');
-    expect(el.style.props['--noa-fade-top']).toBeUndefined();
-  });
-
-  it('drops the listener and the variables on dispose', () => {
-    const { el, listenerCount } = fakeScroller();
-    const fade = attachEdgeFade(el as unknown as HTMLElement, { axis: 'x', end: true });
-    fade.dispose();
-    expect(listenerCount()).toBe(0);
-    expect(el.style.props['--noa-fade-left']).toBeUndefined();
-    expect(el.style.props['--noa-fade-right']).toBeUndefined();
-  });
-
-  it('re-measures on refresh, for layout changes no scroll event reports', () => {
-    const { el } = fakeScroller({ scrollWidth: 500, clientWidth: 500 });
-    const fade = attachEdgeFade(el as unknown as HTMLElement, { axis: 'x', end: true });
-    expect(el.style.props['--noa-fade-right']).toBe('0.000');
-
-    el.scrollWidth = 1000;
-    fade.refresh();
-    flush();
-    expect(el.style.props['--noa-fade-right']).toBe('1.000');
-  });
-});
-
-describe('the surfaces that consume it', () => {
-  const cssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
-
-  it('keeps every ramp on the same sampled smoothstep', async () => {
+describe('scroll-edge fades', () => {
+  it('registers the edge variables so the timelines can ease them', async () => {
     const css = await readFile(cssPath, 'utf8');
-    // Pins the curve, not the lengths: a linear ramp would read as two hard edges.
-    for (const alpha of ['0.04', '0.16', '0.32', '0.5', '0.68', '0.84', '0.96']) {
+    for (const edge of ['top', 'bottom', 'left', 'right']) {
+      expect(css).toContain(`@property --noa-fade-${edge} { syntax: '<number>'; inherits: false; initial-value: 0; }`);
+    }
+  });
+
+  it('drives each vertical surface from its own scroll position, over the first and last 28px', async () => {
+    const css = await readFile(cssPath, 'utf8');
+    const panel = ruleBody(css, '.noa-edge-fade-y');
+    expect(panel).toContain('animation-timeline: scroll(self block), scroll(self block);');
+    expect(panel).toContain('animation-range: 0px 28px, calc(100% - 28px) 100%;');
+    expect(panel).toContain('scroll-padding-block: 28px;');
+    expect(ruleBody(css, '.noa-top-scroll-fade')).toContain('animation-timeline: scroll(self block);');
+  });
+
+  it('drives the tab strip from its own horizontal scroll position', async () => {
+    const css = await readFile(cssPath, 'utf8');
+    expect(ruleBody(css, '.noa-edge-fade-x')).toContain('animation-timeline: scroll(self inline), scroll(self inline);');
+  });
+
+  it('shares one tree timeline between the list and its toolbar seam', async () => {
+    const css = await readFile(cssPath, 'utf8');
+    expect(ruleBody(css, '.noa-sidebar-scroll-fade')).toContain('scroll-timeline: --noa-sidebar-tree block;');
+    expect(ruleBody(css, '.noa-sidebar-fade-scope')).toContain('timeline-scope: --noa-sidebar-tree;');
+    expect(ruleBody(css, '.noa-sidebar-toolbar-mask::after')).toContain('animation-timeline: --noa-sidebar-tree;');
+  });
+
+  it('ramps every surface on the same 5/15/30/50/70/85% curve over 28px', async () => {
+    const css = await readFile(cssPath, 'utf8');
+    for (const alpha of ['0.05', '0.15', '0.3', '0.5', '0.7', '0.85']) {
       expect(css).toContain(`rgb(0 0 0 / ${alpha}) calc(var(--noa-fade-top, 0)`);
       expect(css).toContain(`rgb(0 0 0 / ${alpha}) calc(var(--noa-fade-left, 0)`);
     }
+    expect(css).toContain('rgb(0 0 0 / 0.85) calc(var(--noa-fade-top, 0) * 25.2px)');
     // Sidebar seam uses opacity, still gated on scroll.
     expect(css).toContain('opacity: var(--noa-fade-top, 0);');
+  });
+
+  it('steps aside while keyboard focus is inside a scroller', async () => {
+    const css = await readFile(cssPath, 'utf8');
+    for (const selector of ['.noa-top-scroll-fade', '.noa-edge-fade-x', '.noa-edge-fade-y', '.noa-sidebar-scroll-fade']) {
+      expect(css).toContain(`${selector}:has(:focus-visible)`);
+    }
+    expect(css).toContain('--noa-fade-top: 0 !important;');
   });
 });

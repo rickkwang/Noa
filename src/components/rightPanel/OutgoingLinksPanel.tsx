@@ -1,5 +1,4 @@
 import React from 'react';
-import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { useOutgoingLinks } from '../../hooks/useOutgoingLinks';
 import { Note, Folder } from '../../types';
 import { LinkNoNoteState, LinkRow, LinkSectionHeader, linkSubtitle } from './LinkList';
@@ -13,7 +12,6 @@ interface OutgoingLinksPanelProps {
 }
 
 export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNoteById }: OutgoingLinksPanelProps) {
-  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   const { resolved, unresolvedTitles } = useOutgoingLinks(activeNote, notes, folders);
 
   // "Links" is always on the page, count and all — a note with none isn't an
@@ -25,7 +23,7 @@ export function OutgoingLinksPanel({ activeNote, notes, folders, onNavigateToNot
   // gets its own message instead of folding into the same "0" the panel uses
   // for a real, linkless note.
   return (
-    <div ref={fadeRef} className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-1 pb-3 pt-2 font-ui">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-1 pb-3 pt-2 font-ui">
       {!activeNote ? (
         <LinkNoNoteState />
       ) : (

@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
-import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { lsGetBoolean, lsGetJson, lsSetBoolean, lsSetJson } from '../../lib/safeLocalStorage';
 import { GlobalTask, Note } from '../../types';
 import CalendarPanel from '../CalendarPanel';
@@ -69,7 +68,6 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
   }, [overlay, onDismiss]);
   const [calendarOpen, toggleCalendar] = usePersistedCollapse(STORAGE_KEYS.NOTE_RAIL_CALENDAR_COLLAPSED);
   const [tagsOpen, toggleTags] = usePersistedCollapse(STORAGE_KEYS.NOTE_RAIL_TAGS_COLLAPSED);
-  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   const monthLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   const [order, setOrder] = useState<CardId[]>(readOrder);
   const [drag, setDrag] = useState<{ id: CardId; dy: number } | null>(null);
@@ -228,12 +226,12 @@ export function NoteRail({ notes, tasks, activeNoteId, searchQuery, dateFormat, 
         // The panel and its scroller are separate elements: the edge fade is a mask, which would also erase the
         // panel's border and shadow.
         <div className="noa-rail-overlay pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-[10px]">
-          <div ref={fadeRef} className="noa-edge-fade-y flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:none]">
+          <div className="noa-edge-fade-y flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:none]">
             {DEFAULT_ORDER.map(id => cards[id])}
           </div>
         </div>
       ) : (
-        <div ref={fadeRef} className="noa-edge-fade-y flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-px pb-3 [scrollbar-width:none]">
+        <div className="noa-edge-fade-y flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-px pb-3 [scrollbar-width:none]">
           {DEFAULT_ORDER.map(id => cards[id])}
         </div>
       )}

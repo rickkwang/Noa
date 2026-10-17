@@ -39,12 +39,13 @@ describe('sidebar search result layout', () => {
       styles.indexOf('}', styles.indexOf('.noa-sidebar-toolbar-mask::after {')),
     );
     expect(toolbarFade).toContain('right: 6px;');
-    // Strength comes from the shared --noa-fade-top edge-fade curve, so an unscrolled tree keeps full strength.
-    expect(toolbarFade).toContain('height: 32px;');
-    expect(toolbarFade).toContain('bottom: -32px;');
+    // Strength is the tree's own scroll timeline (CSS, no script), so an unscrolled tree keeps the seam hidden.
+    expect(toolbarFade).toContain('height: 28px;');
+    expect(toolbarFade).toContain('bottom: -28px;');
     expect(toolbarFade).toContain('opacity: var(--noa-fade-top, 0);');
+    expect(toolbarFade).toContain('animation-timeline: --noa-sidebar-tree;');
     expect(styles).not.toContain('background: linear-gradient(to bottom, var(--bg-sidebar, #F4F4F2) 0%, transparent 100%);');
-    expect(source).toContain('attachEdgeFade');
+    expect(source).toContain('noa-sidebar-fade-scope');
   });
 
   it('keeps the daily-note shortcut in the sidebar instead of duplicating it in the title bar', async () => {

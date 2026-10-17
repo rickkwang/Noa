@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { attachEdgeFade, type EdgeFadeHandle } from '../../lib/edgeFade';
 import { Note } from '../../types';
 import { X, Plus } from '@/src/lib/icons';
 
@@ -138,11 +137,6 @@ export function EditorHeader({
   const closingTabIdSet = useMemo(() => new Set(closingTabIds), [closingTabIds]);
   const isEnteringActiveTab = enteringTabIdSet.has(note.id);
   const anyTabAnimating = enteringTabIds.length > 0 || closingTabIds.length > 0;
-  // Both overflow edges fade by distance, through the shared driver — see
-  // lib/edgeFade. Held in a ref rather than state because the strength lives in
-  // CSS variables on the strip itself: a fade that re-rendered the header on
-  // every scroll frame would be paying a render to draw a gradient.
-  const edgeFadeRef = useRef<EdgeFadeHandle | null>(null);
   const activeTabInViewRef = useRef(true);
   // Tabs that will still be there once closing ones finish: the width they
   // share is what the entering/exiting tab animates toward.
@@ -357,8 +351,6 @@ export function EditorHeader({
     // Only a tab the resize itself pushed out is put back. If the user had
     // scrolled the active tab away, every sidebar drag or toggle yanked the
     // strip back to it; their scroll position is theirs to keep.
-    const fade = attachEdgeFade(scrollEl, { axis: 'x', end: true });
-    edgeFadeRef.current = fade;
     activeTabInViewRef.current = isActiveTabInView(scrollEl);
     // Scroll events arrive a frame late. The one our own correction raises
     // lands after the strip has shrunk again, reads the tab as out of view,
@@ -379,22 +371,16 @@ export function EditorHeader({
         correctedScrollLeft = scrollEl.scrollLeft;
       }
       activeTabInViewRef.current = isActiveTabInView(scrollEl);
-      fade.refresh();
     });
     observer.observe(frameEl);
     return () => {
       scrollEl.removeEventListener('scroll', handleScroll);
       observer.disconnect();
-      fade.dispose();
-      edgeFadeRef.current = null;
     };
   }, [applyTabFitWidth]);
 
   useLayoutEffect(() => { applyTabFitWidth(); }, [settledTabCount, applyTabFitWidth]);
 
-  // Tabs entering or leaving change how much the strip overflows without
-  // scrolling it, and no scroll event reports that.
-  useLayoutEffect(() => { edgeFadeRef.current?.refresh(); }, [tabs, anyTabAnimating]);
   // Switching to a tab that is already in view scrolls nothing, so no scroll
   // event would refresh the record the resize observer reads.
   useLayoutEffect(() => {
@@ -447,7 +433,6 @@ export function EditorHeader({
             ref={tabStripRef}
             data-tab-resizing={tabLayout.resizing || undefined}
             className="noa-edge-fade-x min-w-0 flex-1 flex items-center overflow-x-auto overflow-y-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-            style={{ scrollPaddingInline: '10px' }}
           >
             {/* py-1 and px-1 are room for the active pill's ring and shadow,
                 which this scroller would otherwise cut off at its edge.

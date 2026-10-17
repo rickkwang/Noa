@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
-import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { tokenizeInlineRefs } from '../../lib/noteUtils';
 import { lsGetBoolean, lsSetBoolean } from '../../lib/safeLocalStorage';
 import { GlobalTask } from '../../types';
@@ -66,7 +65,6 @@ function TaskText({ content, struck = false }: { content: string; struck?: boole
 export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, onNavigateToNoteById, isDark = false }: TasksPanelProps) {
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTIONS[number]>('all');
   const [dueDateFilter, setDueDateFilter] = useState<typeof DUE_OPTIONS[number]>('all');
-  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   const [activePageSize, setActivePageSize] = useState(TASKS_PAGE_SIZE);
   const [completedPageSize, setCompletedPageSize] = useState(TASKS_PAGE_SIZE);
   const [completedExpanded, setCompletedExpanded] = useState(() => lsGetBoolean(STORAGE_KEYS.TASKS_COMPLETED_EXPANDED));
@@ -221,7 +219,7 @@ export const TasksPanel = React.memo(function TasksPanel({ tasks, onToggleTask, 
   }
 
   return (
-    <div ref={fadeRef} className={`flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-3 pb-4 pt-2 font-ui ${txt}`}>
+    <div className={`flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-3 pb-4 pt-2 font-ui ${txt}`}>
       {tasks.length === 0 && (
         <div className={`noa-hint-in text-center mt-10 text-body ${dim}`}>
           No tasks found.<br />Add &quot;- [ ] task&quot; in any note!

@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { useEdgeFadeRef } from '../../hooks/useEdgeFadeRef';
 import { findMentionLine, getBacklinks } from '../../lib/noteUtils';
 import { Folder, Note } from '../../types';
 import { LinkNoNoteState, LinkRow, LinkSectionHeader, linkSubtitle } from './LinkList';
@@ -13,7 +12,6 @@ interface BacklinksPanelProps {
 }
 
 export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteById }: BacklinksPanelProps) {
-  const fadeRef = useEdgeFadeRef<HTMLDivElement>();
   // Each backlink carries the line that links here, so the row says why it's listed and opens at that line.
   const backlinks = useMemo(() => getBacklinks(activeNote, notes).map((note) => ({
     note,
@@ -21,7 +19,7 @@ export function BacklinksPanel({ activeNote, notes, folders, onNavigateToNoteByI
   })), [activeNote, notes]);
 
   return (
-    <div ref={fadeRef} className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-1 pb-3 pt-2 font-ui">
+    <div className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-1 pb-3 pt-2 font-ui">
       {!activeNote ? (
         <LinkNoNoteState />
       ) : (
