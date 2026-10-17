@@ -899,8 +899,6 @@ test('the sidebar preview closes even when its exit transition never fires', asy
 test('expanded sidebar surface follows the resize edge without a trailing transition', async ({ page }) => {
   await page.goto('/');
 
-  const sidebar = page.locator('[data-sidebar-container]');
-  const surface = page.locator('[data-sidebar-column-surface="true"]');
   const separator = page.getByRole('separator', { name: 'Resize sidebar' });
   const separatorBox = await separator.boundingBox();
   expect(separatorBox).not.toBeNull();

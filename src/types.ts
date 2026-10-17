@@ -51,17 +51,6 @@ export interface VaultSyncedNoteExpectation {
   confirmedVaultBaseText?: string;
 }
 
-export interface Link {
-  sourceId: string;
-  targetId: string;
-  text: string;
-}
-
-export interface Graph {
-  nodes: Note[];
-  edges: Link[];
-}
-
 export interface Folder {
   id: string;
   name: string;

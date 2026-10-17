@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatDate } from '../../../lib/templates';
 import { AppSettings, UserTemplate } from '../../../types';
 import SegmentedControl from '../SegmentedControl';

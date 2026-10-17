@@ -4,8 +4,6 @@ interface SettingSectionProps {
   title: string;
   description?: string;
   children: React.ReactNode;
-  // Kept for call sites: sections no longer sit on a card, so bare and carded now render alike.
-  bare?: boolean;
   id?: string;
 }
 

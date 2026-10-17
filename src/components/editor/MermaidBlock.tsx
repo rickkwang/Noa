@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import React, { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 interface MermaidBlockProps {
   code: string;

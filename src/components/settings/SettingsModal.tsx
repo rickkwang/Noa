@@ -349,7 +349,7 @@ export default function SettingsModal({
 
             {activeTab === 'about' && (
               <div className="space-y-10">
-                <SettingSection bare title="Noa" description="A local-first Markdown knowledge base. Notes live in this device's browser storage — no account, no server, no sync.">
+                <SettingSection title="Noa" description="A local-first Markdown knowledge base. Notes live in this device's browser storage — no account, no server, no sync.">
                   <img
                     src={fable5VerifiedBadge}
                     alt="Fable 5 Verified"
@@ -358,7 +358,7 @@ export default function SettingsModal({
                   />
                 </SettingSection>
                 <AppUpdateSettings />
-                <SettingSection bare title="Feedback" description="Open a GitHub issue with a prefilled template. Nothing is collected automatically.">
+                <SettingSection title="Feedback" description="Open a GitHub issue with a prefilled template. Nothing is collected automatically.">
                   <a
                     href={feedbackUrl}
                     target="_blank"
@@ -368,7 +368,7 @@ export default function SettingsModal({
                     <span>Send Feedback</span>
                   </a>
                 </SettingSection>
-                <SettingSection bare title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
+                <SettingSection title="Diagnostics" description="Export a local-only diagnostics bundle for support. Nothing is uploaded.">
                   <div className="flex flex-wrap items-center gap-3">
                     <SettingsButton
                       onClick={handleExportDiagnostics}

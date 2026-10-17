@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 const footerPath = fileURLToPath(new URL('../../src/components/sidebar/VaultFooter.tsx', import.meta.url));
 const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
-const tagBrowserPath = fileURLToPath(new URL('../../src/components/sidebar/TagBrowser.tsx', import.meta.url));
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 
 describe('sidebar vault footer', () => {

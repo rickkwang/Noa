@@ -1,5 +1,5 @@
 import { forceCollide, forceCenter, forceX, forceY } from 'd3-force';
-import React, { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';

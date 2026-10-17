@@ -131,11 +131,10 @@ describe('sidebar surface tokens', () => {
   });
 
   it('applies the optional translucent material only to the expanded desktop sidebar', async () => {
-    const [injector, css, app, topBar, appearanceSettings, electronMain] = await Promise.all([
+    const [injector, css, app, appearanceSettings, electronMain] = await Promise.all([
       readFile(themeInjectorPath, 'utf8'),
       readFile(indexCssPath, 'utf8'),
       readFile(appPath, 'utf8'),
-      readFile(topBarPath, 'utf8'),
       readFile(appearanceSettingsPath, 'utf8'),
       readFile(electronMainPath, 'utf8'),
     ]);

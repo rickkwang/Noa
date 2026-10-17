@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { PixelLayer, Pixels, drawIsland, hash, type Legend } from './pixels';
 import Rabbit from './Rabbit';
 import { fallingLeaf, flock, rustle, shootingStar, swingPush } from './sceneFx';

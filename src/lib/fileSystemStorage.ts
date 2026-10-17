@@ -286,7 +286,7 @@ async function fileToBase64(file: File): Promise<string> {
   return blobToBase64(file);
 }
 
-function attachmentVaultFileName(note: Note, attachment: Attachment): string {
+function attachmentVaultFileName(attachment: Attachment): string {
   return `${sanitizePathSegment(attachment.id)}-${sanitizeFilename(attachment.filename)}`;
 }
 
@@ -295,7 +295,7 @@ function noaAttachmentDir(note: Note): string {
 }
 
 function attachmentVaultPath(note: Note, attachment: Attachment): string {
-  return attachment.vaultPath ?? `${noaAttachmentDir(note)}${attachmentVaultFileName(note, attachment)}`;
+  return attachment.vaultPath ?? `${noaAttachmentDir(note)}${attachmentVaultFileName(attachment)}`;
 }
 
 // Images the scan found elsewhere in the vault belong to the user: Noa neither
@@ -385,7 +385,7 @@ async function writeAttachment(
 ): Promise<void> {
   const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(vaultDiskNoteId(note))]);
   if (!dirHandle) return;
-  const fileName = attachmentVaultFileName(note, attachment);
+  const fileName = attachmentVaultFileName(attachment);
   // Attachment blobs are immutable per id — an existing file is already correct.
   try {
     await dirHandle.getFileHandle(fileName);
@@ -412,7 +412,7 @@ async function syncAttachmentsForNote(
 
   const dirHandle = await ensureDirectory(rootHandle, ['attachments', sanitizePathSegment(vaultDiskNoteId(note))]);
   if (!dirHandle) return;
-  const expected = new Set(attachments.map((att) => attachmentVaultFileName(note, att)));
+  const expected = new Set(attachments.map((att) => attachmentVaultFileName(att)));
   const existingEntries = [] as Array<[string, FileSystemHandle]>;
   for await (const entry of dirHandle.entries()) {
     existingEntries.push(entry);

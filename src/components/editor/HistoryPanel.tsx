@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { storage } from '../../lib/storage';
 import { THEME_SURFACES } from '../../lib/themePalette';
 import { NoteSnapshot } from '../../types';

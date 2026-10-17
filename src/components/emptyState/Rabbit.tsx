@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PixelLayer, Pixels, type Legend } from './pixels';
 import { Critter, Z, useFrameSet, usePoseSequence, type Pose, type Step } from './sceneParts';
 

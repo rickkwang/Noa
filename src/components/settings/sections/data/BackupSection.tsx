@@ -1,4 +1,3 @@
-import React from 'react';
 import { StorageEstimate } from '../../../../hooks/useStorageEstimate';
 import { formatExportTimestamp } from '../../../../lib/exportTimestamp';
 import { formatBytes } from '../../../../lib/formatBytes';

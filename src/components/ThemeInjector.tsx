@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
 import { resolveFontFamily } from '../lib/fontFamily';
 import { themeSurfaces } from '../lib/themePalette';

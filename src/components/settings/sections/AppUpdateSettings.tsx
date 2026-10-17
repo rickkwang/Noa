@@ -1,4 +1,3 @@
-import React from 'react';
 import { useDesktopUpdater } from '../../../hooks/useDesktopUpdater';
 import SettingItem from '../SettingItem';
 import SettingsButton from '../SettingsButton';

@@ -1,4 +1,4 @@
-import { ConflictSummary, DataTransferMessage } from '../../../../hooks/useDataTransfer';
+import { ConflictSummary } from '../../../../hooks/useDataTransfer';
 
 export interface ConfirmState {
   message: string;
@@ -8,5 +8,3 @@ export interface ConfirmState {
   conflictSummary?: ConflictSummary;
   onStrategyChange?: (strategy: 'overwrite' | 'merge' | 'skip') => void;
 }
-
-export type SetMessage = (message: DataTransferMessage | null) => void;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useIsDark } from '../../hooks/useIsDark';
 import type { AppSettings, EmptyStateScene } from '../../types';
 import DeskScene from './DeskScene';

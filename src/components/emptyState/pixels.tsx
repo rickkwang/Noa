@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * Pixel art for the empty-state scenes. Every cell is one viewBox unit; the

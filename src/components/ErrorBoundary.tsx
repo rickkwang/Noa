@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
 import { AlertTriangle } from '@/src/lib/icons';
 

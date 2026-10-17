@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AutoBackupStatus } from '../../../../hooks/useAutoBackup';
 import { isFileSystemSupported } from '../../../../lib/backupDirectoryStorage';
 import { DEFAULT_KEEP_BACKUPS } from '../../../../services/autoBackupService';

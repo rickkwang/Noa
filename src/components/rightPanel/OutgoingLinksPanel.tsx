@@ -1,4 +1,3 @@
-import React from 'react';
 import { useOutgoingLinks } from '../../hooks/useOutgoingLinks';
 import { Note, Folder } from '../../types';
 import { LinkNoNoteState, LinkRow, LinkSectionHeader, linkSubtitle } from './LinkList';

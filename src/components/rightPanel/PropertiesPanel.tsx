@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNoteProperties } from '../../hooks/useNoteProperties';
 import { Note } from '../../types';
 import { PropertiesBlock } from '../editor/PropertiesBlock';

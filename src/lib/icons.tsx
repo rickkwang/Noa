@@ -10,20 +10,16 @@ import {
   IconArrowsDiagonal,
   IconArrowsDiagonalMinimize2,
   IconArrowsDownUp,
-  IconBold,
   IconBook,
   IconBrush,
   IconCalendar,
-  IconCalendarEvent,
   IconCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
-  IconCircle,
   IconCircleCheck,
   IconClock,
-  IconCode,
   IconCopy,
   IconDatabase,
   IconDeviceDesktop,
@@ -39,7 +35,6 @@ import {
   IconFolderOpen,
   IconFolderPlus,
   IconInfoCircle,
-  IconItalic,
   IconLayoutList,
   IconLayoutSidebar,
   IconLayoutSidebarRight,
@@ -81,11 +76,8 @@ export const AlignLeft = icon(IconAlignLeft);
 export const ArrowUpDown = icon(IconArrowsDownUp);
 export const ArrowLeft = icon(IconArrowLeft);
 export const ArrowRight = icon(IconArrowRight);
-export const Bold = icon(IconBold);
 export const BookOpen = icon(IconBook);
 export const Calendar = icon(IconCalendar);
-// Sidebar month-view toggle (Calendar is the "open today's daily note" icon).
-export const CalendarMonth = icon(IconCalendarEvent);
 export const Check = icon(IconCheck);
 export const CheckCircle2 = icon(IconCircleCheck);
 export const CheckSquare = icon(IconSquareCheck);
@@ -117,9 +109,7 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
   );
 }
 export const ChevronUp = icon(IconChevronUp);
-export const Circle = icon(IconCircle);
 export const Clock = icon(IconClock);
-export const Code = icon(IconCode);
 export const Copy = icon(IconCopy);
 export const Database = icon(IconDatabase);
 export const Dices = icon(IconDice5);
@@ -136,7 +126,6 @@ export const FolderPlus = icon(IconFolderPlus);
 export const Tag = icon(IconTag);
 export const HardDrive = icon(IconServer);
 export const Info = icon(IconInfoCircle);
-export const Italic = icon(IconItalic);
 export const List = icon(IconList);
 export const LayoutList = icon(IconLayoutList);
 export const Loader2 = icon(IconLoader2);

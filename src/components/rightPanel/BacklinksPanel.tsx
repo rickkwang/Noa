@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { findMentionLine, getBacklinks } from '../../lib/noteUtils';
 import { Folder, Note } from '../../types';
 import { LinkNoNoteState, LinkRow, LinkSectionHeader, linkSubtitle } from './LinkList';
