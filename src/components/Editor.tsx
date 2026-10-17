@@ -717,8 +717,9 @@ export default function Editor({
         className="flex-1 flex overflow-hidden z-10 relative"
       >
         <div
-          className="absolute top-1 right-3 z-30"
-          style={{ right: 'calc(0.75rem + var(--noa-rail-reserve, 0px))', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          className="absolute top-1 z-30"
+          // 15px matches the titlebar actions' trailing inset (TopBar), so the two rows share a right edge.
+          style={{ right: 'calc(15px + var(--noa-rail-reserve, 0px))', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {editorActions}
         </div>
