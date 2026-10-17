@@ -1289,6 +1289,9 @@ export default function App() {
               : !isRightPanelFloating && (isFocusMode || !isRightPanelOpen) ? '0px' : rightPanelColumnWidth,
             maxWidth: isMobile ? '320px' : undefined,
             opacity: !isMobile && (isFocusMode || !isRightPanelOpen) ? 0 : undefined,
+            // The closed column still lays its cards out at full width; hidden keeps their drag-region headers from
+            // swallowing clicks on the titlebar actions in Electron.
+            visibility: !isMobile && (isFocusMode || !isRightPanelOpen) ? 'hidden' : undefined,
             transform: isMobile
               ? (isFocusMode || !isRightPanelOpen ? 'translateX(100%)' : 'translateX(0)')
               : undefined,
