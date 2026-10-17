@@ -960,12 +960,14 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 .cm-lp-tex-number { color: var(--noa-tex-number); }
 .cm-lp-tex-bracket { color: var(--noa-tex-bracket); }
 .cm-lp-tex-comment { color: var(--noa-tex-comment); }
-::highlight(noa-tex-delim) { color: var(--accent-color, #CC7D5E); }
-::highlight(noa-tex-command) { color: var(--noa-tex-command); }
-::highlight(noa-tex-variable) { color: var(--noa-tex-variable); }
-::highlight(noa-tex-number) { color: var(--noa-tex-number); }
-::highlight(noa-tex-bracket) { color: var(--noa-tex-bracket); }
-::highlight(noa-tex-comment) { color: var(--noa-tex-comment); }
+/* Scoped to the open cell: a page-wide ::highlight() rule makes Chromium compute highlight styles for every element,
+   which roughly doubled the layout cost of scrolling the editor. */
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-delim) { color: var(--accent-color, #CC7D5E); }
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-command) { color: var(--noa-tex-command); }
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-variable) { color: var(--noa-tex-variable); }
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-number) { color: var(--noa-tex-number); }
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-bracket) { color: var(--noa-tex-bracket); }
+.cm-lp-cell[contenteditable="true"]::highlight(noa-tex-comment) { color: var(--noa-tex-comment); }
 
 /* ── Inline title (file name): Obsidian h1 metrics; edit mode is a CM widget, preview the prose column's first child. */
 /* Padding, not margin: CodeMirror sizes a block widget by its box, so a margin there skews every click below it. */
