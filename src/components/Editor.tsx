@@ -740,10 +740,8 @@ export default function Editor({
           style={{
             display: viewMode === 'preview' ? 'none' : undefined,
             flex: '1',
-            // The side insets live on .cm-scroller and .cm-content (matching the reading view), vertical room in .cm-content:
-            // vertical padding here would push the scroller (the real scroll viewport) below the toolbar.
-            // Right inset is the note rail's reserve (0 while hidden), so the text recentres beside the rail.
-            padding: '0 var(--noa-rail-reserve, 0px) 0 0',
+            // No padding here: the side insets, including the note rail's reserve, live on .cm-scroller so it runs to the
+            // window edge with its scrollbar there, as the reading view's does; vertical room lives in .cm-content.
           }}
         >
           <div className="h-full" style={editorStyle}>

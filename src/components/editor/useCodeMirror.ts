@@ -46,8 +46,9 @@ const darkTheme = EditorView.theme({
   // inherits — without this the Line Height setting never reaches edit mode.
   // The text sits 2rem in on each side, as in the reading view: 1.625rem here plus .cm-content's padding. The side
   // padding stays inside .cm-content so a click there still lands in the editor, and the 0.375rem on its left keeps
-  // Properties rows (which hang that far left of the text) clear of the scroller's clip.
-  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem' },
+  // Properties rows (which hang that far left of the text) clear of the scroller's clip. The note rail's reserve (0
+  // while hidden) is right padding here, as in the reading view, so the scrollbar stays at the window edge.
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem', paddingRight: 'var(--noa-rail-reserve, 0px)' },
   '.cm-line': { padding: '0' },
   // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
   '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
@@ -146,8 +147,9 @@ const lightTheme = EditorView.theme({
   '&.cm-focused': { outline: 'none !important' },
   // The text sits 2rem in on each side, as in the reading view: 1.625rem here plus .cm-content's padding. The side
   // padding stays inside .cm-content so a click there still lands in the editor, and the 0.375rem on its left keeps
-  // Properties rows (which hang that far left of the text) clear of the scroller's clip.
-  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem' },
+  // Properties rows (which hang that far left of the text) clear of the scroller's clip. The note rail's reserve (0
+  // while hidden) is right padding here, as in the reading view, so the scrollbar stays at the window edge.
+  '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem', paddingRight: 'var(--noa-rail-reserve, 0px)' },
   '.cm-line': { padding: '0' },
   // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
   '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
