@@ -163,9 +163,12 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
 
       {!isMobile && <div aria-hidden="true" className="min-w-0" />}
 
-      {/* Right actions stop at the column's left edge and travel with it. Positioned against the bar itself, not the grid cell, since the column can be wider than that cell. */}
+      {/* Right actions stop at the column's left edge and travel with it. Positioned against the bar itself, not the grid cell, since the column can be wider than that cell.
+          An expanded pane covers the note they act on, so they hide: with the sidebar closed the pane stops below the
+          titlebar (App.tsx), and while the sidebar toggles its top slides between the two, either of which would leave
+          them stranded mid-bar. */}
       <div
-        className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30 has-[[role=menu]]:z-40' : 'z-40'}`}
+        className={isMobile ? 'flex items-center justify-end pr-4' : `absolute inset-y-0 flex items-center ${isRightPanelCovering ? 'z-30 invisible' : 'z-40'}`}
         data-right-panel-anchor={isMobile ? undefined : 'true'}
         style={isMobile ? undefined : {
           // Keep a fixed inset at the trailing edge of the actions.
