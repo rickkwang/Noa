@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { SYSTEM_DEFAULT_FONT, isSafeFontFamilyName } from '../lib/fontFamily';
+import { DEFAULT_UI_FONT_STYLE, SYSTEM_DEFAULT_FONT, isSafeFontFamilyName, isUiFontStyle } from '../lib/fontFamily';
 import { AppSettings } from '../types';
 
 /**
@@ -21,6 +21,7 @@ export const defaultSettings: AppSettings = {
   appearance: {
     theme: 'system',
     fontFamily: SYSTEM_DEFAULT_FONT,
+    uiFontStyle: DEFAULT_UI_FONT_STYLE,
     maxWidth: 680,
     usePointerCursors: true,
     translucentSidebar: false,
@@ -150,6 +151,7 @@ export function loadSettings(storage: SettingsReader): LoadedSettings {
         appearance: {
           theme: setting(appearance, 'theme', defaultSettings.appearance.theme, isTheme),
           fontFamily,
+          uiFontStyle: setting(appearance, 'uiFontStyle', defaultSettings.appearance.uiFontStyle, isUiFontStyle),
           maxWidth: setting(appearance, 'maxWidth', defaultSettings.appearance.maxWidth, isMaxWidth),
           usePointerCursors: setting(appearance, 'usePointerCursors', defaultSettings.appearance.usePointerCursors, isBoolean),
           translucentSidebar: setting(appearance, 'translucentSidebar', defaultSettings.appearance.translucentSidebar, isBoolean),

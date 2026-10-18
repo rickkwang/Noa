@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { useIsDark } from '../hooks/useIsDark';
-import { resolveFontFamily } from '../lib/fontFamily';
+import { UI_FONT_STYLES, resolveFontFamily } from '../lib/fontFamily';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 
@@ -86,6 +86,7 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
   }, [isDark, settings.appearance.theme, settings.appearance.translucentSidebar, settings.appearance.usePointerCursors, settings.appearance.reduceMotion]);
 
   const fontFamilyStyle = resolveFontFamily(settings.appearance.fontFamily);
+  const uiFont = UI_FONT_STYLES[settings.appearance.uiFontStyle];
 
   // Second of two !important colour-remap layers (index.css holds the dark set). This sheet is later in
   // document order and wins any overlap; keep the two in sync.
@@ -135,7 +136,11 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
         background-color: var(--bg-primary);
         color: var(--text-primary);
         font-family: ${fontFamilyStyle} !important;
+        font-weight: ${uiFont.weight};
+        font-style: ${uiFont.italic ? 'italic' : 'normal'};
       }
+      /* Code keeps its upright face; the UI font style is for prose and chrome. */
+      code, pre, kbd, samp { font-style: normal; }
 
       ${settings.appearance.usePointerCursors ? '' : `
       html[data-pointer-cursors="disabled"] button:not(:disabled),

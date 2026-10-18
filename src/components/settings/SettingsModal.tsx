@@ -158,6 +158,8 @@ export default function SettingsModal({
       // Inline edit drafts handle Escape themselves.
       if (el?.closest('[data-inline-edit]')) return;
       if (tag === 'TEXTAREA' || tag === 'SELECT') return;
+      // An open SettingsSelect list (its trigger or an option) closes itself on Escape.
+      if (el?.closest('[role="listbox"], [aria-haspopup="listbox"][aria-expanded="true"]')) return;
       if (tag === 'INPUT') {
         const type = (el as HTMLInputElement).type;
         if (!['radio', 'checkbox', 'range', 'button', 'submit', 'file', 'color', 'search'].includes(type)) return;

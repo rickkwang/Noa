@@ -1,8 +1,9 @@
-import React from 'react';
-import { resolveFontFamily } from '../../../lib/fontFamily';
+import React, { useEffect, useState } from 'react';
+import { UI_FONT_STYLES, resolveFontFamily } from '../../../lib/fontFamily';
 import { AppSettings } from '../../../types';
 import FontPicker from '../FontPicker';
 import SegmentedControl from '../SegmentedControl';
+import SettingsSelect from '../SettingsSelect';
 import SettingItem from '../SettingItem';
 import SettingSection from '../SettingSection';
 import SettingsToggle from '../SettingsToggle';
@@ -19,14 +20,49 @@ const THEME_OPTIONS = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ] as const;
 
+const UI_FONT_STYLE_OPTIONS = Object.entries(UI_FONT_STYLES).map(([value, style]) => ({
+  value: value as AppSettings['appearance']['uiFontStyle'],
+  label: style.label,
+}));
+
 const SCENE_OPTIONS = [
   { value: 'island', label: 'Island' },
   { value: 'desk', label: 'Desk' },
 ] as const;
 
-// Steps that read as distinct sizes; 16 is the default. A saved size off this list (older builds allowed any
-// 10–24) is shown as its own segment, so it stays visible and re-selectable instead of silently matching nothing.
-const FONT_SIZE_PRESETS = [12, 13, 14, 15, 16, 17];
+const FONT_SIZE_MIN = 11;
+const FONT_SIZE_MAX = 16;
+
+// Keeps a half-typed value local; only an in-range integer is committed, and a blank or invalid entry reverts on blur.
+function FontSizeInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        inputMode="numeric"
+        min={FONT_SIZE_MIN}
+        max={FONT_SIZE_MAX}
+        step={1}
+        aria-label="Font size"
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const next = Number(e.target.value);
+          if (Number.isInteger(next) && next >= FONT_SIZE_MIN && next <= FONT_SIZE_MAX) onChange(next);
+        }}
+        onBlur={() => setDraft(String(value))}
+        className="w-16 rounded-chip border border-[#2D2D2B] bg-[var(--bg-primary,#F9F9F7)] px-3 py-1.5 text-sm tabular-nums text-[var(--text-primary,#2D2D2B)] outline-none focus:border-[var(--accent-color,#CC7D5E)]"
+      />
+      <span className="text-sm text-[var(--settings-text-muted)]">px</span>
+    </div>
+  );
+}
 
 const rangeFill = (value: number, min: number, max: number) =>
   ({ '--noa-range-fill': `${((value - min) / (max - min)) * 100}%` }) as React.CSSProperties;
@@ -80,12 +116,21 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             }))}
           />
         </SettingItem>
+        <SettingItem label="UI Font Style" description="Weight and italic style of the interface text." stacked>
+          <SettingsSelect
+            ariaLabel="UI font style"
+            value={settings.appearance.uiFontStyle}
+            options={UI_FONT_STYLE_OPTIONS}
+            onChange={(uiFontStyle) => updateSettings(s => ({
+              ...s,
+              appearance: { ...s.appearance, uiFontStyle },
+            }))}
+          />
+        </SettingItem>
         <SettingItem label="Font Size" description="Base font size for the editor.">
-          <SegmentedControl
-            ariaLabel="Font size"
-            value={String(settings.editor.fontSize)}
-            options={[...new Set([...FONT_SIZE_PRESETS, settings.editor.fontSize])].sort((a, b) => a - b).map((size) => ({ value: String(size), label: String(size) }))}
-            onChange={(value) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize: Number(value) } }))}
+          <FontSizeInput
+            value={settings.editor.fontSize}
+            onChange={(fontSize) => updateSettings(s => ({ ...s, editor: { ...s.editor, fontSize } }))}
           />
         </SettingItem>
         <SettingItem label="Line Height" description="Spacing between lines of text.">
@@ -109,7 +154,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
         <div
           aria-hidden="true"
           className="rounded-panel border-[0.5px] border-[var(--divider-subtle)] px-4 py-3 text-[var(--text-primary,#2D2D2B)] transition-[font-size,line-height] duration-200 ease-(--ease-out) motion-reduce:transition-none"
-          style={{ fontSize: settings.editor.fontSize, lineHeight: settings.editor.lineHeight, fontFamily: resolveFontFamily(settings.appearance.fontFamily) }}
+          style={{ fontSize: settings.editor.fontSize, lineHeight: settings.editor.lineHeight, fontFamily: resolveFontFamily(settings.appearance.fontFamily), fontWeight: UI_FONT_STYLES[settings.appearance.uiFontStyle].weight, fontStyle: UI_FONT_STYLES[settings.appearance.uiFontStyle].italic ? 'italic' : 'normal' }}
         >
           Notes that link to each other slowly become a map of what you know.
           <br />

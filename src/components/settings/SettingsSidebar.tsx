@@ -15,6 +15,13 @@ const TAB_META: Record<SettingsTab, { label: string; icon: typeof Palette }> = {
 
 export const SETTINGS_TABS = SETTINGS_TAB_IDS.map((id) => ({ id, ...TAB_META[id] }));
 
+// Two groups: app preferences, then what lives on this computer.
+// Tab order stays SETTINGS_TABS order, which the arrow-key handling depends on.
+const SETTINGS_TAB_GROUPS: { label: string; tabs: SettingsTab[] }[] = [
+  { label: 'Settings', tabs: ['general', 'notes', 'appearance'] },
+  { label: 'This computer', tabs: ['workspace', 'data', 'about'] },
+];
+
 export type { SettingsTab };
 
 interface SettingsSidebarProps {
@@ -129,42 +136,50 @@ export default function SettingsSidebar({ activeTab, setActiveTab, onRevealSetti
           )}
         </div>
       ) : (
-        <div
-          className="flex min-w-max flex-row gap-px overflow-x-auto px-3 pb-3 md:min-w-0 md:flex-col md:overflow-x-visible"
-          role="tablist"
-        >
-          {SETTINGS_TABS.map((tab, index) => (
-            <button
-              key={tab.id}
-              id={`settings-tab-${tab.id}`}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              onKeyDown={(event) => handleTabKeyDown(event, index)}
-              role="tab"
-              aria-controls={`settings-panel-${tab.id}`}
-              aria-selected={activeTab === tab.id}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              // The surface alone carries the selection now — weight used to
-              // flip bold/medium with it, and switching tabs meant every
-              // label's glyphs visibly thickened or thinned at the same
-              // instant the background changed, reading as a flicker rather
-              // than a state change. One weight for both states removes that;
-              // the background fill and shadow are enough hierarchy on their
-              // own without needing text to change shape.
-              // No active:opacity press-fade either: it dims the label and
-              // icon for the mousedown-to-mouseup gap, right before the
-              // background swap lands, so the two changes stacked into the
-              // same "fade then flicker" this was meant to fix. The
-              // background fill already answers "did my click register".
-              className={`flex h-8 min-w-[9.5rem] items-center space-x-2.5 px-2 rounded-lg text-left transition-colors text-sm md:min-w-0 md:w-full ${
-                activeTab === tab.id
-                  ? 'bg-[var(--settings-fill-active)] text-[var(--text-primary)]'
-                  : 'text-[var(--settings-text-secondary)] hover:bg-[var(--settings-fill-hover)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <tab.icon size={16} />
-              <span>{tab.label}</span>
-            </button>
+        <div className="flex min-w-max flex-row gap-px overflow-x-auto px-3 pb-3 md:min-w-0 md:flex-col md:overflow-x-visible">
+          {SETTINGS_TAB_GROUPS.map((group) => (
+            <div key={group.label} role="group" aria-label={group.label} className="flex flex-row gap-px md:flex-col">
+              <div aria-hidden="true" className="hidden px-2 pb-1 pt-2.5 text-xs leading-4 text-[var(--settings-text-muted)] md:block">{group.label}</div>
+              <div role="tablist" className="flex flex-row gap-px md:flex-col">
+                {group.tabs.map((tabId) => {
+                  const index = SETTINGS_TABS.findIndex((t) => t.id === tabId);
+                  const tab = SETTINGS_TABS[index];
+                  return (
+                    <button
+                      key={tab.id}
+                      id={`settings-tab-${tab.id}`}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      onKeyDown={(event) => handleTabKeyDown(event, index)}
+                      role="tab"
+                      aria-controls={`settings-panel-${tab.id}`}
+                      aria-selected={activeTab === tab.id}
+                      tabIndex={activeTab === tab.id ? 0 : -1}
+                      // The surface alone carries the selection now — weight used to
+                      // flip bold/medium with it, and switching tabs meant every
+                      // label's glyphs visibly thickened or thinned at the same
+                      // instant the background changed, reading as a flicker rather
+                      // than a state change. One weight for both states removes that;
+                      // the background fill and shadow are enough hierarchy on their
+                      // own without needing text to change shape.
+                      // No active:opacity press-fade either: it dims the label and
+                      // icon for the mousedown-to-mouseup gap, right before the
+                      // background swap lands, so the two changes stacked into the
+                      // same "fade then flicker" this was meant to fix. The
+                      // background fill already answers "did my click register".
+                      className={`flex h-8 min-w-[9.5rem] items-center space-x-2.5 px-2 rounded-lg text-left transition-colors text-sm md:min-w-0 md:w-full ${
+                        activeTab === tab.id
+                          ? 'bg-[var(--settings-fill-active)] text-[var(--text-primary)]'
+                          : 'text-[var(--settings-text-secondary)] hover:bg-[var(--settings-fill-hover)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      <tab.icon size={16} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
       )}
