@@ -861,6 +861,16 @@ test('vault import entry is labeled as migration', async ({ page }) => {
   await expect(page.getByRole('group', { name: 'Import Vault Folder', exact: true }).getByRole('button')).toBeVisible();
 });
 
+test('folder import fallback keeps a real directory input when the picker API is unavailable', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(window, 'showDirectoryPicker', { value: undefined }); });
+  await page.goto('/');
+  await page.getByTitle('Settings').click();
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  const input = page.getByTestId('vault-folder-input');
+  await expect(input).toHaveAttribute('webkitdirectory', '');
+  expect(await input.evaluate((element: HTMLInputElement) => element.webkitdirectory)).toBe(true);
+});
+
 test('vault import preserves nested folder structure', async ({ page }) => {
   const vaultSuffix = `vault-${Date.now()}`;
   await installMockDirectoryPicker(page);

@@ -508,9 +508,8 @@ async function deleteNoteFileTracked(
   handle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
-  options?: { keepAttachments?: boolean },
 ): Promise<void> {
-  const removedPath = await deleteNoteFile(handle, note, folders, options);
+  const removedPath = await deleteNoteFile(handle, note, folders);
   if (removedPath && _vaultStatSnapshot) {
     _vaultStatSnapshot.delete(removedPath);
   }

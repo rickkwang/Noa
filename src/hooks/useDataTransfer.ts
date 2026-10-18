@@ -265,12 +265,7 @@ async function buildVaultImportPayload(
     if (classification.kind === 'unsupported') continue;
 
     if (classification.kind === 'text') {
-      let raw = '';
-      try {
-        raw = await file.text();
-      } catch {
-        continue;
-      }
+      const raw = await file.text();
       // As in the vault-connect scan path: split frontmatter into rawFrontmatter, or a later sync stacks a second block.
       const isMarkdown = /\.(md|markdown|mdown)$/i.test(file.name);
       const { rawBlock, body, eol } = isMarkdown
@@ -843,7 +838,9 @@ export function useDataTransfer({
         },
       });
     } catch (error) {
-      const appError = fromStorageError(error);
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      const appError = fromImportError('unknown_error',
+        `Could not open or read the vault folder. ${error instanceof Error ? error.message : 'Check folder permissions and try again.'}`);
       recordErrorSnapshot({
         at: new Date().toISOString(),
         operation: 'import_vault',
@@ -973,7 +970,8 @@ export function useDataTransfer({
           try {
             await doImport();
           } catch (error) {
-            const appError = fromStorageError(error);
+            const appError = fromImportError('unknown_error',
+              `Folder import failed. ${error instanceof Error ? error.message : 'Check the selected files and try again.'}`);
             recordErrorSnapshot({
               at: new Date().toISOString(),
               operation: 'import_folder',

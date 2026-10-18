@@ -639,7 +639,7 @@ export default function Sidebar({
                     return (
                       <>
                         <span>{targetIsVault
-                          ? `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. Those notes will be permanently deleted from the connected folder on disk; other files are kept.`
+                          ? `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. Those notes will be moved to .trash in the connected folder; attachments and other files are kept.`
                           : `This folder and its subfolders contain ${count} note${count !== 1 ? 's' : ''}. All notes will be permanently deleted.`}</span>
                         <ul className="mt-1 list-disc list-inside">
                           {preview.map((n) => (
@@ -651,13 +651,13 @@ export default function Sidebar({
                     );
                   }
                   return targetIsVault
-                    ? 'The folder on disk will be removed if it is empty; other files are kept. This cannot be undone.'
+                    ? 'Deleted notes can be restored from .trash in the connected folder using your file manager. Empty folders will be removed; other files are kept.'
                     : 'This cannot be undone.';
                 })()
               : (() => {
                   const note = notes.find((n) => n.id === pendingDelete.id);
                   if (note?.origin === 'vault') {
-                    return `This will permanently delete "${note.vaultPath ?? `${note.title}.md`}" from the connected folder on disk. This cannot be undone.`;
+                    return `This will move "${note.vaultPath ?? `${note.title}.md`}" to .trash in the connected folder. Restore it using your file manager.`;
                   }
                   return 'You can undo this right after deleting.';
                 })()}
@@ -707,7 +707,7 @@ export default function Sidebar({
               <>
                 <span className="text-xs text-[#C24444]">Delete {selectedNoteIds.size} note{selectedNoteIds.size !== 1 ? 's' : ''}?</span>
                 {notes.some((n) => selectedNoteIds.has(n.id) && n.origin === 'vault') && (
-                  <span className="text-xs text-[#C24444]">Connected-folder notes will be permanently deleted from disk and cannot be undone.</span>
+                  <span className="text-xs text-[#C24444]">Connected-folder notes will be moved to .trash on disk. Restore them using your file manager.</span>
                 )}
                 <button
                   onClick={() => {

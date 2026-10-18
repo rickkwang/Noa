@@ -560,81 +560,31 @@ export async function deleteNoteFile(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
-  options?: { keepAttachments?: boolean }
 ): Promise<string | null> {
-  // Defense in depth: a Noa-owned note has no vault file, and its title could
-  // collide with an unrelated one, so never fall through to title matching.
   if (note.origin !== 'vault') return null;
-  const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
-  const manifestEntry = manifestEntryForId(manifest, diskNoteId);
-
-  // Prefer the manifest's record of the owned file so duplicate titles never
-  // remove a sibling's file.
-  let deleted = false;
-  let removedPath: string | null = null;
-  if (manifestEntry) {
-    const segments = manifestEntry[0].split('/').filter(Boolean);
-    const parentHandle = segments.length > 1
-      ? await ensureDirectory(rootHandle, segments.slice(0, -1), false)
-      : rootHandle;
-    if (parentHandle) {
-      try {
-        await parentHandle.removeEntry(segments[segments.length - 1]);
-        deleted = true;
-        removedPath = manifestEntry[0];
-      } catch (error) {
-        if (!(error && typeof error === 'object' && 'name' in error && error.name === 'NotFoundError')) throw error;
-      }
-    }
+  const manifestEntry = manifestEntryForId(manifest, vaultDiskNoteId(note));
+  const path = await getNoteFilePath(rootHandle, note, folders);
+  if (path) {
+    const segments = path.split('/');
+    const filename = segments.pop()!;
+    const parent = segments.length ? await ensureDirectory(rootHandle, segments, false) : rootHandle;
+    if (!parent) return null;
+    const file = await (await parent.getFileHandle(filename)).getFile();
+    // A separate directory for each deletion preserves paths and earlier copies.
+    const trash = await ensureDirectory(rootHandle, ['.trash', crypto.randomUUID(), ...segments], true);
+    if (!trash) throw new Error('Could not create the vault trash folder.');
+    const writable = await (await trash.getFileHandle(filename, { create: true })).createWritable();
+    await writable.write(file);
+    await writable.close();
+    await parent.removeEntry(filename);
   }
-
-  if (!deleted && note.vaultPath) {
-    const removedExactPath = await removeNoteFileAtPath(rootHandle, note.vaultPath);
-    if (removedExactPath) {
-      deleted = true;
-      removedPath = note.vaultPath;
-    }
-  }
-
-  // Missing known paths must never fall back to a same-titled unrelated file.
-  if (!deleted && !manifestEntry && !note.vaultPath) {
-    const folder = folders.find(f => f.id === note.folder);
-    const dirHandle = folder
-      ? await getFolderHandle(rootHandle, folder.name, false)
-      : rootHandle;
-    if (dirHandle) {
-      const baseName = sanitizeFilename(note.title || 'Untitled');
-      for (const filename of [`${baseName}.md`, `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`]) {
-        // Never remove a path the manifest attributes to a different note.
-        const owner = manifest.notes[relativeNotePath(folder?.name, filename)];
-        if (owner && owner.id !== diskNoteId) continue;
-        try {
-          await dirHandle.removeEntry(filename);
-          removedPath = relativeNotePath(folder?.name, filename);
-          break;
-        } catch {
-          // try next variant
-        }
-      }
-    }
-  }
-
-  if (!options?.keepAttachments) {
-    try {
-      const attachmentsRoot = await getFolderHandle(rootHandle, 'attachments', false);
-      if (attachmentsRoot) {
-        await attachmentsRoot.removeEntry(sanitizePathSegment(diskNoteId), { recursive: true });
-      }
-    } catch {
-      // ignore
-    }
-  }
+  // Attachments can be shared and are needed if the note is restored from trash.
   if (manifestEntry) {
     delete manifest.notes[manifestEntry[0]];
     await writeVaultManifest(rootHandle, manifest);
   }
-  return removedPath;
+  return path;
 }
 
 /** True when `path` is where the note's title and folder already map, modulo host-legal characters. */

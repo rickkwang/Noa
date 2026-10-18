@@ -109,8 +109,8 @@ export default function WorkspaceSection({
 
       <input
         type="file"
-        webkitdirectory
-        directory
+        webkitdirectory=""
+        directory=""
         multiple
         data-testid="vault-folder-input"
         className="hidden"

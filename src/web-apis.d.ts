@@ -21,8 +21,8 @@ declare global {
 
 declare module 'react' {
   interface InputHTMLAttributes<T> {
-    webkitdirectory?: boolean;
-    directory?: boolean;
+    webkitdirectory?: string;
+    directory?: string;
   }
 }
 

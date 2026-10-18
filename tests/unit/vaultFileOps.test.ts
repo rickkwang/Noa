@@ -145,6 +145,41 @@ describe('deleteNoteFile with duplicate titles', () => {
   });
 });
 
+describe('recoverable vault deletion', () => {
+  it('keeps exact deleted bytes in .trash, leaves attachments, and excludes trash from scans', async () => {
+    const root = createMemRoot();
+    const original = '\uFEFF# Original\r\n\r\n![[../assets/image.png]]\r\n';
+    await writeRawFile(root, 'Docs/Original.md', original);
+    await writeRawFile(root, 'assets/image.png', 'shared image');
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+    await syncNoteDelete(asFsHandle(root), notes[0], folders);
+    expect(resolvePath(root, 'Docs/Original.md')).toBeNull();
+    const trash = listPaths(root).filter(path => path.startsWith('.trash/') && path.endsWith('.md'));
+    expect(trash).toHaveLength(1);
+    expect(new Uint8Array(await (await (resolvePath(root, trash[0]) as { getFile(): Promise<File> }).getFile()).arrayBuffer())).toEqual(new TextEncoder().encode(original));
+    expect(await readFileText(root, 'assets/image.png')).toBe('shared image');
+    expect((await scanDirectory(asFsHandle(root), [])).notes).toEqual([]);
+    await writeRawFile(root, 'Docs/Original.md', original + 'second');
+    const rescanned = await scanDirectory(asFsHandle(root), []);
+    await syncNoteDelete(asFsHandle(root), rescanned.notes[0], rescanned.folders);
+    expect(listPaths(root).filter(path => path.startsWith('.trash/') && path.endsWith('.md'))).toHaveLength(2);
+    expect(new Uint8Array(await (await (resolvePath(root, trash[0]) as { getFile(): Promise<File> }).getFile()).arrayBuffer())).toEqual(new TextEncoder().encode(original));
+  });
+
+  it('does not remove the original when writing the trash copy fails', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Original.md', 'keep me');
+    const { notes, folders } = await scanDirectory(asFsHandle(root), []);
+    const getDirectoryHandle = root.getDirectoryHandle.bind(root);
+    root.getDirectoryHandle = async (name, opts) => {
+      if (name === '.trash') throw new DOMException('read only', 'NotAllowedError');
+      return getDirectoryHandle(name, opts);
+    };
+    await expect(syncNoteDelete(asFsHandle(root), notes[0], folders)).rejects.toThrow();
+    expect(await readFileText(root, 'Original.md')).toBe('keep me');
+  });
+});
+
 describe('syncNoteRename', () => {
   it('preserves an external edit and writes the Noa edit to a conflict copy', async () => {
     const root = createMemRoot();
@@ -529,7 +564,7 @@ describe('syncNoteRename', () => {
     expect(await readFileText(root, 'Sample.md')).toBe('same body');
   });
 
-  it('still removes attachments on real deletion', async () => {
+  it('keeps managed attachments available for restoration after deletion', async () => {
     const root = createMemRoot();
     const note = makeNote();
     await writeNote(asFsHandle(root), note, []);
@@ -539,10 +574,9 @@ describe('syncNoteRename', () => {
 
     await deleteNoteFile(asFsHandle(root), note, []);
 
-    expect(resolvePath(root, `attachments/${note.id}`)).toBeNull();
+    expect(resolvePath(root, `attachments/${note.id}/photo.png`)?.kind).toBe('file');
     expect(resolvePath(root, 'Sample.md')).toBeNull();
-    // Sanity: nothing else left behind except the manifest and attachments root.
-    expect(listPaths(root)).toEqual(['.noa/', '.noa/manifest.json', 'attachments/']);
+    expect(listPaths(root).filter(path => path.startsWith('.trash/') && path.endsWith('Sample.md'))).toHaveLength(1);
   });
 
   it('does not overwrite an unmanaged vault file with the requested target title', async () => {

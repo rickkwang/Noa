@@ -67,9 +67,19 @@ test('vault deletion has no snapshot Undo and keeps an externally recreated file
   const tree = page.getByTestId('sidebar-file-tree');
   await tree.getByText('Evidence', { exact: true }).click();
   await tree.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByText(/This will permanently delete/)).toContainText('This cannot be undone.');
-  await page.getByText(/This will permanently delete|You can undo this right after deleting/).locator('..').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText(/This will move/)).toContainText('Restore it using your file manager.');
+  await page.getByText(/This will move|You can undo this right after deleting/).locator('..').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect.poll(() => readVaultFile(page, 'Evidence.md')).toBeNull();
+  const trashed = await page.evaluate(async () => {
+    const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
+    const trash = await root.getDirectoryHandle('.trash');
+    const contents: string[] = [];
+    for await (const [, entry] of trash.entries()) {
+      if (entry.kind === 'directory') contents.push(await (await (await (entry as FileSystemDirectoryHandle).getFileHandle('Evidence.md')).getFile()).text());
+    }
+    return contents;
+  });
+  expect(trashed).toEqual(['Original evidence']);
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
   await page.evaluate(async () => {
     const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
@@ -122,7 +132,7 @@ for (const failDelete of [false, true]) {
     const tree = page.getByTestId('sidebar-file-tree');
     await tree.getByText('Local Evidence', { exact: true }).click();
     await tree.getByText('Local Evidence', { exact: true }).locator('..').locator('..').getByRole('button', { name: 'Delete', exact: true }).click();
-    await page.getByText(/This will permanently delete|You can undo this right after deleting/).locator('..').getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByText(/This will move|You can undo this right after deleting/).locator('..').getByRole('button', { name: 'Delete', exact: true }).click();
     if (failDelete) {
       await expect(page.getByRole('alert')).toContainText('Failed to delete note');
       await expect(tree.getByText('Local Evidence', { exact: true })).toBeVisible();

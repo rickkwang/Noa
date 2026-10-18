@@ -92,6 +92,33 @@ describe('import confirmation uses the current workspace', () => {
     return { render, onImportData, requestConfirm, notify, saveAttachmentBlob };
   }
 
+  it.each(['AbortError', 'SecurityError'])('handles folder picker %s without claiming local storage failed', async name => {
+    const { render, notify, requestConfirm, onImportData } = await setup();
+    vi.stubGlobal('window', { showDirectoryPicker: vi.fn().mockRejectedValue(new DOMException('Directory picker is unavailable here', name)) });
+    await render([], []).importVaultFolder();
+    expect(requestConfirm).not.toHaveBeenCalled();
+    expect(onImportData).not.toHaveBeenCalled();
+    if (name === 'AbortError') expect(notify).not.toHaveBeenCalled();
+    else expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'unknown_error', text: expect.stringContaining('Directory picker is unavailable here'),
+    }));
+  });
+
+  it('reports a folder file read failure without blaming local storage', async () => {
+    const { render, notify, requestConfirm, onImportData } = await setup();
+    const file = new File(['body'], 'Note.md');
+    Object.defineProperty(file, 'webkitRelativePath', { value: 'Vault/Note.md' });
+    file.text = async () => { throw new DOMException('Selected file is no longer readable', 'NotReadableError'); };
+    const readable = new File(['Keep this note'], 'Readable.md');
+    Object.defineProperty(readable, 'webkitRelativePath', { value: 'Vault/Readable.md' });
+    render([], []).importFolderFiles([file, readable] as unknown as FileList);
+    await requestConfirm.mock.calls[0][0].onConfirm();
+    expect(onImportData).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'unknown_error', text: expect.stringContaining('Selected file is no longer readable'),
+    }));
+  });
+
   it.each(['skip', 'merge', 'overwrite'] as const)(
     'JSON %s applies to edits and folder changes saved before confirmation', async strategy => {
       const { render, onImportData, requestConfirm, notify } = await setup();
