@@ -7,6 +7,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.31] - 2026-10-18
+
+### Added
+- Edit table cells in Live Preview, with table editing controls and coloured math source.
+- Navigate sidebar rows with Enter and Space, and reduce interface motion in Settings.
+
+### Changed
+- The outline sits beside the editor actions, and switching views keeps the reading position.
+- Sidebar actions share a compact menu, with updated icons and clearer active-note branches.
+
+### Fixed
+- Deleted vault notes move to the vault's `.trash` folder with their original bytes intact; attachments remain available for restoration.
+- Local note Undo retains attachments until it expires, resets when the workspace changes, and restores notes to the root if their folder is gone.
+- Folder imports stop on unreadable notes, report access errors accurately, and keep directory selection working without the native picker API.
+- Vault rename protection recognises reference-style links and ignores comments and fenced code.
+- Tables render line breaks and display math, and editor scrollbars and note actions stay reachable beside panels.
+
 ## [1.0.30] - 2026-10-15
 
 ### Added
