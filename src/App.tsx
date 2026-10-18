@@ -148,6 +148,9 @@ export default function App() {
     handleNavigateToNoteById,
     handleDeleteNote: _handleDeleteNote,
     handleRestoreNotes,
+    getUndoableNotes,
+    discardDeletedNotes,
+    workspaceRevision,
     handleCreateFolder: _handleCreateFolder,
     handleRenameFolder: _handleRenameFolder,
     handleDeleteFolder: _handleDeleteFolder,
@@ -855,27 +858,39 @@ export default function App() {
   // must never be recreated from a session snapshot.
   const [undoableDelete, setUndoableDelete] = useState<Note[] | null>(null);
   const undoNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoableDeleteRef = useRef<Note[] | null>(null);
+  const undoWorkspaceRevisionRef = useRef(workspaceRevision);
+
+  const clearUndoNotice = useCallback(() => {
+    if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current);
+    undoNoticeTimerRef.current = null;
+    discardDeletedNotes(undoableDeleteRef.current ?? []);
+    undoableDeleteRef.current = null;
+    setUndoableDelete(null);
+  }, [discardDeletedNotes]);
 
   useEffect(() => {
-    setUndoableDelete(null);
-    if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current);
-    return () => { if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current); };
-  }, [fsHandle]);
+    clearUndoNotice();
+    return clearUndoNotice;
+  }, [fsHandle, workspaceRevision, clearUndoNotice]);
 
   const armUndoNotice = useCallback((deleted: Note[]) => {
-    if (vaultWorkspaceRef.current) return;
-    const localNotes = deleted.filter((note) => note.origin !== 'vault');
+    if (vaultWorkspaceRef.current) {
+      discardDeletedNotes(deleted);
+      return;
+    }
+    const localNotes = getUndoableNotes(deleted);
     if (localNotes.length === 0) return;
-    if (undoNoticeTimerRef.current) clearTimeout(undoNoticeTimerRef.current);
-    setUndoableDelete(localNotes.map((note) => ({
+    clearUndoNotice();
+    const snapshot = localNotes.map((note) => ({
       ...note,
       attachments: note.attachments?.map((attachment) => ({ ...attachment })),
-    })));
-    undoNoticeTimerRef.current = setTimeout(() => {
-      setUndoableDelete(null);
-      undoNoticeTimerRef.current = null;
-    }, 8000);
-  }, []);
+    }));
+    undoWorkspaceRevisionRef.current = workspaceRevision;
+    undoableDeleteRef.current = snapshot;
+    setUndoableDelete(snapshot);
+    undoNoticeTimerRef.current = setTimeout(clearUndoNotice, 8000);
+  }, [clearUndoNotice, discardDeletedNotes, getUndoableNotes, workspaceRevision]);
 
   const handleDeleteNoteWithUndo = useCallback((id: string) => {
     void handleDeleteNote(id).then(armUndoNotice);
@@ -886,19 +901,21 @@ export default function App() {
   }, [armUndoNotice, handleDeleteNotes]);
 
   const handleUndoDelete = useCallback(() => {
-    const batch = undoableDelete;
+    const batch = undoableDeleteRef.current;
     if (!batch) return;
+    undoableDeleteRef.current = null;
     setUndoableDelete(null);
     if (undoNoticeTimerRef.current) {
       clearTimeout(undoNoticeTimerRef.current);
       undoNoticeTimerRef.current = null;
     }
     void (async () => {
-      const restored = await handleRestoreNotes(batch);
+      const restored = await handleRestoreNotes(batch, undoWorkspaceRevisionRef.current);
+      discardDeletedNotes(batch);
       if (restored.length === 0) return;
       handleSidebarSelectNote(restored[0].id);
     })();
-  }, [undoableDelete, handleRestoreNotes, handleSidebarSelectNote]);
+  }, [discardDeletedNotes, handleRestoreNotes, handleSidebarSelectNote]);
 
   const workspaceNoteIds = useMemo(() => new Set(workspaceNotes.map((note) => note.id)), [workspaceNotes]);
   const navigateHistory = useCallback((dir: -1 | 1) => {

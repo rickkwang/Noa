@@ -10,6 +10,7 @@ export interface FileNodeProps {
   showFolderChevron?: boolean;
   children?: React.ReactNode;
   defaultOpen?: boolean;
+  revealForNoteId?: string;
   isActive?: boolean;
   isSelected?: boolean;
   onClick?: (e: React.MouseEvent | React.KeyboardEvent) => void;
@@ -77,7 +78,7 @@ export function buildFolderTree(folders: FolderType[]): FolderTreeNode[] {
 }
 
 export const FileNode = React.memo(({
-  name, isFolder, children, defaultOpen = false, showFolderChevron = false, isActive, isSelected,
+  name, isFolder, children, defaultOpen = false, revealForNoteId, showFolderChevron = false, isActive, isSelected,
   onClick, onDelete, onRename, icon: Icon = FileText,
   onAdd, onAddFolder, onNewNote, onDuplicate, onCopyLink, draggable, onDragStart, onDragEnter, onDragOver,
   onDrop, onDragEnd, isDropTarget, isDragging, addButtonProps = {}, depth = 0, hasActiveDescendant = false,
@@ -97,6 +98,10 @@ export const FileNode = React.memo(({
   useEffect(() => {
     if (defaultOpen) setIsOpen(true);
   }, [defaultOpen]);
+
+  useEffect(() => {
+    if (revealForNoteId) setIsOpen(true);
+  }, [revealForNoteId]);
 
   useEffect(() => {
     if (!menuPosition) return;

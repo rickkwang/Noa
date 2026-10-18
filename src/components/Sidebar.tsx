@@ -337,6 +337,7 @@ export default function Sidebar({
         isFolder
         hasActiveDescendant={subtreeHoldsNote(node, notesByFolderId, activeId)}
         defaultOpen={foldersExpandedByDefault || (revealActiveBranch && activeAncestorFolderIds.has(node.folder.id))}
+        revealForNoteId={revealActiveBranch && activeAncestorFolderIds.has(node.folder.id) ? activeNoteId : undefined}
           icon={Folder}
           onAdd={() => setTemplateMenuFolderId(templateMenuFolderId === node.folder.id ? null : node.folder.id)}
           onAddFolder={() => onCreateFolder(node.folder.id)}
@@ -376,7 +377,7 @@ export default function Sidebar({
         </FileNode>
       </div>
     );
-  }, [activeAncestorFolderIds, draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onDuplicateNote, onRenameNote, renameFolderWithValidation, revealActiveBranch, selectedNoteIds, templateMenuFolderId]);
+  }, [activeAncestorFolderIds, activeNoteId, draggingId, dropTargetId, folderTreeResetKey, foldersExpandedByDefault, handleDragEndItem, handleDragTarget, handleDragStartItem, handleDropItem, handleNoteRowDelete, handleNoteRowSelect, notesByFolderId, onCreateFolder, onCreateNote, onDuplicateNote, onRenameNote, renameFolderWithValidation, revealActiveBranch, selectedNoteIds, templateMenuFolderId]);
 
   useEffect(() => {
     if (!blankMenu) return;

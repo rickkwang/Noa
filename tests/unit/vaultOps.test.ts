@@ -46,6 +46,24 @@ describe('vault structural link protection', () => {
     expect(wouldBreakVaultLinks([unused, target], folders, [unused, { ...target, title: 'Renamed' }])).toBe(false);
   });
 
+  for (const content of [
+    '> [read][ref]\n>\n> [ref]: projects/Target.md',
+    '[read][ref]\n\n[ref]:\n  projects/Target.md',
+    'See [ref]: more details.\n\n[ref]: projects/Target.md',
+  ]) {
+    it(`protects rendered reference syntax: ${JSON.stringify(content)}`, () => {
+      const reference = { ...source, content };
+      expect(wouldBreakVaultLinks([reference, target], folders, [reference, { ...target, title: 'Renamed' }])).toBe(true);
+    });
+  }
+
+  for (const content of ['%% [[Target]] %%', '~~~md\n[read](projects/Target.md)\n~~~']) {
+    it(`does not block a rename for hidden or code text: ${JSON.stringify(content)}`, () => {
+      const inactive = { ...source, content };
+      expect(wouldBreakVaultLinks([inactive, target], folders, [inactive, { ...target, title: 'Renamed' }])).toBe(false);
+    });
+  }
+
   it('detects path links broken by moving their target', () => {
     expect(wouldBreakVaultLinks([source, target], folders, [source, { ...target, folder: unrelated.id }])).toBe(true);
   });

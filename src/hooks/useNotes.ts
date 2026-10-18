@@ -33,11 +33,6 @@ import { useNoteImport, type LoadErrorState } from './useNoteImport';
 
 const LAST_ACTIVE_NOTE_KEY = STORAGE_KEYS.LAST_ACTIVE_NOTE;
 const MAX_SNAPSHOT_INTERVAL_MS = 5 * 60_000; // 5 minutes
-// Deleted notes can be restored by the session Undo notice. Attachment blobs are
-// pruned only after this window, and the prune re-reads the live note list so a
-// note restored before it fires keeps its attachments.
-const ATTACHMENT_UNDO_PRUNE_MS = 20_000;
-
 /** useTabs persists the strip; null when it never has (or the value is unreadable). */
 function readSavedOpenTabIds(): string[] | null {
   const ids = lsGetJson<unknown>(STORAGE_KEYS.OPEN_TABS);
@@ -69,6 +64,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
   const [activeNoteId, setActiveNoteId] = useState('');
   const [recentNoteIds, setRecentNoteIds] = useState<string[]>(loadRecentNoteIds);
   const isDataReady = isLoaded && loadError === null;
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
 
   // Per-note save and snapshot timers (snapshot: 30s idle, 5min forced)
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -82,6 +78,12 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
 
   const foldersRef = useRef(folders);
   useEffect(() => { foldersRef.current = folders; }, [folders]);
+
+  const deletedNotesRef = useRef(new Map<string, Note>());
+  const workspaceRevisionRef = useRef(0);
+  const getRetainedAttachmentIds = useCallback(() => new Set(
+    [...deletedNotesRef.current.values()].flatMap((note) => (note.attachments ?? []).map((attachment) => attachment.id)),
+  ), []);
 
   // Import mutex: while a vault/backup import is running, debounceSave defers
   // its writes into a queue instead of firing timers. This prevents:
@@ -227,7 +229,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
       setSaveError('Import is still running. Wait for it to finish before closing Noa.');
       throw new Error('Import is still running');
     }
-    if (beforeClose) await Promise.allSettled([...activeNoteWrites.current]);
+    await Promise.allSettled([...activeNoteWrites.current]);
     // Snapshot pending ids and their notes before awaiting, so a late debounceSave can't race the loop.
     const pending = new Set([
       ...saveTimers.current.keys(),
@@ -273,6 +275,10 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
   }, [writeNote]);
 
   const applyEmptyWorkspace = useCallback(async (name: string) => {
+    deletedNotesRef.current.clear();
+    storage.retainedAttachmentIds = getRetainedAttachmentIds();
+    workspaceRevisionRef.current += 1;
+    setWorkspaceRevision(workspaceRevisionRef.current);
     const initialFolders = [
       { id: 'diary', name: 'diaries', source: 'noa' as const },
       { id: 'essay', name: 'essays', source: 'noa' as const },
@@ -283,7 +289,7 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
     setActiveNoteId('');
     await storage.saveFolders(initialFolders);
     await storage.saveWorkspaceName(name);
-  }, []);
+  }, [getRetainedAttachmentIds]);
 
   // Bootstrap effect reads these via ref to avoid re-running when their
   // identities change (they depend on debounceSave, which changes every render).
@@ -795,23 +801,37 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
   }, [notesRef, setActiveNoteIdWithRecent, syncLinkRefs, foldersRef]);
 
 
+  const getUndoableNotes = useCallback((deleted: Note[]) => deleted
+    .map((note) => deletedNotesRef.current.get(note.id))
+    .filter((note): note is Note => Boolean(note)), []);
+
+  const discardDeletedNotes = useCallback((deleted: Note[]) => {
+    for (const note of deleted) deletedNotesRef.current.delete(note.id);
+    storage.retainedAttachmentIds = getRetainedAttachmentIds();
+    const candidateIds = new Set(deleted.flatMap((note) => (note.attachments ?? []).map((attachment) => attachment.id)));
+    if (candidateIds.size === 0 || isImportingRef.current) return;
+    const validIds = getRetainedAttachmentIds();
+    for (const note of notesRef.current) for (const attachment of note.attachments ?? []) validIds.add(attachment.id);
+    void storage.pruneOrphanedAttachments(validIds, candidateIds).catch(() => {});
+  }, [getRetainedAttachmentIds]);
+
   const handleDeleteNote = useCallback(async (id: string): Promise<boolean> => {
-    const candidateIds = new Set(notesRef.current.find(n => n.id === id)?.attachments?.map(a => a.id) ?? []);
+    if (isImportingRef.current) return false;
+    const note = notesRef.current.find((item) => item.id === id);
+    const revision = workspaceRevisionRef.current;
     try {
-      await storage.deleteNote(id);
+      const deleting = storage.deleteNote(id);
+      activeNoteWrites.current.add(deleting);
+      try { await deleting; }
+      finally { activeNoteWrites.current.delete(deleting); }
     } catch {
       setSaveError('Failed to delete note.');
       return false;
     }
-    // Session Undo keeps the note's attachment blobs for a grace window; prune
-    // later against the live list so a restored note re-validates its blobs.
-    if (candidateIds.size > 0) {
-      setTimeout(() => {
-        const liveIds = new Set(
-          notesRef.current.flatMap(n => (n.attachments ?? []).map(a => a.id))
-        );
-        storage.pruneOrphanedAttachments(liveIds, candidateIds).catch(() => {});
-      }, ATTACHMENT_UNDO_PRUNE_MS);
+    if (revision !== workspaceRevisionRef.current) return false;
+    if (note && note.origin !== 'vault') {
+      deletedNotesRef.current.set(id, note);
+      storage.retainedAttachmentIds = getRetainedAttachmentIds();
     }
     // A deliberately deleted note must not resurface from the import rescue
     // parking lot on next launch.
@@ -829,34 +849,40 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       snapshotFirstScheduled.current.delete(id);
     }
     storage.deleteSnapshotsForNote(id).catch(() => {});
+    notesRef.current = notesRef.current.filter((item) => item.id !== id);
     setNotes(prev => {
       const next = syncLinkRefs(prev.filter(n => n.id !== id), prev);
-      // Keep the ref current for the deferred attachment prune; React may defer
-      // the effect that would otherwise sync it.
       notesRef.current = next;
       return next;
     });
+    if (note?.origin === 'vault') discardDeletedNotes([note]);
     setRecentNoteIds(prev => prev.filter(rid => rid !== id));
     return true;
-  }, [syncLinkRefs]);
+  }, [discardDeletedNotes, getRetainedAttachmentIds, syncLinkRefs]);
 
   /**
    * Session Undo for the delete notice: put restored notes back into storage and
    * the live list. External vault snapshots and notes still present are skipped.
    */
-  const handleRestoreNotes = useCallback(async (restored: Note[]): Promise<Note[]> => {
+  const handleRestoreNotes = useCallback(async (restored: Note[], revision = workspaceRevisionRef.current): Promise<Note[]> => {
+    if (revision !== workspaceRevisionRef.current || isImportingRef.current) return [];
     const missing = restored.filter((note) => note.origin !== 'vault' && !notesRef.current.some((existing) => existing.id === note.id));
     if (missing.length === 0) return [];
     const saved: Note[] = [];
     try {
       for (const note of missing) {
-        await storage.saveNote(note);
-        saved.push(note);
+        if (revision !== workspaceRevisionRef.current || isImportingRef.current) break;
+        const restoredNote = note.folder && !foldersRef.current.some((folder) => folder.id === note.folder && folder.origin !== 'vault')
+          ? { ...note, folder: '' }
+          : note;
+        await writeNote(restoredNote);
+        saved.push(restoredNote);
       }
     } catch {
       setSaveError('Failed to restore some deleted notes. Storage may be full.');
     }
-    if (saved.length === 0) return [];
+    if (saved.length === 0 || revision !== workspaceRevisionRef.current) return [];
+    notesRef.current = [...notesRef.current, ...saved.filter((note) => !notesRef.current.some((item) => item.id === note.id))];
     setNotes((prev) => {
       const next = [...prev, ...saved.filter((note) => !prev.some((existing) => existing.id === note.id))];
       const withRefs = syncLinkRefs(next, prev);
@@ -864,7 +890,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
       return withRefs;
     });
     return saved;
-  }, [syncLinkRefs]);
+  }, [syncLinkRefs, writeNote]);
 
   const handleCreateFolder = useCallback((parentFolderId?: string) => {
     const parent = parentFolderId ? folders.find((folder) => folder.id === parentFolderId) : null;
@@ -1036,6 +1062,10 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
   }, [debounceSave, syncLinkRefs]);
 
   const onWorkspaceReplaced = useCallback(() => {
+    deletedNotesRef.current.clear();
+    storage.retainedAttachmentIds = getRetainedAttachmentIds();
+    workspaceRevisionRef.current += 1;
+    setWorkspaceRevision(workspaceRevisionRef.current);
     saveTimers.current.forEach(clearTimeout);
     saveTimers.current.clear();
     snapshotTimers.current.forEach(clearTimeout);
@@ -1048,7 +1078,7 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     for (const key of [STORAGE_KEYS.LAST_ACTIVE_NOTE, STORAGE_KEYS.OPEN_TABS, STORAGE_KEYS.DAILY_FOLDER_ID]) {
       try { localStorage.removeItem(key); } catch { /* storage unavailable */ }
     }
-  }, []);
+  }, [getRetainedAttachmentIds]);
 
   const { handleImportData, importBackupFromRecovery } = useNoteImport({
     notesRef,
@@ -1315,6 +1345,9 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
     handleNavigateToNoteById,
     handleDeleteNote,
     handleRestoreNotes,
+    getUndoableNotes,
+    discardDeletedNotes,
+    workspaceRevision,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,

@@ -81,6 +81,7 @@ export async function saveNotesBatch(store: NoteBatchStore, notes: Note[]): Prom
 }
 
 export const storage = {
+  retainedAttachmentIds: new Set<string>(),
   async verifyAccess(): Promise<void> {
     await workspaceStore.setItem('__healthcheck__', 'ok');
     await workspaceStore.removeItem('__healthcheck__');
@@ -268,6 +269,7 @@ export const storage = {
   },
 
   async deleteAttachmentBlob(attachmentId: string): Promise<void> {
+    if (this.retainedAttachmentIds.has(attachmentId)) return;
     await attachmentsStore.removeItem(`blob:${attachmentId}`);
   },
 
@@ -285,13 +287,13 @@ export const storage = {
           !allNotes.some(n => n.id !== noteId && n.attachments?.some(a => a.id === att.id))
         )
       : noteAttachments;
-    await Promise.allSettled(toDelete.map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
+    await Promise.allSettled(toDelete.filter(a => !this.retainedAttachmentIds.has(a.id)).map(a => attachmentsStore.removeItem(`blob:${a.id}`)));
   },
 
   async pruneOrphanedAttachments(validAttachmentIds: Set<string>, candidateIds: ReadonlySet<string>): Promise<void> {
     // A blob being uploaded may not have a note reference yet. Only consider
     // attachments owned by the notes this operation removed or replaced.
-    const toDelete = [...candidateIds].filter(id => !validAttachmentIds.has(id));
+    const toDelete = [...candidateIds].filter(id => !validAttachmentIds.has(id) && !this.retainedAttachmentIds.has(id));
     await Promise.all(toDelete.map(id => attachmentsStore.removeItem(`blob:${id}`)));
   },
 

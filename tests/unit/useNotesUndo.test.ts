@@ -62,6 +62,10 @@ function createReactHarness() {
       stateIndex = 0;
       refIndex = 0;
     },
+    seedFolders(folders: unknown[]) {
+      states[5] = folders;
+      refs[4].current = folders;
+    },
   };
 }
 
@@ -72,6 +76,7 @@ async function setup() {
   const deleteNote = vi.fn(async () => undefined);
   const pruneOrphanedAttachments = vi.fn(async () => undefined);
   const storageMock = {
+    retainedAttachmentIds: new Set<string>(),
     saveNote,
     deleteNote,
     pruneOrphanedAttachments,
@@ -81,6 +86,7 @@ async function setup() {
     saveNotes: vi.fn(async () => undefined),
     saveFolders: vi.fn(async () => undefined),
     saveWorkspaceName: vi.fn(async () => undefined),
+    clearAll: vi.fn(async () => undefined),
     verifyAccess: vi.fn(async () => undefined),
     migrateFromLocalStorage: vi.fn(async () => false),
     migrateToPerNoteStorage: vi.fn(async () => undefined),
@@ -95,7 +101,7 @@ async function setup() {
 
   const { useNotes } = await import('../../src/hooks/useNotes');
   const api = useNotes();
-  return { api, saveNote, deleteNote, pruneOrphanedAttachments };
+  return { api, saveNote, deleteNote, pruneOrphanedAttachments, harness, storageMock };
 }
 
 describe('useNotes session Undo support', () => {
@@ -136,6 +142,59 @@ describe('useNotes session Undo support', () => {
     expect(saveNote).not.toHaveBeenCalled();
   });
 
+  it('restores into the root when the original folder no longer exists', async () => {
+    const { api } = await setup();
+    const note = { ...makeNote(), folder: 'removed-folder' };
+    expect((await api.handleRestoreNotes([note]))[0].folder).toBe('');
+  });
+
+  it('keeps shared attachments retained through a folder deletion', async () => {
+    const { api, pruneOrphanedAttachments, harness, storageMock } = await setup();
+    harness.seedFolders([{ id: 'copies', name: 'copies' }]);
+    const first = makeNote();
+    const copy = { ...makeNote(), id: 'copy', folder: 'copies' };
+    await api.handleRestoreNotes([first, copy]);
+    await api.handleDeleteNote(first.id);
+    await api.handleDeleteFolder('copies');
+    expect(pruneOrphanedAttachments).toHaveBeenCalled();
+    expect(storageMock.retainedAttachmentIds.has('a1')).toBe(true);
+  });
+
+  it('does not start attachment expiry while a deletion batch is still waiting', async () => {
+    const { api, pruneOrphanedAttachments } = await setup();
+    const note = makeNote();
+    await api.handleRestoreNotes([note]);
+    await api.handleDeleteNote(note.id);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(pruneOrphanedAttachments).not.toHaveBeenCalled();
+  });
+
+  it('invalidates a pending restore after recovery resets the workspace', async () => {
+    const { api } = await setup();
+    const note = makeNote();
+    await api.handleRestoreNotes([note]);
+    await api.handleDeleteNote(note.id);
+    await api.resetWorkspaceFromRecovery();
+    expect(await api.handleRestoreNotes([note], 0)).toEqual([]);
+    expect(await api.handleRestoreNotes([note], 1)).toEqual([note]);
+  });
+
+  it('flush waits for an in-flight restore before an import can replace the store', async () => {
+    const { api, saveNote } = await setup();
+    let release!: () => void;
+    const pending = new Promise<undefined>((resolve) => { release = () => resolve(undefined); });
+    saveNote.mockReturnValueOnce(pending);
+    const restoring = api.handleRestoreNotes([makeNote()]);
+    let flushed = false;
+    const flushing = api.flushAllPendingSaves().then(() => { flushed = true; });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(flushed).toBe(false);
+    release();
+    await Promise.all([restoring, flushing]);
+    expect(flushed).toBe(true);
+  });
+
   it('keeps successfully restored attachments live when a later restore fails', async () => {
     const { api, saveNote, pruneOrphanedAttachments } = await setup();
     const first = makeNote();
@@ -146,7 +205,7 @@ describe('useNotes session Undo support', () => {
     saveNote.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('quota'));
 
     expect(await api.handleRestoreNotes([first, second])).toEqual([first]);
-    await vi.advanceTimersByTimeAsync(20_000);
+    api.discardDeletedNotes([first, second]);
     const [validIds] = pruneOrphanedAttachments.mock.calls[0] as unknown as [Set<string>];
     expect(validIds.has('a1')).toBe(true);
   });
@@ -160,7 +219,7 @@ describe('useNotes session Undo support', () => {
     expect(pruneOrphanedAttachments).not.toHaveBeenCalled();
 
     await api.handleRestoreNotes([note]);
-    await vi.advanceTimersByTimeAsync(20_000);
+    api.discardDeletedNotes([note]);
 
     expect(pruneOrphanedAttachments).toHaveBeenCalledTimes(1);
     const [validIds, candidateIds] = pruneOrphanedAttachments.mock.calls[0] as unknown as [Set<string>, Set<string>];
@@ -168,13 +227,13 @@ describe('useNotes session Undo support', () => {
     expect(candidateIds.has('a1')).toBe(true);
   });
 
-  it('prunes attachments after the window when the note stays deleted', async () => {
+  it('prunes attachments when the Undo window is explicitly discarded', async () => {
     const { api, pruneOrphanedAttachments } = await setup();
     const note = makeNote();
 
     await api.handleRestoreNotes([note]);
     await api.handleDeleteNote(note.id);
-    await vi.advanceTimersByTimeAsync(20_000);
+    api.discardDeletedNotes([note]);
 
     expect(pruneOrphanedAttachments).toHaveBeenCalledTimes(1);
     const [validIds, candidateIds] = pruneOrphanedAttachments.mock.calls[0] as unknown as [Set<string>, Set<string>];

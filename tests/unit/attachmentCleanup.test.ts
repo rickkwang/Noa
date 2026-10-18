@@ -17,4 +17,16 @@ it('cleans only removed-note candidates, preserving shared and in-flight attachm
   release();
   await cleanup;
   expect([...blobs.keys()].sort()).toEqual(['blob:shared', 'blob:uploading']);
+
+  await storage.saveAttachmentBlob('retained', new Blob(['undo']));
+  storage.retainedAttachmentIds = new Set(['retained']);
+  await storage.pruneOrphanedAttachments(new Set(), new Set(['retained']));
+  await storage.deleteAttachmentBlob('retained');
+  await storage.deleteAttachmentBlobsByNoteId('deleted', [{
+    id: 'retained', noteId: 'deleted', filename: 'image.png', mimeType: 'image/png', size: 4, createdAt: '2026-01-01',
+  }]);
+  expect(blobs.has('blob:retained')).toBe(true);
+  storage.retainedAttachmentIds.clear();
+  await storage.pruneOrphanedAttachments(new Set(), new Set(['retained']));
+  expect(blobs.has('blob:retained')).toBe(false);
 });

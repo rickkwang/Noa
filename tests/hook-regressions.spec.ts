@@ -425,6 +425,7 @@ test('sidebar search keeps the latest query when an older refresh is pending', a
 });
 
 test('closing waits for slow note writes and refuses failed saves', async ({ page }) => {
+  await page.route(/\/src\/main\.tsx(?:\?.*)?$/, (route) => route.fulfill({ contentType: 'application/javascript', body: '' }));
   await page.goto('/');
   const result = await page.evaluate(async ({ reactPath, reactDomPath }) => {
     const React = (await import(reactPath)).default;

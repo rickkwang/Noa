@@ -2,13 +2,12 @@ import { Folder, Note } from '../types';
 import { splitFrontmatter } from './frontmatter';
 import { tagsFromProperties } from './frontmatterProperties';
 
-// Blanks fenced and inline code with equal-length spaces so links/tags inside
-// code don't pollute refs and match indices stay valid. Indented (4-space)
-// code blocks are not stripped: indistinguishable from nested lists without a full parse.
+// Keep line boundaries while removing text that is inactive in the preview.
 const stripCodeSpans = (content: string): string => {
-  let out = content.replace(/```[\s\S]*?```/g, (m) => ' '.repeat(m.length));
-  out = out.replace(/`[^`\n]+`/g, (m) => ' '.repeat(m.length));
-  return out;
+  const blank = (value: string) => value.replace(/[^\r\n]/g, ' ');
+  return content
+    .replace(/%%[\s\S]*?%%|<!--[\s\S]*?-->/g, blank)
+    .replace(/```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|``[^`]*``|`[^`\n]*`/g, blank);
 };
 
 // Tolerantly decode percent-escapes (Obsidian URL-encodes markdown link
@@ -64,13 +63,16 @@ export const extractLinks = (content: string): string[] => {
     if (target) targets.add(target);
   });
 
-  const definitions = new Map<string, string>();
-  for (const match of sanitized.matchAll(/^ {0,3}\[([^\]\n]+)\]:[ \t]*(<[^>\n]+>|[^\s]+)/gm)) {
-    const target = parseMarkdownLinkTarget(match[2]);
-    const label = match[1].trim().replace(/\s+/g, ' ').toLowerCase();
-    if (target && !definitions.has(label)) definitions.set(label, target);
-  }
-  for (const match of sanitized.matchAll(/(?<!\[)\[([^\][\n]+)\](?:\[([^\]\n]*)\])?(?![[(:])/g)) {
+  const definitions = new Map<string, string | null>();
+  const referenceSource = sanitized.replace(/^ {0,3}(?:>[ \t]?)+/gm, '').replace(
+    /^ {0,3}(?:[-+*][ \t]+|\d+[.)][ \t]+)?\[([^\]\n]+)\]:[ \t]*(?:\r?\n[ \t]*)?(<[^>\n]+>|[^\s]+)/gm,
+    (definition, label: string, destination: string) => {
+      const key = label.trim().replace(/\s+/g, ' ').toLowerCase();
+      if (!definitions.has(key)) definitions.set(key, parseMarkdownLinkTarget(destination));
+      return definition.replace(/[^\r\n]/g, ' ');
+    },
+  );
+  for (const match of referenceSource.matchAll(/(?<!\[)\[([^\][\n]+)\](?:\[([^\]\n]*)\])?(?!\[|\()/g)) {
     const label = (match[2] || match[1]).trim().replace(/\s+/g, ' ').toLowerCase();
     const target = definitions.get(label);
     if (target) targets.add(target);
