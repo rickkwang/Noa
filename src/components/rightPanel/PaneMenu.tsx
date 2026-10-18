@@ -1,25 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RIGHT_TAB_LABELS, type PaneBadges, type RightTab } from '../../constants/rightTabs';
-import { Check, CheckSquare, MoreHorizontal, Network, PanelRight, SlidersHorizontal } from '@/src/lib/icons';
+import { Check, CheckSquare, MoreHorizontal, PanelRight, SlidersHorizontal } from '@/src/lib/icons';
 
-// Backlinks: single link with a bold arrow pointing IN (incoming links)
+// Backlinks: arrow coming in from the lower left (incoming links)
 function BacklinksIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M14.5 8.5l1-1a4 4 0 0 1 5.66 5.66l-2.83 2.83a4 4 0 0 1-5.66 0" />
-      <path d="M12 16l-8-8" />
-      <path d="M4 13v-5h5" />
+      <path d="M17 7L7 17" />
+      <path d="M7 9.5V17h7.5" />
     </svg>
   );
 }
 
-// Outgoing: single link with a bold arrow pointing OUT (outgoing links)
+// Outgoing: arrow leaving toward the upper right (outgoing links)
 function OutgoingIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9.5 15.5l-1 1a4 4 0 0 1-5.66-5.66l2.83-2.83a4 4 0 0 1 5.66 0" />
-      <path d="M12 8l8 8" />
-      <path d="M20 11v5h-5" />
+      <path d="M7 17L17 7" />
+      <path d="M9.5 7H17v7.5" />
+    </svg>
+  );
+}
+
+// Graph: three linked nodes
+function GraphIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="6" r="2.5" />
+      <circle cx="12" cy="18" r="2.5" />
+      <path d="M8.5 6h7" />
+      <path d="M7.1 8.2l3.7 7.6" />
+      <path d="M16.9 8.2l-3.7 7.6" />
     </svg>
   );
 }
@@ -29,7 +41,7 @@ function OutgoingIcon({ size = 14, stroke = 2, className = '' }: { size?: number
 export const PANE_TABS = [
   { id: 'backlinks', icon: BacklinksIcon },
   { id: 'outgoing', icon: OutgoingIcon },
-  { id: 'graph', icon: Network },
+  { id: 'graph', icon: GraphIcon },
   { id: 'tasks', icon: CheckSquare },
   { id: 'properties', icon: SlidersHorizontal },
 ] as const satisfies ReadonlyArray<{ id: RightTab; icon: React.ComponentType<{ size?: number; stroke?: number; className?: string }> }>;
