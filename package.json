@@ -25,7 +25,6 @@
     "desktop:publish:release": "BUILD_TARGET=desktop npm run build && electron-builder --mac dmg zip --arm64 --publish always"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.48.0",
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
@@ -37,6 +36,7 @@
     "@eslint/js": "^9.39.5",
     "@lezer/highlight": "^1.2.3",
     "@playwright/test": "^1.54.2",
+    "@tabler/icons-react": "^3.48.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.14",
     "@types/mdast": "^4.0.4",
