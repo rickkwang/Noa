@@ -645,7 +645,7 @@ export default function RightPanel({
               {showGraphGuide && (
                 <div className={`mx-2 mb-2 shrink-0 rounded-md border border-[var(--divider-subtle)] px-3 py-2 text-xs leading-relaxed ${isDark ? 'bg-[var(--bg-secondary)] text-[rgba(249,249,247,0.65)]' : 'bg-[var(--bg-sidebar-raised,#ECEBE8)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_80%,transparent)]'}`}>
                   <div className={`font-bold uppercase tracking-[0.14em] text-micro mb-1 ${isDark ? 'text-[rgba(249,249,247,0.75)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_60%,transparent)]'}`}>Graph Guide</div>
-                  <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the network icon to hide isolated nodes.</div>
+                  <div>Node size reflects connectivity. Use the search icon to narrow nodes. Toggle the linked-nodes icon to hide isolated nodes.</div>
                   <button
                     onClick={() => {
                       setShowGraphGuide(false);

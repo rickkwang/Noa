@@ -42,7 +42,6 @@ import {
   IconList,
   IconLoader2,
   IconMoon,
-  IconNetwork,
   IconPalette,
   IconPencil,
   IconPlus,
@@ -56,6 +55,7 @@ import {
   IconStack2,
   IconSun,
   IconTag,
+  IconTopologyStar3,
   IconTrash,
   IconUnlink,
   IconUpload,
@@ -140,7 +140,8 @@ export const Minimize2 = icon(IconArrowsDiagonalMinimize2);
 export const Monitor = icon(IconDeviceDesktop);
 export const Moon = icon(IconMoon);
 export const MoreHorizontal = icon(IconDots);
-export const Network = icon(IconNetwork);
+// The graph's "hide isolated nodes" toggle: linked nodes, not Tabler's globe-on-a-stand network.
+export const Network = icon(IconTopologyStar3);
 export const Palette = icon(IconPalette);
 export const PanelLeft = icon(IconLayoutSidebar);
 export const PanelRight = icon(IconLayoutSidebarRight);
