@@ -1,10 +1,13 @@
 import { useNoteProperties } from '../../hooks/useNoteProperties';
-import { Note } from '../../types';
+import { buildLinkIndex, resolveLinkTarget } from '../../lib/noteUtils';
+import { Folder, Note } from '../../types';
 import { PropertiesBlock } from '../editor/PropertiesBlock';
 
 interface PropertiesPanelProps {
   activeNote?: Note;
   notes: Note[];
+  folders?: Folder[];
+  onNavigateToNoteById?: (id: string) => void;
   onUpdateNote?: (content: string) => void;
   onFrontmatterChange?: (rawFrontmatter: string | undefined) => void;
   /** Editor font size, so properties read at the same size here as under the note title. */
@@ -12,7 +15,7 @@ interface PropertiesPanelProps {
 }
 
 // Same editor as the one under the note title, so both stay in sync and write through the same paths.
-export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatterChange, fontSize }: PropertiesPanelProps) {
+export function PropertiesPanel({ activeNote, notes, folders, onNavigateToNoteById, onUpdateNote, onFrontmatterChange, fontSize }: PropertiesPanelProps) {
   const { frontmatter, onChange, canWrite, getSuggestions } = useNoteProperties(activeNote, notes, {
     onUpdate: onUpdateNote,
     onFrontmatterChange,
@@ -28,7 +31,17 @@ export function PropertiesPanel({ activeNote, notes, onUpdateNote, onFrontmatter
 
   return (
     <div className="flex-1 overflow-y-auto noa-panel-scroll noa-edge-fade-y px-3 pb-3 pt-2" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
-      <PropertiesBlock compact block={frontmatter.block} readOnly={!canWrite} onChange={onChange} getSuggestions={getSuggestions} />
+      <PropertiesBlock
+        compact
+        block={frontmatter.block}
+        readOnly={!canWrite}
+        onChange={onChange}
+        getSuggestions={getSuggestions}
+        onOpenLink={onNavigateToNoteById ? (target) => {
+          const id = resolveLinkTarget(target.split('#')[0].trim(), buildLinkIndex(notes, folders ?? []), activeNote.folder);
+          if (id) onNavigateToNoteById(id);
+        } : undefined}
+      />
     </div>
   );
 }

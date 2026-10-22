@@ -57,6 +57,36 @@ function unquote(raw: string): string {
   return value;
 }
 
+// Items of a one-line flow sequence (`[a, "b, c", '[[Note]]']`), split on commas outside quotes.
+// Null for nested sequences/maps or an unterminated quote, which stay read-only.
+function splitFlowItems(inner: string): string[] | null {
+  const items: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < inner.length; i += 1) {
+    const ch = inner[i];
+    current += ch;
+    if (quote === '"') {
+      if (ch === '\\') current += inner[++i] ?? '';
+      else if (ch === '"') quote = null;
+    } else if (quote === "'") {
+      if (ch === "'" && inner[i + 1] === "'") current += inner[++i];
+      else if (ch === "'") quote = null;
+    } else if ((ch === '"' || ch === "'") && current.trim() === ch) {
+      // Only an item's first character opens a quote; elsewhere (`it's`) it is literal.
+      quote = ch;
+    } else if (ch === ',') {
+      items.push(current.slice(0, -1));
+      current = '';
+    } else if (/[[\]{}]/.test(ch)) {
+      return null;
+    }
+  }
+  if (quote) return null;
+  items.push(current);
+  return items.map(unquote).filter(Boolean);
+}
+
 function parseSpan(lines: string[], span: PropertySpan): FrontmatterProperty {
   const head = lines[span.start];
   const inline = head.slice(head.indexOf(':') + 1).trim();
@@ -64,9 +94,8 @@ function parseSpan(lines: string[], span: PropertySpan): FrontmatterProperty {
 
   if (inline.startsWith('[') && inline.endsWith(']') && rest.length === 0) {
     const inner = inline.slice(1, -1);
-    // Quoted items may hide commas; leave those to the source rather than split them wrong.
-    if (/[[\]{}"']/.test(inner)) return { key: span.key, value: inline, editable: false };
-    const items = inner.trim() === '' ? [] : inner.split(',').map(unquote).filter(Boolean);
+    const items = inner.trim() === '' ? [] : splitFlowItems(inner);
+    if (!items) return { key: span.key, value: inline, editable: false };
     return { key: span.key, value: items, editable: true };
   }
   if (inline === '') {

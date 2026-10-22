@@ -22,7 +22,11 @@ describe('frontmatterProperties', () => {
       { key: 'note', value: '|\nline one', editable: false },
     ]);
     expect(parseProperties('aliases: [a, b]')[0]).toEqual({ key: 'aliases', value: ['a', 'b'], editable: true });
-    expect(parseProperties('aliases: [a, "b, c"]')[0].editable).toBe(false);
+    expect(parseProperties('aliases: [a, "b, c"]')[0]).toEqual({ key: 'aliases', value: ['a', 'b, c'], editable: true });
+    expect(parseProperties('related: ["[[A]]", \'[[B|it\'\'s]]\']')[0]).toEqual({ key: 'related', value: ['[[A]]', "[[B|it's]]"], editable: true });
+    expect(parseProperties('grid: [[1, 2], [3]]')[0].editable).toBe(false);
+    expect(parseProperties("words: [it's, b]")[0].value).toEqual(["it's", 'b']);
+    expect(parseProperties('broken: ["a, b]')[0].editable).toBe(false);
   });
 
   it('rewrites only the edited property and keeps every other line verbatim', () => {

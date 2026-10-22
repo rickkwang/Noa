@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { linkDisplayText } from '../../lib/noteUtils';
 import { X } from '@/src/lib/icons';
 
 interface TocHeading {
@@ -44,12 +45,12 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
           onClick={() => onJumpToLine(h.lineIndex)}
           className="w-full h-7 rounded-md text-left pr-2 text-body hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)] transition-colors truncate flex items-center"
           style={{ paddingLeft: `${(h.level - topLevel) * 10 + 8}px` }}
-          title={h.text}
+          title={linkDisplayText(h.text)}
         >
           <span className="text-[var(--accent-color,#CC7D5E)] mr-1 shrink-0 font-bold" style={{ fontSize: '9px' }}>
             {'#'.repeat(h.level)}
           </span>
-          <span className="truncate">{h.text}</span>
+          <span className="truncate">{linkDisplayText(h.text)}</span>
         </button>
       ))}
     </div>

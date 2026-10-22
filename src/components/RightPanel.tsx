@@ -567,7 +567,7 @@ export default function RightPanel({
       case 'properties':
         return (
           <PaneCard key={id} {...card}>
-            <PropertiesPanel fontSize={settings.editor.fontSize} activeNote={activeNote} notes={notes} onUpdateNote={onUpdateNote} onFrontmatterChange={onFrontmatterChange} />
+            <PropertiesPanel fontSize={settings.editor.fontSize} activeNote={activeNote} notes={notes} folders={folders} onNavigateToNoteById={onNavigateToNoteById} onUpdateNote={onUpdateNote} onFrontmatterChange={onFrontmatterChange} />
           </PaneCard>
         );
       case 'graph':

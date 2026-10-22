@@ -529,6 +529,7 @@ export default function Editor({
         block={frontmatter.block}
         readOnly={readOnly || !noteProperties.canWrite}
         onChange={noteProperties.onChange}
+        onOpenLink={(target) => handleOpenLink({ kind: 'wiki', target })}
         {...(pane === 'edit' ? {
           addRequest: addPropertyRequest,
           onAddEnd: () => { setAddingFirstProperty(false); setAddPropertyRequest(0); },

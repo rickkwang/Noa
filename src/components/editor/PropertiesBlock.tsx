@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { parseProperties, removeProperty, setProperty, type FrontmatterProperty, type PropertyValue } from '../../lib/frontmatterProperties';
 import { AlignLeft, Calendar, CheckSquare, ExternalLink, List, Plus, Tag, X } from '@/src/lib/icons';
 
@@ -16,6 +16,8 @@ interface PropertiesBlockProps {
   addRequest?: number;
   /** The property-name input closed, whether or not a property was added. */
   onAddEnd?: () => void;
+  /** Opens a `[[wikilink]]` value; receives the target without its alias (`Note#Heading`). */
+  onOpenLink?: (target: string) => void;
 }
 
 type PropertyKind = 'tags' | 'list' | 'date' | 'datetime' | 'checkbox' | 'text';
@@ -67,8 +69,34 @@ function emptyValueFor(key: string, sample?: FrontmatterProperty): PropertyValue
 const isComposing = (e: React.KeyboardEvent) => e.nativeEvent.isComposing || e.keyCode === 229;
 
 const URL_RE = /^https?:\/\/\S+$/;
+const WIKILINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
-function TextValue({ value, readOnly, autoFocus, onCommit }: { value: string; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string) => void }) {
+// `[[Note|alias]]` inside a value reads as its alias (else its target) and opens the note, as in Obsidian.
+function LinkedText({ value, onOpenLink }: { value: string; onOpenLink?: (target: string) => void }) {
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  for (const match of value.matchAll(WIKILINK_RE)) {
+    if (match.index > last) nodes.push(value.slice(last, match.index));
+    const target = match[1].trim();
+    const label = match[2]?.trim() || target;
+    nodes.push(onOpenLink ? (
+      <a
+        key={match.index}
+        href="#"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenLink(target); }}
+        className="noa-property-link text-[var(--accent-color,#CC7D5E)] underline underline-offset-2"
+      >
+        {label}
+      </a>
+    ) : label);
+    last = match.index + match[0].length;
+  }
+  if (last < value.length) nodes.push(value.slice(last));
+  return <>{nodes}</>;
+}
+
+function TextValue({ value, readOnly, autoFocus, onCommit, onOpenLink }: { value: string; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string) => void; onOpenLink?: (target: string) => void }) {
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(Boolean(autoFocus && !readOnly));
   useEffect(() => setDraft(value), [value]);
@@ -97,7 +125,7 @@ function TextValue({ value, readOnly, autoFocus, onCommit }: { value: string; re
             </a>
             <ExternalLink size="0.85em" className="inline ml-0.5 align-baseline opacity-50" />
           </span>
-        ) : value}
+        ) : <LinkedText value={value} onOpenLink={onOpenLink} />}
       </div>
     );
   }
@@ -139,25 +167,34 @@ function DateValue({ value, withTime, readOnly, autoFocus, onCommit }: { value: 
   );
 }
 
-function ListValue({ items, isTags, readOnly, autoFocus, onCommit }: { items: string[]; isTags: boolean; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string[]) => void }) {
+function ListValue({ items, isTags, readOnly, autoFocus, onCommit, onOpenLink }: { items: string[]; isTags: boolean; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: string[]) => void; onOpenLink?: (target: string) => void }) {
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     const next = draft.split(',').map((s) => s.trim().replace(isTags ? /^#/ : /^$/, '')).filter(Boolean);
     setDraft('');
     if (next.length) onCommit([...items, ...next.filter((item) => !items.includes(item))]);
   };
   return (
-    <div className="flex flex-wrap items-center gap-1.5 min-w-0 min-h-[1.9em] px-1.5 py-[0.2em]">
+    // Plain items flow as text, as in Obsidian, so a wrapped value keeps its remove button after the last
+    // word and the input follows it instead of taking a line of its own. Clicking blank space focuses the input.
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) inputRef.current?.focus(); }}
+      className={isTags
+        ? 'flex flex-wrap items-center gap-1.5 min-w-0 min-h-[1.9em] px-1.5 py-[0.2em]'
+        : `min-w-0 min-h-[1.9em] px-1.5 py-[0.2em] leading-[1.6] break-words cursor-text ${fg}`}
+    >
       {items.map((item) => (
         <span
           key={item}
           className={isTags
             ? 'noa-tag inline-flex items-center gap-[0.35em] !rounded-full !px-[0.65em] !font-medium leading-[1.7] !text-[1em]'
-            : `inline-flex items-center gap-1 rounded bg-[var(--divider-subtle)] px-2 leading-[1.6] ${fg}`}
+            // Plain items carry no fill or border, as in Obsidian; only tags read as pills.
+            : 'mr-2'}
         >
-          {item}
+          {isTags ? item : <LinkedText value={item} onOpenLink={onOpenLink} />}
           {!readOnly && (
-            <button type="button" aria-label={`Remove ${item}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onCommit(items.filter((i) => i !== item))} className="flex items-center opacity-45 hover:opacity-100">
+            <button type="button" aria-label={`Remove ${item}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onCommit(items.filter((i) => i !== item))} className={`${isTags ? 'flex' : 'inline-flex align-middle ml-1'} items-center opacity-45 hover:opacity-100`}>
               <X size="0.8em" stroke={2.5} />
             </button>
           )}
@@ -165,6 +202,7 @@ function ListValue({ items, isTags, readOnly, autoFocus, onCommit }: { items: st
       ))}
       {!readOnly && (
         <input
+          ref={inputRef}
           type="text"
           autoFocus={autoFocus}
           value={draft}
@@ -176,20 +214,21 @@ function ListValue({ items, isTags, readOnly, autoFocus, onCommit }: { items: st
             if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(); }
             if (e.key === 'Backspace' && draft === '' && items.length) onCommit(items.slice(0, -1));
           }}
-          className={`flex-1 min-w-[4rem] bg-transparent outline-none ${fg} placeholder:opacity-30`}
+          // Sized to its text from 1ch, as in Obsidian.
+          className={`${isTags ? 'grow' : 'max-w-full'} min-w-[1ch] [field-sizing:content] bg-transparent outline-none ${fg} placeholder:opacity-30`}
         />
       )}
     </div>
   );
 }
 
-function PropertyValueEditor({ prop, readOnly, autoFocus, onCommit }: { prop: FrontmatterProperty; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: PropertyValue) => void }) {
+function PropertyValueEditor({ prop, readOnly, autoFocus, onCommit, onOpenLink }: { prop: FrontmatterProperty; readOnly?: boolean; autoFocus?: boolean; onCommit: (v: PropertyValue) => void; onOpenLink?: (target: string) => void }) {
   if (!prop.editable) {
     return <div className={`${valueBox} whitespace-pre-wrap break-all opacity-60 ${fg}`} title="Edit this property in the note source">{prop.value as string}</div>;
   }
   const kind = kindOf(prop);
   if (kind === 'tags' || kind === 'list') {
-    return <ListValue items={prop.value as string[]} isTags={kind === 'tags'} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
+    return <ListValue items={prop.value as string[]} isTags={kind === 'tags'} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} onOpenLink={onOpenLink} />;
   }
   const value = prop.value as string;
   if (kind === 'checkbox') {
@@ -208,10 +247,10 @@ function PropertyValueEditor({ prop, readOnly, autoFocus, onCommit }: { prop: Fr
   if (kind === 'date' || kind === 'datetime') {
     return <DateValue value={value} withTime={kind === 'datetime'} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
   }
-  return <TextValue value={value} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} />;
+  return <TextValue value={value} readOnly={readOnly} autoFocus={autoFocus} onCommit={onCommit} onOpenLink={onOpenLink} />;
 }
 
-export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestions, compact = false, addRequest, onAddEnd }: PropertiesBlockProps) {
+export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestions, compact = false, addRequest, onAddEnd, onOpenLink }: PropertiesBlockProps) {
   const grid = compact ? 'grid grid-cols-[6.5rem_1fr]' : 'grid grid-cols-[9rem_1fr]';
   const properties = useMemo(() => parseProperties(block), [block]);
   const [adding, setAdding] = useState(false);
@@ -260,7 +299,7 @@ export function PropertiesBlock({ block, readOnly, onChange, style, getSuggestio
             </div>
             <div className="flex items-start min-w-0">
               <div className="flex-1 min-w-0">
-                <PropertyValueEditor prop={prop} readOnly={readOnly} autoFocus={prop.key === focusKey} onCommit={(value) => onChange(setProperty(block, prop.key, value))} />
+                <PropertyValueEditor prop={prop} readOnly={readOnly} autoFocus={prop.key === focusKey} onCommit={(value) => onChange(setProperty(block, prop.key, value))} onOpenLink={onOpenLink} />
               </div>
               {!readOnly && (
                 <button

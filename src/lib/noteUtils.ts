@@ -372,6 +372,11 @@ export const getBacklinks = (activeNote: Note | undefined, notes: Note[]): Note[
   );
 };
 
+/** Links as a reader sees them: wikilinks by their alias or target, markdown links by their text. */
+export const linkDisplayText = (text: string): string => text
+  .replace(/\[\[([^\]|]*?)(?:\\?\|([^\]]*))?\]\]/g, (_, target: string, alias?: string) => alias ?? target.split('#')[0])
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1');
+
 /**
  * The first line of `content` that links to `title`, for a backlink's context: its index into
  * content.split('\n') (the editor's line-jump unit) and the line as a reader sees it — list, quote and heading
@@ -389,9 +394,7 @@ export function findMentionLine(content: string, title: string): { lineIndex: nu
       return key === want || key.split('/').pop() === want;
     });
     if (!hit) continue;
-    const excerpt = line
-      .replace(/\[\[([^\]|]*?)(?:\\?\|([^\]]*))?\]\]/g, (_, target: string, alias?: string) => alias ?? target.split('#')[0])
-      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    const excerpt = linkDisplayText(line)
       .replace(/^\s*(?:>\s*)*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)?/, '')
       .trim();
     return { lineIndex: i, excerpt };
