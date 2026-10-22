@@ -27,6 +27,8 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
   };
 
   if (headings.length === 0) return null;
+  // Indent from the shallowest level present, so a note that starts at H2 isn't pushed in a step.
+  const topLevel = Math.min(...headings.map((h) => h.level));
 
   return (
     <div className={`absolute right-0 top-full mt-1.5 z-50 w-56 bg-[var(--surface-page,#F9F9F7)] rounded-panel p-1 noa-floating-panel font-ui max-h-80 overflow-y-auto [scrollbar-gutter:stable] transition-opacity duration-100 ${visible ? 'opacity-100' : 'opacity-0'}`}>
@@ -41,7 +43,7 @@ export function TocPanel({ headings, onJumpToLine, onClose }: TocPanelProps) {
           key={`${h.lineIndex}-${h.text}`}
           onClick={() => onJumpToLine(h.lineIndex)}
           className="w-full h-7 rounded-md text-left pr-2 text-body hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_8%,transparent)] text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_90%,transparent)] transition-colors truncate flex items-center"
-          style={{ paddingLeft: `${(h.level - 1) * 10 + 8}px` }}
+          style={{ paddingLeft: `${(h.level - topLevel) * 10 + 8}px` }}
           title={h.text}
         >
           <span className="text-[var(--accent-color,#CC7D5E)] mr-1 shrink-0 font-bold" style={{ fontSize: '9px' }}>

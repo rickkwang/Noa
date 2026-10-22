@@ -7,7 +7,7 @@ import { useNoteProperties } from '../hooks/useNoteProperties';
 import { findNoteAttachment } from '../lib/attachmentUtils';
 import { exportNoteAsMd, exportNoteAsHtml } from '../lib/export';
 import { resolveFontFamily } from '../lib/fontFamily';
-import { buildLinkIndex, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget } from '../lib/noteUtils';
+import { buildLinkIndex, parseMarkdownLinkAnchor, parseMarkdownLinkTarget, resolveLinkTarget, scanHeadings } from '../lib/noteUtils';
 import { Note, Folder, AppSettings, NoteSnapshot } from '../types';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import { bodyCaretTarget } from './editor/bodyCaret';
@@ -479,14 +479,7 @@ export default function Editor({
 
   const tocHeadings = useMemo(() => {
     if (!scanNote) return [];
-    return scanNote.content.split('\n').reduce<{ level: number; text: string; lineIndex: number }[]>(
-      (acc, line, i) => {
-        const m = line.match(/^(#{1,6})\s+(.+)$/);
-        if (m) acc.push({ level: m[1].length, text: m[2], lineIndex: i });
-        return acc;
-      },
-      []
-    );
+    return scanHeadings(scanNote.content);
     // scanNote is read via scanNote?.content; depending on the content string
     // (not the scanNote object ref) avoids re-running the scan on every
     // parent re-render that produces a new scanNote identity.

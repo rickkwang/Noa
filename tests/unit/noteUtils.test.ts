@@ -322,6 +322,12 @@ describe('sliceHeadingSection', () => {
     const zh = '# 概述\n正文\n# 结论\n结尾';
     expect(sliceHeadingSection(zh, '概述')).toEqual('# 概述\n正文');
   });
+
+  it('ignores # lines inside fenced code and frontmatter', () => {
+    const withCode = ['---', '# Setup', '---', '## Setup', '```bash', '# step 1', '```', 'after', '## Next'].join('\n');
+    expect(sliceHeadingSection(withCode, 'Setup')).toEqual(['## Setup', '```bash', '# step 1', '```', 'after'].join('\n'));
+    expect(sliceHeadingSection(withCode, 'step 1')).toBeNull();
+  });
 });
 
 describe('tokenizeInlineRefs', () => {

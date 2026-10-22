@@ -89,27 +89,13 @@ export const extractLinks = (content: string): string[] => {
  */
 export const sliceHeadingSection = (content: string, heading: string): string | null => {
   const wanted = heading.trim().toLowerCase();
-  const lines = content.split('\n');
-  let start = -1;
-  let level = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^(#{1,6})\s+(.+?)\s*$/);
-    if (m && m[2].trim().toLowerCase() === wanted) {
-      start = i;
-      level = m[1].length;
-      break;
-    }
-  }
-  if (start === -1) return null;
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^(#{1,6})\s+/);
-    if (m && m[1].length <= level) {
-      end = i;
-      break;
-    }
-  }
-  return lines.slice(start, end).join('\n');
+  // scanHeadings skips `#` lines in frontmatter and fenced code, so a shell comment can't start or cut the section.
+  const headings = scanHeadings(content);
+  const index = headings.findIndex((h) => h.text.trim().toLowerCase() === wanted);
+  if (index === -1) return null;
+  const { level, lineIndex: start } = headings[index];
+  const end = headings.slice(index + 1).find((h) => h.level <= level)?.lineIndex;
+  return content.split('\n').slice(start, end).join('\n');
 };
 
 // Obsidian image size: `![[img.png|300]]` or `![[img.png|300x200]]`. External
@@ -429,11 +415,19 @@ export const headingSlug = (text: string): string =>
 export const headingMatches = (text: string, anchor: string): boolean =>
   text.trim().toLowerCase() === anchor.trim().toLowerCase() || headingSlug(text) === headingSlug(anchor);
 
-// Line index of the first ATX heading the anchor names. Frontmatter and lines inside fenced code are not headings.
-export const headingLineIndex = (content: string, anchor: string): number | null => {
+export interface HeadingLine {
+  level: number;
+  text: string;
+  lineIndex: number;
+}
+
+// The note's ATX headings in order, text without the closing `##` (a `#` with no space before it, as in "C#", stays).
+// Frontmatter and lines inside fenced code are not headings.
+export const scanHeadings = (content: string): HeadingLine[] => {
   const lines = content.split('\n');
   const { body } = splitFrontmatter(content);
   const firstBodyLine = content.slice(0, content.length - body.length).split('\n').length - 1;
+  const headings: HeadingLine[] = [];
   let fence: string | null = null;
   for (let i = firstBodyLine; i < lines.length; i++) {
     const line = lines[i];
@@ -449,11 +443,15 @@ export const headingLineIndex = (content: string, anchor: string): number | null
       fence = opener;
       continue;
     }
-    const match = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
-    if (match && headingMatches(match[1], anchor)) return i;
+    const match = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/.exec(line);
+    if (match && match[2]) headings.push({ level: match[1].length, text: match[2], lineIndex: i });
   }
-  return null;
+  return headings;
 };
+
+// Line index of the first heading the anchor names.
+export const headingLineIndex = (content: string, anchor: string): number | null =>
+  scanHeadings(content).find((heading) => headingMatches(heading.text, anchor))?.lineIndex ?? null;
 
 // The #anchor of a markdown note link, decoded; null when the link names no heading.
 export const parseMarkdownLinkAnchor = (rawHref: string): string | null => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headingLineIndex, headingMatches, headingSlug, parseMarkdownLinkAnchor } from '../../src/lib/noteUtils';
+import { headingLineIndex, headingMatches, headingSlug, parseMarkdownLinkAnchor, scanHeadings } from '../../src/lib/noteUtils';
 
 describe('heading anchors', () => {
   it('matches a heading by its text or by its slug, ignoring case', () => {
@@ -23,6 +23,14 @@ describe('heading anchors', () => {
     // A ``` line inside a ~~~ fence does not close it.
     const tilde = ['~~~', '```', '~~~', '# Setup'].join('\n');
     expect(headingLineIndex(tilde, 'Setup')).toBe(3);
+  });
+
+  it('lists headings for the outline without frontmatter, fenced code or closing #s', () => {
+    const content = ['---', '# yaml comment', '---', '## Install ##', '```bash', '# install deps', '```', '### C#'].join('\n');
+    expect(scanHeadings(content)).toEqual([
+      { level: 2, text: 'Install', lineIndex: 3 },
+      { level: 3, text: 'C#', lineIndex: 7 },
+    ]);
   });
 
   it('reads the anchor of a markdown note link, decoded', () => {
