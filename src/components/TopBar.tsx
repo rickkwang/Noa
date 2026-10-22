@@ -5,7 +5,7 @@ import type { NoteHistory } from '../hooks/useNoteHistory';
 import { themeSurfaces } from '../lib/themePalette';
 import { AppSettings } from '../types';
 import { PaneMenu } from './rightPanel/PaneMenu';
-import { Search, PanelLeft, PanelRight, X, CalendarPlain, ArrowLeft, ArrowRight } from '@/src/lib/icons';
+import { Search, PanelLeft, PanelRight, X, Layers, ArrowLeft, ArrowRight } from '@/src/lib/icons';
 
 const dragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'drag' };
 const noDragRegion: CSSProperties & { WebkitAppRegion: string } = { WebkitAppRegion: 'no-drag' };
@@ -208,7 +208,7 @@ export default function TopBar({ settings, onToggleSidebar, sidebarToggleRef, on
                     : 'text-[var(--icon-ink,#52514E)] hover:text-[var(--text-primary,#2D2D2B)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_7.5%,transparent)]'
                 }`}
               >
-                <CalendarPlain size={16} />
+                <Layers size={16} />
               </button>
             )}
             <div id={TITLEBAR_PANEL_TABS_SLOT_ID} className="flex items-center">

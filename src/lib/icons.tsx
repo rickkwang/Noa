@@ -1,4 +1,4 @@
-// Central icon mapping: Tabler Icons (plus a few hand-drawn glyphs) exported under the
+// Central icon mapping: Tabler Icons (plus a hand-drawn ChevronsDownUp) exported under the
 // legacy lucide-react names so call sites are unchanged. To swap a shape, change its mapping here only.
 import {
   IconAdjustmentsHorizontal,
@@ -11,7 +11,6 @@ import {
   IconArrowsDiagonalMinimize2,
   IconArrowsDownUp,
   IconBook,
-  IconBrush,
   IconCalendar,
   IconCheck,
   IconChevronDown,
@@ -27,6 +26,7 @@ import {
   IconDice5,
   IconDots,
   IconDownload,
+  IconEdit,
   IconExternalLink,
   IconEye,
   IconFileText,
@@ -43,8 +43,8 @@ import {
   IconLoader2,
   IconMoon,
   IconNetwork,
-  IconNotebook,
   IconPalette,
+  IconPencil,
   IconPlus,
   IconRefresh,
   IconSearch,
@@ -53,6 +53,7 @@ import {
   IconSettings,
   IconSquareCheck,
   IconSquarePlus,
+  IconStack2,
   IconSun,
   IconTag,
   IconTrash,
@@ -62,7 +63,6 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import type { Icon, IconProps } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
 
 // Default to 24px with a 1.5 stroke; call sites that need a heavier glyph pass their own stroke.
 function icon(Cmp: Icon) {
@@ -110,39 +110,9 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
 }
 export const ChevronUp = icon(IconChevronUp);
 export const CircleArrowUp = icon(IconCircleArrowUp);
-// Hand-drawn titlebar/editor action glyphs, on Tabler's 24 grid and 4–20 extent
-// so they match the wrapped icons beside them at the same size and stroke.
-function glyph(paths: ReactNode) {
-  return function Glyph({ size = 24, stroke = 1.5, className, style }: IconProps) {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-        style={style}
-        aria-hidden="true"
-      >
-        {paths}
-      </svg>
-    );
-  };
-}
-// Tabler's calendar without the "1".
-export const CalendarPlain = glyph(<><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 11h16M8 3v4M16 3v4" /></>);
-// Headings as an indented bullet list; filled dots, since stroked ones vanish at 16px.
-export const Outline = glyph(<>
-  <path d="M8.5 6H20M12.5 12H20M12.5 18H20" />
-  <g fill="currentColor" stroke="none"><circle cx="4.75" cy="6" r="1.1" /><circle cx="8.75" cy="12" r="1.1" /><circle cx="8.75" cy="18" r="1.1" /></g>
-</>);
-// Tabler's pencil without the ferrule; its base runs on into a writing line.
-export const Edit2 = glyph(<path d="M4 20h4L18.5 9.5a2.83 2.83 0 0 0-4-4L4 16v4M13 20h7" />);
+// The editor's outline and edit-mode toggles.
+export const Outline = icon(IconList);
+export const Edit2 = icon(IconPencil);
 export const Clock = icon(IconClock);
 export const Copy = icon(IconCopy);
 export const Database = icon(IconDatabase);
@@ -159,6 +129,8 @@ export const FolderPlus = icon(IconFolderPlus);
 export const Tag = icon(IconTag);
 export const HardDrive = icon(IconServer);
 export const Info = icon(IconInfoCircle);
+// The note rail toggle: a stack of cards, since the rail holds more than the calendar.
+export const Layers = icon(IconStack2);
 export const List = icon(IconList);
 export const Loader2 = icon(IconLoader2);
 export const Maximize2 = icon(IconArrowsDiagonal);
@@ -170,7 +142,6 @@ export const Network = icon(IconNetwork);
 export const Palette = icon(IconPalette);
 export const PanelLeft = icon(IconLayoutSidebar);
 export const PanelRight = icon(IconLayoutSidebarRight);
-export const PenTool = icon(IconBrush);
 export const Plus = icon(IconPlus);
 export const PlusSquare = icon(IconSquarePlus);
 export const RefreshCcw = icon(IconRefresh);
@@ -179,7 +150,7 @@ export const Search = icon(IconSearch);
 export const Settings = icon(IconSettings);
 export const SlidersHorizontal = icon(IconAdjustmentsHorizontal);
 export const Sun = icon(IconSun);
-export const SquarePen = icon(IconNotebook);
+export const SquarePen = icon(IconEdit);
 export const Trash2 = icon(IconTrash);
 export const Link = icon(IconLink);
 export const Unlink = icon(IconUnlink);

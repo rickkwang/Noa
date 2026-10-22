@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { SETTINGS_TAB_IDS, SettingsIndexEntry, SettingsTab, searchSettings } from './settingsIndex';
-import { Palette, PenTool, HardDrive, Database, Info, Search, SlidersHorizontal } from '@/src/lib/icons';
+import { Palette, FileText, HardDrive, Database, Info, Search, SlidersHorizontal } from '@/src/lib/icons';
 
 // Record, not a literal array: TypeScript then requires an entry for every id
 // in SETTINGS_TAB_IDS, so a tab added to the index cannot go unrendered here.
 const TAB_META: Record<SettingsTab, { label: string; icon: typeof Palette }> = {
   general: { label: 'General', icon: SlidersHorizontal },
-  notes: { label: 'Notes', icon: PenTool },
+  notes: { label: 'Notes', icon: FileText },
   appearance: { label: 'Appearance', icon: Palette },
   workspace: { label: 'Workspace', icon: HardDrive },
   data: { label: 'Data', icon: Database },
