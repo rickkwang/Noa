@@ -784,9 +784,10 @@ test('jumping to a task flashes the line it lands on, then clears', async ({ pag
   await createNewNote(page);
   await page.locator('.cm-content').last().click();
   await page.keyboard.type(`intro\n\n- [ ] ${marker}`);
-  const row = page.locator('[data-pane="tasks"]').getByText(marker);
+  // Scoped to this note's row: first run also seeds the Welcome checklist into the Tasks pane.
+  const row = page.locator('[data-pane="tasks"] .group', { hasText: marker });
   await row.hover();
-  await page.locator('[data-pane="tasks"]').getByRole('button', { name: /^Open source note/ }).click();
+  await row.getByRole('button', { name: /^Open source note/ }).click();
   const landed = page.locator('.cm-line.noa-landed-line');
   await expect(landed).toHaveCount(1);
   await expect(landed).toContainText(marker);
@@ -1417,7 +1418,7 @@ test('audit: task markers stay in source but not preview or search snippets', as
   await page.goto('/');
   await createNewNote(page);
   await page.locator('.cm-content').fill('- [ ] audit milk\n\nAfter task');
-  await page.getByRole('button', { name: 'Complete task', exact: true }).click();
+  await page.locator('[data-pane="tasks"] .group', { hasText: 'audit milk' }).getByRole('button', { name: 'Complete task', exact: true }).click();
   await waitForMarkerPersisted(page, 'noa-task:');
   await ensurePreviewMode(page);
   await expect(page.locator('.prose').last()).toContainText('audit milk');
@@ -1571,8 +1572,10 @@ test('closing audit: code examples are excluded while real tasks still toggle', 
   await createNewNote(page);
   const code = '```markdown\n- [ ] same task\n```';
   await page.locator('.cm-content').fill(`${code}\n\n- [ ] same task`);
-  await expect(page.getByRole('button', { name: 'Complete task', exact: true })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Complete task', exact: true }).click();
+  // Scoped to this note's text: first run also seeds the Welcome checklist into the Tasks pane.
+  const completeButtons = page.locator('[data-pane="tasks"] .group', { hasText: 'same task' }).getByRole('button', { name: 'Complete task', exact: true });
+  await expect(completeButtons).toHaveCount(1);
+  await completeButtons.click();
   await expect.poll(async () => (await auditStoredNotes(page)).find(n => n.content.startsWith(code))?.content)
     .toMatch(/```markdown\n- \[ \] same task\n```\n\n- \[x\] same task <!-- noa-task:/);
 });
