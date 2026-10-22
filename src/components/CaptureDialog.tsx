@@ -437,7 +437,7 @@ export default function CaptureDialog({ shot, onRetake, onCopy, onSave, onRender
                 <div className="flex items-start gap-3 px-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className={ROW_LABEL}>Hide names</div>
-                    <div className={`mt-0.5 text-xs leading-[17px] ${MUTED}`}>Note, folder and tag names in the sidebar and tabs.</div>
+                    <div className={`mt-0.5 text-xs leading-[17px] ${MUTED}`}>Every note, folder and tag name except the open note's.</div>
                   </div>
                   <SettingsToggle checked={hideNames} onChange={setHideNames} label="Hide names" />
                 </div>

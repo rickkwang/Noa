@@ -1157,7 +1157,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           {/* Inline title mirrors the editor's title widget; omitted in print output. */}
-          {!printMode && <div className="noa-inline-title" role="heading" aria-level={1} data-capture-redact>{note.title || 'Untitled'}</div>}
+          {!printMode && <div className="noa-inline-title" role="heading" aria-level={1}>{note.title || 'Untitled'}</div>}
           {!printMode && properties}
           <NoteMarkdownBody
             note={note}

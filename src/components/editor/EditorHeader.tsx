@@ -545,7 +545,7 @@ export function EditorHeader({
                       ) : (
                         <span
                           className="text-xs font-bold truncate min-w-0 flex-1"
-                          data-capture-redact
+                          data-capture-redact={isActiveTab ? undefined : ''}
                           onDoubleClick={isActiveTab && !readOnly ? () => onSetEditingTitle(true) : undefined}
                           title={isActiveTab && !readOnly ? 'Double-click to rename' : tab.title}
                         >
@@ -593,7 +593,6 @@ export function EditorHeader({
                     className={`text-xs font-bold cursor-text truncate max-w-[120px] ${isDark ? 'text-[var(--ink-on-dark,#F9F9F7)]' : 'text-[var(--text-primary,#2D2D2B)]'}`}
                     onClick={readOnly ? undefined : () => onSetEditingTitle(true)}
                     title={readOnly ? note.title : 'Click to rename'}
-                    data-capture-redact
                   >
                     {note.title || 'Untitled'}
                   </span>

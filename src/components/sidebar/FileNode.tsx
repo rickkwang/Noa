@@ -256,7 +256,7 @@ export const FileNode = React.memo(({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="noa-fade-truncate" data-capture-redact>
+            <span className="noa-fade-truncate" data-capture-redact={isActive && !isFolder ? undefined : ''}>
               {name}
             </span>
           )}

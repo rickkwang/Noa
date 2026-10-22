@@ -35,8 +35,6 @@ class InlineTitleWidget extends WidgetType {
     const title = document.createElement('div');
     title.className = 'cm-noa-inline-title';
     title.textContent = this.title;
-    // The title is the note's file name; window capture hides it like the sidebar's.
-    title.dataset.captureRedact = '';
     if (!this.slot) return title;
     // The slot is one persistent element React portals the Properties UI into;
     // re-appending it on a rename moves it rather than losing the portal.
