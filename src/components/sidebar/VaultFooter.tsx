@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SyncStatus } from '../../types';
+import { UpdateButton } from './UpdateButton';
 import { Check, ChevronsUpDown, HardDrive, RefreshCcw, Settings, Unlink } from '@/src/lib/icons';
 
 export interface VaultFooterProps {
@@ -229,6 +230,7 @@ export function VaultFooter({
       </button>
 
       <div className="ml-auto flex items-center shrink-0">
+        <UpdateButton />
         {actions}
         <button
           onClick={onOpenSettings}

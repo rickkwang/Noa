@@ -18,6 +18,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
+  IconCircleArrowUp,
   IconCircleCheck,
   IconClock,
   IconCopy,
@@ -108,6 +109,7 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
   );
 }
 export const ChevronUp = icon(IconChevronUp);
+export const CircleArrowUp = icon(IconCircleArrowUp);
 // Hand-drawn titlebar/editor action glyphs, on Tabler's 24 grid and 4–20 extent
 // so they match the wrapped icons beside them at the same size and stroke.
 function glyph(paths: ReactNode) {
