@@ -1157,7 +1157,7 @@ export const PreviewPane = React.memo(function PreviewPane({
           style={{ ...editorStyle, ...contentMaxWidthStyle }}
         >
           {/* Inline title mirrors the editor's title widget; omitted in print output. */}
-          {!printMode && <div className="noa-inline-title" role="heading" aria-level={1}>{note.title || 'Untitled'}</div>}
+          {!printMode && <div className="noa-inline-title" role="heading" aria-level={1} data-capture-redact>{note.title || 'Untitled'}</div>}
           {!printMode && properties}
           <NoteMarkdownBody
             note={note}
@@ -1194,8 +1194,8 @@ export const PreviewPane = React.memo(function PreviewPane({
                     className="noa-backlink-row flex w-full flex-col rounded-md px-2 py-1.5 text-left"
                     onClick={() => onNavigateToNoteById(backlink.id)}
                   >
-                    <span className="truncate text-body leading-[19px] text-[var(--text-primary,#2D2D2B)]">{backlink.title}</span>
-                    <span className="noa-rail-muted break-words text-xs leading-[15px]">{getSnippet(backlink.content, note.title)}</span>
+                    <span className="truncate text-body leading-[19px] text-[var(--text-primary,#2D2D2B)]" data-capture-redact>{backlink.title}</span>
+                    <span className="noa-rail-muted break-words text-xs leading-[15px]" data-capture-redact>{getSnippet(backlink.content, note.title)}</span>
                   </button>
                 </li>
               ))}

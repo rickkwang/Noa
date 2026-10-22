@@ -142,7 +142,7 @@ export function VaultFooter({
               {/* Workspace and vault coexist: the workspace is always present, the vault is an optional mirrored folder. */}
               <div className="flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
                 <Check size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
-                <span className="truncate">{label}</span>
+                <span className="truncate" data-capture-redact>{label}</span>
                 <span className="ml-auto shrink-0 text-xs text-[var(--sidebar-text-muted,#898781)]">Workspace</span>
               </div>
 
@@ -153,7 +153,7 @@ export function VaultFooter({
                   <div className="px-2.5 pt-1.5 pb-1.5">
                     <div className="flex items-center gap-2.5 text-body font-ui text-[var(--text-primary,#2D2D2B)]">
                       <HardDrive size={13} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
-                      <span className="truncate">{vaultName}</span>
+                      <span className="truncate" data-capture-redact>{vaultName}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 pl-[23px] text-xs font-ui text-[var(--sidebar-text-muted,#898781)]">
                       <span className="shrink-0">
@@ -220,7 +220,7 @@ export function VaultFooter({
         <span className="mr-2 flex w-3.5 shrink-0 justify-center" aria-hidden>
           <ChevronsUpDown size={11} />
         </span>
-        <span className="truncate">{label}</span>
+        <span className="truncate" data-capture-redact>{label}</span>
         {/* Inline vertical-align:middle centres on the x-height; a flex child would centre on the line box and read ~1.5px high. */}
         {vaultName && (
           <span className="ml-1.5 shrink-0" aria-hidden>

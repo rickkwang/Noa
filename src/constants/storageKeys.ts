@@ -28,4 +28,5 @@ export const STORAGE_KEYS = {
   // Import edits IndexedDB couldn't store; parked in localStorage since that store is independent of IndexedDB.
   RESCUED_IMPORT_EDITS: 'noa:rescued-import-edits',
   SYSTEM_FONTS: 'noa:system-fonts',
+  CAPTURE_PREFS: 'noa:capture-prefs',
 } as const;

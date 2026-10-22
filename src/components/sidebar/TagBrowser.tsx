@@ -116,7 +116,7 @@ export function TagBrowser({ notes, onSearchTag, searchQuery, isOpen: isTagsOpen
             title={node.isTag ? `#${node.path} · ${node.ownCount} note${node.ownCount === 1 ? '' : 's'}${hasChildren ? ` (${node.count} with subtags)` : ''}` : `${node.path} · ${node.count} note${node.count === 1 ? '' : 's'}`}
             className={`flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-left ${node.isTag ? '' : 'noa-tag-group'}`}
           >
-            <span className="truncate">{node.name}</span>
+            <span className="truncate" data-capture-redact>{node.name}</span>
             {node.similarTo.length > 0 && (
               <span
                 className="noa-tag-similar shrink-0 rounded px-1 text-micro leading-4"

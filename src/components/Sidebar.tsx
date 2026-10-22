@@ -797,17 +797,17 @@ export default function Sidebar({
                   >
                     <div className="noa-search-hit-title flex h-5 items-center gap-2 text-sm">
                       <FileText size={14} className="shrink-0 text-[var(--sidebar-text-muted,#898781)]" />
-                      <span className="truncate">
+                      <span className="truncate" data-capture-redact>
                         {result.titleSnippet ? <HighlightedText text={result.titleSnippet} /> : 'Untitled'}
                       </span>
                     </div>
                     {result.contentSnippet && (
-                      <div className="mt-0.5 pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)] break-words line-clamp-2">
+                      <div className="mt-0.5 pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)] break-words line-clamp-2" data-capture-redact>
                         <HighlightedText text={result.contentSnippet} />
                       </div>
                     )}
                     {result.note.tags && result.note.tags.length > 0 && (
-                      <div className="mt-0.5 truncate pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)]">
+                      <div className="mt-0.5 truncate pl-[22px] text-xs leading-[18px] text-[var(--sidebar-text-muted,#898781)]" data-capture-redact>
                         {result.note.tags.map(tag => `#${tag}`).join('  ')}
                       </div>
                     )}

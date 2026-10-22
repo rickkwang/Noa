@@ -52,16 +52,16 @@ export function LinkRow({
     <>
       <span className="flex items-center gap-1.5">
         <Icon size={13} className={`shrink-0 ${subtitleColor}`} />
-        <span className={`truncate text-body leading-5 ${titleColor}`}>
+        <span className={`truncate text-body leading-5 ${titleColor}`} data-capture-redact>
           {title}
         </span>
         {snippet && subtitle && (
-          <span className={`ml-auto shrink-0 max-w-[40%] truncate text-caption ${subtitleColor}`}>{subtitle}</span>
+          <span className={`ml-auto shrink-0 max-w-[40%] truncate text-caption ${subtitleColor}`} data-capture-redact>{subtitle}</span>
         )}
       </span>
       {/* Indented past the 13px icon + 6px gap so the second line hangs off the title. */}
       {(snippet || subtitle) && (
-        <span className={`block text-caption leading-4 pl-[19px] ${subtitleColor} ${snippet ? 'line-clamp-2 break-words' : 'truncate'}`}>{snippet || subtitle}</span>
+        <span className={`block text-caption leading-4 pl-[19px] ${subtitleColor} ${snippet ? 'line-clamp-2 break-words' : 'truncate'}`} data-capture-redact>{snippet || subtitle}</span>
       )}
     </>
   );

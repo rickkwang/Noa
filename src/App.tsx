@@ -28,6 +28,7 @@ import { useSettings } from './hooks/useSettings';
 import { useSidebarPreview } from './hooks/useSidebarPreview';
 import { useTabs } from './hooks/useTabs';
 import { useVaultOperations } from './hooks/useVaultOperations';
+import { useWindowCapture } from './hooks/useWindowCapture';
 import { headingLineIndex } from './lib/noteUtils';
 import { lsGetBoolean, lsSetBoolean } from './lib/safeLocalStorage';
 import { LOCAL_DATA_BOUNDARY_COPY } from './lib/userFacingCopy';
@@ -55,6 +56,13 @@ function warmableLazy<T extends React.ComponentType<any>>(load: () => Promise<{ 
 }
 const [EmptyState, loadEmptyState] = warmableLazy(() => import('./components/emptyState/EmptyState'));
 const [NoteRail, loadNoteRail] = warmableLazy(() => import('./components/rail/NoteRail').then((mod) => ({ default: mod.NoteRail })));
+const CaptureDialog = lazy(() => import('./components/CaptureDialog'));
+const CAPTURE_NOTICE_TEXT = {
+  copied: 'Screenshot copied',
+  saved: 'Screenshot saved',
+  failed: 'Could not capture the window',
+  blocked: 'Close the open dialog to capture the window',
+} as const;
 const CommandPaletteDialog = lazy(() => import('./components/CommandPaletteDialog'));
 const NavigationConflictDialog = lazy(() => import('./components/NavigationConflictDialog'));
 const TemplatePickerDialog = lazy(() => import('./components/TemplatePickerDialog'));
@@ -922,6 +930,8 @@ export default function App() {
     noteHistory.go(dir, workspaceNoteIds, handleSidebarSelectNote);
   }, [noteHistory, workspaceNoteIds, handleSidebarSelectNote]);
 
+  const windowCapture = useWindowCapture();
+  const { capture: captureWindow } = windowCapture;
   const commandPalette = useCommandPalette({
     notes: workspaceNotes,
     onCreateNote: () => handleCreateNote(defaultCreateFolderId),
@@ -929,6 +939,7 @@ export default function App() {
     onOpenSettings: () => setIsSettingsOpen(true),
     onFocusSearch: focusSearch,
     onOpenNoteById: (id) => navigateById(id),
+    onCaptureWindow: windowCapture.isAvailable ? () => { void captureWindow(); } : undefined,
   });
 
   // flush pending saves before Electron quits or web page unloads
@@ -965,6 +976,7 @@ export default function App() {
     onExitFocusMode: exitFocusMode,
     onToggleViewMode: () => setEditorViewMode((mode) => (mode === 'edit' ? 'preview' : 'edit')),
     onNavigateHistory: navigateHistory,
+    onCaptureWindow: windowCapture.isAvailable ? () => { void captureWindow(); } : undefined,
   });
 
   if (!isLoaded) {
@@ -1629,6 +1641,24 @@ export default function App() {
         // the toast disappears.
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] text-xs px-3 py-1.5 font-ui pointer-events-none">
           A tab was closed to make room (max 20 tabs)
+        </div>
+      )}
+      {windowCapture.shot && (
+        <Suspense fallback={null}>
+          <CaptureDialog
+            shot={windowCapture.shot}
+            onRetake={() => { void captureWindow(); }}
+            onCopy={windowCapture.copy}
+            onSave={windowCapture.save}
+            onRenderFailed={windowCapture.renderFailed}
+            onClose={windowCapture.close}
+          />
+        </Suspense>
+      )}
+      {windowCapture.notice && (
+        // Above the capture dialog (z-80), which stays open when a copy or save fails.
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] bg-[var(--text-primary,#2D2D2B)] text-[var(--bg-primary,#FCFCFB)] text-xs px-3 py-1.5 font-ui pointer-events-none">
+          {CAPTURE_NOTICE_TEXT[windowCapture.notice]}
         </div>
       )}
     </div>

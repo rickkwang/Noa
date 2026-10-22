@@ -1273,6 +1273,48 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
   mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
 }
 
+/* Window capture (useWindowCapture): names are hidden and stood in for by a soft bar, so the
+   screenshot holds no glyphs to un-blur. The bar has a fixed width so it doesn't leak name length. */
+html[data-capture-redact="true"] [data-capture-redact] {
+  position: relative;
+  visibility: hidden !important;
+}
+/* Window capture: stand-ins for the native traffic lights, which capturePage can't see. Matches main.cjs:
+   button centres at 22px (TRAFFIC_LIGHT_POSITION + TRAFFIC_LIGHT_RADIUS) in CSS px at any zoom, while the
+   14px buttons and 23px pitch (measured from a native window capture) stay native-size, so they shrink by
+   the zoom factor in CSS px. */
+html[data-capture-chrome="true"]::after {
+  --noa-light: calc(14px / var(--noa-zoom-factor, 1));
+  --noa-light-pitch: calc(23px / var(--noa-zoom-factor, 1));
+  content: "";
+  position: fixed;
+  z-index: 2147483647;
+  top: calc(22px - var(--noa-light) / 2);
+  left: calc(22px - var(--noa-light) / 2);
+  width: var(--noa-light);
+  height: var(--noa-light);
+  border-radius: 50%;
+  pointer-events: none;
+  background: #FA7C73;
+  box-shadow:
+    var(--noa-light-pitch) 0 0 0 #FEC637,
+    calc(var(--noa-light-pitch) * 2) 0 0 0 #80D55A;
+}
+
+html[data-capture-redact="true"] [data-capture-redact]::after {
+  content: "";
+  visibility: visible;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: min(100%, 7em);
+  height: 0.6em;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 30%, transparent);
+  filter: blur(1.5px);
+}
+
 /* Same pull-back for the right panel's tab bodies (keeps hover bands symmetric). Keep 6px equal to ::-webkit-scrollbar width. */
 .noa-panel-scroll {
   scrollbar-gutter: stable;
@@ -1693,7 +1735,7 @@ html[data-translucent-sidebar="enabled"] .noa-sidebar-promotion-spacer[data-side
   padding: 0;
 }
 
-/* Graph drawer sliders: a hairline track filled with accent up to the value (--noa-range-fill, set inline),
+/* Range sliders (graph drawer, window capture): a hairline track filled with accent up to the value (--noa-range-fill, set inline),
    and a small raised thumb — the native control's heavy black track and large thumb read as foreign here. */
 .noa-range {
   -webkit-appearance: none;

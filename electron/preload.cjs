@@ -29,6 +29,16 @@ contextBridge.exposeInMainWorld('noaDesktop', {
       ipcRenderer.invoke('window:set-sidebar-translucency', enabled, fallbackColor, themeSource)
     ),
   },
+  capture: {
+    capturePage: () => ipcRenderer.invoke('capture:page'),
+    copyImage: (dataUrl) => ipcRenderer.invoke('capture:copy-image', dataUrl),
+    saveImage: (dataUrl) => ipcRenderer.invoke('capture:save-image', dataUrl),
+    onRequest: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on('capture:request', handler);
+      return () => ipcRenderer.removeListener('capture:request', handler);
+    },
+  },
   lifecycle: {
     onBeforeQuit: (listener) => {
       const handler = async () => {

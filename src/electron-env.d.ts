@@ -16,6 +16,12 @@ declare global {
       appearance: {
         setSidebarTranslucency: (enabled: boolean, fallbackColor: string, themeSource: 'system' | 'light' | 'dark') => Promise<boolean>;
       };
+      capture: {
+        capturePage: () => Promise<string | null>;
+        copyImage: (dataUrl: string) => Promise<boolean>;
+        saveImage: (dataUrl: string) => Promise<'saved' | 'canceled' | 'failed'>;
+        onRequest: (listener: () => void) => () => void;
+      };
       lifecycle: {
         onBeforeQuit: (listener: () => Promise<void>) => () => void;
       };

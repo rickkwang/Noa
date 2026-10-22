@@ -15,6 +15,7 @@ interface UseGlobalShortcutsOptions {
   onExitFocusMode?: () => void;
   onToggleViewMode?: () => void;
   onNavigateHistory?: (dir: -1 | 1) => void;
+  onCaptureWindow?: () => void;
 }
 
 const MAC_HISTORY_KEYS: Record<string, -1 | 1> = { BracketLeft: -1, BracketRight: 1 };
@@ -40,6 +41,7 @@ export function useGlobalShortcuts({
   onExitFocusMode,
   onToggleViewMode,
   onNavigateHistory,
+  onCaptureWindow,
 }: UseGlobalShortcutsOptions): void {
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
@@ -49,7 +51,15 @@ export function useGlobalShortcuts({
 
     const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      // Matched by code: with Cmd held, macOS can report Shift+S as a lowercase 's', which would
+      // otherwise land in the force-save branch below and swallow the menu accelerator.
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyS' && onCaptureWindow) {
+        e.preventDefault();
+        onCaptureWindow();
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 's') {
         e.preventDefault();
         onForceSave?.();
       }
@@ -124,5 +134,5 @@ export function useGlobalShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, onToggleViewMode, onNavigateHistory, isFocusMode, searchInputRef]);
+  }, [enabled, onClearSearch, onCreateNote, onFocusSearch, onForceSave, onOpenCommandPalette, onOpenDailyNote, onToggleFocusMode, onExitFocusMode, onToggleViewMode, onNavigateHistory, onCaptureWindow, isFocusMode, searchInputRef]);
 }

@@ -14,6 +14,8 @@ type UseCommandPaletteOptions = {
   onOpenSettings: () => void;
   onFocusSearch: () => void;
   onOpenNoteById: (id: string) => void;
+  /** Desktop only; omitted on web, where the command is not offered. */
+  onCaptureWindow?: () => void;
 };
 
 export function useCommandPalette({
@@ -23,6 +25,7 @@ export function useCommandPalette({
   onOpenSettings,
   onFocusSearch,
   onOpenNoteById,
+  onCaptureWindow,
 }: UseCommandPaletteOptions) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQueryState] = useState('');
@@ -51,6 +54,7 @@ export function useCommandPalette({
       { id: 'open-daily-note', label: "Open today's daily note", action: onOpenDailyNote },
       { id: 'open-settings', label: 'Open settings', action: onOpenSettings },
       { id: 'focus-search', label: 'Focus search', action: onFocusSearch },
+      ...(onCaptureWindow ? [{ id: 'capture-window', label: 'Capture window (hide names)', action: onCaptureWindow }] : []),
     ];
 
     const normalizedQuery = query.trim().toLowerCase();
@@ -69,7 +73,7 @@ export function useCommandPalette({
       }));
 
     return [...filteredBase, ...noteCommands];
-  }, [notes, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenNoteById, onOpenSettings, query]);
+  }, [notes, onCaptureWindow, onCreateNote, onFocusSearch, onOpenDailyNote, onOpenNoteById, onOpenSettings, query]);
 
   // Wraps at both ends. Steps from the clamped index: the list can shrink while open.
   const moveSelection = useCallback((delta: number) => {

@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, session } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, shell, session } = require('electron');
+const fs = require('fs/promises');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { getReleasePageUrl, installMacUpdate } = require('./macUpdateInstaller.cjs');
@@ -173,12 +174,26 @@ function buildMenu() {
         { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => setZoomLevel(level => level + 0.5) },
         { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => setZoomLevel(level => level - 0.5) },
         { type: 'separator' },
+        // The renderer hides names first, then calls back into 'capture:page'.
+        {
+          label: 'Capture Window (Hide Names)',
+          accelerator: 'CommandOrControl+Shift+S',
+          click: () => { if (win && !win.isDestroyed()) win.webContents.send('capture:request'); },
+        },
+        { type: 'separator' },
         { role: 'togglefullscreen' },
       ],
     },
     { role: 'windowMenu' },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+// Only PNG data URLs from the capture dialog; anything else is refused rather than decoded.
+function pngFromDataUrl(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return null;
+  const image = nativeImage.createFromDataURL(dataUrl);
+  return image.isEmpty() ? null : image;
 }
 
 function setZoomLevel(next) {
@@ -335,6 +350,31 @@ if (isPrimaryInstance) app.whenReady().then(() => {
     }
     win.setBackgroundColor(resolved.backgroundColor);
     return true;
+  });
+  ipcMain.handle('capture:page', async (event) => {
+    if (!win || win.isDestroyed() || event.sender !== win.webContents) return null;
+    const image = await win.webContents.capturePage();
+    return image.isEmpty() ? null : image.toDataURL();
+  });
+  ipcMain.handle('capture:copy-image', (event, dataUrl) => {
+    if (!win || win.isDestroyed() || event.sender !== win.webContents) return false;
+    const image = pngFromDataUrl(dataUrl);
+    if (!image) return false;
+    clipboard.writeImage(image);
+    return true;
+  });
+  ipcMain.handle('capture:save-image', async (event, dataUrl) => {
+    if (!win || win.isDestroyed() || event.sender !== win.webContents) return 'failed';
+    const image = pngFromDataUrl(dataUrl);
+    if (!image) return 'failed';
+    const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '.');
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      defaultPath: path.join(app.getPath('desktop'), `Noa Screenshot ${stamp}.png`),
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    });
+    if (canceled || !filePath) return 'canceled';
+    await fs.writeFile(filePath, image.toPNG());
+    return 'saved';
   });
   ipcMain.handle('app-updater:get-status', () => updateState);
   ipcMain.handle('app-updater:check', async () => {

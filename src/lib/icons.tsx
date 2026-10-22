@@ -61,6 +61,8 @@ import {
   IconUpload,
   IconUsers,
   IconX,
+  IconZoomIn,
+  IconZoomOut,
 } from '@tabler/icons-react';
 import type { Icon, IconProps } from '@tabler/icons-react';
 
@@ -157,3 +159,5 @@ export const Unlink = icon(IconUnlink);
 export const Upload = icon(IconUpload);
 export const Users = icon(IconUsers);
 export const X = icon(IconX);
+export const ZoomIn = icon(IconZoomIn);
+export const ZoomOut = icon(IconZoomOut);
