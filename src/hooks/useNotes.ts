@@ -18,6 +18,7 @@ import { storage } from '../lib/storage';
 import { toggleTaskInNoteContent } from '../lib/taskParser';
 import { builtinTemplates, applyTemplate, formatDate } from '../lib/templates';
 import { matchesVaultSyncedExpectation } from '../lib/vaultImportReconciliation';
+import { buildWelcomeNotes, createWelcomeFolder, WELCOME_NOTE_ID } from '../lib/welcomeNotes';
 import { pickInitialActiveNoteId, VAULT_ROOT_FOLDER_ID } from '../lib/workspaceOwnership';
 import {
   AppSettings,
@@ -364,42 +365,8 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
           setNotes([]);
           setActiveNoteId('');
         } else {
-          const welcomeNote: Note = {
-          id: 'welcome',
-          title: 'Welcome to Noa',
-          content: `Your private, local-first writing space.
-
-## Quick Start
-
-| Shortcut | Action |
-|----------|--------|
-| \`⌘ N\` | New note |
-| \`⌘ F\` | Search notes |
-| \`⌘ K\` | Open command palette |
-| \`⌘ ⇧ K\` | Open today's daily note |
-
-## Features
-
-- **Markdown editor** — Live Preview editing, or Preview (reading view)
-- **Wiki links** — Type \`[[Note Title]]\` to link notes
-- **Tasks** — Use \`- [ ] task\` syntax, track in right panel
-- **Tags** — Use \`#tag\` in notes, browse in sidebar
-- **Graph View** — Visualize note connections
-- **Vault Folder** — Edit existing Markdown files in a connected folder
-- **Daily Notes** — One note per day, auto-dated
-
-## Data Safety
-
-Without a connected folder, notes live **in this Noa app or browser profile**. With a folder connected, that folder is your workspace: edits and new notes are written to it. Noa's local notes are hidden until you disconnect, and are not deleted.
-Export regularly: use Settings → Data → Export JSON Backup.`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          folder: 'diary',
-            tags: [],
-            links: [],
-            linkRefs: [],
-            source: 'noa',
-          };
+          const welcomeFolder = createWelcomeFolder();
+          const welcomeNotes = buildWelcomeNotes(welcomeFolder.id);
           const dailyFolderId = crypto.randomUUID();
           const dateFormat = 'YYYY-MM-DD';
           const todayStr = formatDate(dateFormat);
@@ -417,16 +384,17 @@ Export regularly: use Settings → Data → Export JSON Backup.`,
             source: 'noa',
           };
           const initialFolders = [
+            welcomeFolder,
             { id: 'diary', name: 'diaries', source: 'noa' as const },
             { id: 'essay', name: 'essays', source: 'noa' as const },
             { id: dailyFolderId, name: 'Daily Notes', source: 'noa' as const }
           ];
+          const initialNotes = syncLinkRefsRef.current([...welcomeNotes, dailyNote], undefined, undefined, initialFolders);
           setFolders(initialFolders);
-          setNotes(syncLinkRefsRef.current([welcomeNote, dailyNote], undefined, undefined, initialFolders));
-          setActiveNoteId(welcomeNote.id);
+          setNotes(initialNotes);
+          setActiveNoteId(WELCOME_NOTE_ID);
           await storage.saveFolders(initialFolders);
-          await storage.saveNote(welcomeNote);
-          await storage.saveNote(dailyNote);
+          await storage.saveNotes(initialNotes);
         }
         setLoadError(null);
       } catch (error) {
