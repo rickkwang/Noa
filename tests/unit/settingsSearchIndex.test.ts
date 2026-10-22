@@ -48,7 +48,7 @@ describe('settings search index', () => {
 
     expect(searchSettings('line height').map((e) => e.label)).toContain('Line Height');
     // Section names match too.
-    expect(searchSettings('typography').map((e) => e.label)).toEqual(['Font Family', 'Font Size']);
+    expect(searchSettings('typography').map((e) => e.label)).toEqual(['Font Family', 'UI Font Style', 'Font Size']);
     // Keywords match even when absent from the label.
     expect(searchSettings('dark').map((e) => e.label)).toContain('Base Theme');
     expect(searchSettings('obsidian').map((e) => e.label)).toContain('Import Vault Folder');

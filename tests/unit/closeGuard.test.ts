@@ -63,7 +63,12 @@ describe('desktop save before close', () => {
     const ipcRenderer = Object.assign(new EventEmitter(), { send: vi.fn() });
     let bridge: any;
     vm.runInNewContext(readFileSync('electron/preload.cjs', 'utf8'), {
-      require: () => ({ ipcRenderer, contextBridge: { exposeInMainWorld: (_name: string, value: unknown) => { bridge = value; } } }),
+      require: () => ({
+        ipcRenderer,
+        webFrame: { getZoomFactor: () => 1 },
+        contextBridge: { exposeInMainWorld: (_name: string, value: unknown) => { bridge = value; } },
+      }),
+      window: { addEventListener: vi.fn() },
     });
     let finish!: () => void;
     const unsubscribe = bridge.lifecycle.onBeforeQuit(() => new Promise<void>(resolve => { finish = resolve; }));
