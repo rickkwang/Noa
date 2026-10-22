@@ -189,16 +189,16 @@ export function noteToHtmlDocument(note: Note): string {
   <title>${safeTitle}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #2D2D2B; background: #FCFCFB; line-height: 1.7; }
-    h1,h2,h3,h4,h5,h6 { font-weight: 600; margin-block: 1rem; }
+    h1,h2,h3,h4,h5,h6 { margin-block: 1rem; }
     /* mdToHtml writes a run of blank lines as one empty <p>; only real body text earns the section break. */
     :is(p:not(:empty),ul) + :is(h1,h2,h3,h4,h5,h6),
     :is(p:not(:empty),ul) + p:empty + :is(h1,h2,h3,h4,h5,h6) { margin-top: 2.5rem; }
-    h1 { font-size: 1.802em; line-height: 1.2; }
-    h2 { font-size: 1.602em; line-height: 1.2; }
-    h3 { font-size: 1.424em; line-height: 1.3; }
-    h4 { font-size: 1.266em; line-height: 1.4; }
-    h5 { font-size: 1.125em; line-height: 1.5; }
-    h6 { font-size: 1em; line-height: 1.5; }
+    h1 { font-size: 1.618em; line-height: 1.2; font-weight: 700; }
+    h2 { font-size: 1.462em; line-height: 1.2; font-weight: 680; }
+    h3 { font-size: 1.318em; line-height: 1.3; font-weight: 660; }
+    h4 { font-size: 1.188em; line-height: 1.4; font-weight: 640; }
+    h5 { font-size: 1.076em; line-height: 1.5; font-weight: 620; }
+    h6 { font-size: 1em; line-height: 1.5; font-weight: 600; }
     pre { background: #EFEAE3; padding: 12px; border: 1px solid #2D2D2B; overflow-x: auto; }
     code { background: #EFEAE3; padding: 0 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; color: #CC7D5E; }
     a { color: #CC7D5E; }

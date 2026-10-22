@@ -116,7 +116,7 @@ export default function AppearanceSettings({ settings, updateSettings }: Appeara
             }))}
           />
         </SettingItem>
-        <SettingItem label="UI Font Style" description="Weight and italic style of the interface text." stacked>
+        <SettingItem label="UI Font Style" description="Weight and italic style of the interface and note text." stacked>
           <SettingsSelect
             ariaLabel="UI font style"
             value={settings.appearance.uiFontStyle}

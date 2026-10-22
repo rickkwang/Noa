@@ -138,6 +138,9 @@ export default function ThemeInjector({ settings }: ThemeInjectorProps) {
         font-family: ${fontFamilyStyle} !important;
         font-weight: ${uiFont.weight};
         font-style: ${uiFont.italic ? 'italic' : 'normal'};
+        /* Content bold sits a fixed step above the body, as Obsidian's --bold-modifier does, so a Semibold or Bold
+           body doesn't leave **strong** level with (or lighter than) the text around it. */
+        --font-weight-content-bold: ${Math.min(uiFont.weight + 200, 900)};
       }
       /* Code keeps its upright face; the UI font style is for prose and chrome. */
       code, pre, kbd, samp { font-style: normal; }

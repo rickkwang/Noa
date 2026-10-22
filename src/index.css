@@ -16,7 +16,7 @@
   --radius-dialog: 14px;
 
   /* Chrome `font-bold` is calibrated to 450 (old bundled 400-only face used synthetic bold; system fonts draw real weights).
-     Content bold (`**strong**`, headings) uses --font-weight-content-bold below. */
+     Content bold (`**strong**`) uses --font-weight-content-bold below; headings use --noa-h1-weight… */
   --font-weight-bold: 450;
   --font-weight-medium: 400;
 
@@ -59,8 +59,21 @@
   .noa-press, .noa-press:not(:disabled):active { transform: none; transition: none; }
 }
 
-/* Content bold (`**strong**`, headings, inline title) in preview and CodeMirror. Kept off @theme so chrome gets no `font-*` utility. */
+/* Content bold (`**strong**`, table headers, callout titles) in preview and CodeMirror. Kept off @theme so chrome gets no
+   `font-*` utility. This is the first-paint value for a Regular body; ThemeInjector resets it on body to the UI font
+   style's weight + 200. */
 :root { --font-weight-content-bold: 600; }
+/* Heading weights and sizes: Obsidian 1.14's defaults (its variable-font weight set), shared by the Reading view, the
+   CodeMirror themes in useCodeMirror.ts and the HTML export in lib/export.ts. Absolute, as in Obsidian: they don't follow
+   the body weight. A static font rounds 620–680 to its nearest face, so with a Bold face H2–H5 draw at 700. */
+:root {
+  --noa-h1-weight: 700;
+  --noa-h2-weight: 680;
+  --noa-h3-weight: 660;
+  --noa-h4-weight: 640;
+  --noa-h5-weight: 620;
+  --noa-h6-weight: 600;
+}
 
 /* Titlebar clearance for macOS traffic lights (data-desktop set by main.tsx). Inset must track
    trafficLightPosition.x in electron/main.cjs. */
@@ -948,17 +961,20 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 [data-theme="dark"] .prose a[data-footnote-ref]  { color: #CC7D5E !important; }
 [data-theme="dark"] .prose a[data-footnote-backref] { color: #CC7D5E !important; }
 
-/* ── Preview weights: headings and strong use the content semibold (size carries hierarchy). `.prose h1` (0,1,1)
-   outranks the plugin's :where() selectors without !important; inline weights in PreviewPane.tsx are set there. */
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
+/* ── Preview weights: strong uses the content bold, headings their own step (below). `.prose h1` (0,1,1) outranks the
+   plugin's :where() selectors without !important; inline weights in PreviewPane.tsx are set there. */
 .prose strong, .prose b, .prose thead th { font-weight: var(--font-weight-content-bold); }
+/* Bold takes the colour of the text around it, as in Live Preview and Obsidian; the plugin's default is a cool gray-900
+   that reads darker than the warm body ink. */
+.prose { --tw-prose-bold: currentColor; }
 
-/* ── Preview heading scale: Obsidian's ×1.125 scale, mirrored in useCodeMirror.ts so headings don't jump between modes. */
-.prose h1 { font-size: 1.802em; line-height: 1.2; }
-.prose h2 { font-size: 1.602em; line-height: 1.2; }
-.prose h3 { font-size: 1.424em; line-height: 1.3; }
-.prose h4 { font-size: 1.266em; line-height: 1.4; }
-.prose h5 { font-size: 1.125em; line-height: 1.5; }
+/* ── Preview heading scale: Obsidian 1.14's, mirrored in useCodeMirror.ts so headings don't jump between modes. */
+.prose h1 { font-size: 1.618em; line-height: 1.2; font-weight: var(--noa-h1-weight); }
+.prose h2 { font-size: 1.462em; line-height: 1.2; font-weight: var(--noa-h2-weight); }
+.prose h3 { font-size: 1.318em; line-height: 1.3; font-weight: var(--noa-h3-weight); }
+.prose h4 { font-size: 1.188em; line-height: 1.4; font-weight: var(--noa-h4-weight); }
+.prose h5 { font-size: 1.076em; line-height: 1.5; font-weight: var(--noa-h5-weight); }
+.prose h6 { font-size: 1em; line-height: 1.5; font-weight: var(--noa-h6-weight); }
 
 /* ── Preview heading spacing: Obsidian's model: 1rem above and below, 2.5rem section break after body content. rem keeps it constant across sizes. */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-block: 1rem; }
@@ -1015,9 +1031,9 @@ html[data-translucent-sidebar="enabled"]:where(:not([data-settings-open="true"])
 /* ── Inline title (file name): Obsidian h1 metrics; edit mode is a CM widget, preview the prose column's first child. */
 /* Padding, not margin: CodeMirror sizes a block widget by its box, so a margin there skews every click below it. */
 .cm-noa-inline-title, .noa-inline-title {
-  font-size: 1.802em;
+  font-size: 1.618em;
   line-height: 1.2;
-  font-weight: var(--font-weight-content-bold);
+  font-weight: var(--noa-h1-weight);
   padding-bottom: 0.5em;
 }
 .prose .noa-inline-title + * { margin-top: 0; }

@@ -50,12 +50,12 @@ const darkTheme = EditorView.theme({
   // while hidden) is right padding here, as in the reading view, so the scrollbar stays at the window edge.
   '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem', paddingRight: 'var(--noa-rail-reserve, 0px)' },
   '.cm-line': { padding: '0' },
-  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
-  '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
-  '.cm-lp-h2': { fontSize: '1.602em', lineHeight: '1.2' },
-  '.cm-lp-h3': { fontSize: '1.424em', lineHeight: '1.3' },
-  '.cm-lp-h4': { fontSize: '1.266em', lineHeight: '1.4' },
-  '.cm-lp-h5': { fontSize: '1.125em', lineHeight: '1.5' },
+  // Obsidian 1.14's heading scale, mirrored by `.prose h1…h6` in index.css so headings don't jump between edit and preview.
+  '.cm-lp-h1': { fontSize: '1.618em', lineHeight: '1.2' },
+  '.cm-lp-h2': { fontSize: '1.462em', lineHeight: '1.2' },
+  '.cm-lp-h3': { fontSize: '1.318em', lineHeight: '1.3' },
+  '.cm-lp-h4': { fontSize: '1.188em', lineHeight: '1.4' },
+  '.cm-lp-h5': { fontSize: '1.076em', lineHeight: '1.5' },
   '.cm-lp-h6': { lineHeight: '1.5' },
   '.cm-lp-heading': { paddingTop: '1rem' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.06)', borderLeft: '2px solid rgba(204,125,94,0.45)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
@@ -123,13 +123,13 @@ const darkTheme = EditorView.theme({
 }, { dark: true });
 
 const darkMarkdownHighlightStyle = HighlightStyle.define([
-  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight.
-  { tag: tags.heading1, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading2, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading3, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading4, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading5, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading6, fontWeight: 'var(--font-weight-content-bold)' },
+  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight (--noa-h1-weight… in index.css).
+  { tag: tags.heading1, fontWeight: 'var(--noa-h1-weight)' },
+  { tag: tags.heading2, fontWeight: 'var(--noa-h2-weight)' },
+  { tag: tags.heading3, fontWeight: 'var(--noa-h3-weight)' },
+  { tag: tags.heading4, fontWeight: 'var(--noa-h4-weight)' },
+  { tag: tags.heading5, fontWeight: 'var(--noa-h5-weight)' },
+  { tag: tags.heading6, fontWeight: 'var(--noa-h6-weight)' },
   // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
@@ -151,12 +151,12 @@ const lightTheme = EditorView.theme({
   // while hidden) is right padding here, as in the reading view, so the scrollbar stays at the window edge.
   '.cm-scroller': { overflow: 'auto', scrollbarGutter: 'stable', fontFamily: 'inherit', lineHeight: 'inherit', paddingLeft: '1.625rem', paddingRight: 'var(--noa-rail-reserve, 0px)' },
   '.cm-line': { padding: '0' },
-  // Obsidian's ×1.125 heading scale, mirrored by `.prose h1…h5` in index.css so headings don't jump between edit and preview.
-  '.cm-lp-h1': { fontSize: '1.802em', lineHeight: '1.2' },
-  '.cm-lp-h2': { fontSize: '1.602em', lineHeight: '1.2' },
-  '.cm-lp-h3': { fontSize: '1.424em', lineHeight: '1.3' },
-  '.cm-lp-h4': { fontSize: '1.266em', lineHeight: '1.4' },
-  '.cm-lp-h5': { fontSize: '1.125em', lineHeight: '1.5' },
+  // Obsidian 1.14's heading scale, mirrored by `.prose h1…h6` in index.css so headings don't jump between edit and preview.
+  '.cm-lp-h1': { fontSize: '1.618em', lineHeight: '1.2' },
+  '.cm-lp-h2': { fontSize: '1.462em', lineHeight: '1.2' },
+  '.cm-lp-h3': { fontSize: '1.318em', lineHeight: '1.3' },
+  '.cm-lp-h4': { fontSize: '1.188em', lineHeight: '1.4' },
+  '.cm-lp-h5': { fontSize: '1.076em', lineHeight: '1.5' },
   '.cm-lp-h6': { lineHeight: '1.5' },
   '.cm-lp-heading': { paddingTop: '1rem' },
   '.cm-code-line': { background: 'rgba(204,125,94,0.09)', borderLeft: '2px solid rgba(204,125,94,0.6)', padding: '0 0 0 0.85rem', boxSizing: 'border-box' },
@@ -224,13 +224,13 @@ const lightTheme = EditorView.theme({
 });
 
 const markdownHighlightStyle = HighlightStyle.define([
-  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight.
-  { tag: tags.heading1, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading2, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading3, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading4, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading5, fontWeight: 'var(--font-weight-content-bold)' },
-  { tag: tags.heading6, fontWeight: 'var(--font-weight-content-bold)' },
+  // Heading sizes are line classes (.cm-lp-h1…h6 in the editor theme); these only set the weight (--noa-h1-weight… in index.css).
+  { tag: tags.heading1, fontWeight: 'var(--noa-h1-weight)' },
+  { tag: tags.heading2, fontWeight: 'var(--noa-h2-weight)' },
+  { tag: tags.heading3, fontWeight: 'var(--noa-h3-weight)' },
+  { tag: tags.heading4, fontWeight: 'var(--noa-h4-weight)' },
+  { tag: tags.heading5, fontWeight: 'var(--noa-h5-weight)' },
+  { tag: tags.heading6, fontWeight: 'var(--noa-h6-weight)' },
   // Matches `.prose strong` in index.css.
   { tag: tags.strong, fontWeight: 'var(--font-weight-content-bold)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
