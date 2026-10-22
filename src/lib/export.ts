@@ -156,7 +156,8 @@ export function mdToHtml(md: string): string {
 
     closeList();
     if (!line.trim()) {
-      out.push('<p></p>');
+      // A run of blank lines is one break; an empty <p> has no height, so this only keeps the markup flat.
+      if (out[out.length - 1] !== '<p></p>') out.push('<p></p>');
       return;
     }
     out.push(`<p>${inline(line)}</p>`);
@@ -170,9 +171,17 @@ export function exportNoteAsMd(note: Note): void {
   downloadFile(note.content, `${note.title || 'untitled'}.md`, 'text/markdown');
 }
 
-export function exportNoteAsHtml(note: Note): void {
-  const safeTitle = escapeHtml(note.title || 'Untitled');
-  const html = `<!DOCTYPE html>
+// A standalone page for one note, shared by single-note and ZIP export. Heading sizes, weight and spacing mirror
+// `.prose h1…h6` in index.css; without them the browser's defaults draw h5/h6 smaller than body text.
+export function noteToHtmlDocument(note: Note): string {
+  const title = note.title || 'Untitled';
+  const safeTitle = escapeHtml(title);
+  // A body that opens with `# <title>` repeats the page's own <h1>; that line is dropped so the title stays on top.
+  const lines = note.content.split('\n');
+  const firstIndex = lines.findIndex((line) => line.trim() !== '');
+  const opensWithTitle = firstIndex !== -1 && lines[firstIndex].match(/^#\s+(.*?)(?:\s+#+)?\s*$/)?.[1] === title.trim();
+  const body = opensWithTitle ? lines.slice(firstIndex + 1).join('\n') : note.content;
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -180,7 +189,16 @@ export function exportNoteAsHtml(note: Note): void {
   <title>${safeTitle}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #2D2D2B; background: #FCFCFB; line-height: 1.7; }
-    h1,h2,h3,h4,h5,h6 { font-weight: bold; margin-top: 1.5em; }
+    h1,h2,h3,h4,h5,h6 { font-weight: 600; margin-block: 1rem; }
+    /* mdToHtml writes a run of blank lines as one empty <p>; only real body text earns the section break. */
+    :is(p:not(:empty),ul) + :is(h1,h2,h3,h4,h5,h6),
+    :is(p:not(:empty),ul) + p:empty + :is(h1,h2,h3,h4,h5,h6) { margin-top: 2.5rem; }
+    h1 { font-size: 1.802em; line-height: 1.2; }
+    h2 { font-size: 1.602em; line-height: 1.2; }
+    h3 { font-size: 1.424em; line-height: 1.3; }
+    h4 { font-size: 1.266em; line-height: 1.4; }
+    h5 { font-size: 1.125em; line-height: 1.5; }
+    h6 { font-size: 1em; line-height: 1.5; }
     pre { background: #EFEAE3; padding: 12px; border: 1px solid #2D2D2B; overflow-x: auto; }
     code { background: #EFEAE3; padding: 0 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; color: #CC7D5E; }
     a { color: #CC7D5E; }
@@ -191,8 +209,11 @@ export function exportNoteAsHtml(note: Note): void {
   <h1>${safeTitle}</h1>
   <p><small>Updated: ${new Date(note.updatedAt).toLocaleString()}</small></p>
   <hr />
-  ${mdToHtml(note.content)}
+  ${mdToHtml(body)}
 </body>
 </html>`;
-  downloadFile(html, `${note.title || 'untitled'}.html`, 'text/html');
+}
+
+export function exportNoteAsHtml(note: Note): void {
+  downloadFile(noteToHtmlDocument(note), `${note.title || 'untitled'}.html`, 'text/html');
 }

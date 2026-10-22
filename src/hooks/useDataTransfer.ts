@@ -10,7 +10,7 @@ import {
 } from '../lib/attachmentUtils';
 import { normalizeAndValidateNotes, validateExportData } from '../lib/dataIntegrity';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
-import { mdToHtml, buildBackupPayload, cloneNotesForBackup, escapeHtml } from '../lib/export';
+import { noteToHtmlDocument, buildBackupPayload, cloneNotesForBackup } from '../lib/export';
 import { markExported } from '../lib/exportTimestamp';
 import { extractObsidianCreatedAt, extractObsidianTags, splitFrontmatter } from '../lib/frontmatter';
 import {
@@ -584,21 +584,7 @@ export function useDataTransfer({
       if (htmlFolder) {
         const usedNames = new Set<string>();
         exportWorkspace.notes.forEach((note) => {
-          const safeTitle = escapeHtml(note.title || 'Untitled');
-          const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>${safeTitle}</title>
-</head>
-<body>
-  <h1>${safeTitle}</h1>
-  <p><small>Updated: ${new Date(note.updatedAt).toLocaleString()}</small></p>
-  <hr />
-  ${mdToHtml(note.content)}
-</body>
-</html>`;
-          htmlFolder.file(uniqueExportFilename(usedNames, note.title, note.id, '.html'), html);
+          htmlFolder.file(uniqueExportFilename(usedNames, note.title, note.id, '.html'), noteToHtmlDocument(note));
         });
       }
 
