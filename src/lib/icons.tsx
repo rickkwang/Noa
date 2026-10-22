@@ -1,5 +1,5 @@
-// Central icon mapping: Tabler Icons re-exported under the legacy lucide-react
-// names so call sites are unchanged. To swap a shape, change its mapping here only.
+// Central icon mapping: Tabler Icons (plus a few hand-drawn glyphs) exported under the
+// legacy lucide-react names so call sites are unchanged. To swap a shape, change its mapping here only.
 import {
   IconAdjustmentsHorizontal,
   IconAlertTriangle,
@@ -35,7 +35,6 @@ import {
   IconFolderOpen,
   IconFolderPlus,
   IconInfoCircle,
-  IconLayoutList,
   IconLayoutSidebar,
   IconLayoutSidebarRight,
   IconLink,
@@ -45,7 +44,6 @@ import {
   IconNetwork,
   IconNotebook,
   IconPalette,
-  IconPencil,
   IconPlus,
   IconRefresh,
   IconSearch,
@@ -63,6 +61,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import type { Icon, IconProps } from '@tabler/icons-react';
+import type { ReactNode } from 'react';
 
 // Default to 24px with a 1.5 stroke; call sites that need a heavier glyph pass their own stroke.
 function icon(Cmp: Icon) {
@@ -109,12 +108,44 @@ export function ChevronsDownUp({ size = 24, className, style }: IconProps) {
   );
 }
 export const ChevronUp = icon(IconChevronUp);
+// Hand-drawn titlebar/editor action glyphs, on Tabler's 24 grid and 4–20 extent
+// so they match the wrapped icons beside them at the same size and stroke.
+function glyph(paths: ReactNode) {
+  return function Glyph({ size = 24, stroke = 1.5, className, style }: IconProps) {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        style={style}
+        aria-hidden="true"
+      >
+        {paths}
+      </svg>
+    );
+  };
+}
+// Tabler's calendar without the "1".
+export const CalendarPlain = glyph(<><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 11h16M8 3v4M16 3v4" /></>);
+// Headings as an indented bullet list; filled dots, since stroked ones vanish at 16px.
+export const Outline = glyph(<>
+  <path d="M8.5 6H20M12.5 12H20M12.5 18H20" />
+  <g fill="currentColor" stroke="none"><circle cx="4.75" cy="6" r="1.1" /><circle cx="8.75" cy="12" r="1.1" /><circle cx="8.75" cy="18" r="1.1" /></g>
+</>);
+// Tabler's pencil without the ferrule; its base runs on into a writing line.
+export const Edit2 = glyph(<path d="M4 20h4L18.5 9.5a2.83 2.83 0 0 0-4-4L4 16v4M13 20h7" />);
 export const Clock = icon(IconClock);
 export const Copy = icon(IconCopy);
 export const Database = icon(IconDatabase);
 export const Dices = icon(IconDice5);
 export const Download = icon(IconDownload);
-export const Edit2 = icon(IconPencil);
 export const ExternalLink = icon(IconExternalLink);
 export const Eye = icon(IconEye);
 export const FileArchive = icon(IconFileZip);
@@ -127,7 +158,6 @@ export const Tag = icon(IconTag);
 export const HardDrive = icon(IconServer);
 export const Info = icon(IconInfoCircle);
 export const List = icon(IconList);
-export const LayoutList = icon(IconLayoutList);
 export const Loader2 = icon(IconLoader2);
 export const Maximize2 = icon(IconArrowsDiagonal);
 export const Minimize2 = icon(IconArrowsDiagonalMinimize2);

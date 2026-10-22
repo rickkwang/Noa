@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RIGHT_TAB_LABELS, type PaneBadges, type RightTab } from '../../constants/rightTabs';
-import { Check, CheckSquare, MoreHorizontal, PanelRight, SlidersHorizontal } from '@/src/lib/icons';
+import { Check, CheckSquare, PanelRight, SlidersHorizontal } from '@/src/lib/icons';
 
 // Backlinks: arrow coming in from the lower left (incoming links)
 function BacklinksIcon({ size = 14, stroke = 2, className = '' }: { size?: number; stroke?: number; className?: string }) {
@@ -117,8 +117,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
             : (isDark ? 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]' : 'hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]')
         }`}
       >
-        {/* The app's one "more" glyph, turned upright. */}
-        <MoreHorizontal size={16} className="rotate-90" />
+        <PanelRight size={16} />
       </button>
       {isOpen && (
         <div
@@ -162,7 +161,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
             }}
             className={rowClass}
           >
-            <PanelRight size={15} className={`shrink-0 scale-x-[-1] ${muted}`} />
+            <PanelRight size={15} className={`shrink-0 ${muted}`} />
             <span className="mr-auto truncate">{isPanelOpen ? 'Hide panels' : 'Show panels'}</span>
           </button>
         </div>

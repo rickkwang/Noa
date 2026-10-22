@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TocPanel } from './TocPanel';
-import { Eye, Edit2, Upload, AlignLeft } from '@/src/lib/icons';
+import { Eye, Edit2, MoreHorizontal, Outline } from '@/src/lib/icons';
 
 interface EditorActionsProps {
   isDark: boolean;
@@ -78,7 +78,7 @@ export function EditorActions({
           aria-expanded={menuOpen}
           aria-haspopup="menu"
         >
-          <Upload size={16} />
+          <MoreHorizontal size={16} />
         </button>
         {menuOpen && (
           <div
@@ -118,7 +118,7 @@ export function EditorActions({
           aria-label="Outline"
           aria-expanded={isTocOpen}
         >
-          <AlignLeft size={16} />
+          <Outline size={16} />
         </button>
         {isTocOpen && <TocPanel headings={headings} onJumpToLine={onJumpToLine} onClose={onCloseToc} />}
       </div>
