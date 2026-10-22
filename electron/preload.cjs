@@ -1,4 +1,13 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
+
+// The traffic lights keep their native size under page zoom, so the titlebar's
+// clearance for them (--noa-titlebar-inset) must not shrink when zoomed out.
+// Zooming changes the CSS viewport, which fires resize.
+const syncZoomFactor = () => {
+  document.documentElement.style.setProperty('--noa-zoom-factor', String(webFrame.getZoomFactor()));
+};
+window.addEventListener('DOMContentLoaded', syncZoomFactor);
+window.addEventListener('resize', syncZoomFactor);
 
 contextBridge.exposeInMainWorld('noaDesktop', {
   appInfo: {

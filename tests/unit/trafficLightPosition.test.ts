@@ -8,7 +8,9 @@ describe('macOS traffic-light position', () => {
   it('centres the close button on the sidebar icon rail and in the titlebar', async () => {
     const electronMain = await readFile(electronMainPath, 'utf8');
 
-    expect(electronMain).toContain('trafficLightPosition: isMac ? { x: 15, y: 15 } : undefined,');
-    expect(electronMain).not.toContain('setWindowButtonPosition');
+    expect(electronMain).toContain('const TRAFFIC_LIGHT_POSITION = { x: 15, y: 15 };');
+    expect(electronMain).toContain('trafficLightPosition: isMac ? TRAFFIC_LIGHT_POSITION : undefined,');
+    // Runtime repositioning is only for page zoom, not re-applied on show/fullscreen.
+    expect(electronMain).not.toMatch(/win\.on\('(show|enter-full-screen|leave-full-screen)'/);
   });
 });

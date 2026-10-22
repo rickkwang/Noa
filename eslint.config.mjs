@@ -115,6 +115,17 @@ export default tseslint.config(
     },
   },
 
+  // The preload runs in the renderer, so it also sees the page's DOM.
+  {
+    files: ['electron/preload.cjs'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
+
   // Scripts (build tooling) — relax
   {
     files: ['scripts/**/*.mjs', 'vite.config.ts', 'vitest.config.ts', 'playwright.config.ts'],

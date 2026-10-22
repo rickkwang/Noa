@@ -65,7 +65,8 @@
 /* Titlebar clearance for macOS traffic lights (data-desktop set by main.tsx). Inset must track
    trafficLightPosition.x in electron/main.cjs. */
 :root { --noa-titlebar-inset: 0.5rem; }
-:root[data-desktop="true"] { --noa-titlebar-inset: 85.5px; }
+/* --noa-zoom-factor comes from preload.cjs: below zoom 1 the native buttons don't shrink, so neither may their clearance. */
+:root[data-desktop="true"] { --noa-titlebar-inset: calc(85.5px / min(var(--noa-zoom-factor, 1), 1)); }
 /* TopBar's left cluster: sidebar toggle, gap-0.5, back + forward (each h-6 w-6), then 10px before the lifted tab strip.
    Adding a button there means adding its 24px here. */
 :root { --noa-titlebar-reserve: calc(var(--noa-titlebar-inset) + 3 * 24px + 2px + 10px); }

@@ -10,6 +10,11 @@ const { installCloseGuard } = require('./closeGuard.cjs');
 
 const isDev = !app.isPackaged;
 const isMac = process.platform === 'darwin';
+// x centres the close button (14px) on the sidebar icon rail at 22px, so it
+// stacks over the compose and folder icons; y centres the buttons in the 44px
+// titlebar. Both are at zoom 1; setZoomLevel rescales them.
+const TRAFFIC_LIGHT_POSITION = { x: 15, y: 15 };
+const TRAFFIC_LIGHT_RADIUS = 7;
 // Only this directory is in-app navigable over file: — see navigationGuard.
 const BUNDLE_DIR = path.join(__dirname, '..', 'dist');
 
@@ -155,10 +160,42 @@ function buildMenu() {
       ],
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    // Same items as the `viewMenu` role, but zoom goes through setZoomLevel so the
+    // traffic lights can follow (roles ignore `click`).
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => setZoomLevel(() => 0) },
+        { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => setZoomLevel(level => level + 0.5) },
+        { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => setZoomLevel(level => level - 0.5) },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
     { role: 'windowMenu' },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function setZoomLevel(next) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.setZoomLevel(next(win.webContents.getZoomLevel()));
+  syncTrafficLights();
+}
+
+// The traffic lights are native and ignore page zoom, while the titlebar scales
+// with it. Scale the buttons' position about the close button's centre so they
+// stay on the titlebar's centre line. Chromium remembers zoom per origin across
+// windows and restarts, so this also runs on every page load.
+function syncTrafficLights() {
+  if (!isMac || !win || win.isDestroyed()) return;
+  const factor = win.webContents.getZoomFactor();
+  const scale = (v) => Math.max(0, Math.round((v + TRAFFIC_LIGHT_RADIUS) * factor - TRAFFIC_LIGHT_RADIUS));
+  win.setWindowButtonPosition({ x: scale(TRAFFIC_LIGHT_POSITION.x), y: scale(TRAFFIC_LIGHT_POSITION.y) });
 }
 
 function createWindow() {
@@ -182,10 +219,7 @@ function createWindow() {
     // Shown on first paint, after the theme bootstrap has darkened the page; otherwise the light backdrop flashes on dark launches.
     show: false,
     titleBarStyle: 'hidden',
-    // x centres the close button (14px) on the sidebar icon rail at 22px, so
-    // it stacks over the compose and folder icons; y centres the buttons in
-    // the 44px titlebar.
-    trafficLightPosition: isMac ? { x: 15, y: 15 } : undefined,
+    trafficLightPosition: isMac ? TRAFFIC_LIGHT_POSITION : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -221,6 +255,7 @@ function createWindow() {
   win.webContents.once('did-fail-load', () => {
     if (!win.isDestroyed() && !win.isVisible()) win.show();
   });
+  win.webContents.on('dom-ready', syncTrafficLights);
   win.once('ready-to-show', () => win.show());
 
   if (isDev) {
