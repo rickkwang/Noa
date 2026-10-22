@@ -95,6 +95,9 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
   }, [isOpen]);
 
   const muted = isDark ? 'text-[rgba(249,249,247,0.5)]' : 'text-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_50%,transparent)]';
+  // The check column exists only while some card is checked; with the column hidden nothing is, and an empty
+  // column would just indent every row.
+  const showChecks = PANE_TABS.some((tab) => activePanes.includes(tab.id));
   const rowClass = `flex h-7 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-body transition-colors ${
     isDark
       ? 'text-[rgba(249,249,247,0.9)] hover:bg-[color-mix(in_srgb,var(--text-primary,#2D2D2B)_5%,transparent)]'
@@ -140,14 +143,16 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
                 }}
                 className={rowClass}
               >
+                {/* Leading, as in a macOS menu, and in every row while shown so the icons line up; the count then
+                    sits flush with the right edge instead of floating left of an empty check column. */}
+                {showChecks && (
+                  <Check size={13} className={`-mr-1 shrink-0 text-[var(--accent-color,#CC7D5E)] ${isActive ? '' : 'invisible'}`} />
+                )}
                 <tab.icon size={15} className={`shrink-0 ${muted}`} stroke={1.75} />
                 <span className="mr-auto truncate">{RIGHT_TAB_LABELS[tab.id]}</span>
                 {badge > 0 && (
                   <span aria-hidden="true" className={`text-caption tabular-nums ${muted}`}>{badge > 99 ? '99+' : badge}</span>
                 )}
-                {/* Always in the row so the counts line up whether or not the
-                    card is open. */}
-                <Check size={14} className={`shrink-0 text-[var(--accent-color,#CC7D5E)] ${isActive ? '' : 'invisible'}`} />
               </button>
             );
           })}
@@ -161,6 +166,7 @@ export function PaneMenu({ activePanes, onSelect, badges, isDark, triggerClassNa
             }}
             className={rowClass}
           >
+            {showChecks && <span aria-hidden="true" className="-mr-1 w-[13px] shrink-0" />}
             <PanelRight size={15} className={`shrink-0 ${muted}`} />
             <span className="mr-auto truncate">{isPanelOpen ? 'Hide panels' : 'Show panels'}</span>
           </button>
