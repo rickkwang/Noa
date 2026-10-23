@@ -67,6 +67,7 @@ const CommandPaletteDialog = lazy(() => import('./components/CommandPaletteDialo
 const NavigationConflictDialog = lazy(() => import('./components/NavigationConflictDialog'));
 const TemplatePickerDialog = lazy(() => import('./components/TemplatePickerDialog'));
 const VaultOnboardingDialog = lazy(() => import('./components/VaultOnboardingDialog'));
+const VaultEditConflictDialog = lazy(() => import('./components/VaultEditConflictDialog'));
 
 // The preview's elevation (index.css .noa-sidebar-preview-shell, the
 // rounded-r corner, the --bg-primary floor) drops on the same 500ms clock as
@@ -187,6 +188,8 @@ export default function App() {
   useEffect(() => { notesRef.current = notes; }, [notes]);
 
   const {
+    editConflict,
+    resolveEditConflict,
     fsHandle,
     syncStatus,
     fsLastSyncAt,
@@ -205,6 +208,7 @@ export default function App() {
     prepareVaultStructuralOperations,
     cancelVaultStructuralOperations,
     hasPendingStructuralOperations,
+    pickFolder,
     connect,
     beginDisconnect,
     cancelDisconnect,
@@ -502,17 +506,16 @@ export default function App() {
     dismissVaultOnboarding();
   }, [handleDisconnectFolder, dismissVaultOnboarding]);
 
-  // Switching vaults is disconnect-then-connect, never a bare connect(): that would skip
-  // handleDisconnectFolder's guards and merge into the old vault's cache. A cancelled picker leaves no vault attached.
+  // Pick first so cancellation preserves the current vault; disconnect before importing the next cache.
   const handleSwitchVaultFolder = useCallback(async () => {
     setVaultActionBusy(true);
     try {
+      const handle = await pickFolder();
       await handleDisconnectFolder();
-      await connect();
+      await connect(handle);
       dismissVaultOnboarding();
     } catch (error) {
-      // Picker dismissal is the expected "changed my mind" path; the vault is
-      // already disconnected by then, which the confirmation step spelled out.
+      // Cancelling the picker leaves the current workspace intact.
       if (error instanceof DOMException && error.name === 'AbortError') return;
       // A disconnect failure has already set this to the same message, so this
       // is a no-op there and the real report for a connect() failure.
@@ -520,7 +523,7 @@ export default function App() {
     } finally {
       setVaultActionBusy(false);
     }
-  }, [connect, dismissVaultOnboarding, handleDisconnectFolder, setSaveError]);
+  }, [connect, dismissVaultOnboarding, handleDisconnectFolder, pickFolder, setSaveError]);
 
   const handleConnectVaultFolder = useCallback(async () => {
     setVaultActionBusy(true);
@@ -1597,6 +1600,18 @@ export default function App() {
             error={vaultOnboardingError}
             onConnect={connectVaultFromOnboarding}
             onDismiss={dismissVaultOnboarding}
+          />
+        </Suspense>
+      )}
+      {editConflict?.pending && (
+        <Suspense fallback={null}>
+          <VaultEditConflictDialog
+            note={editConflict.pending.note}
+            diskText={editConflict.pending.diskText}
+            busy={syncStatus === 'syncing'}
+            error={fsSyncError}
+            onReconnect={needsReauth ? reconnect : undefined}
+            onResolve={resolveEditConflict}
           />
         </Suspense>
       )}

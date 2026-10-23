@@ -7,7 +7,7 @@ const appPath = fileURLToPath(new URL('../../src/App.tsx', import.meta.url));
 const indexCssPath = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 
 describe('sidebar vault footer', () => {
-  it('switches vaults by disconnecting first, never by a bare connect()', async () => {
+  it('picks before disconnecting, then connects without re-opening the picker', async () => {
     const app = await readFile(appPath, 'utf8');
 
     const switchBody = app.slice(
@@ -15,10 +15,13 @@ describe('sidebar vault footer', () => {
       app.indexOf('const handleConnectVaultFolder')
     );
     expect(switchBody).toContain('await handleDisconnectFolder();');
-    expect(switchBody).toContain('await connect();');
+    expect(switchBody).toContain('const handle = await pickFolder();');
+    expect(switchBody).toContain('await connect(handle);');
+    expect(switchBody.indexOf('await pickFolder();'))
+      .toBeLessThan(switchBody.indexOf('await handleDisconnectFolder();'));
     // Order matters: connect() on a live vault skips the dirty-edit guards and merges into a stale cache.
     expect(switchBody.indexOf('await handleDisconnectFolder();'))
-      .toBeLessThan(switchBody.indexOf('await connect();'));
+      .toBeLessThan(switchBody.indexOf('await connect(handle);'));
   });
 
   it('keeps the footer busy latch off the onboarding dialog trigger', async () => {
@@ -40,7 +43,7 @@ describe('sidebar vault footer', () => {
     expect(switchBody).not.toContain('setVaultOnboardingBusy');
   });
 
-  it('confirms before a switch, because a cancelled picker leaves no vault', async () => {
+  it('explains that switching closes tabs while cancellation keeps the current vault', async () => {
     const footer = await readFile(footerPath, 'utf8');
 
     expect(footer).toContain('confirmSwitch');
@@ -49,7 +52,7 @@ describe('sidebar vault footer', () => {
     expect(footer).toContain('leave the workspace');
     expect(footer).toContain('tabs close');
     expect(footer).toContain('files on');
-    expect(footer).toContain('no vault until you reconnect');
+    expect(footer).toContain('Cancelling keeps the current vault connected.');
     // onSwitchVault fires from exactly one place: the confirmation's Continue.
     expect(footer.match(/run\(onSwitchVault\)/g) ?? []).toHaveLength(1);
   });
@@ -68,9 +71,9 @@ describe('sidebar vault footer', () => {
   it('states workspace and vault as separate rows rather than one conflated label', async () => {
     const footer = await readFile(footerPath, 'utf8');
 
-    // The label is always the workspace; collapsing it into the vault name hid the workspace.
+    // The menu retains workspace identity while the footer shows the active folder.
     expect(footer).toContain('const label = workspaceName.trim()');
-    expect(footer).not.toContain('vaultName ?? workspaceName');
+    expect(footer).toContain('{vaultName ?? label}');
     expect(footer).not.toContain('vaultName || workspaceName');
     expect(footer).toContain('No vault connected');
   });

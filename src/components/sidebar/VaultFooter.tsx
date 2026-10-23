@@ -66,7 +66,7 @@ export function VaultFooter({
   actions,
 }: VaultFooterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Switching disconnects before the picker opens, and a cancelled picker leaves no vault, so confirm first.
+  // Switching closes the current vault tabs after a new folder is selected.
   const [confirmSwitch, setConfirmSwitch] = useState(false);
 
   useEffect(() => {
@@ -116,9 +116,9 @@ export function VaultFooter({
           {confirmSwitch ? (
             <div className="px-2 py-1.5 flex flex-col gap-2">
               <p className="text-xs font-ui text-[#2D2D2B] leading-relaxed">
-                Disconnect "{vaultName}" first, then pick the next folder?
-                Its notes and folders leave the workspace and their tabs close — the files on
-                disk are untouched. Cancelling the picker leaves you with no vault until you reconnect.
+                Switch from "{vaultName}" to another folder?
+                After you select a folder, the current vault's notes and folders leave the workspace and their tabs close.
+                The files on disk are untouched. Cancelling keeps the current vault connected.
               </p>
               <div className="flex items-center gap-1.5">
                 <button
@@ -220,7 +220,7 @@ export function VaultFooter({
         <span className="mr-2 flex w-3.5 shrink-0 justify-center" aria-hidden>
           <ChevronsUpDown size={11} />
         </span>
-        <span className="truncate" data-capture-redact>{label}</span>
+        <span className="truncate" data-capture-redact>{vaultName ?? label}</span>
         {/* Inline vertical-align:middle centres on the x-height; a flex child would centre on the line box and read ~1.5px high. */}
         {vaultName && (
           <span className="ml-1.5 shrink-0" aria-hidden>

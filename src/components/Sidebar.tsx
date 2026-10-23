@@ -519,7 +519,7 @@ export default function Sidebar({
       <div className="noa-sidebar-toolbar-mask h-8 flex items-center pl-[10px] pr-2 gap-0.5 shrink-0 z-10 overflow-visible">
         {/* The toolbar doubles as the workspace heading; low-frequency view actions live behind ⋯. */}
         <span className="min-w-0 flex-1 truncate pl-2 text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">
-          {blankCreateTarget === VAULT_ROOT_FOLDER_ID ? 'Obsidian Vault' : 'Notes'}
+          {blankCreateTarget === VAULT_ROOT_FOLDER_ID ? 'Markdown folder' : 'Notes'}
         </span>
         <button
           onClick={() => onCreateNote(blankCreateTarget)}
@@ -854,7 +854,7 @@ export default function Sidebar({
                     {/* Only labelled when Noa rows sit above it; otherwise the toolbar heading already names the vault. */}
                     {(noaFolderTree.length > 0 || rootNoaNotes.length > 0) && (
                     <div className={`mx-2 pl-2 pr-2 pb-3 ${noaFolderTree.length > 0 || rootNoaNotes.length > 0 ? 'pt-3' : ''}`}>
-                      <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">Obsidian Vault</span>
+                      <span className="text-micro uppercase tracking-widest text-[var(--sidebar-text-muted,#898781)] font-ui">Markdown folder</span>
                     </div>
                     )}
                     <div

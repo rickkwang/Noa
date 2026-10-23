@@ -1014,6 +1014,7 @@ export function useDataTransfer({
         text: 'Connected to local folder. Vault notes sync automatically; Noa\'s local notes are hidden until you disconnect.',
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       const appError = fromSyncError(error);
       recordErrorSnapshot({
         at: new Date().toISOString(),

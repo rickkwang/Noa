@@ -65,7 +65,7 @@ describe('sidebar search result layout', () => {
     ]);
     const vaultSection = source.slice(source.indexOf('Connected vault section'), source.indexOf('onDragEnter={markVaultRootTarget}'));
 
-    expect(vaultSection).toContain('Obsidian Vault');
+    expect(vaultSection).toContain('Markdown folder');
     expect(vaultSection).not.toContain('border-t');
     expect(vaultSection).toContain('className={`mx-2 pl-2 pr-2 pb-3 ${');
     expect(fileNode).toContain("paddingLeft: `${depth === 0 ? 7 : 3.5}px`");

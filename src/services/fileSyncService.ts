@@ -2,7 +2,6 @@ import {
   clearPersistedHandle,
   createFolderDirectory,
   deleteNoteFile,
-  extractContentFromVaultText,
   getPersistedHandle,
   getNoteFilePath,
   persistHandle,
@@ -46,8 +45,8 @@ export async function restorePersistedFsHandle(): Promise<FileSystemDirectoryHan
 
 export { getVaultIdentity } from '../lib/fileSystemStorage';
 
-export async function connectDirectory(): Promise<FileSystemDirectoryHandle> {
-  const handle = await requestDirectoryAccess();
+export async function connectDirectory(selectedHandle?: FileSystemDirectoryHandle): Promise<FileSystemDirectoryHandle> {
+  const handle = selectedHandle ?? await requestDirectoryAccess();
   await persistHandle(handle);
   // Connecting only persists the handle. The caller scans disk into a cache;
   // Noa-owned notes are never seeded into the vault.
@@ -335,120 +334,16 @@ async function writeNoteTracked(
 
 export class VaultWriteConflictError extends Error {
   readonly conflictPath: string;
+  readonly pending?: { note: Note; diskText: string | null };
 
-  constructor(noteTitle: string, conflictPath: string, preservation: 'copy' | 'external' = 'copy') {
-    super(preservation === 'copy'
-      ? `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. The Noa edit was preserved as "${conflictPath}".`
+  constructor(noteTitle: string, conflictPath: string, pending?: { note: Note; diskText: string | null }) {
+    super(pending
+      ? `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. Writing paused; choose which version to keep.`
       : `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. The external file was kept at "${conflictPath}".`);
     this.name = 'VaultWriteConflictError';
     this.conflictPath = conflictPath;
+    this.pending = pending;
   }
-}
-
-function fingerprintText(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
-
-function conflictFingerprint(note: Note): string {
-  return fingerprintText(`${note.id}\0${note.title}\0${note.folder}\0${note.content}`);
-}
-
-function truncateUtf8(value: string, maxBytes: number): string {
-  const encoder = new TextEncoder();
-  if (encoder.encode(value).byteLength <= maxBytes) return value;
-  let result = '';
-  let used = 0;
-  for (const character of value) {
-    const bytes = encoder.encode(character).byteLength;
-    if (used + bytes > maxBytes) break;
-    result += character;
-    used += bytes;
-  }
-  return result;
-}
-
-function buildConflictNote(desiredNote: Note, token: string, now: string): Note {
-  const {
-    vaultId: _vaultId,
-    vaultPath: _vaultPath,
-    vaultDirty: _vaultDirty,
-    vaultBaseText: _vaultBaseText,
-    attachments: _attachments,
-    ...conflictBase
-  } = desiredNote;
-  const suffix = ` (Noa conflict ${token})`;
-  const title = `${truncateUtf8(
-    desiredNote.title || 'Untitled',
-    Math.max(0, 220 - new TextEncoder().encode(suffix).byteLength),
-  )}${suffix}`;
-  return {
-    ...conflictBase,
-    id: `noa-conflict-${desiredNote.id}-${token}`,
-    title,
-    createdAt: now,
-    updatedAt: now,
-    source: 'obsidian-import',
-    origin: 'vault',
-  };
-}
-
-async function preserveConflictCopy(
-  handle: FileSystemDirectoryHandle,
-  desiredNote: Note,
-  folders: Folder[],
-  structuralPayload?: string,
-): Promise<string> {
-  const baseToken = conflictFingerprint(desiredNote);
-  const now = new Date().toISOString();
-  let token = baseToken;
-
-  // Conflict copies are write-once. Deterministic candidates make ordinary
-  // retries idempotent; if the user edits one, derive a new candidate instead
-  // of overwriting their newer external work.
-  for (let attempt = 0; attempt < 64; attempt += 1) {
-    const conflictNote = buildConflictNote(desiredNote, token, now);
-    const serialized = serializeNoteForVault(conflictNote);
-    // Preserve a UTF-8 BOM without copying the original file's embedded Noa
-    // identity into a different conflict note. The conflict file must remain
-    // unambiguous even if the manifest is lost or the file is moved.
-    const desiredText = structuralPayload?.startsWith('\uFEFF')
-      ? `\uFEFF${serialized}`
-      : serialized;
-    const existingPath = await getNoteFilePath(handle, conflictNote, folders);
-    if (existingPath) {
-      const existingText = await readVaultNoteText(handle, conflictNote, folders);
-      if (existingText === desiredText) return existingPath;
-      token = fingerprintText(`${baseToken}\0${token}\0${existingPath}\0${existingText ?? ''}\0${attempt}`);
-      continue;
-    }
-    const written = await writeNoteTracked(handle, conflictNote, folders, desiredText);
-    if (!written) throw new Error('Unable to preserve the Noa conflict copy.');
-    return written.path;
-  }
-
-  // A malicious or extremely unusual vault can pre-create the deterministic
-  // chain. A random final candidate remains non-destructive because writeNote
-  // itself refuses to overwrite paths owned by another note.
-  const fallback = buildConflictNote(
-    desiredNote,
-    fingerprintText(`${baseToken}\0${crypto.randomUUID()}`),
-    now,
-  );
-  const written = await writeNoteTracked(
-    handle,
-    fallback,
-    folders,
-    structuralPayload?.startsWith('\uFEFF')
-      ? `\uFEFF${serializeNoteForVault(fallback)}`
-      : serializeNoteForVault(fallback),
-  );
-  if (!written) throw new Error('Unable to preserve the Noa conflict copy.');
-  return written.path;
 }
 
 async function preserveNoaEditIfDiskChanged(
@@ -456,7 +351,6 @@ async function preserveNoaEditIfDiskChanged(
   previousNote: Note,
   desiredNote: Note,
   previousFolders: Folder[],
-  conflictFolders: Folder[] = previousFolders,
 ): Promise<string | null> {
   const path = await getNoteFilePath(handle, previousNote, previousFolders);
   const diskText = path ? await readVaultNoteTextAtPath(handle, path) : null;
@@ -466,17 +360,34 @@ async function preserveNoaEditIfDiskChanged(
   // manifest/attachment step failed. It is Noa's own partial success, not an
   // external edit.
   if (diskText === baselineText || diskText === desiredText) return path;
-  const exactStructuralPayload = previousNote.vaultBaseText
-    && extractContentFromVaultText(previousNote.vaultBaseText) === desiredNote.content
-    ? previousNote.vaultBaseText
-    : undefined;
-  const conflictPath = await preserveConflictCopy(
-    handle,
-    desiredNote,
-    conflictFolders,
-    exactStructuralPayload,
-  );
-  throw new VaultWriteConflictError(desiredNote.title, conflictPath);
+  throw new VaultWriteConflictError(desiredNote.title, path ?? previousNote.vaultPath ?? `${previousNote.title}.md`, {
+    note: desiredNote,
+    diskText,
+  });
+}
+
+export async function resolveVaultEditConflict(
+  handle: FileSystemDirectoryHandle,
+  conflict: VaultWriteConflictError,
+  note: Note,
+  folders: Folder[],
+  keepLocal: boolean,
+): Promise<void> {
+  await withVaultLock(async () => {
+    const diskText = await readVaultNoteTextAtPath(handle, conflict.conflictPath);
+    if (diskText !== conflict.pending?.diskText) {
+      throw new VaultWriteConflictError(note.title, conflict.conflictPath, { note, diskText });
+    }
+    if (keepLocal) {
+      const exactPayload = note.vaultBaseText
+        && note.vaultBaseText.replace(/^\uFEFF/, '') === serializeNoteForVault(note)
+        ? note.vaultBaseText
+        : undefined;
+      const written = await writeNoteTracked(handle, note, folders, exactPayload, conflict.conflictPath);
+      if (!written) throw new Error('Could not save the chosen version. Its original folder may have been removed.');
+    }
+    _noteWriteBaselines.delete(note.id);
+  });
 }
 
 async function preserveExternalEditBeforeDelete(
@@ -493,7 +404,7 @@ async function preserveExternalEditBeforeDelete(
   const path = await getNoteFilePath(handle, currentNote, folders)
     ?? currentNote.vaultPath
     ?? `${currentNote.title || 'Untitled'}.md`;
-  throw new VaultWriteConflictError(currentNote.title, path, 'external');
+  throw new VaultWriteConflictError(currentNote.title, path);
 }
 
 async function removeNoteFileAtPathTracked(
@@ -817,7 +728,7 @@ export async function syncVaultNoteSnapshot(
       throw error;
     }
     const exactStructuralPayload = note.vaultBaseText
-      && extractContentFromVaultText(note.vaultBaseText) === note.content
+      && note.vaultBaseText.replace(/^\uFEFF/, '') === serializeNoteForVault(note)
       ? note.vaultBaseText
       : undefined;
     const existingPath = previousPath && isNoteAtCanonicalPath(previousPath, note, folders) ? previousPath : undefined;
@@ -831,7 +742,7 @@ export async function syncVaultNoteSnapshot(
       const baselineText = baseline.vaultBaseText ?? serializeNoteForVault(baseline);
       if (diskText !== baselineText) {
         _noteWriteBaselines.delete(note.id);
-        return new VaultWriteConflictError(note.title, path, 'external');
+        return new VaultWriteConflictError(note.title, path);
       }
       await removeNoteFileAtPathTracked(handle, path);
     }
@@ -900,7 +811,7 @@ export async function syncFolderRename(
     for (const note of affectedNotes) {
       const baseline = _noteWriteBaselines.get(note.id) ?? note;
       try {
-        await preserveNoaEditIfDiskChanged(handle, baseline, note, previousFolders, currentFolders);
+        await preserveNoaEditIfDiskChanged(handle, baseline, note, previousFolders);
       } catch (error) {
         if (error instanceof VaultWriteConflictError) _noteWriteBaselines.delete(note.id);
         throw error;

@@ -85,6 +85,30 @@ describe('useNotes import mutex', () => {
     });
   });
 
+  it('imports attachment bytes without network requests under desktop CSP', async () => {
+    vi.resetModules();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    const saveAttachmentBlob = vi.fn(async (_id: string, _blob: Blob) => undefined);
+    const storageMock = createStorageMock({ saveAttachmentBlob });
+    vi.doMock('react', () => createReactHarness().react);
+    vi.doMock('../../src/lib/storage', () => ({ storage: storageMock }));
+    try {
+      const { useNotes } = await import('../../src/hooks/useNotes');
+      const api = useNotes();
+      await api.handleImportData([makeNote({ attachments: [{
+        id: 'image', noteId: 'n1', filename: 'image.png', mimeType: 'image/png',
+        size: 3, createdAt: '2024-01-01T00:00:00.000Z', dataBase64: 'AP+A',
+      }] })]);
+      expect(saveAttachmentBlob).toHaveBeenCalledTimes(1);
+      const blob = saveAttachmentBlob.mock.calls[0][1];
+      expect(blob.type).toBe('image/png');
+      expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([0, 255, 128]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('defers debounce saves during import, then flushes them straight to storage', async () => {
     vi.resetModules();
 

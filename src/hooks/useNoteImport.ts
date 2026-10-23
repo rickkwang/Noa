@@ -99,9 +99,10 @@ export function useNoteImport({
       for (let i = 0; i < importAttachments.length; i += ATTACHMENT_BATCH_SIZE) {
         const batch = importAttachments.slice(i, i + ATTACHMENT_BATCH_SIZE);
         const batchResults = await Promise.allSettled(batch.map(async (attachment) => {
-          // Decode base64 via fetch/blob to avoid holding a giant Uint8Array.
-          const blob = await fetch(`data:${attachment.mimeType || 'application/octet-stream'};base64,${attachment.dataBase64}`)
-            .then(r => r.blob());
+          const binary = atob(attachment.dataBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+          const blob = new Blob([bytes], { type: attachment.mimeType || 'application/octet-stream' });
           if (preexistingBlobIds?.has(attachment.id) && !previousBlobs.has(attachment.id)) {
             const previous = await storage.getAttachmentBlob(attachment.id);
             if (!previous) throw new Error('Could not read an existing attachment before import.');

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fromSyncError } from '../lib/appErrors';
 import { recordErrorSnapshot } from '../lib/errorSnapshots';
+import { requestDirectoryAccess } from '../lib/fileSystemStorage';
 import { storage } from '../lib/storage';
 import {
   commitVaultPendingOperation,
@@ -27,6 +28,7 @@ import {
   syncNoteUpdate,
   syncVaultNoteSnapshot,
   VaultWriteConflictError,
+  resolveVaultEditConflict,
 } from '../services/fileSyncService';
 import {
   Folder,
@@ -47,6 +49,8 @@ interface UseFileSyncOptions {
 }
 
 interface UseFileSyncResult {
+  editConflict: VaultWriteConflictError | null;
+  resolveEditConflict: (keepLocal: boolean) => Promise<void>;
   fsHandle: FileSystemDirectoryHandle | null;
   syncStatus: SyncStatus;
   fsLastSyncAt: string | null;
@@ -65,7 +69,8 @@ interface UseFileSyncResult {
   prepareVaultStructuralOperations: (operations: readonly VaultPendingOperation[]) => Promise<void>;
   cancelVaultStructuralOperations: (operations: readonly VaultPendingOperation[]) => Promise<void>;
   hasPendingStructuralOperations: boolean;
-  connect: () => Promise<void>;
+  pickFolder: () => Promise<FileSystemDirectoryHandle>;
+  connect: (handle?: FileSystemDirectoryHandle) => Promise<void>;
   beginDisconnect: () => void;
   cancelDisconnect: () => void;
   disconnect: () => Promise<void>;
@@ -182,6 +187,7 @@ export function useFileSync({
   onVaultNoteBaselineAdvanced,
 }: UseFileSyncOptions): UseFileSyncResult {
   const [fsHandle, setFsHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [editConflict, setEditConflict] = useState<VaultWriteConflictError | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [fsLastSyncAt, setFsLastSyncAt] = useState<string | null>(null);
   const [fsSyncError, setFsSyncError] = useState<string | null>(null);
@@ -270,6 +276,7 @@ export function useFileSync({
   }, [resetRetryState]);
 
   const recordFailure = useCallback((error: unknown) => {
+    if (error instanceof VaultWriteConflictError && error.pending) setEditConflict(error);
     const normalized = classifySyncError(error);
     const appError = fromSyncError(error);
     setSyncStatus('error');
@@ -341,6 +348,7 @@ export function useFileSync({
         if (!(error instanceof VaultWriteConflictError)) throw error;
         await storage.removeVaultPendingOperation(operation.key);
         trackedOperationsRef.current.delete(operation.entityKey);
+        if (error.pending) throw error;
         conflicts.push(error);
         continue;
       }
@@ -372,6 +380,7 @@ export function useFileSync({
           trackedOperationsRef.current.delete(key);
           if (operation.expectation) syncedNoteIds.add(operation.expectation.id);
         }
+        if (error.pending) throw error;
         conflicts.push(error);
         continue;
       }
@@ -387,6 +396,7 @@ export function useFileSync({
     );
     for (const note of dirtySnapshots) {
       const conflict = await syncVaultNoteSnapshot(handle, note, foldersRef.current);
+      if (conflict?.pending) throw conflict;
       if (conflict) conflicts.push(conflict);
       syncedNoteIds.add(note.id);
     }
@@ -546,15 +556,16 @@ export function useFileSync({
           : [];
         applyPendingStructuralOperations(remaining);
       }
-      if (generation !== retryGeneration.current || disconnectingRef.current) return;
       if (trackedOperationsRef.current.get(key) !== operation) return;
       trackedOperationsRef.current.delete(key);
       refreshStructuralPendingState();
+      if (generation !== retryGeneration.current || disconnectingRef.current) return;
       if (expectation) onVaultNotesSynced([expectation]);
       recordSuccess();
     }).catch(async (error) => {
-      if (generation !== retryGeneration.current || disconnectingRef.current) return;
       if (trackedOperationsRef.current.get(key) !== operation) return;
+      operation.failed = true;
+      if (generation !== retryGeneration.current || disconnectingRef.current) return;
       if (error instanceof VaultWriteConflictError) {
         if (durableOperation) {
           const vaultId = vaultIdRef.current;
@@ -574,6 +585,10 @@ export function useFileSync({
         }
         trackedOperationsRef.current.delete(key);
         refreshStructuralPendingState();
+        if (error.pending) {
+          recordFailure(error);
+          return;
+        }
         if (expectation) {
           const {
             confirmedVaultBaseText: _confirmedVaultBaseText,
@@ -613,6 +628,29 @@ export function useFileSync({
         if (generation === retryGeneration.current && !disconnectingRef.current) recordFailure(error);
       });
   }, [fsHandle, syncStatus, recordFailure, recordSuccess, resetRetryState, syncFromAuthoritativeDisk]);
+
+  const resolveEditConflict = useCallback(async (keepLocal: boolean) => {
+    if (!fsHandle || !editConflict?.pending || syncStatus === 'syncing') return;
+    resetRetryState();
+    const generation = retryGeneration.current;
+    setSyncStatus('syncing');
+    try {
+      const note = notesRef.current.find(item => item.id === editConflict.pending!.note.id)
+        ?? editConflict.pending.note;
+      await resolveVaultEditConflict(fsHandle, editConflict, note, foldersRef.current, keepLocal);
+      onVaultNotesSynced([{ id: note.id, content: note.content, updatedAt: note.updatedAt }]);
+      notesRef.current = notesRef.current.map(item => {
+        if (item.id !== note.id) return item;
+        const { vaultDirty: _dirty, vaultBaseText: _base, ...clean } = item;
+        return clean;
+      });
+      setEditConflict(null);
+      await syncFromAuthoritativeDisk(fsHandle, generation);
+      if (generation === retryGeneration.current && !disconnectingRef.current) recordSuccess();
+    } catch (error) {
+      recordFailure(error);
+    }
+  }, [editConflict, fsHandle, onVaultNotesSynced, recordFailure, recordSuccess, resetRetryState, syncFromAuthoritativeDisk, syncStatus]);
 
   const reconnect = useCallback(async () => {
     if (!fsHandle || syncStatus === 'syncing') return;
@@ -745,7 +783,8 @@ export function useFileSync({
     };
   }, [fsHandle, isAnyVaultStructuralOperationPending, isLoaded, recordFailure, recordSuccess, showExternalUpdateNotice, syncFromAuthoritativeDisk]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (selectedHandle?: FileSystemDirectoryHandle) => {
+    const pickedHandle = selectedHandle ?? await requestDirectoryAccess();
     disconnectingRef.current = false;
     resetRetryState();
     const generation = retryGeneration.current;
@@ -753,7 +792,7 @@ export function useFileSync({
     setVaultHydrated(false);
     setVaultHydrationPending(true);
     try {
-      const handle = await connectDirectory();
+      const handle = await connectDirectory(pickedHandle);
       setFsHandle(handle);
       await syncFromAuthoritativeDisk(handle, generation);
       if (generation === retryGeneration.current && !disconnectingRef.current) recordSuccess();
@@ -1012,6 +1051,8 @@ export function useFileSync({
   );
 
   return {
+    editConflict,
+    resolveEditConflict,
     fsHandle,
     syncStatus,
     fsLastSyncAt,
@@ -1030,6 +1071,7 @@ export function useFileSync({
     prepareVaultStructuralOperations,
     cancelVaultStructuralOperations,
     hasPendingStructuralOperations,
+    pickFolder: requestDirectoryAccess,
     connect,
     beginDisconnect,
     cancelDisconnect,

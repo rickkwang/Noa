@@ -242,3 +242,135 @@ test('switching notes in the same folder reveals a manually collapsed branch', a
   await expect(page.getByTitle('Double-click to rename')).toHaveText('Second');
   await expect(branch).toHaveCSS('grid-template-rows', /[1-9]/);
 });
+
+test('vault images import under desktop connect-src restrictions', async ({ page }) => {
+  await page.route('http://127.0.0.1:3000/', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'Content-Security-Policy': "connect-src 'self'" } });
+  });
+  await openWorkspace(page, {
+    'Index.md': '# Images\n\n![Diagram](assets/diagram.svg)',
+    'assets/diagram.svg': '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
+  });
+  await page.getByTestId('sidebar-file-tree').getByText('Index', { exact: true }).click();
+  await expect(page.getByRole('img', { name: 'Diagram', exact: true })).toBeVisible();
+  await expect.poll(() => page.getByRole('img', { name: 'Diagram', exact: true }).evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(10);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('cancelling a vault switch preserves the active folder and tabs', async ({ page }) => {
+  await openWorkspace(page, { 'Evidence.md': 'Original evidence' });
+  await page.getByTestId('sidebar-file-tree').getByText('Evidence', { exact: true }).click();
+  await page.evaluate(() => {
+    window.showDirectoryPicker = async () => { throw new DOMException('Cancelled', 'AbortError'); };
+  });
+  await page.locator('[data-vault-btn]').click();
+  await page.getByRole('menuitem', { name: 'Switch vault folder…' }).click();
+  await page.getByRole('menuitem', { name: 'Continue', exact: true }).click();
+  await expect(page.locator('[data-vault-btn]')).toHaveText('Audit');
+  await expect(page.getByRole('button', { name: 'Close Evidence tab' })).toBeVisible();
+  await expect(page.locator('.cm-content')).toContainText('Original evidence');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+for (const keepLocal of [false, true]) {
+  test(`vault edits pause for a choice without extra files (keep Noa: ${keepLocal})`, async ({ page }) => {
+    await openWorkspace(page, { 'Evidence.md': 'Common base' });
+    await page.getByTestId('sidebar-file-tree').getByText('Evidence', { exact: true }).click();
+    await page.evaluate(async () => {
+      const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
+      const writable = await (await root.getFileHandle('Evidence.md')).createWritable();
+      await writable.write('External version');
+      await writable.close();
+    });
+    const editor = page.locator('.cm-content');
+    await editor.click();
+    await editor.press('ControlOrMeta+End');
+    await editor.press('Enter');
+    await page.keyboard.insertText('Noa version');
+    const dialog = page.getByRole('dialog', { name: 'Choose a file version' });
+    await expect(dialog).toContainText('Noa version');
+    await expect(dialog).toContainText('External version');
+    expect(await readVaultFile(page, 'Evidence.md')).toBe('External version');
+    await page.unroute(/\/src\/main\.tsx(?:\?.*)?$/);
+    await page.reload();
+    await expect(dialog).toContainText('Noa version');
+    await dialog.getByRole('button', { name: keepLocal ? 'Keep Noa edit' : 'Keep disk version', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(editor).toContainText(keepLocal ? 'Noa version' : 'External version');
+    await expect.poll(() => readVaultFile(page, 'Evidence.md')).toBe(keepLocal ? 'Common base\nNoa version' : 'External version');
+    const markdownPaths = await page.evaluate(async () => {
+      const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
+      const paths: string[] = [];
+      for await (const [name, handle] of root.entries()) if (handle.kind === 'file' && name.endsWith('.md')) paths.push(name);
+      return paths;
+    });
+    expect(markdownPaths).toEqual(['Evidence.md']);
+    await page.reload();
+    await expect(page.locator('.cm-content')).toContainText(keepLocal ? 'Noa version' : 'External version');
+  });
+}
+
+test('a conflicted vault can regain folder access without losing its local edit', async ({ page }) => {
+  await openWorkspace(page, { 'Evidence.md': 'Common base' });
+  await page.getByTestId('sidebar-file-tree').getByText('Evidence', { exact: true }).click();
+  await page.evaluate(async () => {
+    const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
+    const writable = await (await root.getFileHandle('Evidence.md')).createWritable();
+    await writable.write('External version');
+    await writable.close();
+  });
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  await editor.press('ControlOrMeta+End');
+  await page.keyboard.insertText('\nNoa edit');
+  const dialog = page.getByRole('dialog', { name: 'Choose a file version' });
+  await expect(dialog).toContainText('Noa edit');
+  await page.evaluate(() => {
+    let denied = true;
+    const getFile = FileSystemFileHandle.prototype.getFile;
+    FileSystemFileHandle.prototype.getFile = async function () {
+      if (denied && this.name === 'Evidence.md') throw new DOMException('Access revoked', 'NotAllowedError');
+      return getFile.call(this);
+    };
+    FileSystemDirectoryHandle.prototype.requestPermission = async () => {
+      denied = false;
+      return 'granted';
+    };
+  });
+  await dialog.getByRole('button', { name: 'Keep Noa edit', exact: true }).click();
+  await expect(dialog).toContainText('Folder access was denied');
+  await dialog.getByRole('button', { name: 'Reconnect Folder', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Reconnect Folder', exact: true })).toHaveCount(0);
+  await expect(dialog).toContainText('Noa edit');
+  expect(await readVaultFile(page, 'Evidence.md')).toBe('External version');
+  await dialog.getByRole('button', { name: 'Keep Noa edit', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => readVaultFile(page, 'Evidence.md')).toBe('Common base\nNoa edit');
+  await expect(page.locator('[data-vault-btn]')).toHaveAttribute('title', /Synced/);
+});
+
+test('keeping a Noa property edit retains the selected frontmatter after reload', async ({ page }) => {
+  await openWorkspace(page, { 'Evidence.md': '---\nstatus: base\n---\nSame body' });
+  await page.getByTestId('sidebar-file-tree').getByText('Evidence', { exact: true }).click();
+  await page.locator('.cm-editor .noa-properties').getByText('base', { exact: true }).click();
+  const value = page.locator('.cm-editor .noa-properties').getByPlaceholder('Empty');
+  await value.fill('local');
+  await page.evaluate(async () => {
+    const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Audit');
+    const writable = await (await root.getFileHandle('Evidence.md')).createWritable();
+    await writable.write('---\nstatus: external\n---\nSame body');
+    await writable.close();
+  });
+  await value.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Choose a file version' });
+  await expect(dialog).toContainText('status: local');
+  await expect(dialog).toContainText('status: external');
+  await dialog.getByRole('button', { name: 'Keep Noa edit', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => readVaultFile(page, 'Evidence.md')).toBe('---\nstatus: local\n---\nSame body');
+  await page.unroute(/\/src\/main\.tsx(?:\?.*)?$/);
+  await page.reload();
+  await expect(page.locator('.cm-editor .noa-properties')).toContainText('local');
+  await expect(page.locator('.cm-content')).toContainText('Same body');
+});
