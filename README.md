@@ -1,115 +1,167 @@
 # Noa
 
-*Notes on Anything*
+**Notes on Anything.** A local-first Markdown notebook that keeps your writing on your own device.
 
-Noa 是一个本地优先的私人笔记空间。没有账号，没有服务器，没有订阅费。你的文字只存在于你的设备上。
+Noa has no accounts, no servers, and no cloud sync. Notes live in your browser's IndexedDB, or in a folder on your disk that you choose. It is built to be quick to write in on day one and still easy to maintain years later.
 
-## 理念
+## Why Noa
 
-大多数笔记工具要么太重——你花更多时间整理系统而不是真正思考；要么太轻——用完即弃，留不下什么。
+- **Your data stays with you.** Nothing is uploaded. The only outbound requests are the update check and the issue link you click yourself (see [Privacy](#privacy-and-data)).
+- **Plain Markdown on disk, if you want it.** Connect a folder and every note is a `.md` file you can open in any editor. Attachments go into an `attachments/` folder inside it.
+- **Connected notes.** Wiki links, backlinks, a graph view, tags, and tasks gathered from every note.
+- **Backups you can see.** Exports and automatic daily snapshots, with a health indicator that tells you how long it has been since your last export.
 
-Noa 想做第三种：**足够简单，随时能写；足够结构，值得长期用**。
+## Features
 
-- **本地优先** — 数据存在浏览器 IndexedDB，不经过任何服务器
-- **Markdown 原生** — 写作不被格式打断，支持 Mermaid 图表和 KaTeX 公式，随时在编辑/预览/分栏间切换
-- **连接你的想法** — Wiki 链接、知识图谱、反向链接，让笔记之间形成网络而不是孤岛
-- **极简界面** — 克制、干净的编辑空间，让注意力回到文字本身
+**Writing**
+- CodeMirror 6 editor with edit, live preview, and split views
+- GitHub-flavored Markdown: tables, task lists, footnotes, callouts
+- Math (KaTeX) and diagrams (Mermaid), rendered inline
+- Images pasted or dragged into a note (JPEG, PNG, GIF, WebP; up to 10 MB each)
+- Daily notes from a customizable date format and template
+- Light, dark, or system appearance
 
-## 用法
+**Connecting**
+- `[[Wiki links]]` with backlinks in the right panel
+- Graph view of the whole note network
+- Tag browser in the sidebar; click a tag to search for it
+- Tasks from all notes collected into one panel; checking a task updates its source line
 
-### 开始写
+**Workspace**
+- Use Noa's local storage, or connect a folder on disk as the active workspace
+- Import an Obsidian vault folder once (frontmatter tags and links are preserved)
+- Import and export as JSON, Vault ZIP, or static HTML
 
-打开 Noa，左侧选择文件夹，点 `+` 新建笔记。标题直接在顶部输入，正文支持完整 Markdown 语法。
+## Installation
 
-`⌘ N` 随时新建，`⌘ F` 搜索，`⌘ S` 手动保存（也自动保存）。
+### macOS app (Apple Silicon)
 
-外观默认跟随系统，可在设置 → Appearance 中固定为浅色或深色。
+Download the latest `.dmg` from [Releases](https://github.com/rickkwang/Noa/releases).
 
-### 图片附件
+> The current builds are **not code-signed or notarized**, so macOS may block the first launch. Only install builds from the official Releases page. The app checks for updates at startup and notifies you when one is available; you choose whether to download it.
 
-直接把图片粘贴或拖进编辑器即可插入，支持 jpeg / png / gif / webp，单张最大 10MB。图片以 blob 存在本地 IndexedDB，笔记中用 `![[文件名]]` 引用。
+### From source
 
-### 每日笔记
-
-`⌘ ⇧ K` 打开今天的日记。每天一条，自动以日期命名，按模板初始化。你可以在设置里自定义日期格式和模板内容。
-
-### 任务
-
-在任意笔记里写 `- [ ] 待办事项`，右侧面板的 Tasks 标签会自动聚合所有笔记里的任务。勾选即完成，实时同步回笔记内容。
-
-### 链接与图谱
-
-在笔记里写 `[[另一篇笔记的标题]]` 即可创建链接。右侧 Backlinks 标签显示哪些笔记引用了当前这篇。Graph 标签展示全局知识图谱，节点大小反映连接数量。
-
-### 标签
-
-在正文里写 `#标签名`，侧边栏底部的标签浏览器会自动收录，点击筛选。
-
-### 从 Obsidian 迁移
-
-设置 → Workspace → Import Vault Folder，选择一个 vault 文件夹即可一次性导入全部 Markdown 笔记，frontmatter 中的标签和链接会被保留。这是一次性迁移；如果想让文件留在磁盘上并保持镜像，请使用下方的文件夹同步。
-
-### 文件夹同步
-
-设置 → Workspace → Vault Folder，选择本地文件夹后，该目录成为当前工作区，编辑和新建笔记都会写入磁盘。本地笔记暂时隐藏，断开后重新显示。Noa 会在窗口重新获得焦点时检查外部改动，并在窗口可见时每 60 秒检查一次；也可点击 Retry Sync 立即刷新。它不使用实时文件监听。
-
-连接目录中的删除是永久删除，不提供 Undo；Undo 仅适用于 Noa 本地笔记。会破坏现有笔记链接的重命名或移动会被阻止，请在支持同步更新链接的 Vault 编辑器中完成。这不是强一致的双向同步引擎，请单独备份原始目录。
-
-### 备份
-
-设置 → Data 提供两条备份路径：
-
-- **手动导出**：Data 页支持三种格式——JSON 快照（笔记、文件夹、附件和工作区名称，不含应用设置）、Vault ZIP（Markdown + 附件，可迁移到其他工具）、静态 HTML（仅供阅读，不是备份）。导出和自动备份仅包含 Noa 本地笔记及一次性导入副本，不含连接目录。显示的本地备份健康度也仅适用于这些数据（7 天内为 healthy，14 天内为 warning，更久为 risk）。
-- **自动备份**：选择本地文件夹后立即创建一次快照；之后每次启动时，若距离上次备份已满 24 小时，会自动备份。连续打开应用不会按天重复备份，可在设置中点击 Run backup now 手动执行。
-
-## 快捷键
-
-| 快捷键 | 操作 |
-|--------|------|
-| `⌘ N` | 新建笔记 |
-| `⌘ F` | 搜索 |
-| `⌘ K` | 命令面板 |
-| `⌘ ⇧ K` | 今日日记 |
-| `⌘ ⇧ F` | 专注模式 |
-| `⌘ S` | 保存 |
-| `Escape` | 清空搜索 / 退出专注模式 |
-
-## 本地运行
+Requires **Node.js 22** (see `.nvmrc`).
 
 ```bash
+git clone https://github.com/rickkwang/Noa.git
+cd Noa
 npm install
-npm run dev    # http://localhost:3000
+npm run dev          # open http://localhost:3000
 ```
 
-## 开发
+`npm install` also sets `core.hooksPath` to `.githooks/`, which enables the pre-push checks described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Guides
+
+### Connect a folder as your workspace
+
+Settings → Workspace → **Vault Folder**, then pick a folder.
+
+- Creating and editing notes writes Markdown files into that folder.
+- While connected, the sidebar shows only the folder's notes. Notes stored in Noa are hidden, not deleted, and return when you disconnect.
+- Noa checks for outside changes when the window regains focus and every 60 seconds while it is visible. Click **Retry Sync** to check now. There is no file watcher, so changes made in another program appear with a short delay.
+- Attachments for each note are stored in `attachments/<note>/` inside the folder.
+- Deleting a note moves it to `.trash` inside the folder. Restore it with your file manager.
+- Renames or moves that would break existing `[[links]]` are blocked. Make those changes in an editor that updates links, such as Obsidian.
+
+Noa is not a two-way sync engine. Keep an independent backup of any folder you connect.
+
+### Import an Obsidian vault
+
+Settings → Workspace → **Import Vault Folder**. This is a one-time copy into Noa's local storage; it does not keep the files in sync. For ongoing use, connect the folder instead.
+
+### Back up your notes
+
+Settings → Data offers two kinds of backup.
+
+| Kind | What it covers | Notes |
+|---|---|---|
+| **Manual export** | Notes, folders, attachments, workspace name | Formats: JSON snapshot (no app settings), Vault ZIP (Markdown + attachments), static HTML (for reading, not restoring) |
+| **Automatic backup** | Same as JSON snapshot | Choose a folder; a snapshot is taken now and again on launch once 24 hours have passed. **Run backup now** forces one. |
+
+Exports and automatic backups cover Noa's local notes and one-time imports. They do not cover notes that live in a connected folder, because those files are already on disk.
+
+Backup health is based on your last export: **healthy** within 7 days, **warning** within 14 days, **risk** after that or if you have never exported.
+
+## Keyboard shortcuts
+
+On Windows and Linux, use `Ctrl` in place of `⌘`.
+
+| Shortcut | Action |
+|---|---|
+| `⌘N` | New note |
+| `⌘S` | Save now (edits also save automatically) |
+| `⌘F` | Search notes |
+| `⌘K`, `⌘P`, `⌘O` | Command palette |
+| `⌘⇧K` | Open today's daily note |
+| `⌘⇧F` | Focus mode |
+| `⌘E` | Switch editor / preview |
+| `⌘[`, `⌘]` | Back / forward (Alt+Left / Alt+Right outside macOS) |
+| `⌘⇧S` | Capture window (desktop app only) |
+| `Escape` | Clear search; exit focus mode |
+
+## Privacy and data
+
+- **Where notes live:** IndexedDB in your browser or desktop app, or your connected folder. Nothing else is stored off-device.
+- **Network:** The desktop app checks GitHub Releases for updates. Settings → About → Feedback's **Send Feedback** opens a prefilled GitHub issue in your browser. The template includes your browser user agent, platform, language, and app version. Nothing is sent until you submit it.
+- **Diagnostics:** The same section can download a diagnostics file for a bug report. It is a local download; Noa does not upload it, and you decide whether to attach it.
+- **No telemetry, no accounts.** Noa does not collect usage data.
+- **Browser storage can be cleared.** Clearing site data in a browser deletes Noa's local notes. Keep an exported backup.
+
+## Known limitations
+
+- **Single window.** Noa is designed for one window at a time; multi-tab use is not coordinated.
+- **Large graphs slow down.** The graph view switches to a lighter physics mode above 200 nodes and is not virtualized, so 1,000+ nodes will be sluggish.
+- **Connected-folder sync is polling-based**, as described above.
+- **macOS builds are unsigned**, and only Apple Silicon is packaged.
+
+## Development
 
 ```bash
-npm run lint                 # TypeScript + ESLint
-npm run test:unit            # Vitest
-npm run test:smoke           # Playwright
-npm run build                # Vite build → dist/
-npm run build:budget         # build + bundle size check
-npm run check:structure      # dependency-cruiser
-npm run desktop:dev          # Electron + Vite
-npm run desktop:pack:mac     # unsigned dmg+zip, arm64
+npm run dev               # Vite dev server on :3000
+npm run desktop:dev       # Electron app with live reload
+npm run lint              # TypeScript type-check + ESLint
+npm run test:unit         # Vitest
+npm run test:smoke        # Playwright end-to-end (starts the dev server)
+npm run build:budget      # Production build + bundle size check (entry ≤ 400 KB)
+npm run check:structure   # dependency-cruiser layer-boundary check
+npm run desktop:pack:mac  # Unsigned macOS dmg + zip (arm64)
 ```
 
-## 桌面版（macOS）
+Run `npm run check:structure` after changing `App.tsx` or adding imports to the app shell.
 
-目前面向个人和朋友内测，仅支持 Apple Silicon Mac。从 [Releases](https://github.com/rickkwang/Noa/releases) 下载 `.dmg`。当前安装包未经开发者签名和公证，首次打开可能被 macOS 拦截；只从上述官方发布页获取安装包。应用启动后会自动检查更新，重要笔记请保留独立备份。
+### Architecture at a glance
 
-## 技术栈
+- **State:** `useNotes` is the single source of truth for notes, folders, and tasks. Components don't call storage directly.
+- **Storage:** `lib/storage.ts` (IndexedDB via localForage) for local notes; `lib/fileSystemStorage.ts` for connected folders.
+- **Vault sync:** `useFileSync` manages the folder connection; destructive folder operations go through a prepare/commit journal.
+- **Imports:** Validated by `lib/dataIntegrity.ts` before anything touches storage.
+- **Desktop shell:** `electron/` holds the main process, preload script, permission allowlist, and update installer.
 
-- React + Vite
-- CodeMirror 6
-- IndexedDB（localForage）
-- Electron（macOS arm64）
-- react-force-graph-2d
+### Layout
 
-## 商业模式
+```
+electron/      Main process, preload, permission and navigation guards, update installer
+src/
+  components/  Editor, sidebar, right panel, settings, dialogs
+  hooks/       Core state and orchestration (notes, file sync, attachments, shortcuts)
+  lib/         Storage, sync, import/export, backup health
+  core/        Pure domain logic (search)
+tests/         Playwright smoke tests
+scripts/       Bundle budget, CSP checks, release evidence
+docs/          Release process and operating notes
+```
 
-Noa 是免费、开源、本地优先的个人笔记工具：无账号、无服务器、不收集用户数据。未来若探索可持续方式，会以一次性购买或离线增值功能为主，不会把云同步或隐私作为付费点。
+### Stack
+
+React 19 · Vite · TypeScript · CodeMirror 6 · Tailwind CSS · localForage · Electron · Mermaid · KaTeX · react-force-graph-2d · Vitest · Playwright
+
+## Contributing
+
+Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first for the setup, test expectations, and the pre-push gate. Release steps are in [docs/release.md](docs/release.md), and changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-[AGPL-3.0](LICENSE) © rickkwang
+Noa is free software released under the [GNU Affero General Public License v3.0](LICENSE) © rickkwang.
