@@ -19,10 +19,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  # Only electron-builder needs the Electron binary, and it never runs here.
-  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-
 jobs:
   # Reads only the lockfile, so it needs no install, and a newly published
   # advisory can't hide lint/test/build results behind it.

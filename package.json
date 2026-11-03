@@ -47,7 +47,7 @@
     "d3-force": "^3.0.0",
     "dependency-cruiser": "^18.1.0",
     "dompurify": "^3.3.3",
-    "electron": "41.10.6",
+    "electron": "42.11.18",
     "electron-builder": "^26.8.2",
     "eslint": "^9.39.5",
     "eslint-plugin-import": "^2.32.0",
