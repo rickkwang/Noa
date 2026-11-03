@@ -57,7 +57,10 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       # Headless runs use the headless shell; the full Chromium download is unused.
-      - run: npx playwright install --with-deps --only-shell chromium
+      # No --with-deps: the runner image already has Chromium's shared libraries,
+      # and the only packages it adds are fonts no spec compares pixels against,
+      # installed through apt at 4-20s per shard. A missing library fails launch loudly.
+      - run: npx playwright install --only-shell chromium
       # Scale out across machines, not workers: animation-timing specs flake when
       # 4 workers contend for the runner's 4 vCPUs alongside the dev server.
       - run: npm run test:smoke -- --fully-parallel --shard=${{ matrix.shard }}/6
