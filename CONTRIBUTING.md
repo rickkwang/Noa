@@ -30,7 +30,7 @@ lint → test:unit → check:structure → build:budget → playwright
 ```
 
 The hook uses Node 22 (selecting Homebrew's `node@22` when needed) and runs
-Playwright in CI mode with one worker, matching the macOS release runner.
+Playwright in CI mode with one worker.
 It verifies that bundled Chromium can start before using the existing Chrome
 fallback.
 

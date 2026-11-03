@@ -38,13 +38,11 @@ LINT_STATUS=pass BUILD_BUDGET_STATUS=pass SMOKE_STATUS=pass node scripts/release
 - Outputs: `.dmg` and `.zip`
 - Workflow: `.github/workflows/desktop-release.yml`
 - CI steps:
-  1. `npm ci`
-  2. `npm run lint`
-  3. `npm run check:structure`
-  4. `npm run test:unit`
-  5. `npm run build:budget`
-  6. `npm run test:smoke`
-  7. Build and verify desktop release assets before upload
+  1. `checks` (Ubuntu): reuses `ci.yml` — `npm audit`, `lint`, `test:unit`,
+     `check:structure`, `build:budget`, and the Playwright suite split across 4 shards
+  2. `mac-arm64-build` (macOS, in parallel with `checks`): verify the tag matches
+     `package.json`, build the dmg/zip, verify desktop security artifacts
+  3. `publish`: uploads to the GitHub Release only after both jobs pass
 
 ## Rollback
 - Keep the previous healthy `beta` and `stable` artifacts.

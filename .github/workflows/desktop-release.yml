@@ -7,15 +7,29 @@ on:
       - 'v*'
 
 jobs:
-  mac-arm64-release:
+  # Platform-independent checks run on Ubuntu, in parallel with the mac build,
+  # so the scarce macOS runner only does the packaging that needs macOS.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  mac-arm64-build:
     runs-on: macos-14
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
-      GH_TOKEN: ${{ github.token }}
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify release version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version v${VERSION}." >&2
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -23,20 +37,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run lint
-      - run: npm run check:structure
-      - run: npm run test:unit
-      - run: npm run build:budget
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:smoke
-
-      - name: Verify release version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match package version v${VERSION}." >&2
-            exit 1
-          fi
 
       - name: Build mac arm64
         run: BUILD_TARGET=desktop npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
@@ -46,9 +46,34 @@ jobs:
           node scripts/verify-desktop-csp.mjs dist/index.html
           node scripts/verify-mac-update-metadata.mjs release/latest-mac.yml package.json
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64-release
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            release/Noa-*-arm64.dmg
+            release/Noa-*-arm64-mac.zip
+            release/latest-mac.yml
+
+  # Publishes only after both the checks and the build pass.
+  publish:
+    needs: [checks, mac-arm64-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.mac-arm64-build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-arm64-release
+          path: release
+
       - name: Upload to GitHub Release
         run: |
-          VERSION=$(node -p "require('./package.json').version")
           if ! gh release view "v${VERSION}" --json tagName >/dev/null 2>&1; then
             gh release create "v${VERSION}" \
               --title "Noa v${VERSION}" \

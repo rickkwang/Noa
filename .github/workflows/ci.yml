@@ -1,9 +1,27 @@
 name: ci
 
+# Docs-only changes skip CI. main has no required status checks, so a skipped
+# run can't strand anything; if required checks are ever added, these filters
+# would leave docs-only PRs waiting on a check that never reports.
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE']
   pull_request:
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE']
+  # desktop-release reuses this as its pre-publish gate.
+  workflow_call:
+
+# A newer push to the same PR cancels the older run. On main the group is the
+# commit itself, so every commit there runs to completion. github.workflow is
+# the caller's name under workflow_call, so a release never queues behind main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Only electron-builder needs the Electron binary, and it never runs here.
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
 jobs:
   quality:
@@ -23,7 +41,10 @@ jobs:
 
   smoke-e2e:
     runs-on: ubuntu-latest
-    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,5 +52,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:smoke
+      # Headless runs use the headless shell; the full Chromium download is unused.
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run test:smoke -- --fully-parallel --shard=${{ matrix.shard }}/4
