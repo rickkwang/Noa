@@ -36,7 +36,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
 
       - name: Build mac arm64
         run: BUILD_TARGET=desktop npm run build && npx electron-builder --mac dmg zip --arm64 --publish never

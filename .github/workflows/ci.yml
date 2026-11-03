@@ -24,6 +24,14 @@ env:
   ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
 jobs:
+  # Reads only the lockfile, so it needs no install, and a newly published
+  # advisory can't hide lint/test/build results behind it.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm audit --audit-level=high
+
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -32,8 +40,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
+      # audit has its own job; skip npm ci's built-in registry audit.
+      - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run check:structure
@@ -51,7 +59,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       # Headless runs use the headless shell; the full Chromium download is unused.
       - run: npx playwright install --with-deps --only-shell chromium
-      - run: npm run test:smoke -- --fully-parallel --shard=${{ matrix.shard }}/4
+      - run: npm run test:smoke -- --fully-parallel --workers=4 --shard=${{ matrix.shard }}/4
