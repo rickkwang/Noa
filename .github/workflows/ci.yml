@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,4 +62,6 @@ jobs:
       - run: npm ci --no-audit --no-fund
       # Headless runs use the headless shell; the full Chromium download is unused.
       - run: npx playwright install --with-deps --only-shell chromium
-      - run: npm run test:smoke -- --fully-parallel --workers=4 --shard=${{ matrix.shard }}/4
+      # Scale out across machines, not workers: animation-timing specs flake when
+      # 4 workers contend for the runner's 4 vCPUs alongside the dev server.
+      - run: npm run test:smoke -- --fully-parallel --shard=${{ matrix.shard }}/6

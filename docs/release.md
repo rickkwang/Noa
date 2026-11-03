@@ -39,7 +39,7 @@ LINT_STATUS=pass BUILD_BUDGET_STATUS=pass SMOKE_STATUS=pass node scripts/release
 - Workflow: `.github/workflows/desktop-release.yml`
 - CI steps:
   1. `checks` (Ubuntu): reuses `ci.yml` — `npm audit`, `lint`, `test:unit`,
-     `check:structure`, `build:budget`, and the Playwright suite split across 4 shards
+     `check:structure`, `build:budget`, and the Playwright suite split across 6 shards
   2. `mac-arm64-build` (macOS, in parallel with `checks`): verify the tag matches
      `package.json`, build the dmg/zip, verify desktop security artifacts
   3. `publish`: uploads to the GitHub Release only after both jobs pass
