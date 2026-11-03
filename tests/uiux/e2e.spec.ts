@@ -27,9 +27,13 @@ test('template dialog contains keyboard focus and returns it on Escape', async (
 test('command palette wraps focus and closes from a result button', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'New note', exact: true })).toBeVisible();
-  await page.keyboard.press('ControlOrMeta+k');
   const dialog = page.getByRole('dialog', { name: 'Command palette' });
-  await expect(dialog.getByRole('combobox')).toBeFocused();
+  // The shortcut listener attaches in an effect after first paint, so a press
+  // right after the button appears can land before it. Opening is idempotent.
+  await expect(async () => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(dialog.getByRole('combobox')).toBeFocused({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   await page.keyboard.press('Shift+Tab');
   // Results are listbox options driven by arrow keys, but still reachable by Tab.
   await expect(dialog.getByRole('option').last()).toBeFocused();
