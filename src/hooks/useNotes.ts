@@ -1264,11 +1264,11 @@ export function useNotes(settings?: AppSettings, vaultWorkspaceRef?: MutableRefO
     });
   }, []);
 
-  const advanceVaultNoteBaseline = useCallback(async (id: string, vaultBaseText: string) => {
+  const advanceVaultNoteBaseline = useCallback(async (id: string, vaultBaseText: string, vaultPath?: string) => {
     let advancedNote: Note | undefined;
     const advance = (current: Note[]) => current.map((note) => {
       if (note.id !== id || note.origin !== 'vault' || !note.vaultDirty) return note;
-      const advanced = { ...note, vaultBaseText };
+      const advanced = { ...note, vaultBaseText, ...(vaultPath ? { vaultPath } : {}) };
       advancedNote = advanced;
       return advanced;
     });

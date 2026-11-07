@@ -219,20 +219,25 @@ async function installMockDirectoryPicker(
           throw new DOMException('blocked', 'NotAllowedError');
         }
         const fileHandle = this;
+        let staged: string | Blob | undefined;
         return {
           async write(value: string | Blob) {
             await delay(40);
-            if (value instanceof Blob) {
-              fileHandle.mimeType = value.type;
-              fileHandle.content = await value.text();
-              fileHandle.binaryBase64 = btoa(String.fromCharCode(...new Uint8Array(await value.arrayBuffer())));
-              return;
-            }
-            fileHandle.content = value;
-            fileHandle.binaryBase64 = null;
+            staged = value;
           },
           async close() {
             await delay(20);
+            if (staged instanceof Blob) {
+              fileHandle.mimeType = staged.type;
+              fileHandle.content = await staged.text();
+              fileHandle.binaryBase64 = btoa(String.fromCharCode(...new Uint8Array(await staged.arrayBuffer())));
+            } else if (staged !== undefined) {
+              fileHandle.content = staged;
+              fileHandle.binaryBase64 = null;
+            }
+          },
+          async abort() {
+            staged = undefined;
           },
         };
       }
@@ -1783,8 +1788,7 @@ test('a note created inside a vault folder is written to that folder on disk', a
   await expect(page.getByText('Folder sync failed')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
     const read = (window as typeof window & { __readMockVaultFile?: (path: string) => string | null }).__readMockVaultFile;
-    // Existing.md + New Note.md + the collision-suffixed second note.
-    return ['Folder/Existing.md', 'Folder/New Note.md'].every((path) => read?.(path) != null);
+    return ['Folder/Existing.md', 'Folder/New Note.md', 'Folder/New Note 1.md'].every((path) => read?.(path) != null);
   })).toBe(true);
 
   await folderRow.focus();

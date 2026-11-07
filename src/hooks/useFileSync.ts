@@ -45,7 +45,7 @@ interface UseFileSyncOptions {
   workspaceName: string;
   onImportData: (notes: Note[], folders?: Folder[], workspaceName?: string, shouldPrune?: boolean, deletedNoteIds?: string[], mode?: 'workspace' | 'vault') => Promise<void>;
   onVaultNotesSynced: (expectations: VaultSyncedNoteExpectation[]) => void;
-  onVaultNoteBaselineAdvanced: (id: string, baselineText: string) => void | Promise<void>;
+  onVaultNoteBaselineAdvanced: (id: string, baselineText: string, vaultPath?: string) => void | Promise<void>;
 }
 
 interface UseFileSyncResult {
@@ -395,7 +395,7 @@ export function useFileSync({
       (note) => note.origin === 'vault' && note.vaultDirty,
     );
     for (const note of dirtySnapshots) {
-      const conflict = await syncVaultNoteSnapshot(handle, note, foldersRef.current);
+      const conflict = await syncVaultNoteSnapshot(handle, note, foldersRef.current, onVaultNoteBaselineAdvanced);
       if (conflict?.pending) throw conflict;
       if (conflict) conflicts.push(conflict);
       syncedNoteIds.add(note.id);
@@ -430,7 +430,7 @@ export function useFileSync({
       }] : [];
     }));
     return { notes: scanNotes, folders: foldersRef.current, conflicts };
-  }, [applyPendingStructuralOperations, onVaultNotesSynced]);
+  }, [applyPendingStructuralOperations, onVaultNoteBaselineAdvanced, onVaultNotesSynced]);
 
   const syncFromAuthoritativeDisk = useCallback(async (
     handle: FileSystemDirectoryHandle,
@@ -1035,11 +1035,14 @@ export function useFileSync({
       if (!fsHandle || note.origin !== 'vault') return;
       runTrackedOperation(
         `note:${note.id}`,
-        () => syncNoteCreate(fsHandle, note, foldersRef.current),
-        { id: note.id, content: note.content },
+        () => {
+          const confirmed = notesRef.current.find(item => item.id === note.id && item.vaultPath);
+          return syncNoteCreate(fsHandle, confirmed ?? note, foldersRef.current, onVaultNoteBaselineAdvanced);
+        },
+        { id: note.id, content: note.content, title: note.title, folder: note.folder, updatedAt: note.updatedAt },
       );
     },
-    [fsHandle, runTrackedOperation],
+    [fsHandle, onVaultNoteBaselineAdvanced, runTrackedOperation],
   );
 
   const syncFolderOnCreate = useCallback(

@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { serializeNoteForVault } from '../lib/fileSystemStorage';
 import { recomputeLinkRefsForNotes } from '../lib/noteUtils';
 import { storage } from '../lib/storage';
 import { applyTemplate, builtinTemplates, formatDate } from '../lib/templates';
@@ -100,6 +101,7 @@ export function useDailyNotes({
       ...(inVault ? { origin: 'vault' as const, vaultDirty: true, source: 'noa' as const } : {}),
     };
 
+    if (inVault) newNote.vaultBaseText = serializeNoteForVault(newNote);
     setActiveNoteIdWithRecent(newNote.id);
     setFolders((prev) => {
       if (prev.find((f) => f.id === dailyFolder.id)) return prev;

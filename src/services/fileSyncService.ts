@@ -7,14 +7,18 @@ import {
   persistHandle,
   readVaultNoteText,
   readVaultNoteTextAtPath,
+  releaseVaultCreateReservation,
   isNoteAtCanonicalPath,
+  isPendingVaultNoteCreate,
   removeNoteFileAtPath,
   removeEmptyFolderTree,
   requestDirectoryAccess,
   scanDirectory,
   scanNoteFileStats,
   serializeNoteForVault,
+  VaultWriteConflictError,
   writeNote,
+  type WriteNoteOptions,
 } from '../lib/fileSystemStorage';
 import { storage } from '../lib/storage';
 import { Folder, Note, VaultPendingOperation } from '../types';
@@ -324,42 +328,31 @@ async function writeNoteTracked(
   folders: Folder[],
   payloadOverride?: string,
   existingPath?: string,
+  options?: WriteNoteOptions,
 ): Promise<Awaited<ReturnType<typeof writeNote>>> {
-  const written = await writeNote(handle, note, folders, payloadOverride, existingPath);
+  const written = await writeNote(handle, note, folders, payloadOverride, existingPath, options);
   if (written && _vaultStatSnapshot) {
     _vaultStatSnapshot.set(written.path, `${written.lastModified}:${written.size}`);
   }
   return written;
 }
 
-export class VaultWriteConflictError extends Error {
-  readonly conflictPath: string;
-  readonly pending?: { note: Note; diskText: string | null };
-
-  constructor(noteTitle: string, conflictPath: string, pending?: { note: Note; diskText: string | null }) {
-    super(pending
-      ? `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. Writing paused; choose which version to keep.`
-      : `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. The external file was kept at "${conflictPath}".`);
-    this.name = 'VaultWriteConflictError';
-    this.conflictPath = conflictPath;
-    this.pending = pending;
-  }
-}
+export { VaultWriteConflictError };
 
 async function preserveNoaEditIfDiskChanged(
   handle: FileSystemDirectoryHandle,
   previousNote: Note,
   desiredNote: Note,
   previousFolders: Folder[],
-): Promise<string | null> {
-  const path = await getNoteFilePath(handle, previousNote, previousFolders);
+): Promise<{ path: string | null; diskText: string | null }> {
+  const path = await getNoteFilePath(handle, previousNote, previousFolders, true);
   const diskText = path ? await readVaultNoteTextAtPath(handle, path) : null;
   const baselineText = previousNote.vaultBaseText ?? serializeNoteForVault(previousNote);
   const desiredText = serializeNoteForVault(desiredNote);
   // The second equality recognizes a Markdown write that landed before a later
   // manifest/attachment step failed. It is Noa's own partial success, not an
   // external edit.
-  if (diskText === baselineText || diskText === desiredText) return path;
+  if (diskText === baselineText || diskText === desiredText) return { path, diskText };
   throw new VaultWriteConflictError(desiredNote.title, path ?? previousNote.vaultPath ?? `${previousNote.title}.md`, {
     note: desiredNote,
     diskText,
@@ -376,15 +369,17 @@ export async function resolveVaultEditConflict(
   await withVaultLock(async () => {
     const diskText = await readVaultNoteTextAtPath(handle, conflict.conflictPath);
     if (diskText !== conflict.pending?.diskText) {
-      throw new VaultWriteConflictError(note.title, conflict.conflictPath, { note, diskText });
+      throw new VaultWriteConflictError(note.title, conflict.conflictPath, { ...conflict.pending, note, diskText });
     }
     if (keepLocal) {
       const exactPayload = note.vaultBaseText
         && note.vaultBaseText.replace(/^\uFEFF/, '') === serializeNoteForVault(note)
         ? note.vaultBaseText
         : undefined;
-      const written = await writeNoteTracked(handle, note, folders, exactPayload, conflict.conflictPath);
+      const written = await writeNoteTracked(handle, note, folders, exactPayload, conflict.conflictPath, { expectedDiskText: diskText });
       if (!written) throw new Error('Could not save the chosen version. Its original folder may have been removed.');
+    } else {
+      await releaseVaultCreateReservation(handle, note);
     }
     _noteWriteBaselines.delete(note.id);
   });
@@ -543,12 +538,14 @@ function withVaultLock<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
+type VaultBaselineAdvanced = (noteId: string, baselineText: string, vaultPath?: string) => void | Promise<void>;
+
 export async function syncNoteUpdate(
   handle: FileSystemDirectoryHandle,
   note: Note,
   content: string,
   folders: Folder[],
-  onBaselineAdvanced?: (noteId: string, baselineText: string) => void | Promise<void>,
+  onBaselineAdvanced?: VaultBaselineAdvanced,
 ): Promise<void> {
   if (!_noteWriteBaselines.has(note.id)) {
     _noteWriteBaselines.set(note.id, note);
@@ -559,11 +556,20 @@ export async function syncNoteUpdate(
   try {
     await debouncedNoteWrite(note.id, async () => {
       const baseline = _noteWriteBaselines.get(note.id) ?? note;
-      const nextNote = { ...note, content, updatedAt: new Date().toISOString() };
+      const nextNote = { ...note, content, updatedAt: new Date().toISOString(), vaultPath: note.vaultPath ?? baseline.vaultPath };
       try {
         // Content saves retain the exact disk path, including names legal on the host filesystem.
-        const existingPath = await preserveNoaEditIfDiskChanged(handle, baseline, nextNote, folders);
-        await writeNoteTracked(handle, nextNote, folders, undefined, existingPath ?? undefined);
+        if (await isPendingVaultNoteCreate(handle, nextNote)) {
+          nextNote.vaultPath = await writeFirstVaultNote(handle, {
+            ...nextNote, vaultBaseText: baseline.vaultBaseText ?? serializeNoteForVault(baseline),
+          }, folders, onBaselineAdvanced, true);
+        } else {
+          const { path, diskText } = await preserveNoaEditIfDiskChanged(handle, baseline, nextNote, folders);
+          const written = await writeNoteTracked(handle, nextNote, folders, undefined, path ?? undefined, {
+            expectedDiskText: diskText,
+          });
+          if (!written) throw new Error('Could not save the vault note. Its folder is unavailable.');
+        }
         // In-memory only: queued typing compares against this write; the sync
         // acknowledgement persists the final baseline.
         _noteWriteBaselines.set(note.id, { ...nextNote, vaultBaseText: serializeNoteForVault(nextNote) });
@@ -600,20 +606,38 @@ export async function syncNoteUpdate(
   }
 }
 
-/**
- * First write of a note created inside a vault folder. It has no file yet, so
- * the conflict check `syncNoteUpdate` runs against its baseline would read the
- * absence of a file — or an unrelated "New Note.md" via the title fallback —
- * as an external edit. `writeNote` picks a collision-safe filename itself.
- */
+async function writeFirstVaultNote(
+  handle: FileSystemDirectoryHandle,
+  note: Note,
+  folders: Folder[],
+  onBaselineAdvanced?: VaultBaselineAdvanced,
+  recovering = false,
+): Promise<string> {
+  const written = await writeNoteTracked(handle, note, folders, undefined, undefined, {
+    firstWrite: true,
+    recovering,
+    async onFirstWriteCommitted(path, payload) {
+      const queued = _noteWriteBaselines.get(note.id);
+      if (queued) _noteWriteBaselines.set(note.id, { ...queued, vaultPath: path, vaultBaseText: payload });
+      await onBaselineAdvanced?.(note.id, payload, path);
+    },
+  });
+  if (!written) throw new Error('Could not create the vault note. Its folder is unavailable.');
+  return written.path;
+}
+
 export async function syncNoteCreate(
   handle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
+  onBaselineAdvanced?: VaultBaselineAdvanced,
 ): Promise<void> {
-  await withVaultLock(async () => {
-    await writeNoteTracked(handle, note, folders);
-  });
+  if (note.vaultPath) {
+    const conflict = await syncVaultNoteSnapshot(handle, note, folders, onBaselineAdvanced);
+    if (conflict) throw conflict;
+    return;
+  }
+  await withVaultLock(() => writeFirstVaultNote(handle, note, folders, onBaselineAdvanced));
 }
 
 export async function syncNoteRename(
@@ -713,13 +737,38 @@ export async function syncVaultNoteSnapshot(
   handle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
+  onBaselineAdvanced?: VaultBaselineAdvanced,
 ): Promise<VaultWriteConflictError | null> {
   if (note.origin !== 'vault') return null;
   return withVaultLock(async () => {
     const baseline = _noteWriteBaselines.get(note.id) ?? note;
-    const previousPath = await getNoteFilePath(handle, note, folders);
     try {
-      await preserveNoaEditIfDiskChanged(handle, baseline, note, folders);
+      if (await isPendingVaultNoteCreate(handle, note)) {
+        await writeFirstVaultNote(handle, note, folders, onBaselineAdvanced, true);
+        _noteWriteBaselines.delete(note.id);
+        return null;
+      }
+      const { path: previousPath, diskText } = await preserveNoaEditIfDiskChanged(handle, baseline, note, folders);
+      const exactStructuralPayload = note.vaultBaseText
+        && note.vaultBaseText.replace(/^\uFEFF/, '') === serializeNoteForVault(note)
+        ? note.vaultBaseText
+        : undefined;
+      const existingPath = previousPath && isNoteAtCanonicalPath(previousPath, note, folders) ? previousPath : undefined;
+      const written = await writeNoteTracked(handle, note, folders, exactStructuralPayload, existingPath,
+        existingPath ? { expectedDiskText: diskText } : undefined);
+      if (!written) throw new Error('Could not save the vault note. Its folder is unavailable.');
+      const stalePaths = new Set([previousPath, note.vaultPath].filter((path): path is string => Boolean(path)));
+      stalePaths.delete(written.path);
+      for (const path of stalePaths) {
+        const staleText = await readVaultNoteTextAtPath(handle, path);
+        if (staleText === null) continue;
+        // The manifest may already point at the new file; validate each old path independently.
+        const baselineText = baseline.vaultBaseText ?? serializeNoteForVault(baseline);
+        if (staleText !== baselineText) throw new VaultWriteConflictError(note.title, path);
+        await removeNoteFileAtPathTracked(handle, path);
+      }
+      _noteWriteBaselines.delete(note.id);
+      return null;
     } catch (error) {
       if (error instanceof VaultWriteConflictError) {
         _noteWriteBaselines.delete(note.id);
@@ -727,27 +776,6 @@ export async function syncVaultNoteSnapshot(
       }
       throw error;
     }
-    const exactStructuralPayload = note.vaultBaseText
-      && note.vaultBaseText.replace(/^\uFEFF/, '') === serializeNoteForVault(note)
-      ? note.vaultBaseText
-      : undefined;
-    const existingPath = previousPath && isNoteAtCanonicalPath(previousPath, note, folders) ? previousPath : undefined;
-    const written = await writeNoteTracked(handle, note, folders, exactStructuralPayload, existingPath);
-    const stalePaths = new Set([previousPath, note.vaultPath].filter((path): path is string => Boolean(path)));
-    if (written) stalePaths.delete(written.path);
-    for (const path of stalePaths) {
-      const diskText = await readVaultNoteTextAtPath(handle, path);
-      if (diskText === null) continue;
-      // The manifest may already point at the new file; validate each old path independently.
-      const baselineText = baseline.vaultBaseText ?? serializeNoteForVault(baseline);
-      if (diskText !== baselineText) {
-        _noteWriteBaselines.delete(note.id);
-        return new VaultWriteConflictError(note.title, path);
-      }
-      await removeNoteFileAtPathTracked(handle, path);
-    }
-    _noteWriteBaselines.delete(note.id);
-    return null;
   });
 }
 

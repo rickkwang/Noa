@@ -552,7 +552,7 @@ describe('useNotes vault conflict acknowledgement', () => {
     expect(saved?.vaultBaseText).toBe('Body');
   });
 
-  it('persists an advanced landed baseline without replacing a newer local edit', async () => {
+  it('persists a confirmed path and baseline without replacing a newer local edit', async () => {
     vi.resetModules();
 
     const storageMock = baseStorageMock();
@@ -569,7 +569,6 @@ describe('useNotes vault conflict acknowledgement', () => {
       origin: 'vault' as const,
       vaultDirty: true,
       vaultBaseText: 'version A',
-      vaultPath: 'Note.md',
     };
     await api.handleImportData([dirty], [], 'Vault', true, [], 'vault');
     harness.flushStateUpdates();
@@ -579,7 +578,7 @@ describe('useNotes vault conflict acknowledgement', () => {
 
     // The synchronous latest ref must let the B failure callback persist C with base=B.
     api.handleUpdateNote(dirty.id, 'version C');
-    await api.advanceVaultNoteBaseline(dirty.id, 'version B');
+    await api.advanceVaultNoteBaseline(dirty.id, 'version B', 'Note.md');
 
     const saveCalls = storageMock.saveNote.mock.calls as unknown as Array<[{
       content: string;
@@ -588,6 +587,7 @@ describe('useNotes vault conflict acknowledgement', () => {
     expect(saveCalls.at(-1)?.[0]).toMatchObject({
       content: 'version C',
       vaultBaseText: 'version B',
+      vaultPath: 'Note.md',
     });
   });
 

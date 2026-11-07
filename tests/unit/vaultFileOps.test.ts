@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deleteNoteFile, getVaultIdentity, scanDirectory, scanNoteFileStats, serializeNoteForVault, writeNote } from '../../src/lib/fileSystemStorage';
-import { checkExternalVaultChanges, mergeScannedNotes, replayVaultPendingOperation, resetVaultStatSnapshot, syncFolderDelete, syncFolderRename, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot, resolveVaultEditConflict, VaultWriteConflictError } from '../../src/services/fileSyncService';
+import { checkExternalVaultChanges, mergeScannedNotes, replayVaultPendingOperation, resetVaultStatSnapshot, syncFolderDelete, syncFolderRename, syncNoteCreate, syncNoteDelete, syncNoteMove, syncNoteRename, syncNoteUpdate, syncVaultNoteSnapshot, resolveVaultEditConflict, VaultWriteConflictError } from '../../src/services/fileSyncService';
 import type { Note } from '../../src/types';
 import { createMemRoot, listPaths, readFileText, resolvePath } from './helpers/memfs';
 
@@ -614,6 +614,200 @@ describe('syncNoteRename', () => {
     const managedPath = listPaths(root).find((path) => /^Existing_[0-9a-f]{8}\.md$/.test(path));
     expect(managedPath).toBeDefined();
     expect(await readFileText(root, managedPath as string)).toBe('managed body');
+  });
+});
+
+describe('vault first-write recovery', () => {
+  it.each([false, true])('recovers a new draft in its folder (external same name: %s)', async (occupied) => {
+    const root = createMemRoot();
+    await root.getDirectoryHandle('Projects', { create: true });
+    const folders = [{ id: 'projects', name: 'Projects', origin: 'vault' as const }];
+    const draft = makeNote({ source: 'noa', folder: 'projects', vaultDirty: true, vaultBaseText: 'draft', content: 'draft' });
+    if (occupied) await writeRawFile(root, 'Projects/Sample.md', 'external note');
+
+    expect(await syncVaultNoteSnapshot(asFsHandle(root), draft, folders)).toBeNull();
+    expect(await readFileText(root, 'Sample.md')).toBeNull();
+    expect(await readFileText(root, occupied ? 'Projects/Sample_a1a1a1a1.md' : 'Projects/Sample.md')).toBe('draft');
+    if (occupied) expect(await readFileText(root, 'Projects/Sample.md')).toBe('external note');
+  });
+
+  it('writes only one file when a manifest write fails and the create is retried', async () => {
+    const root = createMemRoot();
+    const handle = asFsHandle(root);
+    await getVaultIdentity(handle);
+    const manifest = await (await root.getDirectoryHandle('.noa')).getFileHandle('manifest.json');
+    const openWritable = manifest.createWritable.bind(manifest);
+    manifest.createWritable = async () => { throw new DOMException('denied', 'NotAllowedError'); };
+    const draft = makeNote({ source: 'noa', vaultDirty: true });
+
+    await expect(syncNoteCreate(handle, draft, [])).rejects.toThrow('denied');
+    manifest.createWritable = openWritable;
+    await syncNoteCreate(handle, draft, []);
+
+    expect(listPaths(root).filter(path => path.endsWith('.md'))).toEqual(['Sample.md']);
+    expect(await readFileText(root, 'Sample.md')).toBe(draft.content);
+  });
+
+  it('retries the same path after Markdown commits but manifest finalization fails', async () => {
+    const root = createMemRoot();
+    const handle = asFsHandle(root);
+    await getVaultIdentity(handle);
+    const manifest = await (await root.getDirectoryHandle('.noa')).getFileHandle('manifest.json');
+    const openWritable = manifest.createWritable.bind(manifest);
+    manifest.createWritable = async () => {
+      if (await readFileText(root, 'Sample.md') === 'draft') throw new DOMException('denied', 'NotAllowedError');
+      return openWritable();
+    };
+    const draft = makeNote({ source: 'noa', content: 'draft', vaultBaseText: 'draft', vaultDirty: true });
+
+    let confirmed = draft;
+    await expect(syncNoteCreate(handle, draft, [], (_id, vaultBaseText, vaultPath) => {
+      confirmed = { ...draft, vaultBaseText, vaultPath };
+    })).rejects.toThrow('denied');
+    expect(confirmed.vaultPath).toBe('Sample.md');
+    expect(await readFileText(root, 'Sample.md')).toBe('draft');
+    manifest.createWritable = openWritable;
+    expect(await syncVaultNoteSnapshot(handle, { ...confirmed, content: 'latest draft' }, [])).toBeNull();
+
+    expect(listPaths(root).filter(path => path.endsWith('.md'))).toEqual(['Sample.md']);
+    expect(await readFileText(root, 'Sample.md')).toBe('latest draft');
+  });
+
+  it('keeps a same-template external note independent after the first handle was denied', async () => {
+    const root = createMemRoot();
+    const draft = makeNote({ source: 'noa', content: 'template', vaultBaseText: 'template', vaultDirty: true });
+    const open = root.getFileHandle.bind(root);
+    root.getFileHandle = async (name, options) => {
+      if (name === 'Sample.md' && options?.create) throw new DOMException('denied', 'NotAllowedError');
+      return open(name, options);
+    };
+    await expect(syncNoteCreate(asFsHandle(root), draft, [])).rejects.toThrow('denied');
+    root.getFileHandle = open;
+    await writeRawFile(root, 'Sample.md', 'template');
+
+    const external = (await scanDirectory(asFsHandle(root), [])).notes[0];
+    expect(external.source).toBe('obsidian-import');
+    expect(external.id).not.toBe(draft.id);
+    await syncNoteCreate(asFsHandle(root), draft, []);
+    await syncNoteUpdate(asFsHandle(root), draft, 'Noa edit', []);
+    expect(await readFileText(root, 'Sample.md')).toBe('template');
+    expect(await readFileText(root, 'Sample_a1a1a1a1.md')).toBe('Noa edit');
+  });
+
+  it('pauses rather than duplicating an empty file left before the stream opens', async () => {
+    const root = createMemRoot();
+    const handle = asFsHandle(root);
+    const draft = makeNote({ source: 'noa', vaultDirty: true });
+    const open = root.getFileHandle.bind(root);
+    root.getFileHandle = async (name, options) => {
+      const file = await open(name, options);
+      if (name === 'Sample.md' && options?.create) {
+        file.createWritable = async () => { throw new DOMException('denied', 'NotAllowedError'); };
+      }
+      return file;
+    };
+    await expect(syncNoteCreate(handle, draft, [])).rejects.toThrow('denied');
+    root.getFileHandle = open;
+    expect((await syncVaultNoteSnapshot(handle, draft, []))?.pending).toMatchObject({ diskText: '' });
+    expect(listPaths(root).filter(path => path.endsWith('.md'))).toEqual(['Sample.md']);
+  });
+
+  it('pauses an unconfirmed publish after an external rename or replacement', async () => {
+    const root = createMemRoot();
+    const handle = asFsHandle(root);
+    await getVaultIdentity(handle);
+    const manifest = await (await root.getDirectoryHandle('.noa')).getFileHandle('manifest.json');
+    const open = manifest.createWritable.bind(manifest);
+    const draft = makeNote({ source: 'noa', content: 'draft', vaultBaseText: 'draft', vaultDirty: true });
+    manifest.createWritable = async () => {
+      if (await readFileText(root, 'Sample.md') === 'draft') throw new DOMException('denied', 'NotAllowedError');
+      return open();
+    };
+    await expect(syncNoteCreate(handle, draft, [])).rejects.toThrow('denied');
+    manifest.createWritable = open;
+    await writeRawFile(root, 'Moved.md', 'draft');
+    await root.removeEntry('Sample.md');
+
+    const missing = await syncVaultNoteSnapshot(handle, draft, []);
+    expect(missing?.pending).toMatchObject({ diskText: null });
+    expect(listPaths(root).filter(path => path.endsWith('.md'))).toEqual(['Moved.md']);
+
+    const external = '---\nid: external\nlinks: [keep]\n---\nOther note';
+    await writeRawFile(root, 'Sample.md', external);
+    const conflict = await syncVaultNoteSnapshot(handle, draft, []);
+    expect(conflict?.pending).toMatchObject({ diskText: external });
+    await resolveVaultEditConflict(handle, conflict!, draft, [], false);
+    const scanned = (await scanDirectory(handle, [])).notes.find(note => note.title === 'Sample')!;
+    expect(scanned.source).toBe('obsidian-import');
+    await syncNoteUpdate(handle, scanned, 'Body edited', []);
+    expect(await readFileText(root, 'Sample.md')).toBe(external.replace('Other note', 'Body edited'));
+    expect(await readFileText(root, '.noa/manifest.json')).not.toContain(draft.id);
+  });
+
+  it('does not duplicate an unindexed legacy draft whose Markdown may already be on disk', async () => {
+    const root = createMemRoot();
+    const draft = makeNote({ source: 'noa', content: 'draft', vaultDirty: true, vaultBaseText: 'draft' });
+    await writeRawFile(root, 'Sample.md', 'draft');
+    const conflict = await syncVaultNoteSnapshot(asFsHandle(root), draft, []);
+    expect(conflict?.pending).toMatchObject({ diskText: 'draft' });
+    expect(listPaths(root).filter(path => path.endsWith('.md'))).toEqual(['Sample.md']);
+  });
+
+  it('cancels a rename when another file takes the destination during the write', async () => {
+    const root = createMemRoot();
+    await writeNote(asFsHandle(root), makeNote({ title: 'Old' }), []);
+    const note = (await scanDirectory(asFsHandle(root), [])).notes[0];
+    const open = root.getFileHandle.bind(root);
+    root.getFileHandle = async (name, options) => {
+      if (name === 'New.md' && options?.create) {
+        root.getFileHandle = open;
+        await writeRawFile(root, name, 'External note');
+      }
+      return open(name, options);
+    };
+    const conflict = await syncNoteRename(asFsHandle(root), note, 'New', []).catch(error => error);
+    expect(conflict).toBeInstanceOf(VaultWriteConflictError);
+    expect(conflict.pending).toBeUndefined();
+    expect(await readFileText(root, 'Old.md')).toBe(note.content);
+    expect(await readFileText(root, 'New.md')).toBe('External note');
+  });
+
+  it('does not acknowledge a create when the destination directory cannot be opened', async () => {
+    const root = createMemRoot();
+    await writeRawFile(root, 'Projects', 'replaced by external file');
+    const folders = [{ id: 'projects', name: 'Projects', origin: 'vault' as const }];
+    await expect(syncNoteCreate(asFsHandle(root), makeNote({ folder: 'projects' }), folders)).rejects.toThrow();
+    expect(await readFileText(root, 'Projects')).toBe('replaced by external file');
+  });
+
+  it.each([false, true])('keeps an external write before commit (first write: %s)', async (creating) => {
+    const root = createMemRoot();
+    const handle = asFsHandle(root);
+    const draft = makeNote({ id: crypto.randomUUID(), source: 'noa', content: 'base' });
+    if (!creating) await writeNote(handle, draft, []);
+    const openFile = root.getFileHandle.bind(root);
+    root.getFileHandle = async (name, options) => {
+      const file = await openFile(name, options);
+      if (name !== 'Sample.md' || options?.create !== creating) return file;
+      const openWritable = file.createWritable.bind(file);
+      file.createWritable = async () => {
+        const stream = await openWritable();
+        return { ...stream, write: async (data) => {
+          await stream.write(data);
+          const external = await openWritable();
+          await external.write('external write');
+          await external.close();
+        } };
+      };
+      return file;
+    };
+
+    const write = creating ? syncNoteCreate(handle, draft, []) : syncNoteUpdate(handle, draft, 'Noa edit', []);
+    await expect(write).rejects.toMatchObject({
+      conflictPath: 'Sample.md',
+      pending: { diskText: 'external write' },
+    });
+    expect(await readFileText(root, 'Sample.md')).toBe('external write');
   });
 });
 

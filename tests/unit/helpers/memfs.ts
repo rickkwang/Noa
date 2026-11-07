@@ -21,6 +21,9 @@ export class MemFileHandle {
       write: async (chunk: string | Blob) => {
         chunks.push(chunk);
       },
+      abort: async () => {
+        chunks.length = 0;
+      },
       close: async () => {
         this.data = chunks.length === 1 && typeof chunks[0] !== 'string'
           ? chunks[0]

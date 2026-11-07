@@ -19,6 +19,7 @@ interface VaultManifestNoteEntry {
   id: string;
   createdAt: string;
   source?: Note['source'];
+  pendingCreate?: 'reserved' | 'publishing' | true;
 }
 
 interface VaultManifest {
@@ -454,17 +455,51 @@ export interface WrittenNoteFile {
   size: number;
 }
 
+type PendingVaultConflict = { note: Note; diskText: string | null; unconfirmedCreate?: true };
+
+export class VaultWriteConflictError extends Error {
+  readonly conflictPath: string;
+  readonly pending?: PendingVaultConflict;
+
+  constructor(noteTitle: string, conflictPath: string, pending?: PendingVaultConflict) {
+    super(pending?.unconfirmedCreate
+      ? `Vault conflict: Noa could not confirm the previous save of "${noteTitle || 'Untitled'}".`
+      : pending ? `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. Writing paused; choose which version to keep.`
+      : `Vault conflict: "${noteTitle || 'Untitled'}" changed outside Noa. The external file was kept at "${conflictPath}".`);
+    this.name = 'VaultWriteConflictError';
+    this.conflictPath = conflictPath;
+    this.pending = pending;
+  }
+}
+
+export interface WriteNoteOptions {
+  firstWrite?: boolean;
+  recovering?: boolean;
+  expectedDiskText?: string | null;
+  onFirstWriteCommitted?: (path: string, payload: string) => void | Promise<void>;
+}
+
 export async function writeNote(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
   payloadOverride?: string,
   existingPath?: string,
+  options?: WriteNoteOptions,
 ): Promise<WrittenNoteFile | null> {
   // Defense in depth: only vault-origin notes are ever written to disk.
   if (note.origin !== 'vault') return null;
   const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
+  const existingManifestEntry = manifestEntryForId(manifest, diskNoteId);
+  if (options?.firstWrite && existingManifestEntry?.[1].pendingCreate) {
+    const [path, { pendingCreate }] = existingManifestEntry;
+    const diskText = await readVaultNoteTextAtPath(rootHandle, path);
+    // Opening a new handle can leave an empty file before publishing starts.
+    if (pendingCreate !== 'reserved' || diskText === '') {
+      throw new VaultWriteConflictError(note.title, path, { note, diskText, unconfirmedCreate: true });
+    }
+  }
   const folder = folders.find(f => f.id === note.folder);
   // A non-root destination must be a vault-origin folder, so private Noa folder
   // names never leak into the connected vault.
@@ -478,77 +513,97 @@ export async function writeNote(
 
   const baseName = sanitizeFilename(note.title || 'Untitled');
   const defaultFilename = `${baseName}.md`;
-  const existingManifestEntry = manifestEntryForId(manifest, diskNoteId);
   const preferredPath = relativeNotePath(folder?.name, defaultFilename);
-  const preferredOwner = manifest.notes[preferredPath];
-  const preferredIsOwned = preferredOwner?.id === diskNoteId
-    || existingManifestEntry?.[0] === preferredPath
-    || note.vaultPath === preferredPath;
-  // Manifest entries are written after their file, so an entry with no file
-  // behind it is stale (deleted outside Noa) and must not force a suffix.
-  const preferredOccupied = !existingFilename && !preferredIsOwned && await fileExists(dirHandle, defaultFilename);
   const suffixedFilename = `${baseName}_${noteCollisionSuffix(diskNoteId)}.md`;
   const suffixedPath = relativeNotePath(folder?.name, suffixedFilename);
-  // A note already living at its suffixed name stays there; writing the
-  // preferred name would leave the old file behind as a duplicate.
-  const ownsSuffixed = existingManifestEntry?.[0] === suffixedPath || note.vaultPath === suffixedPath;
-  const filename = existingFilename ?? (preferredOccupied || ownsSuffixed ? suffixedFilename : defaultFilename);
-
+  const owns = (path: string) => note.vaultPath === path
+    || (manifest.notes[path]?.id === diskNoteId && !manifest.notes[path].pendingCreate);
   const payload = payloadOverride ?? serializeNoteForVault(note);
-  const nextPath = existingPath ?? relativeNotePath(folder?.name, filename);
-  if (filename !== defaultFilename) {
-    const alternateOwner = manifest.notes[nextPath];
-    const alternateIsOwned = alternateOwner?.id === diskNoteId
-      || existingManifestEntry?.[0] === nextPath
-      || note.vaultPath === nextPath;
-    if (!alternateIsOwned && await fileExists(dirHandle, filename)) {
-      throw new Error(`Cannot write "${note.title}": both the preferred and collision-safe vault paths already exist.`);
-    }
-  }
-
-  // Never rewrite a byte-identical file: git/iCloud/Obsidian treat mtime as
-  // "modified", and a scanned note's updatedAt is the file mtime.
-  const currentEntry = manifest.notes[nextPath];
-  const manifestUnchanged =
-    currentEntry?.id === diskNoteId &&
-    currentEntry.createdAt === note.createdAt &&
-    currentEntry.source === note.source &&
-    (!existingManifestEntry || existingManifestEntry[0] === nextPath);
-  try {
-    const existingFile = await (await dirHandle.getFileHandle(filename)).getFile();
-    if ((await readUtf8TextPreservingBom(existingFile)) === payload) {
-      if (!manifestUnchanged) {
-        if (existingManifestEntry && existingManifestEntry[0] !== nextPath) {
-          delete manifest.notes[existingManifestEntry[0]];
-        }
-        manifest.notes[nextPath] = {
-          id: diskNoteId,
-          createdAt: note.createdAt,
-          source: note.source,
-        };
-        await writeVaultManifest(rootHandle, manifest);
+  // Old versions could leave a matching Markdown file with no ownership record.
+  // Preserve the file and ask before adopting it or creating a second copy.
+  if (options?.recovering && !existingManifestEntry) {
+    for (const [path, filename] of [[preferredPath, defaultFilename], [suffixedPath, suffixedFilename]]) {
+      if (manifest.notes[path]) continue;
+      const file = await readVaultFile(dirHandle, filename);
+      const diskText = file && await readUtf8TextPreservingBom(file);
+      if (diskText !== null && (diskText === payload || diskText === note.vaultBaseText)) {
+        throw new VaultWriteConflictError(note.title, path, { note, diskText, unconfirmedCreate: true });
       }
-      // Attachments may still be pending even when the text is unchanged.
-      await syncAttachmentsForNote(rootHandle, note);
-      return { path: nextPath, lastModified: existingFile.lastModified, size: existingFile.size };
     }
-  } catch {
-    // No file at the target path yet — write it below.
   }
 
-  const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-  const writable = await fileHandle.createWritable();
-  await writable.write(payload);
-  await writable.close();
-  if (existingManifestEntry && existingManifestEntry[0] !== nextPath) {
-    delete manifest.notes[existingManifestEntry[0]];
+  const preferredOccupied = !existingFilename && !owns(preferredPath) && await fileExists(dirHandle, defaultFilename);
+  const filename = existingFilename ?? (preferredOccupied || owns(suffixedPath) ? suffixedFilename : defaultFilename);
+  const nextPath = existingPath ?? relativeNotePath(folder?.name, filename);
+  const ownsPath = owns(nextPath);
+  if (!existingFilename && filename !== defaultFilename && !ownsPath && await fileExists(dirHandle, filename)) {
+    throw new Error(`Cannot write "${note.title}": both the preferred and collision-safe vault paths already exist.`);
   }
-  manifest.notes[nextPath] = {
-    id: diskNoteId,
-    createdAt: note.createdAt,
-    source: note.source,
+
+  const currentEntry = manifest.notes[nextPath];
+  const entry = { id: diskNoteId, createdAt: note.createdAt, source: note.source };
+  const existingFile = await readVaultFile(dirHandle, filename);
+  const diskText = existingFile ? await readUtf8TextPreservingBom(existingFile) : null;
+  const conflict = (text: string | null) => new VaultWriteConflictError(note.title, nextPath,
+    // A structural destination collision cancels the operation. The edit
+    // resolver cannot finish a rename or move or remove its source file.
+    existingPath || ownsPath || options?.firstWrite ? { note, diskText: text } : undefined);
+
+  if (options?.expectedDiskText !== undefined && diskText !== options.expectedDiskText) {
+    throw conflict(diskText);
+  }
+  // A destination that looked free may have been created by another app.
+  if (!existingPath && !ownsPath && diskText !== null) throw conflict(diskText);
+  if (options?.firstWrite && ownsPath && diskText !== payload && diskText !== note.vaultBaseText) {
+    throw conflict(diskText);
+  }
+
+  const setManifestEntry = async (value: VaultManifestNoteEntry) => {
+    if (existingManifestEntry && existingManifestEntry[0] !== nextPath) {
+      delete manifest.notes[existingManifestEntry[0]];
+    }
+    manifest.notes[nextPath] = value;
+    await writeVaultManifest(rootHandle, manifest);
   };
-  await writeVaultManifest(rootHandle, manifest);
+  const manifestUnchanged = currentEntry?.id === diskNoteId
+    && currentEntry.createdAt === note.createdAt
+    && currentEntry.source === note.source
+    && !currentEntry.pendingCreate
+    && (!existingManifestEntry || existingManifestEntry[0] === nextPath);
+
+  // Never rewrite a byte-identical file, even when only its index needs repair.
+  if (existingFile && diskText === payload) {
+    if (!manifestUnchanged) await setManifestEntry(entry);
+    await syncAttachmentsForNote(rootHandle, note);
+    return { path: nextPath, lastModified: existingFile.lastModified, size: existingFile.size };
+  }
+
+  // A reservation records intent. Only the completed write establishes ownership.
+  const firstWrite = options?.firstWrite && !ownsPath;
+  if (firstWrite && (currentEntry?.id !== diskNoteId || currentEntry.pendingCreate !== 'reserved')) {
+    await setManifestEntry({ ...entry, pendingCreate: 'reserved' });
+  }
+
+  const fileHandle = await dirHandle.getFileHandle(filename, { create: diskText === null }).catch(error => {
+    if (diskText !== null && error instanceof DOMException && error.name === 'NotFoundError') throw conflict(null);
+    throw error;
+  });
+  const writable = await fileHandle.createWritable();
+  try {
+    await writable.write(payload);
+    if (firstWrite) await setManifestEntry({ ...entry, pendingCreate: 'publishing' });
+    const currentFile = await readVaultFile(dirHandle, filename);
+    const currentText = currentFile ? await readUtf8TextPreservingBom(currentFile) : null;
+    // A newly created handle starts as an empty file. Check again after staging
+    // the payload, as close() is what publishes it to the real file.
+    if (currentText !== (diskText ?? '')) throw conflict(currentText);
+    await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
+  }
+  if (firstWrite) await options?.onFirstWriteCommitted?.(nextPath, payload);
+  await setManifestEntry(entry);
   await syncAttachmentsForNote(rootHandle, note);
   // Report the written file's path+mtime so the external-change poller can
   // tell self-writes apart from edits made by other apps.
@@ -596,24 +651,44 @@ export function isNoteAtCanonicalPath(path: string, note: Note, folders: Folder[
     || canonical === relativeNotePath(folder?.name, `${baseName}_${noteCollisionSuffix(vaultDiskNoteId(note))}.md`);
 }
 
+export async function isPendingVaultNoteCreate(
+  rootHandle: FileSystemDirectoryHandle,
+  note: Note,
+): Promise<boolean> {
+  if (note.vaultPath || note.source !== 'noa') return false;
+  const entry = manifestEntryForId(await readVaultManifest(rootHandle), vaultDiskNoteId(note));
+  return !entry || Boolean(entry[1].pendingCreate);
+}
+
+export async function releaseVaultCreateReservation(rootHandle: FileSystemDirectoryHandle, note: Note): Promise<void> {
+  const manifest = await readVaultManifest(rootHandle);
+  const entry = manifestEntryForId(manifest, vaultDiskNoteId(note));
+  if (!entry?.[1].pendingCreate) return;
+  delete manifest.notes[entry[0]];
+  await writeVaultManifest(rootHandle, manifest);
+}
+
 /** Resolve the current on-disk path before a structural write changes manifest state. */
 export async function getNoteFilePath(
   rootHandle: FileSystemDirectoryHandle,
   note: Note,
   folders: Folder[],
+  includeMissing = false,
 ): Promise<string | null> {
   if (note.origin !== 'vault') return null;
   const diskNoteId = vaultDiskNoteId(note);
   const manifest = await readVaultManifest(rootHandle);
   const manifestEntry = manifestEntryForId(manifest, diskNoteId);
-  if (manifestEntry && await fileExistsAtPath(rootHandle, manifestEntry[0])) {
+  if (manifestEntry && !manifestEntry[1].pendingCreate && await fileExistsAtPath(rootHandle, manifestEntry[0])) {
     return manifestEntry[0];
   }
   if (note.vaultPath && await fileExistsAtPath(rootHandle, note.vaultPath)) {
     return note.vaultPath;
   }
   // A missing known file must never resolve to a same-titled sibling.
-  if (manifestEntry || note.vaultPath) return null;
+  if (manifestEntry || note.vaultPath) {
+    return includeMissing ? note.vaultPath ?? (manifestEntry?.[1].pendingCreate ? null : manifestEntry?.[0] ?? null) : null;
+  }
 
   const folder = folders.find((item) => item.id === note.folder);
   if (note.folder && folder?.origin !== 'vault') return null;
@@ -650,13 +725,15 @@ export async function readVaultNoteTextAtPath(
     ? await ensureDirectory(rootHandle, segments, false)
     : rootHandle;
   if (!parent) return null;
+  const file = await readVaultFile(parent, filename);
+  return file ? readUtf8TextPreservingBom(file) : null;
+}
+
+async function readVaultFile(dir: FileSystemDirectoryHandle, filename: string): Promise<File | null> {
   try {
-    const file = await (await parent.getFileHandle(filename)).getFile();
-    return readUtf8TextPreservingBom(file);
+    return await (await dir.getFileHandle(filename)).getFile();
   } catch (error) {
-    if (error && typeof error === 'object' && 'name' in error && String(error.name) === 'NotFoundError') {
-      return null;
-    }
+    if (error && typeof error === 'object' && 'name' in error && String(error.name) === 'NotFoundError') return null;
     throw error;
   }
 }
@@ -811,7 +888,8 @@ export async function scanDirectory(
         const text = exactText.startsWith('\uFEFF') ? exactText.slice(1) : exactText;
         const { meta, rawBlock, content, eol } = parseFrontMatter(text);
         const notePath = currentPath.join('/');
-        const manifestEntry = manifest.notes[notePath];
+        const entry = manifest.notes[notePath];
+        const manifestEntry = entry?.pendingCreate ? undefined : entry;
         const metaSource = meta.noaSource === 'noa' ? 'noa' : undefined;
         const noteSource = manifestEntry?.source ?? metaSource ?? 'obsidian-import';
         // Trust id/createdAt/linkRefs only on Noa-authored files; on Obsidian
@@ -943,6 +1021,6 @@ export async function scanDirectory(
   }
   // Note ids the manifest tracked when the scan started: any of these whose
   // file is now missing was deleted externally (see mergeScannedNotes).
-  const manifestIds = new Set(Object.values(manifest.notes).map((entry) => entry.id));
+  const manifestIds = new Set(Object.values(manifest.notes).filter((entry) => !entry.pendingCreate).map((entry) => entry.id));
   return { notes, folders: scannedFolders, newFolders, manifestIds };
 }

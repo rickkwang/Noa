@@ -1608,6 +1608,7 @@ export default function App() {
           <VaultEditConflictDialog
             note={editConflict.pending.note}
             diskText={editConflict.pending.diskText}
+            unconfirmedCreate={editConflict.pending.unconfirmedCreate}
             busy={syncStatus === 'syncing'}
             error={fsSyncError}
             onReconnect={needsReauth ? reconnect : undefined}
