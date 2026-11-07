@@ -7,6 +7,26 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.32] - 2026-11-07
+
+### Added
+- Take a screenshot of the Noa window with the names of other notes and folders hidden while the open note stays readable.
+- Open a Getting Started tour on first launch, and see an Update button in the sidebar when a new version is available.
+- Set the interface font style and enter a custom font size in the reorganised Settings.
+
+### Changed
+- Editor headings and bold text are closer to Obsidian, and HTML exports use the same heading scale as Noa.
+- Sidebar, title bar, editor and panel icons are simpler, and the panel menu puts its toggles first.
+
+### Fixed
+- Reconnecting a vault resumes interrupted note creation at the confirmed path and leaves independent files with the same name intact.
+- If a vault edit conflicts with a change on disk, Noa pauses for your choice and keeps the disk file's properties when you choose that version.
+- Vault folder switching preserves the current folder if you cancel, and attachments from connected folders load in the desktop app.
+- Wiki links render in note properties, fenced code and frontmatter stay out of the outline, and macOS window controls stay aligned when you zoom.
+
+### Known limitation
+- Avoid saving the same note in Noa and Obsidian at the same time. A write can still be overwritten if it lands just after Noa's final disk check.
+
 ## [1.0.31] - 2026-10-18
 
 ### Added
