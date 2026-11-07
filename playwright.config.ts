@@ -1,9 +1,6 @@
-import { existsSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 
-const macChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
-  || (!process.env.CI && process.platform === 'darwin' && existsSync(macChromePath) ? macChromePath : undefined);
+const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: './tests',
